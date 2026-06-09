@@ -4430,8 +4430,30 @@
         });
     }
 
+    const APP_HOST_HINT_KEY = 'appPreferredHost';
+
+    function warnIfHostChanged() {
+        const host = location.hostname;
+        if (host !== 'localhost' && host !== '127.0.0.1') return;
+
+        const savedHost = localStorage.getItem(APP_HOST_HINT_KEY);
+        if (savedHost && savedHost !== host) {
+            console.warn(
+                `[ЦППК] localStorage привязан к «${savedHost}», сейчас открыто «${host}». `
+                + 'Данные кажутся «сброшенными». Запускайте приложение всегда по одному адресу, лучше http://127.0.0.1:ПОРТ'
+            );
+            return;
+        }
+
+        if (!savedHost) {
+            localStorage.setItem(APP_HOST_HINT_KEY, host);
+        }
+    }
+
     function initServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
+
+        warnIfHostChanged();
 
         document.getElementById('appUpdateToastBtn')?.addEventListener('click', () => {
             applyServiceWorkerUpdate();
@@ -4444,6 +4466,7 @@
 
         navigator.serviceWorker.register('./sw.js')
             .then((registration) => {
+                console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
                 registration.update().catch(() => {});
 
@@ -4452,7 +4475,7 @@
                 }, 60 * 60 * 1000);
             })
             .catch((err) => {
-                console.warn('Service Worker не зарегистрирован:', err);
+                console.warn('[ЦППК] Service Worker не зарегистрирован:', err);
             });
     }
 

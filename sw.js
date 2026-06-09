@@ -1,5 +1,6 @@
-const CACHE_VERSION = 'cppk-v2.1.1';
-const CACHE_NAME = `cppk-assistant-${CACHE_VERSION}`;
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.1.2)
+const CACHE_VERSION = 'cppk_v2_1_2';
+const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
     './',
@@ -10,12 +11,20 @@ const PRECACHE_ASSETS = [
 ];
 
 function isPrecachePath(pathname) {
-    const normalized = pathname.replace(/^\//, '').replace(/\/$/, '') || 'index.html';
     return PRECACHE_ASSETS.some((asset) => {
-        const assetPath = asset.replace(/^\.\//, '').replace(/\/$/, '') || 'index.html';
-        return normalized === assetPath
-            || (assetPath === 'index.html' && (normalized === '' || normalized === 'index.html'));
+        const cleanAsset = asset.replace(/^\.\//, '');
+        return pathname.endsWith(cleanAsset) || (cleanAsset === 'index.html' && pathname.endsWith('/'));
     });
+}
+
+async function precacheAssets(cache) {
+    await Promise.allSettled(
+        PRECACHE_ASSETS.map((url) =>
+            cache.add(url).catch((err) => {
+                console.warn(`[sw] пропуск прекэша ${url}:`, err);
+            })
+        )
+    );
 }
 
 async function networkFirst(request) {
@@ -45,8 +54,8 @@ async function networkFirst(request) {
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(PRECACHE_ASSETS))
-            .catch((err) => console.warn('[sw] precache failed:', err))
+            .then((cache) => precacheAssets(cache))
+            .catch((err) => console.warn('[sw] прекэш отклонён из-за отсутствия файлов:', err))
     );
 });
 
