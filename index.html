@@ -2315,6 +2315,7 @@
             position: relative;
             cursor: pointer;
             overflow: hidden;
+            container-type: inline-size;
             transition: transform 0.15s var(--app-ease), box-shadow 0.15s ease, background 0.15s ease;
         }
 
@@ -2354,9 +2355,8 @@
 
         #screen-calendar .day-route {
             display: block;
-            font-size: 10px;
+            font-size: clamp(7px, 14cqi, 0.7em);
             margin-top: 2px;
-            padding: 2px 5px;
             text-align: center;
             line-height: 1.2;
             word-break: normal;
@@ -2370,8 +2370,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            border-radius: 5px;
-            background: rgba(0, 0, 0, 0.14);
         }
 
         #screen-calendar .day.other-month { color: #3a4558; }
@@ -2860,8 +2858,6 @@
             }
 
             #screen-calendar .day-route {
-                font-size: 9px;
-                padding: 2px 4px;
                 margin-top: 1px;
                 line-height: 1.15;
             }
@@ -4752,26 +4748,118 @@
         const keys = [primary];
         const noParens = primary.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
         if (noParens && noParens !== primary) keys.push(noParens);
+        const firstWord = primary.split(' ')[0];
+        if (firstWord && firstWord.length >= 3 && !keys.includes(firstWord)) keys.push(firstWord);
         return keys;
+    }
+
+    function stationMatchScore(searchKey, candidateKey) {
+        if (!searchKey || !candidateKey) return 0;
+        if (searchKey === candidateKey) return 10000;
+
+        if (candidateKey.includes(searchKey)) return 5000 + searchKey.length;
+        if (searchKey.includes(candidateKey)) return 4500 + candidateKey.length;
+
+        let prefixLen = 0;
+        const limit = Math.min(searchKey.length, candidateKey.length);
+        while (prefixLen < limit && searchKey[prefixLen] === candidateKey[prefixLen]) {
+            prefixLen++;
+        }
+
+        const searchFirst = searchKey.split(' ')[0] || '';
+        const candFirst = candidateKey.split(' ')[0] || '';
+        let firstWordBonus = 0;
+        if (searchFirst && searchFirst === candFirst) {
+            firstWordBonus = 300;
+        } else if (searchFirst.length >= 4 && candFirst.startsWith(searchFirst)) {
+            firstWordBonus = 180;
+        } else if (candFirst.length >= 4 && searchFirst.startsWith(candFirst)) {
+            firstWordBonus = 180;
+        }
+
+        return prefixLen * 10 + firstWordBonus;
+    }
+
+    function findBestMatchingStationKey(stationTitle, list) {
+        if (!Array.isArray(list) || !list.length) return null;
+
+        const searchKeys = stationSearchKeys(stationTitle);
+        const uniqueCandidates = [...new Set(list.map(item => normalizeStationKey(item.station)).filter(Boolean))];
+
+        let bestKey = null;
+        let bestScore = 0;
+
+        for (const candidateKey of uniqueCandidates) {
+            for (const searchKey of searchKeys) {
+                const score = stationMatchScore(searchKey, candidateKey);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestKey = candidateKey;
+                }
+            }
+        }
+
+        const minScore = 30;
+        return bestScore >= minScore ? bestKey : null;
     }
 
     function findStationPathMatch(stationTitle) {
         if (!sprDataCache?.stations_path) return null;
+
         for (const key of stationSearchKeys(stationTitle)) {
-            const hit = sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === key);
-            if (hit) return hit;
+            const exact = sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === key);
+            if (exact) return exact;
         }
-        return null;
+
+        const matchedKey = findBestMatchingStationKey(stationTitle, sprDataCache.stations_path);
+        if (!matchedKey) return null;
+        return sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === matchedKey) || null;
+    }
+
+    function findStationBrakes(stationTitle, preferredDirection) {
+        if (!sprDataCache?.brakes) return [];
+
+        const directions = preferredDirection
+            ? [preferredDirection, preferredDirection === 'from_moscow' ? 'to_moscow' : 'from_moscow']
+            : ['from_moscow', 'to_moscow'];
+
+        for (const direction of directions) {
+            const list = sprDataCache.brakes[direction];
+            if (!list?.length) continue;
+
+            for (const key of stationSearchKeys(stationTitle)) {
+                const exact = list.filter(b => normalizeStationKey(b.station) === key);
+                if (exact.length) return exact;
+            }
+
+            const matchedKey = findBestMatchingStationKey(stationTitle, list);
+            if (!matchedKey) continue;
+
+            const fuzzy = list.filter(b => normalizeStationKey(b.station) === matchedKey);
+            if (fuzzy.length) return fuzzy;
+        }
+
+        return [];
+    }
+
+    function findDeadEndBrake(stationTitle) {
+        const list = sprDataCache?.brakes?.dead_ends;
+        if (!list?.length) return null;
+
+        for (const key of stationSearchKeys(stationTitle)) {
+            const exact = list.find(b => normalizeStationKey(b.station) === key);
+            if (exact) return exact;
+        }
+
+        const matchedKey = findBestMatchingStationKey(stationTitle, list);
+        if (!matchedKey) return null;
+        return list.find(b => normalizeStationKey(b.station) === matchedKey) || null;
     }
 
     function findBrakeMatch(stationTitle, direction) {
-        if (!sprDataCache?.brakes) return null;
-        for (const key of stationSearchKeys(stationTitle)) {
-            const hit = sprDataCache.brakes[direction]?.find(b => normalizeStationKey(b.station) === key)
-                || sprDataCache.brakes.dead_ends?.find(b => normalizeStationKey(b.station) === key);
-            if (hit) return hit;
-        }
-        return null;
+        const brakes = findStationBrakes(stationTitle, direction);
+        if (brakes.length) return brakes[0];
+        return findDeadEndBrake(stationTitle);
     }
 
     function parseJSON(value, fallback = null) {
@@ -5242,10 +5330,7 @@
                     let startBrakesHtml = '';
                     let endBrakesHtml = '';
 
-                    const startKeys = stationSearchKeys(firstTitle);
-                    const startBrakesList = sprDataCache.brakes[currentDirection]?.filter(b =>
-                        startKeys.includes(normalizeStationKey(b.station))
-                    ) || [];
+                    const startBrakesList = findStationBrakes(firstTitle, currentDirection);
                     const ptBrake = startBrakesList.find(b => b.type === "PT_1");
                     const eptBrake = startBrakesList.find(b => b.type === "EPT_2");
 
@@ -5257,10 +5342,7 @@
                         startBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box">` + startTags.map(t => `<span class="route${DASH_CHAR}brake${DASH_CHAR}text">${t}</span>`).join('') + `</div>`;
                     }
 
-                    const endKeys = stationSearchKeys(lastTitle);
-                    const deadEndMatch = sprDataCache.brakes.dead_ends?.find(b =>
-                        endKeys.includes(normalizeStationKey(b.station))
-                    );
+                    const deadEndMatch = findDeadEndBrake(lastTitle);
                     if (deadEndMatch) {
                         const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
                         endBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box"><span class="route${DASH_CHAR}brake${DASH_CHAR}text">Тупик ${DASH_CHAR} ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}</span></div>`;
@@ -5474,7 +5556,6 @@
 
             if (sprDataCache) {
                 const stationTitle = stop.station?.title || '';
-                const searchKeys = stationSearchKeys(stationTitle);
 
                 const stationPathMatch = findStationPathMatch(stationTitle);
 
@@ -5488,9 +5569,7 @@
                 }
 
                 if (isFirst) {
-                    const stationBrakes = sprDataCache.brakes[currentDirection]?.filter(b =>
-                        searchKeys.includes(normalizeStationKey(b.station))
-                    ) || [];
+                    const stationBrakes = findStationBrakes(stationTitle, currentDirection);
 
                     const ptBrake = stationBrakes.find(b => b.type === "PT_1");
                     const eptBrake = stationBrakes.find(b => b.type === "EPT_2");
@@ -5504,9 +5583,7 @@
                         hasBrakes = true;
                     }
                 } else if (isLast) {
-                    const deadEndMatch = sprDataCache.brakes.dead_ends?.find(b =>
-                        searchKeys.includes(normalizeStationKey(b.station))
-                    );
+                    const deadEndMatch = findDeadEndBrake(stationTitle);
 
                     if (deadEndMatch) {
                         const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
