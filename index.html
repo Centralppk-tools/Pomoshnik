@@ -402,36 +402,115 @@
             gap: var(--app-gap);
         }
 
-        .schedule-search {
-            margin-bottom: 0;
-        }
-
-        .schedule-search-field {
-            width: 100%;
-        }
-
-        .schedule-search-btn {
-            width: 100%;
-            margin-top: 12px;
-        }
-
         .schedule-date-hint {
             margin: 0;
             font-size: var(--font-sm);
             font-weight: 400;
             color: var(--app-caption);
             line-height: 1.45;
+            text-align: center;
+        }
+
+        #screen-schedule .phone-screen {
+            overflow: visible;
+        }
+
+        #screen-schedule .schedule-tabs-stage:not(.is-transitioning) {
+            overflow: visible;
+        }
+
+        #screen-schedule .tabs-nav {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            margin-bottom: 8px;
+            background: rgba(10, 16, 24, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
         }
 
         #tab-schedule {
             width: 100%;
             min-width: 0;
+            overflow: visible;
+            --schedule-pad-x: 24px;
+            --schedule-tabs-offset: 41px;
+            gap: 8px;
+        }
+
+        #scheduleHeader {
+            position: sticky;
+            top: var(--schedule-tabs-offset, 41px);
+            z-index: 30;
+            flex-shrink: 0;
+            margin-left: calc(-1 * var(--schedule-pad-x));
+            margin-right: calc(-1 * var(--schedule-pad-x));
+            width: calc(100% + (2 * var(--schedule-pad-x)));
+            padding: 0 var(--schedule-pad-x) 6px;
+            background: linear-gradient(180deg, rgba(10, 16, 24, 0.98) 0%, rgba(10, 16, 24, 0.94) 72%, rgba(10, 16, 24, 0) 100%);
+            backdrop-filter: blur(10px);
+        }
+
+        #scheduleHeader .schedule-route-card {
+            margin-bottom: 0;
+            width: 100%;
+            border-radius: 12px;
+        }
+
+        .schedule-route-card .route-card-section {
+            padding: 5px 12px 5px 18px;
+        }
+
+        .schedule-route-card .route-card-top {
+            border-bottom: none;
+            gap: 1px;
         }
 
         .schedule-route-card .route-card-title {
             min-width: 0;
             word-break: keep-all;
             overflow-wrap: normal;
+            font-size: clamp(13px, 3.6vw, 15px);
+            line-height: 1.25;
+        }
+
+        .schedule-route-card .route-card-subtitle {
+            font-size: 11px;
+            gap: 8px;
+            line-height: 1.25;
+        }
+
+        .schedule-route-card-middle {
+            min-height: 40px;
+            justify-content: center;
+            align-items: center;
+            border-bottom: none;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+        .schedule-route-card-middle .route-card-middle-head {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .schedule-route-time {
+            width: 100%;
+            text-align: center;
+            font-size: clamp(18px, 4.6vw, 22px);
+            letter-spacing: 0.03em;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.15;
+        }
+
+        .schedule-route-card-footer {
+            padding-top: 0;
+            padding-bottom: 6px;
+        }
+
+        .schedule-route-card-footer .schedule-date-hint {
+            font-size: 11px;
+            line-height: 1.3;
         }
 
         .schedule-empty {
@@ -444,11 +523,12 @@
         }
 
         .schedule-route-card {
-            margin-bottom: 14px;
+            margin-bottom: 0;
         }
 
         .schedule-results-wrap {
             animation: fadeInScale 0.3s ease-out;
+            overflow: visible;
         }
 
         .schedule-loader {
@@ -1643,8 +1723,8 @@
             border: 1px solid rgba(234, 179, 8, 0.25);
             background: rgba(234, 179, 8, 0.06);
             border-radius: 8px;
-            padding: 8px 4px;
-            font-size: 13px;
+            padding: 6px 4px;
+            font-size: 16px;
             font-weight: 600;
             text-align: center;
             color: #f4f7ff;
@@ -1687,10 +1767,11 @@
         /* ===== РАСПИСАНИЕ: Контейнер с вертикальной шкалой времени ===== */
         .timeline {
             position: relative;
-            padding-left: 0;
+            padding-left: 6px;
+            overflow: visible;
             --km-marker-width: 44px;
             --km-marker-gap: 10px;
-            --timeline-left: calc(var(--km-marker-width) / 2);
+            --timeline-left: calc(6px + var(--km-marker-width) / 2);
             --station-fill: #141b27;
             --station-stroke: rgba(255, 255, 255, 0.05);
             --station-brakes-fill: linear-gradient(135deg, #30291d, #171925);
@@ -1716,6 +1797,7 @@
             padding-left: calc(var(--km-marker-width) + var(--km-marker-gap));
             margin-bottom: 14px;
             width: 100%;
+            overflow: visible;
         }
 
         .station-card {
@@ -1735,9 +1817,22 @@
             border-color: var(--station-brakes-stroke);
         }
 
+        @keyframes schedule-station-active-pulse {
+            0%, 100% {
+                border-color: rgba(23, 128, 56, 0.72);
+                box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.28), 0 0 6px rgba(20, 90, 46, 0.32);
+            }
+            50% {
+                border-color: var(--station-active-stroke);
+                box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.55), 0 0 14px rgba(20, 90, 46, 0.62);
+            }
+        }
+
         .station-node.active .station-card {
             border-color: var(--station-active-stroke);
-            box-shadow: var(--station-active-glow);
+            box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.35), 0 0 10px rgba(20, 90, 46, 0.45);
+            transition: none;
+            animation: schedule-station-active-pulse 1s ease-in-out infinite;
         }
 
         /* ===== РАСПИСАНИЕ: Верхняя строка карточки — название станции и время ===== */
@@ -1820,21 +1915,84 @@
 
         .station-node.has-brakes .station-dot {
             background: var(--station-brakes-fill);
-            border-color: var(--station-brakes-stroke);
-            box-shadow: 0 0 14px #f59e0b;
+            border-color: rgba(245, 158, 11, 0.72);
+            box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45), inset 0 0 14px rgba(245, 158, 11, 0.28);
         }
 
         .station-node.has-brakes .station-dot::after {
             color: #fbbf24;
         }
 
+        @keyframes schedule-station-dot-active-pulse {
+            0%, 100% {
+                border-color: rgba(23, 128, 56, 0.72);
+                box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.55), inset 0 0 8px rgba(23, 128, 56, 0.22);
+            }
+            50% {
+                border-color: var(--station-active-stroke);
+                box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.95), inset 0 0 16px rgba(23, 128, 56, 0.48);
+            }
+        }
+
         .station-node.active .station-dot {
             border-color: var(--station-active-stroke);
-            box-shadow: var(--station-active-glow);
+            box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.85), inset 0 0 12px rgba(23, 128, 56, 0.38);
+            transition: none;
+            animation: schedule-station-dot-active-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes schedule-station-dot-brakes-active-pulse {
+            0%, 100% {
+                border-color: rgba(23, 128, 56, 0.72);
+                box-shadow:
+                    inset 0 0 0 1px rgba(23, 128, 56, 0.55),
+                    inset 0 0 8px rgba(23, 128, 56, 0.2),
+                    inset 0 0 12px rgba(245, 158, 11, 0.14);
+            }
+            50% {
+                border-color: var(--station-active-stroke);
+                box-shadow:
+                    inset 0 0 0 1px rgba(23, 128, 56, 0.95),
+                    inset 0 0 16px rgba(23, 128, 56, 0.42),
+                    inset 0 0 22px rgba(245, 158, 11, 0.28);
+            }
+        }
+
+        .station-node.active.has-brakes .station-dot {
+            border-color: var(--station-active-stroke);
+            box-shadow:
+                inset 0 0 0 1px rgba(23, 128, 56, 0.85),
+                inset 0 0 12px rgba(23, 128, 56, 0.34),
+                inset 0 0 18px rgba(245, 158, 11, 0.22);
+            animation: schedule-station-dot-brakes-active-pulse 1s ease-in-out infinite;
         }
 
         .station-node.active.has-brakes .station-dot::after {
             color: #ffffff;
+        }
+
+        .station-node.pass-through .station-card {
+            background: rgba(20, 27, 39, 0.62);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .station-node.pass-through .station-name {
+            color: #8b97ab;
+            font-weight: 500;
+        }
+
+        .station-node.pass-through .time-badge {
+            color: #8b97ab;
+            font-weight: 600;
+        }
+
+        .station-node.pass-through .station-dot {
+            background: rgba(20, 27, 39, 0.62);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .station-node.pass-through .station-dot::after {
+            color: #6f7d92;
         }
 
         /* ===== РАСПИСАНИЕ: Индикатор загрузки ===== */
@@ -1888,10 +2046,6 @@
                 border-radius: 14px;
             }
 
-            .schedule-search-btn {
-                width: 100%;
-            }
-
             .route-card {
                 padding: 0; /* Вычистили старый надувающий отступ */
             }
@@ -1903,6 +2057,7 @@
             .timeline {
                 --km-marker-width: 40px;
                 --km-marker-gap: 8px;
+                --timeline-left: calc(6px + var(--km-marker-width) / 2);
             }
         }
 
@@ -1911,6 +2066,10 @@
             width: 100%;
             max-width: 640px;
             overflow: hidden;
+        }
+
+        .main-screens-stage:has(#screen-schedule:not(.hidden)) {
+            overflow: visible;
         }
 
         .main-screens-stage.is-transitioning {
@@ -2327,56 +2486,94 @@
             transform: scale(0.94);
         }
 
+        #screen-calendar .day:has(.day-route) {
+            justify-content: flex-start;
+            gap: 0;
+        }
+
         #screen-calendar .day-number {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-            min-height: 28px;
             font-weight: 600;
             font-size: var(--font-sm);
             line-height: 1;
-            border-radius: 50%;
-            box-sizing: border-box;
+            position: relative;
+            z-index: 2;
         }
 
-        #screen-calendar .day.today .day-number,
-        #screen-calendar .day.selected .day-number {
-            font-size: var(--font-xs);
+        #screen-calendar .day:has(.day-route) .day-number {
+            flex: 0 0 48%;
+            width: 100%;
+            max-height: 48%;
         }
 
-        #screen-calendar .day.today:not([class*="has-"]) .day-number {
-            background: rgba(255, 255, 255, 0.07);
-            box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.22);
+        #screen-calendar .day:has(.day-route) .day-number,
+        #screen-calendar .day:has(.day-route) .day-route {
+            font-size: clamp(10px, 22cqi, var(--font-sm));
+            font-weight: 600;
+            line-height: 1;
         }
 
         #screen-calendar .day-route {
-            display: block;
-            font-size: clamp(7px, 14cqi, 0.7em);
-            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1 1 52%;
+            min-height: 0;
+            width: 100%;
+            max-width: 100%;
+            margin-top: 0;
+            padding: 0 1px 1px;
+            box-sizing: border-box;
             text-align: center;
-            line-height: 1.2;
             word-break: normal;
             overflow-wrap: normal;
             color: #ffffff;
-            font-weight: 500;
-            opacity: 0.9;
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
+            opacity: 0.95;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        #screen-calendar .day.today:not([class*="has-"]) {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        #screen-calendar .day.today::before,
+        #screen-calendar .day.selected::before {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 1;
+            box-sizing: border-box;
+        }
+
+        #screen-calendar .day.today::before {
+            border: 2px solid rgba(255, 255, 255, 0.42);
+        }
+
+        #screen-calendar .day.today[class*="has-"]::before {
+            border-color: rgba(255, 255, 255, 0.72);
+        }
+
+        #screen-calendar .day.selected::before {
+            inset: 1px;
+            border: 2px solid var(--app-green);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+        }
+
+        #screen-calendar .day.today.selected::before {
+            border-color: var(--app-green);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.95);
         }
 
         #screen-calendar .day.other-month { color: #3a4558; }
-        #screen-calendar .day.today:not([class*="has-"]) {
-            background: transparent;
-            box-shadow: none;
-        }
         #screen-calendar .day.has-day-shift {
             background: linear-gradient(145deg, #1a9a48, var(--day-shift));
             color: #fff;
@@ -2390,10 +2587,24 @@
         #screen-calendar .day.has-study-shift { background-color: var(--study-shift); color: #fff; }
         #screen-calendar .day.has-vacation-shift { background-color: var(--vacation-shift); color: #fff; }
         #screen-calendar .day.has-tech-shift { background-color: var(--tech-shift); color: #fff; }
+        #screen-calendar .day.has-route99-day {
+            background: linear-gradient(145deg, #a8adb8, #787f8c);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(120, 127, 140, 0.35);
+        }
+        #screen-calendar .day.has-route99-night {
+            background: linear-gradient(145deg, #8f9bb0, #5f6d82);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(95, 109, 130, 0.35);
+        }
+        #screen-calendar .day.has-route99-morning {
+            background: linear-gradient(145deg, #9aa3a8, #6d777d);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(109, 119, 125, 0.35);
+        }
         #screen-calendar .day.selected {
-            box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--app-green);
-            transform: scale(1.04);
-            z-index: 1;
+            transform: none;
+            z-index: 2;
         }
 
         #screen-calendar .shift-constructor {
@@ -2568,6 +2779,81 @@
 
         #screen-profile #profileUserTab {
             font-variant-numeric: tabular-nums;
+        }
+
+        #screen-profile .profile-position-combobox {
+            position: relative;
+            width: 100%;
+            margin: 1px 0 0;
+        }
+
+        #screen-profile .profile-position-trigger {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin: 0;
+            padding: 4px 28px 4px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b97ab' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+            font-size: var(--font-xs);
+            font-weight: 500;
+            color: var(--app-caption);
+            line-height: 1.3;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+        }
+
+        #screen-profile .profile-position-trigger:hover,
+        #screen-profile .profile-position-combobox.is-open .profile-position-trigger {
+            border-color: rgba(23, 128, 56, 0.35);
+            background-color: rgba(23, 128, 56, 0.08);
+            color: var(--app-text);
+        }
+
+        #screen-profile .profile-position-trigger:focus-visible {
+            outline: 2px solid rgba(23, 128, 56, 0.45);
+            outline-offset: 2px;
+        }
+
+        #screen-profile .profile-position-list {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            z-index: 30;
+            max-height: 120px;
+            overflow-y: auto;
+            margin: 0;
+            padding: 4px;
+            list-style: none;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            background: rgba(14, 20, 30, 0.98);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+        }
+
+        #screen-profile .profile-position-list[hidden] {
+            display: none !important;
+        }
+
+        #screen-profile .profile-position-list .route-combobox-option {
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: var(--font-xs);
+            font-weight: 500;
+            color: var(--app-text);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        #screen-profile .profile-position-list .route-combobox-option:hover,
+        #screen-profile .profile-position-list .route-combobox-option.is-selected {
+            background: rgba(23, 128, 56, 0.16);
+            color: #fff;
         }
 
         #screen-profile .profile-hours-ring {
@@ -2844,27 +3130,24 @@
                 border-radius: 6px;
             }
 
-            #screen-calendar .day-number {
-                width: 24px;
-                height: 24px;
-                min-width: 24px;
-                min-height: 24px;
-                font-size: 11px;
+            #screen-calendar .day:has(.day-route) .day-number {
+                flex-basis: 46%;
+                max-height: 46%;
             }
 
-            #screen-calendar .day.today .day-number,
-            #screen-calendar .day.selected .day-number {
-                font-size: 10px;
+            #screen-calendar .day:has(.day-route) .day-number,
+            #screen-calendar .day:has(.day-route) .day-route {
+                font-size: clamp(9px, 20cqi, 11px);
             }
 
             #screen-calendar .day-route {
-                margin-top: 1px;
-                line-height: 1.15;
+                flex-basis: 54%;
+                padding-bottom: 2px;
             }
 
             #screen-calendar .day.selected {
                 transform: none;
-                z-index: 0;
+                z-index: 1;
             }
 
             #screen-calendar .day:active {
@@ -2872,8 +3155,7 @@
             }
 
             #screen-calendar .day.today:not([class*="has-"]) {
-                background: transparent;
-                box-shadow: none;
+                background: rgba(255, 255, 255, 0.04);
             }
 
             #screen-calendar #monthTitle {
@@ -2961,46 +3243,48 @@
                 padding: 16px 14px;
             }
 
-            #tab-schedule .schedule-search {
-                width: 100%;
+            #tab-schedule {
+                --schedule-pad-x: 14px;
             }
 
-            #tab-schedule .train-input {
-                padding: 11px 10px;
-                font-size: var(--font-sm);
+            #scheduleHeader {
+                padding-bottom: 4px;
             }
 
-            #tab-schedule .train-input::placeholder {
-                font-size: 11px;
+            #screen-schedule .tabs-nav {
+                margin-bottom: 6px;
             }
 
-            #tab-schedule .schedule-search-btn {
-                margin-top: 10px;
-                padding: 11px 16px;
-                font-size: var(--font-sm);
-            }
-
-            #tab-schedule .schedule-date-hint {
-                font-size: 11px;
-                line-height: 1.4;
+            .schedule-route-card-middle {
+                min-height: 36px;
             }
 
             .schedule-route-card .route-card-section {
-                padding: 6px 12px 6px 18px;
+                padding: 4px 10px 4px 16px;
+            }
+
+            .schedule-route-card-footer .schedule-date-hint {
+                font-size: 10px;
             }
 
             .schedule-route-card .route-card-title {
-                font-size: clamp(12px, 3.6vw, 15px);
+                font-size: clamp(12px, 3.4vw, 14px);
             }
 
             .schedule-route-card .route-card-subtitle {
-                font-size: 11px;
-                gap: 8px;
+                font-size: 10px;
+                gap: 6px;
+            }
+
+            .schedule-route-time {
+                font-size: clamp(16px, 4.2vw, 20px);
             }
 
             .timeline.schedule-results-wrap {
                 --km-marker-width: 36px;
                 --km-marker-gap: 6px;
+                --timeline-left: calc(4px + var(--km-marker-width) / 2);
+                padding-left: 4px;
             }
 
             .station-node {
@@ -3095,8 +3379,8 @@
             }
 
             .shift-warnings-input {
-                padding: 7px 3px;
-                font-size: 12px;
+                padding: 5px 3px;
+                font-size: 16px;
                 border-radius: 7px;
             }
 
@@ -3629,15 +3913,6 @@
     </div>
 
     <div id="tab-schedule" class="tab-content">
-        <div class="schedule-search">
-            <div class="schedule-search-field train-field train-field--has-clear">
-                <input type="text" id="singleTrain" class="train-input" placeholder="Номер поезда, 4 цифры" maxlength="4" inputmode="numeric" autocomplete="off">
-                <button type="button" id="singleTrainClear" class="train-field-clear" aria-label="Очистить номер поезда">&times;</button>
-            </div>
-            <button type="button" class="action-btn schedule-search-btn" onclick="getScheduleData()">Найти нитку</button>
-        </div>
-        <p class="schedule-date-hint" id="scheduleDateHint"></p>
-
         <div id="scheduleHeader" style="display:none;"></div>
         <div id="scheduleLoader" class="loader schedule-loader">Сборка нитки...</div>
 
@@ -3694,7 +3969,17 @@
                 <img src="assets/cppk-logo.png" alt="ЦППК" class="profile-cppk-logo" width="40" height="40">
                 <div class="profile-identity-text">
                     <div id="profileUserName" class="profile-text-fit">Сотрудник</div>
-                    <div id="profileUserPosition" class="profile-text-fit profile-user-meta" hidden></div>
+                    <div class="profile-position-combobox route-combobox" id="profilePositionCombobox">
+                        <div class="route-combobox-field">
+                            <button type="button" id="profilePositionTrigger" class="profile-position-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="profilePositionList">
+                                <span id="profilePositionLabel">Машинист</span>
+                            </button>
+                        </div>
+                        <ul id="profilePositionList" class="route-combobox-list profile-position-list" role="listbox" hidden>
+                            <li class="route-combobox-option" role="option" data-value="machinist">Машинист</li>
+                            <li class="route-combobox-option" role="option" data-value="assistant">Помощник машиниста</li>
+                        </ul>
+                    </div>
                     <div id="profileUserTab" class="profile-text-fit profile-user-meta">Таб. № —</div>
                 </div>
             </div>
@@ -3990,24 +4275,6 @@
 
         updateScheduleDateHint();
 
-        document.getElementById('singleTrainClear')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            const input = document.getElementById('singleTrain');
-            if (input) {
-                input.value = '';
-                input.focus();
-            }
-            userStorageRemove('lastSingleTrain');
-            resetScheduleResults();
-        });
-
-        document.getElementById('singleTrain')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                getScheduleData();
-            }
-        });
-
         updateScheduleEmptyState();
 
         const nightModeInput = document.getElementById('nightMode');
@@ -4036,15 +4303,12 @@
         });
 
         initShiftWarnings();
+        initProfilePositionSelect();
 
         const savedTrains = userStorageGetJson('trainNumbers', []);
         renderTrainInputs(Array.isArray(savedTrains) ? savedTrains : []);
 
         const lastSingle = userStorageGet('lastSingleTrain');
-        if (lastSingle) {
-            const singleInput = document.getElementById('singleTrain');
-            if (singleInput) singleInput.value = lastSingle;
-        }
 
         const localStationCache = userStorageGet('stationScheduleCache');
         if (localStationCache) {
@@ -4083,7 +4347,7 @@
             .then(text => {
                 if (!text.trim()) throw new Error('Файл пуст');
                 sprDataCache = JSON.parse(text);
-                console.log("Справочник успешно загружен:", sprDataCache); // Проверка в консоли
+                console.log("Справочник успешно загружен:", sprDataCache);
             })
             .catch(err => {
                 console.error('Связь со справочником утеряна:', err);
@@ -4098,7 +4362,7 @@
                 if (hasTrains && activeTab === 'tab-route') {
                     getRouteData();
                 } else if (lastSingle && activeTab === 'tab-schedule') {
-                    getScheduleData();
+                    getScheduleData(lastSingle);
                 }
             });
     });
@@ -4151,13 +4415,100 @@
 
     function updateScheduleDateHint() {
         const el = document.getElementById('scheduleDateHint');
+        const header = document.getElementById('scheduleHeader');
         if (!el) return;
+
+        const hasSchedule = header && header.style.display !== 'none' && header.innerHTML.trim();
         const label = formatShiftDateDisplay(getSelectedDate());
-        if (!label) {
+        if (!label || !hasSchedule) {
             el.textContent = '';
+            el.style.display = 'none';
             return;
         }
+
+        el.style.display = '';
         el.textContent = isNightMode() ? `Дата смены: ${label} · ночная смена` : `Дата смены: ${label}`;
+    }
+
+    let scheduleLiveClockTimer = null;
+    let scheduleLiveClockSynced = false;
+    let scheduleLiveClockTime = null;
+    let scheduleDisplayStops = null;
+    let scheduleActiveDate = null;
+
+    function formatLiveClockTime(date) {
+        const h = String(date.getHours()).padStart(2, '0');
+        const m = String(date.getMinutes()).padStart(2, '0');
+        const s = String(date.getSeconds()).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+
+    function getScheduleLiveDate() {
+        return scheduleLiveClockSynced && scheduleLiveClockTime
+            ? new Date(scheduleLiveClockTime.getTime())
+            : null;
+    }
+
+    function clearScheduleActiveStationHighlight() {
+        document.querySelectorAll('#stationsList .station-node.active').forEach(node => {
+            node.classList.remove('active');
+        });
+    }
+
+    function updateScheduleActiveStation() {
+        if (!scheduleDisplayStops) return;
+        if (!scheduleLiveClockSynced) {
+            clearScheduleActiveStationHighlight();
+            return;
+        }
+
+        const activeIndex = findClosestStationIndex(
+            scheduleDisplayStops,
+            scheduleActiveDate,
+            getScheduleLiveDate()
+        );
+        const nodes = document.querySelectorAll('#stationsList .station-node');
+        nodes.forEach((node, index) => {
+            node.classList.toggle('active', index === activeIndex && activeIndex !== -1);
+        });
+    }
+
+    function updateScheduleLiveClockDisplay() {
+        const el = document.getElementById('scheduleLiveClock');
+        if (!el) return;
+        if (!scheduleLiveClockSynced || !scheduleLiveClockTime) {
+            el.textContent = '--:--:--';
+            clearScheduleActiveStationHighlight();
+            return;
+        }
+        el.textContent = formatLiveClockTime(scheduleLiveClockTime);
+        updateScheduleActiveStation();
+    }
+
+    function tickScheduleLiveClock() {
+        if (!scheduleLiveClockSynced || !scheduleLiveClockTime) return;
+        scheduleLiveClockTime = new Date(scheduleLiveClockTime.getTime() + 1000);
+        updateScheduleLiveClockDisplay();
+    }
+
+    function syncScheduleLiveClock() {
+        scheduleLiveClockTime = new Date();
+        scheduleLiveClockSynced = true;
+        updateScheduleLiveClockDisplay();
+        if (scheduleLiveClockTimer) return;
+        scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+    }
+
+    function stopScheduleLiveClock() {
+        if (scheduleLiveClockTimer) {
+            clearInterval(scheduleLiveClockTimer);
+            scheduleLiveClockTimer = null;
+        }
+        scheduleLiveClockSynced = false;
+        scheduleLiveClockTime = null;
+        scheduleDisplayStops = null;
+        scheduleActiveDate = null;
+        clearScheduleActiveStationHighlight();
     }
 
     function updateScheduleEmptyState() {}
@@ -4249,6 +4600,29 @@
         return `${n} остановок`;
     }
 
+    function resolveStopsText(_scheduleStopsField, threadStops) {
+        return deriveStopsLabelFromReference(threadStops);
+    }
+
+    function matchTrainNumberInSchedule(item, trainNumber) {
+        const targetStr = String(trainNumber || '').replace(/\s/g, '').toLowerCase();
+        const targetDigits = targetStr.replace(/\D/g, '');
+        const threadNumber = String(item?.thread?.number || '').replace(/\s/g, '').toLowerCase();
+        if (!threadNumber) return false;
+        if (threadNumber === targetStr) return true;
+        if (targetDigits && threadNumber.replace(/\D/g, '') === targetDigits) return true;
+        return false;
+    }
+
+    function formatStopsTextDisplay(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return '—';
+        const lower = raw.toLowerCase();
+        if (lower === 'со всеми' || lower === 'везде') return 'Со всеми';
+        if (lower === 'без остановок') return 'Без остановок';
+        return raw;
+    }
+
     function getSelectedDate() {
         return document.getElementById('dateInput').value;
     }
@@ -4272,10 +4646,10 @@
     function refreshScheduleIfVisible() {
         const results = document.getElementById('scheduleResults');
         const header = document.getElementById('scheduleHeader');
-        const input = document.getElementById('singleTrain')?.value.trim();
-        if (!input) return;
+        const trainNumber = userStorageGet('lastSingleTrain')?.trim();
+        if (!trainNumber) return;
         if (results?.style.display !== 'none' && header?.style.display !== 'none') {
-            getScheduleData();
+            getScheduleData(trainNumber);
         }
     }
 
@@ -4283,12 +4657,15 @@
         const results = document.getElementById('scheduleResults');
         const header = document.getElementById('scheduleHeader');
         const list = document.getElementById('stationsList');
+        scheduleDisplayStops = null;
+        scheduleActiveDate = null;
         if (results) results.style.display = 'none';
         if (header) {
             header.style.display = 'none';
             header.innerHTML = '';
         }
         if (list) list.innerHTML = '';
+        updateScheduleDateHint();
         updateScheduleEmptyState();
     }
 
@@ -4475,7 +4852,6 @@
         fillShiftWarningsModal(loadShiftWarnings());
         overlay.classList.add('is-open');
         overlay.setAttribute('aria-hidden', 'false');
-        document.getElementById('shiftWarningsGrid')?.querySelector('.shift-warnings-input')?.focus();
     }
 
     function closeShiftWarningsModal() {
@@ -4592,9 +4968,6 @@
 
         renderTrainInputs([]);
 
-        const singleTrain = document.getElementById('singleTrain');
-        if (singleTrain) singleTrain.value = '';
-
         const grid = document.getElementById('routeGrid');
         if (grid) {
             grid.innerHTML = '';
@@ -4614,6 +4987,7 @@
         if (routeLoader) routeLoader.style.display = 'none';
 
         setShiftResetVisible(false);
+        stopScheduleLiveClock();
         resetScheduleResults();
         updateScheduleDateHint();
         updateScheduleEmptyState();
@@ -4887,6 +5261,150 @@
         return 'to';
     }
 
+    const ROUTE_REFERENCE_KEYS = {
+        YAROSLAVSKOE: 'yaroslavskoe',
+        FRYAZINO_MONINO: 'fryazino_monino',
+        FRYAZINO_IVANOVKA: 'fryazino_ivanovka'
+    };
+
+    function stationsMatchStrict(titleA, titleB) {
+        const keysA = stationSearchKeys(titleA);
+        const keysB = stationSearchKeys(titleB);
+        for (const keyA of keysA) {
+            for (const keyB of keysB) {
+                if (keyA === keyB) return true;
+            }
+        }
+        return false;
+    }
+
+    function stationsMatch(titleA, titleB) {
+        return stationsMatchStrict(titleA, titleB);
+    }
+
+    function resolveRouteReferenceKey(stops) {
+        if (!Array.isArray(stops) || !stops.length) return ROUTE_REFERENCE_KEYS.YAROSLAVSKOE;
+
+        const keys = stops.map(stop => normalizeStationKey(stop.station?.title || ''));
+        const isMainLine = keys.some(key =>
+            key.includes('александров') || key.includes('сергиев посад') || key.includes('софрино') ||
+            key.includes('пушкино') || key.includes('клязьма') || key.includes('бужаниново') ||
+            key.includes('струнино') || key.includes('арсаки') || key.includes('абрамцево') ||
+            key.includes('семхоз') || key.includes('хотьково')
+        );
+        if (isMainLine) return ROUTE_REFERENCE_KEYS.YAROSLAVSKOE;
+
+        const isIvanteevkaBranch = keys.some(key =>
+            key.includes('ивантеевка') || key.includes('зелен') || key.includes('фабрика 1') ||
+            key.includes('детская') || key.includes('фрязино-то') || key.includes('фрязино-пас')
+        );
+        if (isIvanteevkaBranch) return ROUTE_REFERENCE_KEYS.FRYAZINO_IVANOVKA;
+
+        return ROUTE_REFERENCE_KEYS.FRYAZINO_MONINO;
+    }
+
+    function getYaroslavskoeReferenceFromPath(stops) {
+        const pathStations = sprDataCache?.stations_path;
+        if (!Array.isArray(pathStations) || !pathStations.length) return null;
+
+        const branchIdx = pathStations.findIndex(item => item.station === 'Подлипки-Дачные');
+        const endIdx = branchIdx > 0 ? branchIdx : pathStations.length;
+        let list = pathStations.slice(0, endIdx).map(item => {
+            if (item.station === 'Александров') return 'Александров-1';
+            return item.station;
+        });
+
+        if (resolveTrainDir(stops) === 'to') {
+            list = list.slice().reverse();
+        }
+        return list;
+    }
+
+    function getRouteReferenceList(stops) {
+        const routeKey = resolveRouteReferenceKey(stops);
+
+        if (routeKey === ROUTE_REFERENCE_KEYS.YAROSLAVSKOE) {
+            const fromPath = getYaroslavskoeReferenceFromPath(stops);
+            if (fromPath?.length) return fromPath;
+        }
+
+        const routeRef = sprDataCache?.route_reference;
+        if (!routeRef) return null;
+
+        const routeData = routeRef[routeKey];
+        if (!routeData) return null;
+
+        return resolveTrainDir(stops) === 'out' ? routeData.from_moscow : routeData.to_moscow;
+    }
+
+    function referenceIndexForStation(referenceList, stationTitle) {
+        for (let i = 0; i < referenceList.length; i++) {
+            if (stationsMatchStrict(referenceList[i], stationTitle)) return i;
+        }
+        return -1;
+    }
+
+    function buildScheduleDisplayStops(threadStops) {
+        if (!Array.isArray(threadStops) || !threadStops.length) return [];
+
+        const referenceList = getRouteReferenceList(threadStops);
+        if (!referenceList?.length) {
+            return threadStops.map(stop => ({
+                referenceTitle: stop.station?.title || 'Станция',
+                threadStop: stop,
+                passThrough: false
+            }));
+        }
+
+        const firstTitle = threadStops[0]?.station?.title || '';
+        const lastTitle = threadStops[threadStops.length - 1]?.station?.title || '';
+        const firstIdx = referenceIndexForStation(referenceList, firstTitle);
+        const lastIdx = referenceIndexForStation(referenceList, lastTitle);
+
+        if (firstIdx === -1 || lastIdx === -1) {
+            return threadStops.map(stop => ({
+                referenceTitle: stop.station?.title || 'Станция',
+                threadStop: stop,
+                passThrough: false
+            }));
+        }
+
+        const start = Math.min(firstIdx, lastIdx);
+        const end = Math.max(firstIdx, lastIdx);
+        const usedThreadIndices = new Set();
+        let threadCursor = 0;
+
+        return referenceList.slice(start, end + 1).map(refTitle => {
+            let threadStop = null;
+
+            for (let i = threadCursor; i < threadStops.length; i++) {
+                if (usedThreadIndices.has(i)) continue;
+
+                const threadTitle = threadStops[i].station?.title || '';
+                if (!stationsMatchStrict(refTitle, threadTitle)) continue;
+
+                threadStop = threadStops[i];
+                usedThreadIndices.add(i);
+                threadCursor = i + 1;
+                break;
+            }
+
+            return {
+                referenceTitle: refTitle,
+                threadStop: threadStop || null,
+                passThrough: !threadStop
+            };
+        });
+    }
+
+    function deriveStopsLabelFromReference(threadStops) {
+        const displayStops = buildScheduleDisplayStops(threadStops);
+        if (!displayStops.length) return 'Без остановок';
+
+        const allPresent = displayStops.every(item => !item.passThrough);
+        return allPresent ? 'Со всеми' : 'Без остановок';
+    }
+
     function warningKmToFloat(warn) {
         const km = parseFloat(warn.km);
         const pk = parseFloat(warn.pk || 0);
@@ -4987,6 +5505,10 @@
         "москва ярославская": "москва (ярославский вокзал)",
         "ростокино (ярославское направление)": "ростокино",
         "александров-1": "александров",
+        "нагорное (43 км)": "43 км",
+        "топорково (76 км)": "76 км",
+        "шубино (90 км)": "90 км",
+        "лесная (64 км)": "64 км",
         "фрязино-пасс": "фрязино (пассажирская)",
         "фрязино-пасс.": "фрязино (пассажирская)"
     };
@@ -5003,7 +5525,11 @@
             // Если нитка этого поезда уже сохранена в памяти, берем её без интернета
             if (trainThreadsCache[cacheKey]) {
                 console.log("Достали маршрут из памяти устройства:", trainNumber);
-                return trainThreadsCache[cacheKey];
+                const cached = trainThreadsCache[cacheKey];
+                return {
+                    ...cached,
+                    stops_text: resolveStopsText('', cached.stops)
+                };
             }
             
             if (!stationScheduleCache.data || stationScheduleCache.date !== date) {
@@ -5025,15 +5551,7 @@
                 userStorageSet("stationScheduleCache", stationScheduleCache);
             }
             
-            const targetStr = trainNumber.toString().replace(/\s/g, '').toLowerCase();
-            const targetDigits = targetStr.replace(/\D/g, '');
-            const trainData = stationScheduleCache.data.find(item => {
-                const threadNumber = String(item.thread?.number || '').replace(/\s/g, '').toLowerCase();
-                if (!threadNumber) return false;
-                if (threadNumber === targetStr) return true;
-                if (targetDigits && threadNumber.replace(/\D/g, '') === targetDigits) return true;
-                return false;
-            });
+            const trainData = stationScheduleCache.data.find(item => matchTrainNumberInSchedule(item, trainNumber));
             
             if (!trainData) return null;
             
@@ -5064,7 +5582,7 @@
             if (dMin !== null && aMin !== null) {
                 durationMins = aMin >= dMin ? aMin - dMin : (aMin + 1440) - dMin;
             }
-            
+
             const result = {
                 number: trainData.thread.number,
                 uid: trainData.thread.uid,
@@ -5074,7 +5592,7 @@
                 arrival: arrivalTime,
                 duration: durationMins,
                 stops: stops,
-                stops_text: trainData.stops || 'Со всеми остановками',
+                stops_text: resolveStopsText('', stops),
                 scheduleDate: date
             };
             
@@ -5182,6 +5700,7 @@
         if (tabId === 'tab-schedule') {
             updateScheduleDateHint();
             updateScheduleEmptyState();
+            requestAnimationFrame(updateScheduleStickyOffset);
         }
     }
 
@@ -5203,6 +5722,7 @@
             if (tabId === 'tab-schedule') {
                 updateScheduleDateHint();
                 updateScheduleEmptyState();
+                requestAnimationFrame(updateScheduleStickyOffset);
             }
             return true;
         }
@@ -5253,6 +5773,7 @@
         
         // Сохраняем номера поездов в localStorage
         userStorageSet('trainNumbers', inputs);
+        syncScheduleLiveClock();
 
         const loader = document.getElementById('routeLoader');
         const grid = document.getElementById('routeGrid');
@@ -5359,7 +5880,7 @@
                             <div class="route-card-title">${train.title}</div>
                             <div class="route-card-subtitle">
                                 ${renderTrainNumChip(train.number, true)}
-                                <span>${train.stops_text}</span>
+                                <span>${escapeHtml(formatStopsTextDisplay(train.stops_text))}</span>
                             </div>
                         </div>
                         <div class="route-card-section route-card-middle">
@@ -5411,22 +5932,25 @@
         setShiftResetVisible(totals.trainCount > 0);
     }
 
-    function findClosestStationIndex(stops, selectedDate) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
+    function findClosestStationIndex(displayStops, selectedDate, nowDate) {
+        const now = nowDate ?? getScheduleLiveDate();
+        if (!now) return -1;
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const nowDateStr = `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
 
-        // Если выбран не сегодняшний день, не подсвечиваем станцию
-        if (selectedDate && selectedDate !== todayStr) return -1;
+        if (selectedDate && selectedDate !== nowDateStr) return -1;
 
-        const currentMinutes = today.getHours() * 60 + today.getMinutes();
-        let closestIndex = 0;
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        let closestIndex = -1;
         let closestDiff = Infinity;
 
-        for (let i = 0; i < stops.length; i++) {
-            const stop = stops[i];
+        for (let i = 0; i < displayStops.length; i++) {
+            const item = displayStops[i];
+            if (item.passThrough || !item.threadStop) continue;
+
+            const stop = item.threadStop;
             const arr = parseTimeToMinutes(getTime(stop.arrival));
             const dep = parseTimeToMinutes(getTime(stop.departure));
             
@@ -5437,7 +5961,6 @@
             const markerTime = dep !== null ? dep : arr;
             if (markerTime === null) continue;
 
-            // Корректный расчет разницы с учетом перехода через полночь (1440 минут)
             let diff = Math.abs(currentMinutes - markerTime);
             if (diff > 720) {
                 diff = 1440 - diff;
@@ -5451,14 +5974,9 @@
         return closestIndex;
     }
 
-    async function getScheduleData() {
-        const inputField = document.getElementById('singleTrain');
-        const input = inputField.value.trim();
-
-        if (!input) {
-            alert('Введите номер поезда.');
-            return;
-        }
+    async function getScheduleData(trainNumber) {
+        const input = String(trainNumber || userStorageGet('lastSingleTrain') || '').trim();
+        if (!input) return;
 
         if (!getSelectedDate()) {
             alert('Укажите дату смены на вкладке «Маршрут».');
@@ -5505,7 +6023,7 @@
         const first = stops[0];
         const last = stops[stops.length - 1];
         const routeTitle = `${first.station?.title || 'Станция'} → ${last.station?.title || 'Станция'}`;
-        const stopsLabel = formatStopsCount(stops.length);
+        const stopsLabel = deriveStopsLabelFromReference(stops);
 
         header.innerHTML = `
             <div class="route-card schedule-route-card">
@@ -5516,14 +6034,30 @@
                         <span>${escapeHtml(stopsLabel)}</span>
                     </div>
                 </div>
+                <div class="route-card-section route-card-middle schedule-route-card-middle">
+                    <div class="route-card-middle-head">
+                        <div class="route-time schedule-route-time" id="scheduleLiveClock">--:--:--</div>
+                    </div>
+                </div>
+                <div class="route-card-section schedule-route-card-footer">
+                    <p class="schedule-date-hint" id="scheduleDateHint"></p>
+                </div>
             </div>`;
         header.style.display = 'block';
+        updateScheduleDateHint();
 
-        const activeIndex = findClosestStationIndex(stops, selectedDate);
+        const displayStops = buildScheduleDisplayStops(stops);
+        scheduleDisplayStops = displayStops;
+        scheduleActiveDate = selectedDate;
 
         const firstStationTitle = first.station?.title || '';
         const trainDir = resolveTrainDir(stops);
-        const warningsByStation = buildWarningsByStationIndex(stops, trainDir);
+        const stopsForWarnings = displayStops.map(item => item.threadStop || {
+            station: { title: item.referenceTitle },
+            arrival: null,
+            departure: null
+        });
+        const warningsByStation = buildWarningsByStationIndex(stopsForWarnings, trainDir);
 
         const firstTitle = firstStationTitle.toLowerCase();
         let currentDirection = 'to_moscow';
@@ -5531,15 +6065,53 @@
             currentDirection = 'from_moscow';
         }
 
-        list.innerHTML = stops.map((stop, index) => {
+        const firstBoardingIndex = displayStops.findIndex(item => !item.passThrough);
+        let lastBoardingIndex = -1;
+        for (let i = displayStops.length - 1; i >= 0; i--) {
+            if (!displayStops[i].passThrough) {
+                lastBoardingIndex = i;
+                break;
+            }
+        }
+
+        list.innerHTML = displayStops.map((item, index) => {
+            const stationTitleRaw = item.referenceTitle || item.threadStop?.station?.title || 'Станция';
+            const stationTitle = escapeHtml(stationTitleRaw);
+
+            if (item.passThrough) {
+                let kmText = '';
+                if (sprDataCache) {
+                    const stationPathMatch = findStationPathMatch(stationTitleRaw);
+                    if (stationPathMatch) {
+                        kmText = `${stationPathMatch.km}.${stationPathMatch.piket}`;
+                    } else {
+                        const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
+                        if (anyBrakeMatch) {
+                            kmText = `${anyBrakeMatch.km}.${anyBrakeMatch.piket}`;
+                        }
+                    }
+                }
+
+                return `
+                    <div class="station${D}node pass-through">
+                        <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
+                        <div class="station${D}card">
+                            <div class="card${D}row${D}top">
+                                <span class="station${D}name">${stationTitle}</span>
+                                <span class="time${D}badge">---</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const stop = item.threadStop;
             const arrivalTime = getTime(stop.arrival);
             const departureTime = getTime(stop.departure);
-            const isActive = index === activeIndex && activeIndex !== -1;
-            
-            const isFirst = index === 0;
-            const isLast = index === stops.length - 1;
+            const isFirst = index === firstBoardingIndex;
+            const isLast = index === lastBoardingIndex;
             const isTerminal = isFirst || isLast;
-            
+
             let timeText = '';
             if (isFirst) {
                 timeText = departureTime;
@@ -5555,21 +6127,19 @@
             let tags = [];
 
             if (sprDataCache) {
-                const stationTitle = stop.station?.title || '';
-
-                const stationPathMatch = findStationPathMatch(stationTitle);
+                const stationPathMatch = findStationPathMatch(stationTitleRaw);
 
                 if (stationPathMatch) {
                     kmText = `${stationPathMatch.km}.${stationPathMatch.piket}`;
                 } else {
-                    const anyBrakeMatch = findBrakeMatch(stationTitle, currentDirection);
+                    const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
                     if (anyBrakeMatch) {
                         kmText = `${anyBrakeMatch.km}.${anyBrakeMatch.piket}`;
                     }
                 }
 
                 if (isFirst) {
-                    const stationBrakes = findStationBrakes(stationTitle, currentDirection);
+                    const stationBrakes = findStationBrakes(stationTitleRaw, currentDirection);
 
                     const ptBrake = stationBrakes.find(b => b.type === "PT_1");
                     const eptBrake = stationBrakes.find(b => b.type === "EPT_2");
@@ -5583,7 +6153,7 @@
                         hasBrakes = true;
                     }
                 } else if (isLast) {
-                    const deadEndMatch = findDeadEndBrake(stationTitle);
+                    const deadEndMatch = findDeadEndBrake(stationTitleRaw);
 
                     if (deadEndMatch) {
                         const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
@@ -5615,10 +6185,8 @@
                 brakeHtml = `<div class="route${D}tags${D}container">${bottomPlaques.join('')}</div>`;
             }
 
-            const stationTitle = escapeHtml(stop.station?.title || 'Станция');
-
             return `
-                <div class="station${D}node${isActive ? ' active' : ''}${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}">
+                <div class="station${D}node${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}">
                     <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
                     <div class="station${D}card${hasBrakes ? ' has-brakes' : ''}">
                         <div class="card${D}row${D}top">
@@ -5635,32 +6203,17 @@
         results.style.animation = 'none';
         void results.offsetHeight;
         results.style.animation = '';
+        updateScheduleLiveClockDisplay();
         updateScheduleEmptyState();
         requestAnimationFrame(applyScheduleTextFit);
     }
 
     async function viewTrainSchedule(trainUid, trainNumber) {
-        document.getElementById('singleTrain').value = trainNumber;
+        userStorageSet('lastSingleTrain', trainNumber);
         const scheduleBtn = document.querySelector('.tab-btn[data-tab="tab-schedule"]');
         if (scheduleBtn) switchTab('tab-schedule', scheduleBtn);
-        
-        const loader = document.getElementById('scheduleLoader');
-        const results = document.getElementById('scheduleResults');
-        const header = document.getElementById('scheduleHeader');
-        loader.style.display = 'flex';
-        results.style.display = 'none';
-        header.style.display = 'none';
-        updateScheduleEmptyState();
-        
-        const trainMeta = await searchTrainByNumberSmart(trainNumber);
-        loader.style.display = 'none';
-        
-        if (trainMeta) {
-            const selectedDate = getSelectedDate();
-            renderTimelineFromData(trainMeta.stops, trainNumber, selectedDate);
-        } else {
-            updateScheduleEmptyState();
-        }
+
+        await getScheduleData(trainNumber);
     }
 
     function finishMainScreenTransition(fromEl, toEl, toScreen, options = {}) {
@@ -5967,7 +6520,7 @@
         if (!(target instanceof Element)) return true;
         return Boolean(target.closest(
             'input, textarea, select, button, a, label, ' +
-            '.route-combobox-list, .route-combobox-input, ' +
+            '.route-combobox-list, .route-combobox-input, .profile-position-combobox, .profile-position-trigger, .profile-position-list, ' +
             '.shift-constructor-btn, .profile-logout-btn, ' +
             '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-scroll, ' +
@@ -6873,9 +7426,25 @@
         return null;
     }
 
+    function isRoute99Variant(route) {
+        const r = String(route || '').trim().toUpperCase();
+        return r.replace(/[НУДNU]/g, '').trim() === '99';
+    }
+
+    function getRoute99Kind(route) {
+        const r = String(route || '').trim().toUpperCase();
+        if (/^[НN]/.test(r)) return 'night';
+        if (/^[УU]/.test(r) || /У$/.test(r)) return 'morning';
+        return 'day';
+    }
+
     function getShiftColorClass(shift) {
-        const routeLower = String(shift.route || shift.name || '').trim().toLowerCase();
-        if (routeLower.includes('то') || routeLower === 'то') return 'has-tech-shift';
+        const routeStr = String(shift.route || shift.name || '').trim();
+        const routeLower = routeStr.toLowerCase();
+        if (isRoute99Variant(routeStr)) {
+            return `has-route99-${getRoute99Kind(routeStr)}`;
+        }
+        if (routeLower === 'и' || routeLower.includes('то') || routeLower === 'то') return 'has-tech-shift';
         if (routeLower.includes('н')) return 'has-night-shift';
         if (routeLower.includes('д')) return 'has-day-shift';
         if (routeLower.includes('у') && routeLower !== 'отпуск') return 'has-study-shift';
@@ -6887,17 +7456,119 @@
     }
 
     function getShiftTypeInfo(shift) {
-        const routeLower = String(shift.route || shift.name || '').trim().toLowerCase();
-        if (routeLower.includes('то') || routeLower === 'то') return { label: 'Тех. обучение', color: 'var(--tech-shift)' };
+        const routeStr = String(shift.route || shift.name || '').trim();
+        const routeLower = routeStr.toLowerCase();
+        if (isRoute99Variant(routeStr)) {
+            const kind = getRoute99Kind(routeStr);
+            if (kind === 'night') return { label: 'Ночь', color: '#64748b' };
+            if (kind === 'morning') return { label: 'Утро', color: '#71717a' };
+            return { label: 'День', color: '#787f8c' };
+        }
+        if (routeLower === 'и' || routeLower.includes('то') || routeLower === 'то') {
+            return { label: 'Тех. обучение', color: 'var(--tech-shift)' };
+        }
         if (routeLower.includes('д')) return { label: 'День', color: 'var(--day-shift)' };
         if (routeLower.includes('н')) return { label: 'Ночь', color: 'var(--night-shift)' };
         if (routeLower.includes('у') && routeLower !== 'отпуск') return { label: 'Утро', color: 'var(--study-shift)' };
         if (routeLower === 'о' || routeLower === 'отпуск') return { label: 'Отпуск', color: 'var(--vacation-shift)' };
         if (routeLower === 'в' || routeLower === 'выходной') return { label: 'Выходной', color: 'var(--app-muted)' };
         const cls = getShiftColorClass(shift);
-        if (cls === 'has-night-shift') return { label: 'Ночь', color: 'var(--night-shift)' };
-        if (cls === 'has-tech-shift') return { label: 'Тех. обучение', color: 'var(--tech-shift)' };
+        if (cls.includes('has-route99-night') || cls.includes('has-night-shift')) return { label: 'Ночь', color: 'var(--night-shift)' };
+        if (cls.includes('has-route99-morning') || cls.includes('has-study-shift')) return { label: 'Утро', color: 'var(--study-shift)' };
+        if (cls.includes('has-tech-shift')) return { label: 'Тех. обучение', color: 'var(--tech-shift)' };
+        if (cls.includes('has-route99-day') || cls.includes('has-day-shift')) return { label: 'День', color: 'var(--day-shift)' };
         return { label: 'День', color: 'var(--day-shift)' };
+    }
+
+    function isWorkShiftRoute(shift) {
+        const routeLower = String(shift?.route || shift?.name || '').trim().toLowerCase();
+        if (!routeLower) return false;
+        return !['в', 'выходной', 'о', 'отпуск'].includes(routeLower);
+    }
+
+    function getShiftReportMinutes(shift) {
+        return parseTimeToMinutes(shift?.startTime || shift?.reportTime || '');
+    }
+
+    function getShiftEndMinutes(shift) {
+        return parseTimeToMinutes(shift?.endTime || '');
+    }
+
+    function isShiftStillRelevantToday(shift, nowMinutes) {
+        const start = getShiftReportMinutes(shift);
+        if (start === null) return true;
+
+        const end = getShiftEndMinutes(shift);
+        if (nowMinutes < start) return true;
+
+        if (end !== null) {
+            if (end < start) {
+                return nowMinutes >= start || nowMinutes <= end;
+            }
+            return nowMinutes <= end;
+        }
+
+        let diff = nowMinutes - start;
+        if (diff < 0) diff += 1440;
+        return diff <= 720;
+    }
+
+    function buildTodayDateKey(date = new Date()) {
+        const dStr = String(date.getDate()).padStart(2, '0');
+        const mStr = String(date.getMonth() + 1).padStart(2, '0');
+        return `${dStr}.${mStr}.${date.getFullYear()}`;
+    }
+
+    function findNearestShiftCandidate() {
+        const realToday = new Date();
+        const todayDateOnly = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
+        const nowMinutes = realToday.getHours() * 60 + realToday.getMinutes();
+        const todayKey = buildTodayDateKey(realToday);
+        const candidates = [];
+
+        const todayShift = resolveShiftForCalendarDay(todayKey);
+        if (todayShift && isWorkShiftRoute(todayShift) && isShiftStillRelevantToday(todayShift, nowMinutes)) {
+            candidates.push({
+                dateKey: todayKey,
+                shift: todayShift,
+                day: realToday.getDate(),
+                month: realToday.getMonth(),
+                year: realToday.getFullYear(),
+                sortDate: todayDateOnly.getTime(),
+                sortTime: getShiftReportMinutes(todayShift) ?? 0,
+                isToday: true
+            });
+        }
+
+        Object.entries(calendarUserShifts).forEach(([dateKey, shift]) => {
+            const parts = dateKey.split('.');
+            if (parts.length !== 3) return;
+            const d = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const y = parseInt(parts[2], 10);
+            const shiftDate = new Date(y, m, d);
+            if (shiftDate <= todayDateOnly) return;
+            if (!isWorkShiftRoute(shift)) return;
+
+            candidates.push({
+                dateKey,
+                shift,
+                day: d,
+                month: m,
+                year: y,
+                sortDate: shiftDate.getTime(),
+                sortTime: getShiftReportMinutes(shift) ?? 0,
+                isToday: false
+            });
+        });
+
+        candidates.sort((a, b) => {
+            if (a.isToday !== b.isToday) return a.isToday ? -1 : 1;
+            if (a.sortDate !== b.sortDate) return a.sortDate - b.sortDate;
+            return a.sortTime - b.sortTime;
+        });
+
+        return candidates[0] || null;
     }
 
     function isNightRoute(route) {
@@ -7120,9 +7791,119 @@
         };
     }
 
+    const PROFILE_POSITION_MACHINIST = 'Машинист';
+    const PROFILE_POSITION_ASSISTANT = 'Помощник машиниста';
+
+    function resolveProfilePositionKind(stored) {
+        const lower = String(stored || '').toLowerCase();
+        if (lower.includes('помощник') || lower.includes('тчмп')) return 'assistant';
+        return 'machinist';
+    }
+
+    function getProfilePositionLabel(kind) {
+        return kind === 'assistant' ? PROFILE_POSITION_ASSISTANT : PROFILE_POSITION_MACHINIST;
+    }
+
+    function setProfilePositionKind(kind) {
+        localStorage.setItem(DEPOT_POSITION_KEY, getProfilePositionLabel(kind));
+    }
+
     function calendarIsAssistantPosition() {
-        const position = (localStorage.getItem(DEPOT_POSITION_KEY) || '').toLowerCase();
-        return position.includes('помощник') || position.includes('тчмп');
+        return resolveProfilePositionKind(localStorage.getItem(DEPOT_POSITION_KEY)) === 'assistant';
+    }
+
+    let profilePositionListenersBound = false;
+    let profilePositionDocHandler = null;
+
+    function syncProfilePositionUi(kind) {
+        const labelEl = document.getElementById('profilePositionLabel');
+        const list = document.getElementById('profilePositionList');
+        const resolvedKind = kind || resolveProfilePositionKind(localStorage.getItem(DEPOT_POSITION_KEY));
+
+        if (labelEl) labelEl.textContent = getProfilePositionLabel(resolvedKind);
+        list?.querySelectorAll('.route-combobox-option').forEach(option => {
+            option.classList.toggle('is-selected', option.dataset.value === resolvedKind);
+        });
+    }
+
+    function openProfilePositionCombobox() {
+        const combobox = document.getElementById('profilePositionCombobox');
+        const list = document.getElementById('profilePositionList');
+        const trigger = document.getElementById('profilePositionTrigger');
+        if (!combobox || !list || !trigger) return;
+
+        syncProfilePositionUi();
+        list.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        combobox.classList.add('is-open');
+    }
+
+    function closeProfilePositionCombobox() {
+        const combobox = document.getElementById('profilePositionCombobox');
+        const list = document.getElementById('profilePositionList');
+        const trigger = document.getElementById('profilePositionTrigger');
+        if (!list || !trigger) return;
+
+        list.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        combobox?.classList.remove('is-open');
+    }
+
+    function setProfilePositionKindFromUi(kind) {
+        setProfilePositionKind(kind);
+        syncProfilePositionUi(kind);
+        closeProfilePositionCombobox();
+        updateProfileScreen();
+        if (calendarSelectedDateKey) {
+            const parts = calendarSelectedDateKey.split('.');
+            if (parts.length === 3) {
+                renderShiftConstructor(
+                    calendarSelectedDateKey,
+                    parseInt(parts[0], 10),
+                    parseInt(parts[1], 10) - 1,
+                    parseInt(parts[2], 10)
+                );
+            }
+        }
+    }
+
+    function initProfilePositionSelect() {
+        const combobox = document.getElementById('profilePositionCombobox');
+        const trigger = document.getElementById('profilePositionTrigger');
+        const list = document.getElementById('profilePositionList');
+        if (!combobox || !trigger || !list) return;
+
+        syncProfilePositionUi();
+
+        if (!profilePositionListenersBound) {
+            profilePositionListenersBound = true;
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (combobox.classList.contains('is-open')) {
+                    closeProfilePositionCombobox();
+                } else {
+                    openProfilePositionCombobox();
+                }
+            });
+
+            list.addEventListener('click', (e) => {
+                const option = e.target.closest('.route-combobox-option');
+                if (!option) return;
+                setProfilePositionKindFromUi(option.dataset.value || 'machinist');
+            });
+
+            trigger.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeProfilePositionCombobox();
+                }
+            });
+
+            profilePositionDocHandler = (e) => {
+                if (!combobox.contains(e.target)) closeProfilePositionCombobox();
+            };
+            document.addEventListener('click', profilePositionDocHandler);
+        }
     }
 
     function isToOrIShift(shift) {
@@ -7221,7 +8002,7 @@
             div.dataset.dateKey = dateKey;
 
             if (shift) {
-                div.classList.add(getShiftColorClass(shift));
+                getShiftColorClass(shift).split(/\s+/).filter(Boolean).forEach(cls => div.classList.add(cls));
                 const routeDisplay = String(shift.route || '').trim();
                 div.onclick = () => calendarSelectDay(dateKey, d, month, year, div);
 
@@ -7703,14 +8484,21 @@
 
     function applyProfileTextFit() {
         fitTextToSingleLine(document.getElementById('profileUserName'), 11, 17);
-        fitTextToSingleLine(document.getElementById('profileUserPosition'), 9, 12);
         fitTextToSingleLine(document.getElementById('profileUserTab'), 9, 12);
         fitTextToSingleLine(document.getElementById('profileEarnedSalary'), 11, 15);
         const hoursValue = document.getElementById('profileHoursValue');
         if (hoursValue) fitTextToSingleLine(hoursValue, 10, 15);
     }
 
+    function updateScheduleStickyOffset() {
+        const tabsNav = document.querySelector('#screen-schedule .tabs-nav');
+        const tabSchedule = document.getElementById('tab-schedule');
+        if (!tabsNav || !tabSchedule) return;
+        tabSchedule.style.setProperty('--schedule-tabs-offset', `${tabsNav.offsetHeight}px`);
+    }
+
     function applyScheduleTextFit() {
+        updateScheduleStickyOffset();
         document.querySelectorAll('#scheduleHeader .route-card-title').forEach(el => {
             fitTextToSingleLine(el, 11, 16);
         });
@@ -7734,7 +8522,6 @@
         loadUserShifts();
 
         const fio = localStorage.getItem(DEPOT_FIO_KEY) || 'Сотрудник';
-        const position = localStorage.getItem(DEPOT_POSITION_KEY) || '';
 
         const now = new Date();
         const year = now.getFullYear();
@@ -7742,18 +8529,9 @@
         const { factHours, totalHours, factPay, totalPay, normHours } = getProfileMonthBreakdown(year, month);
 
         const nameEl = document.getElementById('profileUserName');
-        const positionEl = document.getElementById('profileUserPosition');
         const tabEl = document.getElementById('profileUserTab');
         if (nameEl) nameEl.textContent = fio;
-        if (positionEl) {
-            if (position) {
-                positionEl.textContent = position;
-                positionEl.hidden = false;
-            } else {
-                positionEl.textContent = '';
-                positionEl.hidden = true;
-            }
-        }
+        syncProfilePositionUi();
         if (tabEl) tabEl.textContent = `Таб. № ${tab}`;
 
         const salaryEl = document.getElementById('profileEarnedSalary');
@@ -7784,25 +8562,7 @@
         const block = document.getElementById('nearestShiftBlock');
         if (!block) return;
 
-        const realToday = new Date();
-        const todayDateOnly = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
-
-        let nearest = null;
-        let nearestDate = null;
-
-        Object.entries(calendarUserShifts).forEach(([dateKey, shift]) => {
-            const parts = dateKey.split('.');
-            if (parts.length !== 3) return;
-            const d = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) - 1;
-            const y = parseInt(parts[2], 10);
-            const shiftDate = new Date(y, m, d);
-            if (shiftDate <= todayDateOnly) return;
-            if (!nearestDate || shiftDate < nearestDate) {
-                nearestDate = shiftDate;
-                nearest = { dateKey, shift, day: d, month: m, year: y };
-            }
-        });
+        const nearest = findNearestShiftCandidate();
 
         if (!nearest) {
             block.innerHTML = `
@@ -7814,6 +8574,7 @@
 
         const trains = getShiftTrainsText(nearest.shift) || '—';
         const reportTime = nearest.shift.startTime || nearest.shift.reportTime || '—';
+        const todayPrefix = nearest.isToday ? 'Сегодня · ' : '';
         let trainsHtml = '';
         if (trains && trains !== '—') {
             const payload = buildTrainsNavigationPayload(nearest.shift, nearest.dateKey, {});
@@ -7822,7 +8583,7 @@
         block.innerHTML = `
             <div class="profile-mini-label">Ближайшая смена</div>
             <div class="nearest-shift-route">${escapeHtml(nearest.shift.name || nearest.shift.route || '—')}</div>
-            <div class="nearest-shift-date">${nearest.day} ${calendarFormatMonthGenitive(nearest.month)} · ${escapeHtml(reportTime)}</div>
+            <div class="nearest-shift-date">${todayPrefix}${nearest.day} ${calendarFormatMonthGenitive(nearest.month)} · ${escapeHtml(reportTime)}</div>
             ${trainsHtml ? `<div class="nearest-shift-trains">${trainsHtml}</div>` : ''}
         `;
         bindTrainsChipLinks(block);
