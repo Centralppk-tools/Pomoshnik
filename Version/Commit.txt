@@ -231,3 +231,29 @@ feat: switchScheduleTabAnimated — единая анимация для кно�
 - Кнопки «Маршрут» / «Расписание» вызывают switchScheduleTabAnimated().
 - Service Worker: cppk_v2_3_4.
 - Снимок: Version/snapshots/index 2.3.4.html.
+
+2.3.5 STABLE ★
+Основное:
+fix: календарь — синк с таблицей больше не затирает локально заполненные дни и прошлые месяцы
+feat: mergeServerGraphIntoLocal — график с сервера только в пустые ячейки текущего месяца
+fix: триггеры графика — вход сотрудника и 1-е число месяца (май не трогаем при сверке июня)
+fix: ежедневная связь с таблицей 1 раз в сутки — только ping версии, без перезаписи данных
+fix: свайп и скролл на экране «Расписание» — таймлайн листается по центру, переходы с краёв экрана
+fix: залипание is-dragging / transform на mainScreensStage после жестов с экрана расписания
+
+Приятные доработки (Плюшки):
+4. fix: свайп «Расписание» → «Я» и обратно — tab-level жест + resetMainScreensStage
+5. fix: приоритет вертикального скролла над горизонтальным drag на таймлайне
+6. chore: убран опрос таблицы каждые 2 минуты (DEPOT_DAILY_PING_INTERVAL_MS = 24 ч)
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- syncEmployeeFromApi: mergeGraph — подмешивание, не replace; без mergeGraph календарь не трогается.
+- mergeServerGraphIntoLocal: local wins, сервер только gap-fill в targetMonth/targetYear.
+- runGraphSyncForCurrentMonth — при входе; runGraphSyncIfMonthStart — 1-е число нового месяца.
+- runDailyDepotPing — fetchDepotRemoteVersion раз в день, данные не перезаписываются.
+- resetMainScreensStage + полная очистка обоих stage при сбросе touch-жеста.
+- shouldReserveEdgeSwipeForScroll — центр таймлайна для скролла, края экрана для свайпа.
+- Service Worker: cppk_v2_3_5.
+- Снимок: Version/snapshots/index 2.3.5.html.
