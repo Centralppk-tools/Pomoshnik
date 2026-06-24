@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.2)
-const CACHE_VERSION = 'cppk_v2_3_2';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.4 STABLE)
+const CACHE_VERSION = 'cppk_v2_3_4';
 const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [

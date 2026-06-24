@@ -415,7 +415,7 @@
             overflow: visible;
         }
 
-        #screen-schedule .schedule-tabs-stage:not(.is-transitioning) {
+        #screen-schedule .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {
             overflow: visible;
         }
 
@@ -455,6 +455,9 @@
             margin-bottom: 0;
             width: 100%;
             border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+            background: rgba(255, 255, 255, 0.04);
         }
 
         .schedule-route-card .route-card-section {
@@ -2066,6 +2069,7 @@
             width: 100%;
             max-width: 640px;
             overflow: hidden;
+            touch-action: pan-y pinch-zoom;
         }
 
         .main-screens-stage:has(#screen-schedule:not(.hidden)) {
@@ -2095,6 +2099,108 @@
             z-index: 1;
         }
 
+        .main-screens-stage.is-dragging {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .main-screens-stage.is-dragging:has(#screen-schedule.swipe-from) {
+            overflow: hidden;
+        }
+
+        .main-screens-stage.is-dragging > .screen.swipe-from {
+            z-index: 2;
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transition: none !important;
+        }
+
+        .main-screens-stage.is-dragging.is-dragging--stacked {
+            min-height: var(--main-stage-height, auto);
+        }
+
+        .main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-from,
+        .main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-neighbor {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            max-width: 640px;
+            contain: layout style;
+        }
+
+        .main-screens-stage.is-dragging > .screen.swipe-neighbor {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            max-width: 640px;
+            z-index: 1;
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transition: none !important;
+            contain: layout style;
+        }
+
+        .main-screens-stage.is-dragging > .screen.swipe-from.swipe-snapping,
+        .main-screens-stage.is-dragging > .screen.swipe-neighbor.swipe-snapping {
+            transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
+        .schedule-tabs-stage.is-dragging {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .schedule-tabs-stage.is-dragging > .tab-content.swipe-from {
+            z-index: 2;
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transition: none !important;
+        }
+
+        .schedule-tabs-stage.is-dragging.is-dragging--stacked {
+            min-height: var(--tabs-stage-height, auto);
+        }
+
+        .schedule-tabs-stage.is-dragging.is-dragging--stacked > .tab-content.swipe-from,
+        .schedule-tabs-stage.is-dragging.is-dragging--stacked > .tab-content.swipe-neighbor {
+            display: flex !important;
+            flex-direction: column;
+            gap: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            contain: layout style;
+        }
+
+        .schedule-tabs-stage.is-dragging > .tab-content.swipe-neighbor {
+            display: flex !important;
+            flex-direction: column;
+            gap: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1;
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            transition: none !important;
+            contain: layout style;
+        }
+
+        .schedule-tabs-stage.is-dragging > .tab-content.swipe-from.swipe-snapping,
+        .schedule-tabs-stage.is-dragging > .tab-content.swipe-neighbor.swipe-snapping {
+            transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
         .slide-incoming.slide-forward {
             animation: slideInFromRight 0.26s var(--app-ease) forwards;
         }
@@ -2115,6 +2221,7 @@
             position: relative;
             width: 100%;
             overflow: hidden;
+            touch-action: pan-y pinch-zoom;
         }
 
         .schedule-tabs-stage.is-transitioning {
@@ -3821,9 +3928,9 @@
 <div id="screen-schedule" class="screen">
 
 <div class="phone-screen">
-    <div class="tabs-nav">
-        <button class="tab-btn active" data-tab="tab-route" onclick="switchTab('tab-route', this)">Маршрут</button>
-        <button class="tab-btn" data-tab="tab-schedule" onclick="switchTab('tab-schedule', this)">Расписание</button>
+    <div class="tabs-nav" aria-label="Вкладки маршрута">
+        <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
+        <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
     </div>
 
     <div id="scheduleTabsStage" class="schedule-tabs-stage">
@@ -3881,6 +3988,18 @@
         </div>
     </div>
 
+    <div id="tab-schedule" class="tab-content">
+        <div id="scheduleHeader" style="display:none;"></div>
+        <div id="scheduleLoader" class="loader schedule-loader">Сборка нитки...</div>
+
+        <div id="scheduleResults" class="timeline schedule-results-wrap" style="display: none;">
+            <div class="timeline-line"></div>
+            <div id="stationsList"></div>
+        </div>
+    </div>
+
+    </div>
+
     <div id="shiftResetConfirm" class="shift-confirm-overlay" aria-hidden="true" role="alertdialog" aria-labelledby="shiftConfirmText" aria-modal="true">
         <div class="shift-confirm-box">
             <p id="shiftConfirmText" class="shift-confirm-text">Очистить все данные текущей смены?</p>
@@ -3910,18 +4029,6 @@
             </div>
             <button type="button" id="shiftWarningsSave" class="shift-warnings-save">Сохранить</button>
         </div>
-    </div>
-
-    <div id="tab-schedule" class="tab-content">
-        <div id="scheduleHeader" style="display:none;"></div>
-        <div id="scheduleLoader" class="loader schedule-loader">Сборка нитки...</div>
-
-        <div id="scheduleResults" class="timeline schedule-results-wrap" style="display: none;">
-            <div class="timeline-line"></div>
-            <div id="stationsList"></div>
-        </div>
-    </div>
-
     </div>
 </div>
 
@@ -4051,7 +4158,7 @@
 
     const USERS_DB_KEY = 'rzd_users';
     const AUTH_SESSION_KEY = 'currentUserTab';
-    const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbz2Cf4RiG_XkPT53IRkNIO4vODBXo-JribepSc6UHJtnsKvw-eZLOkW1lvzxG0lHOXYFg/exec';
+    const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbyb9CYhosCuBgoA-Otddo31VQoL0oAICUUKAxE2J3qdtVzzjQBc2sRxpYuqjYC0ZyIP/exec';
     const DEPOT_SHIFTS_KEY = 'depotShifts';
     const DEPOT_TEMPLATES_KEY = 'depotShiftTemplates';
     const DEPOT_RAW_SHIFTS_KEY = 'depotRawShifts';
@@ -4060,6 +4167,23 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const DEPOT_VERSION_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+    const ROUTE_FETCH_TIMEOUT_MS = 22000;
+    let routeDataRequestId = 0;
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = ROUTE_FETCH_TIMEOUT_MS) {
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } catch (error) {
+            if (error?.name === 'AbortError') {
+                throw new Error(`Превышено время ожидания (${Math.round(timeoutMs / 1000)} с)`);
+            }
+            throw error;
+        } finally {
+            window.clearTimeout(timer);
+        }
+    }
 
     function buildDepotApiUrl(params = {}) {
         const parts = [];
@@ -4108,6 +4232,19 @@
 
     function resolveDepotDataVersion(data) {
         return extractDepotDataVersion(data) || computeDepotDataFingerprint(data);
+    }
+
+    function isDepotApiErrorResponse(data) {
+        if (!data || typeof data !== 'object') return true;
+        if (String(data.status || '').toLowerCase() === 'error') return true;
+        if (data.error) return true;
+        return false;
+    }
+
+    function getDepotApiErrorMessage(data, fallback = 'Ошибка ответа сервера депо') {
+        if (!data || typeof data !== 'object') return fallback;
+        const message = String(data.error || data.message || '').trim();
+        return message || fallback;
     }
 
     function hasLocalDepotCache() {
@@ -4337,6 +4474,7 @@
         if (activeBtn) {
             switchTab(activeTab, activeBtn);
         }
+        requestAnimationFrame(updateScheduleStickyOffset);
 
         // Загружаем справочник тормозов при старте
         fetch('spr.json')
@@ -5534,7 +5672,7 @@
             
             if (!stationScheduleCache.data || stationScheduleCache.date !== date) {
                 const url = `${API_BASE}/schedule/?apikey=${API_KEY}&station=${ANCHOR_STATION}&transport_types=suburban&direction=all&limit=1000&date=${date}&lang=ru_RU`;
-                const response = await fetch(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(url)}`);
+                const response = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(url)}`);
                 if (!response.ok) {
                     alert(`Ошибка сервера код ${response.status}`);
                     throw new Error(`Ошибка сервера код ${response.status}`);
@@ -5556,7 +5694,7 @@
             if (!trainData) return null;
             
             const threadUrl = `${API_BASE}/thread/?apikey=${API_KEY}&uid=${trainData.thread.uid}&lang=ru_RU`;
-            const threadResponse = await fetch(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(threadUrl)}`);
+            const threadResponse = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(threadUrl)}`);
             if (!threadResponse.ok) {
                 alert(`Ошибка сервера код ${threadResponse.status}`);
                 throw new Error(`Не удалось загрузить детали маршрута: ${threadResponse.status}`);
@@ -5645,6 +5783,14 @@
         return active?.id || 'tab-route';
     }
 
+    function syncScheduleTabsNavActive(tabId) {
+        document.querySelectorAll('#screen-schedule .tabs-nav').forEach(nav => {
+            nav.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabId);
+            });
+        });
+    }
+
     function getScreenTransitionDirection(fromScreen, toScreen) {
         const fromIdx = SCREEN_ORDER[fromScreen] ?? 1;
         const toIdx = SCREEN_ORDER[toScreen] ?? 1;
@@ -5681,6 +5827,18 @@
         );
     }
 
+    function resetScheduleTabsStage() {
+        clearScheduleTabSwipeStyles();
+        const stage = document.getElementById('scheduleTabsStage');
+        stage?.classList.remove('is-transitioning');
+        stage?.style.removeProperty('--tabs-stage-height');
+        document.querySelectorAll('#screen-schedule .tab-content').forEach(el => {
+            cleanupSlideClasses(el);
+            el.style.transform = '';
+            el.style.transition = '';
+        });
+    }
+
     function finishTabTransition(fromEl, toEl, tabId, btn, deferTabButtons) {
         const stage = document.getElementById('scheduleTabsStage');
         fromEl.classList.remove('active');
@@ -5691,10 +5849,8 @@
         stage?.style.removeProperty('--tabs-stage-height');
         screenTransitionLock = false;
 
-        if (deferTabButtons && btn) {
-            document.querySelectorAll('#screen-schedule .tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
+        resetScheduleTabsStage();
+        syncScheduleTabsNavActive(tabId);
 
         userStorageSet('activeTab', tabId);
         if (tabId === 'tab-schedule') {
@@ -5706,35 +5862,39 @@
 
     function switchTab(tabId, btn, options = {}) {
         const { animate = false, direction = null, deferTabButtons = false } = options;
+        const stage = document.getElementById('scheduleTabsStage');
+        const forceInstant = !animate || screenTransitionLock
+            || stage?.classList.contains('is-transitioning')
+            || stage?.classList.contains('is-dragging');
+
         const fromTab = getActiveScheduleTab();
-        if (fromTab === tabId) return true;
+        if (fromTab === tabId && !forceInstant) return true;
 
         const fromEl = document.getElementById(fromTab);
         const toEl = document.getElementById(tabId);
         if (!fromEl || !toEl) return false;
 
-        if (!animate || screenTransitionLock) {
+        if (forceInstant) {
+            resetScheduleTabsStage();
+            screenTransitionLock = false;
             document.querySelectorAll('#screen-schedule .tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('#screen-schedule .tab-btn').forEach(b => b.classList.remove('active'));
             toEl.classList.add('active');
-            if (btn) btn.classList.add('active');
+            syncScheduleTabsNavActive(tabId);
             userStorageSet('activeTab', tabId);
             if (tabId === 'tab-schedule') {
                 updateScheduleDateHint();
                 updateScheduleEmptyState();
-                requestAnimationFrame(updateScheduleStickyOffset);
+                requestAnimationFrame(applyScheduleTextFit);
             }
             return true;
         }
 
         screenTransitionLock = true;
-        const stage = document.getElementById('scheduleTabsStage');
         const slideDir = direction || getTabTransitionDirection(fromTab, tabId);
         const slideClass = slideDir === 'forward' ? 'slide-forward' : 'slide-backward';
 
-        if (!deferTabButtons && btn) {
-            document.querySelectorAll('#screen-schedule .tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        if (!deferTabButtons) {
+            syncScheduleTabsNavActive(tabId);
         }
 
         stage?.style.setProperty('--tabs-stage-height', `${Math.max(fromEl.offsetHeight, toEl.offsetHeight)}px`);
@@ -5770,20 +5930,25 @@
             alert('Укажите дату смены.');
             return;
         }
-        
-        // Сохраняем номера поездов в localStorage
-        userStorageSet('trainNumbers', inputs);
-        syncScheduleLiveClock();
 
         const loader = document.getElementById('routeLoader');
         const grid = document.getElementById('routeGrid');
+        if (!loader || !grid) return;
+
+        const requestId = ++routeDataRequestId;
+
+        userStorageSet('trainNumbers', inputs);
+        syncScheduleLiveClock();
 
         loader.style.display = 'flex';
         grid.style.display = 'none';
         setShiftResetVisible(false);
 
-        const trainPromises = inputs.map(trainNumber => searchTrainByNumberSmart(trainNumber));
-        const allTrainsData = await Promise.all(trainPromises);
+        try {
+            const trainPromises = inputs.map(trainNumber => searchTrainByNumberSmart(trainNumber));
+            const allTrainsData = await Promise.all(trainPromises);
+
+            if (requestId !== routeDataRequestId) return;
         
         const cards = [];
         const totals = {
@@ -5926,10 +6091,21 @@
             }
         }
 
-        loader.style.display = 'none';
-        grid.innerHTML = cards.join('');
-        grid.style.display = 'flex';
-        setShiftResetVisible(totals.trainCount > 0);
+        if (requestId !== routeDataRequestId) return;
+
+            grid.innerHTML = cards.join('');
+            grid.style.display = 'flex';
+            setShiftResetVisible(totals.trainCount > 0);
+        } catch (error) {
+            console.error('[getRouteData]', error);
+            if (requestId === routeDataRequestId) {
+                alert('Не удалось загрузить маршруты. Проверьте интернет и нажмите «Показать маршруты» ещё раз.');
+            }
+        } finally {
+            if (requestId === routeDataRequestId) {
+                loader.style.display = 'none';
+            }
+        }
     }
 
     function findClosestStationIndex(displayStops, selectedDate, nowDate) {
@@ -5994,19 +6170,25 @@
         header.style.display = 'none';
         updateScheduleEmptyState();
 
-        const trainMeta = await searchTrainByNumberSmart(input);
-        
-        if (!trainMeta) {
-            loader.style.display = 'none';
-            updateScheduleEmptyState();
-            alert('Поезд не найден.');
-            return;
-        }
+        try {
+            const trainMeta = await searchTrainByNumberSmart(input);
 
-        const selectedDate = getSelectedDate();
-        renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate);
-        loader.style.display = 'none';
-        updateScheduleEmptyState();
+            if (!trainMeta) {
+                updateScheduleEmptyState();
+                alert('Поезд не найден.');
+                return;
+            }
+
+            const selectedDate = getSelectedDate();
+            renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate);
+            updateScheduleEmptyState();
+        } catch (error) {
+            console.error('[getScheduleData]', error);
+            updateScheduleEmptyState();
+            alert('Не удалось загрузить расписание. Проверьте интернет и повторите.');
+        } finally {
+            loader.style.display = 'none';
+        }
     }
 
     function renderTimelineFromData(stops, trainNumber, selectedDate) {
@@ -6262,6 +6444,7 @@
         const toEl = screens[screen];
 
         if (!animate || screenTransitionLock) {
+            screenTransitionLock = false;
             Object.entries(screens).forEach(([key, el]) => {
                 if (!el) return;
                 if (key === screen) {
@@ -6308,12 +6491,26 @@
         return true;
     }
 
+    function switchScheduleTabAnimated(tabId, btn) {
+        const fromTab = getActiveScheduleTab();
+        return switchTab(tabId, btn, {
+            animate: true,
+            direction: getTabTransitionDirection(fromTab, tabId)
+        });
+    }
+
     function switchMainScreenAnimated(screen) {
         const fromScreen = getActiveMainScreen();
-        return switchMainScreen(screen, {
+        const options = {
             animate: true,
             direction: getScreenTransitionDirection(fromScreen, screen)
-        });
+        };
+
+        if (fromScreen === 'profile' && screen === 'schedule') {
+            options.afterTransition = () => activateScheduleTab('tab-route');
+        }
+
+        return switchMainScreen(screen, options);
     }
 
     function getSwipeNavState() {
@@ -6372,7 +6569,7 @@
                 kind: 'main',
                 screen: 'schedule',
                 dir: 'backward',
-                prepare: () => activateScheduleTab('tab-schedule')
+                prepare: () => activateScheduleTab('tab-route')
             };
         }
         return null;
@@ -6522,53 +6719,592 @@
             'input, textarea, select, button, a, label, ' +
             '.route-combobox-list, .route-combobox-input, .profile-position-combobox, .profile-position-trigger, .profile-position-list, ' +
             '.shift-constructor-btn, .profile-logout-btn, ' +
-            '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
+            '.user-auth-overlay, .bottom-tabbar, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-scroll, ' +
             '.shift-warnings-grid, .shift-warnings-table, .shift-warnings-input, ' +
             '.warn-dir-control, .warn-dir-switch, ' +
-            '#calendarGrid, .calendar-grid, .calendar-app-wrap .day, ' +
-            '.shift-constructor, .trains-chip-popover, .trains-chip-panel, ' +
+            '.calendar-nav-btn, ' +
+            '#tab-schedule, #scheduleHeader, #scheduleResults, #stationsList, .timeline, #scheduleLoader, ' +
+            '#routeGrid, #routeSummary, .trains-dynamic, .shift-warnings-wrap, ' +
+            '.trains-chip-popover, .trains-chip-panel, ' +
             '.shift-confirm-overlay.is-open'
         ));
     }
 
+    let suppressClickAfterSwipe = false;
+
+    const SWIPE_SNAP_TRANSITION = 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)';
+    const SWIPE_THRESHOLD_RATIO = 0.3;
+    const SWIPE_NEIGHBOR_PX = 20;
+    const SWIPE_HORIZONTAL_START_PX = 12;
+    const SWIPE_VERTICAL_CANCEL_PX = 10;
+    const SWIPE_VERTICAL_CANCEL_RATIO = 1.2;
+    const SWIPE_HORIZONTAL_LOCK_RATIO = 1.15;
+    const SWIPE_EDGE_RESISTANCE = 0.32;
+
+    function isHorizontalSwipeIntent(dx, dy) {
+        return Math.abs(dx) >= SWIPE_HORIZONTAL_START_PX
+            && Math.abs(dx) > Math.abs(dy) * SWIPE_HORIZONTAL_LOCK_RATIO;
+    }
+
+    function getEdgeSwipeDragPair() {
+        const state = getSwipeNavState();
+        if (!state) return null;
+
+        if (state === 'calendar') {
+            return {
+                target: null,
+                kind: 'main',
+                stage: document.getElementById('mainScreensStage'),
+                fromEl: document.getElementById('screen-calendar'),
+                toEl: null
+            };
+        }
+        if (state === 'profile') {
+            return {
+                target: null,
+                kind: 'main',
+                stage: document.getElementById('mainScreensStage'),
+                fromEl: document.getElementById('screen-profile'),
+                toEl: null
+            };
+        }
+        if (state === 'route-tab' || state === 'schedule-tab') {
+            const tabId = state === 'route-tab' ? 'tab-route' : 'tab-schedule';
+            return {
+                target: null,
+                kind: 'tab',
+                stage: document.getElementById('scheduleTabsStage'),
+                fromEl: document.getElementById(tabId),
+                toEl: null
+            };
+        }
+        return null;
+    }
+
+    function resolveSwipeDragPair(direction) {
+        const target = resolveSwipeTarget(direction);
+        if (!target) {
+            return getEdgeSwipeDragPair();
+        }
+
+        if (target.kind === 'main') {
+            const fromScreen = getActiveMainScreen();
+            return {
+                target,
+                kind: 'main',
+                stage: document.getElementById('mainScreensStage'),
+                fromEl: document.getElementById('screen-' + fromScreen),
+                toEl: document.getElementById('screen-' + target.screen)
+            };
+        }
+
+        return {
+            target,
+            kind: 'tab',
+            stage: document.getElementById('scheduleTabsStage'),
+            fromEl: document.getElementById(getActiveScheduleTab()),
+            toEl: document.getElementById(target.tab)
+        };
+    }
+
+    function applySwipeEdgeResistance(dx, width) {
+        const limit = width * 0.22;
+        const absDx = Math.abs(dx);
+        if (absDx <= limit) return dx;
+        const sign = dx < 0 ? -1 : 1;
+        return sign * (limit + (absDx - limit) * SWIPE_EDGE_RESISTANCE);
+    }
+
+    function applyInteractiveSwipeTransforms(fromEl, toEl, dx, width, isForward) {
+        if (!fromEl) return;
+        fromEl.style.transform = `translate3d(${dx}px, 0, 0)`;
+        if (!toEl) return;
+        const neighborX = isForward ? width + dx : -width + dx;
+        toEl.style.transform = `translate3d(${neighborX}px, 0, 0)`;
+    }
+
+    function stackSwipeStage(session) {
+        const { stage, fromEl, toEl, kind } = session;
+        if (!stage || !fromEl) return;
+
+        const heightProp = kind === 'main' ? '--main-stage-height' : '--tabs-stage-height';
+        const heights = [fromEl, toEl].filter(Boolean).map(el => el.offsetHeight || 0);
+        stage.style.setProperty(heightProp, `${Math.max(...heights, fromEl.offsetHeight || 0)}px`);
+        stage.classList.add('is-dragging--stacked');
+    }
+
+    function clearScheduleTabSwipeStyles() {
+        const tabStage = document.getElementById('scheduleTabsStage');
+        tabStage?.querySelectorAll('.tab-content').forEach(el => {
+            el.style.transform = '';
+            el.style.transition = '';
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping');
+        });
+        tabStage?.classList.remove('is-dragging', 'is-dragging--stacked');
+        tabStage?.style.removeProperty('--tabs-stage-height');
+    }
+
+    function clearInteractiveSwipeStyles(fromEl, toEl) {
+        [fromEl, toEl].filter(Boolean).forEach(el => {
+            el.style.transform = '';
+            el.style.transition = '';
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping');
+        });
+    }
+
+    function getCurrentSwipeFromPair() {
+        return getEdgeSwipeDragPair();
+    }
+
+    function prepareSwipeTouchStart(pair) {
+        const { stage, fromEl, kind } = pair;
+        if (!stage || !fromEl) return false;
+
+        stage.classList.add('is-dragging');
+        fromEl.classList.add('swipe-from');
+        fromEl.style.transition = 'none';
+        fromEl.style.transform = 'translate3d(0px, 0px, 0)';
+        stackSwipeStage({ stage, fromEl, toEl: null, kind });
+
+        return true;
+    }
+
+    function cancelSwipeTouchPrep(pair) {
+        if (!pair?.fromEl) return;
+        const { stage, fromEl, toEl } = pair;
+        clearInteractiveSwipeStyles(fromEl, toEl);
+        stage?.classList.remove('is-dragging', 'is-dragging--stacked');
+        stage?.style.removeProperty('--main-stage-height');
+        stage?.style.removeProperty('--tabs-stage-height');
+    }
+
+    function switchSwipeContext(session, pair, dx) {
+        cancelSwipeTouchPrep(session);
+        clearScheduleTabSwipeStyles();
+
+        session.kind = pair.kind;
+        session.stage = pair.stage;
+        session.fromEl = pair.fromEl;
+        session.toEl = null;
+        session.target = null;
+        session.neighborAttached = false;
+        session.toElWasHidden = false;
+        session.swipeDirection = null;
+        session.isForward = false;
+
+        if (!prepareSwipeTouchStart(pair)) return false;
+
+        session.stageReady = true;
+        session.fromEl.style.transition = 'none';
+        session.fromEl.style.transform = `translate3d(${dx}px, 0px, 0)`;
+        return true;
+    }
+
+    function attachSwipeNeighbor(session, dx) {
+        const swipeDirection = dx < 0 ? 1 : -1;
+
+        if (session.neighborAttached && session.swipeDirection === swipeDirection && session.toEl) {
+            return true;
+        }
+
+        const pair = resolveSwipeDragPair(swipeDirection);
+        if (!pair?.fromEl) return false;
+
+        if (pair.fromEl !== session.fromEl || pair.stage !== session.stage) {
+            if (!switchSwipeContext(session, pair, dx)) return false;
+        }
+
+        session.target = pair.target;
+        session.swipeDirection = swipeDirection;
+        session.isForward = swipeDirection === 1;
+
+        if (!pair.target || !pair.toEl) {
+            session.neighborAttached = false;
+            session.toEl = null;
+            return false;
+        }
+
+        if (session.toEl && session.toEl !== pair.toEl) {
+            clearInteractiveSwipeStyles(session.fromEl, session.toEl);
+        }
+
+        session.toEl = pair.toEl;
+        session.toElWasHidden = pair.toEl.classList.contains('hidden');
+        session.neighborAttached = true;
+
+        if (session.kind === 'main' && session.toElWasHidden) {
+            pair.toEl.classList.remove('hidden');
+        }
+
+        pair.toEl.classList.add('swipe-neighbor');
+        pair.toEl.style.transition = 'none';
+
+        stackSwipeStage(session);
+
+        const width = session.stage.offsetWidth || window.innerWidth;
+        applyInteractiveSwipeTransforms(session.fromEl, session.toEl, dx, width, session.isForward);
+        return true;
+    }
+
+    function teardownInteractiveSwipeStage(session, restoreNeighbor) {
+        const { stage, fromEl, toEl, kind } = session;
+        clearInteractiveSwipeStyles(fromEl, toEl);
+
+        if (restoreNeighbor && toEl) {
+            if (kind === 'main' && session.toElWasHidden) {
+                toEl.classList.add('hidden');
+            }
+        }
+
+        stage?.classList.remove('is-dragging', 'is-dragging--stacked');
+        stage?.style.removeProperty('--main-stage-height');
+        stage?.style.removeProperty('--tabs-stage-height');
+    }
+
+    function finishInteractiveSwipeTransition(session) {
+        const { target, kind, fromEl, toEl } = session;
+        if (!target || !fromEl || !toEl) return;
+
+        if (typeof target.prepare === 'function') {
+            target.prepare();
+        }
+
+        if (kind === 'main') {
+            finishMainScreenTransition(fromEl, toEl, target.screen, {
+                deferTabbar: true,
+                afterTransition: target.after || null
+            });
+            return;
+        }
+
+        const btn = document.querySelector(`.tab-btn[data-tab="${target.tab}"]`);
+        finishTabTransition(fromEl, toEl, target.tab, btn, true);
+    }
+
     function initSwipeNavigation() {
-        const SWIPE_MIN_DISTANCE = 56;
-        const SWIPE_MAX_DURATION = 450;
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
         let tracking = false;
+        let dragSession = null;
+        let snapInProgress = false;
+        let lastDragDx = 0;
+
+        function resetTouchTracking() {
+            if (dragSession?.kind === 'tab') {
+                resetScheduleTabsStage();
+            } else if (dragSession?.stageReady) {
+                cancelSwipeTouchPrep(dragSession);
+            }
+            tracking = false;
+            dragSession = null;
+            lastDragDx = 0;
+            if (!snapInProgress) {
+                screenTransitionLock = false;
+            }
+        }
+
+        function getTouchDeltaX(touch) {
+            return touch.clientX - touchStartX;
+        }
+
+        function getTouchDeltaY(touch) {
+            return touch.clientY - touchStartY;
+        }
+
+        function applyDragTransforms(dx) {
+            if (!dragSession?.fromEl) return;
+
+            const width = dragSession.stage.offsetWidth || window.innerWidth;
+            dragSession.fromEl.style.transition = 'none';
+
+            if (!dragSession.neighborAttached || !dragSession.toEl || !dragSession.target) {
+                lastDragDx = applySwipeEdgeResistance(dx, width);
+                dragSession.fromEl.style.transform = `translate3d(${lastDragDx}px, 0px, 0)`;
+                return;
+            }
+
+            lastDragDx = dx;
+            dragSession.toEl.style.transition = 'none';
+            applyInteractiveSwipeTransforms(
+                dragSession.fromEl,
+                dragSession.toEl,
+                dx,
+                width,
+                dragSession.isForward
+            );
+
+            if (dragSession.kind === 'tab' && dragSession.target?.tab) {
+                const previewTab = Math.abs(dx) > width * 0.18 ? dragSession.target.tab : dragSession.fromEl.id;
+                syncScheduleTabsNavActive(previewTab);
+            }
+            return;
+        }
+
+        function ensureHorizontalNeighbor(dx) {
+            if (!dragSession) return;
+            attachSwipeNeighbor(dragSession, dx);
+        }
+
+        function isVerticalScrollIntent(dx, dy) {
+            return Math.abs(dy) >= SWIPE_VERTICAL_CANCEL_PX
+                && Math.abs(dy) > Math.abs(dx) * SWIPE_VERTICAL_CANCEL_RATIO;
+        }
+
+        function runSnapAnimation(fromEl, toEl, fromX, toX, neighborFromX, neighborToX, onDone) {
+            snapInProgress = true;
+
+            fromEl.classList.add('swipe-snapping');
+            fromEl.style.transition = 'none';
+            fromEl.style.transform = `translate3d(${fromX}px, 0, 0)`;
+
+            if (toEl) {
+                toEl.classList.add('swipe-snapping');
+                toEl.style.transition = 'none';
+                toEl.style.transform = `translate3d(${neighborFromX}px, 0, 0)`;
+            }
+
+            void fromEl.offsetWidth;
+
+            fromEl.style.transition = SWIPE_SNAP_TRANSITION;
+            fromEl.style.transform = `translate3d(${toX}px, 0, 0)`;
+
+            let pending = 1 + (toEl ? 1 : 0);
+            const done = () => {
+                pending -= 1;
+                if (pending <= 0) {
+                    snapInProgress = false;
+                    onDone();
+                }
+            };
+
+            fromEl.addEventListener('transitionend', (e) => {
+                if (e.propertyName === 'transform') done();
+            }, { once: true });
+
+            if (toEl) {
+                toEl.style.transition = SWIPE_SNAP_TRANSITION;
+                toEl.style.transform = `translate3d(${neighborToX}px, 0, 0)`;
+                toEl.addEventListener('transitionend', (e) => {
+                    if (e.propertyName === 'transform') done();
+                }, { once: true });
+            }
+
+            setTimeout(done, 400);
+        }
+
+        function snapSwipeBack(dx) {
+            if (!dragSession) {
+                resetTouchTracking();
+                return;
+            }
+
+            const session = dragSession;
+            const width = session.stage.offsetWidth || window.innerWidth;
+            const { fromEl, toEl, isForward } = session;
+
+            runSnapAnimation(
+                fromEl,
+                toEl,
+                dx,
+                0,
+                isForward ? width + dx : -width + dx,
+                isForward ? width : -width,
+                () => {
+                    if (session.kind === 'tab') {
+                        syncScheduleTabsNavActive(session.fromEl.id);
+                    }
+                    teardownInteractiveSwipeStage(session, true);
+                    screenTransitionLock = false;
+                    resetTouchTracking();
+                }
+            );
+        }
+
+        function snapSwipeComplete(dx) {
+            if (!dragSession?.target) {
+                snapSwipeBack(dx);
+                return;
+            }
+
+            const session = dragSession;
+            const width = session.stage.offsetWidth || window.innerWidth;
+            const { fromEl, toEl, isForward } = session;
+            const exitX = isForward ? -width : width;
+
+            runSnapAnimation(
+                fromEl,
+                toEl,
+                dx,
+                exitX,
+                isForward ? width + dx : -width + dx,
+                0,
+                () => {
+                    teardownInteractiveSwipeStage(session, false);
+                    finishInteractiveSwipeTransition(session);
+                    resetTouchTracking();
+                }
+            );
+        }
+
+        function endHorizontalDrag(dx) {
+            if (!dragSession || snapInProgress) {
+                resetTouchTracking();
+                return;
+            }
+
+            if (dragSession.dragStarted && Math.abs(dx) > 8) {
+                suppressClickAfterSwipe = true;
+                window.setTimeout(() => {
+                    suppressClickAfterSwipe = false;
+                }, 400);
+            }
+
+            const width = dragSession.stage.offsetWidth || window.innerWidth;
+            const threshold = width * SWIPE_THRESHOLD_RATIO;
+            const elapsed = Date.now() - touchStartTime;
+            const velocity = dx / Math.max(elapsed, 1);
+            const flickCommit = elapsed < 280 && Math.abs(velocity) > 0.45 && Math.abs(dx) > 32;
+
+            let shouldCommit = false;
+            if (dragSession.target) {
+                if (dragSession.isForward) {
+                    shouldCommit = dx <= -threshold || (flickCommit && dx < 0);
+                } else {
+                    shouldCommit = dx >= threshold || (flickCommit && dx > 0);
+                }
+            }
+
+            if (shouldCommit) {
+                snapSwipeComplete(dx);
+            } else {
+                snapSwipeBack(dx);
+            }
+        }
 
         document.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1 || isSwipeGloballyBlocked()) return;
+            if (snapInProgress || e.touches.length !== 1 || isSwipeGloballyBlocked()) return;
             if (isSwipeBlockedTarget(e.target)) return;
+
+            const pair = getCurrentSwipeFromPair();
+            if (!pair?.fromEl || !pair.stage) return;
+
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
             tracking = true;
+            lastDragDx = 0;
+
+            dragSession = {
+                ...pair,
+                target: null,
+                toEl: null,
+                swipeDirection: null,
+                isForward: false,
+                neighborAttached: false,
+                toElWasHidden: false,
+                dragStarted: false,
+                stageReady: false
+            };
         }, { passive: true });
 
+        document.addEventListener('touchmove', (e) => {
+            if (!tracking || snapInProgress || !dragSession) return;
+            if (e.touches.length !== 1) return;
+
+            const touch = e.touches[0];
+            const dx = getTouchDeltaX(touch);
+            const dy = getTouchDeltaY(touch);
+
+            if (isVerticalScrollIntent(dx, dy)) {
+                resetTouchTracking();
+                return;
+            }
+
+            if (!dragSession.dragStarted && !isHorizontalSwipeIntent(dx, dy)) {
+                return;
+            }
+
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+
+            if (!dragSession.stageReady) {
+                if (!prepareSwipeTouchStart(dragSession)) {
+                    resetTouchTracking();
+                    return;
+                }
+                dragSession.stageReady = true;
+            }
+
+            if (!dragSession.dragStarted) {
+                if (!isHorizontalSwipeIntent(dx, dy)) {
+                    resetTouchTracking();
+                    return;
+                }
+                dragSession.dragStarted = true;
+                screenTransitionLock = true;
+            }
+
+            if (Math.abs(dx) >= SWIPE_NEIGHBOR_PX) {
+                ensureHorizontalNeighbor(dx);
+            }
+
+            if (dragSession.neighborAttached || dragSession.dragStarted) {
+                e.preventDefault();
+                applyDragTransforms(dx);
+            }
+        }, { passive: false });
+
         document.addEventListener('touchend', (e) => {
-            if (!tracking) return;
-            tracking = false;
-            if (isSwipeGloballyBlocked()) return;
+            if (!tracking || !dragSession) return;
 
             const touch = e.changedTouches[0];
-            const dx = touch.clientX - touchStartX;
-            const dy = touch.clientY - touchStartY;
-            const elapsed = Date.now() - touchStartTime;
+            const dx = getTouchDeltaX(touch);
 
-            if (elapsed > SWIPE_MAX_DURATION) return;
-            if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return;
-            if (Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+            if (!dragSession.dragStarted) {
+                resetTouchTracking();
+                return;
+            }
 
-            navigateBySwipe(dx < 0 ? 1 : -1);
+            if (!dragSession.neighborAttached) {
+                if (Math.abs(dx) > 2) {
+                    runSnapAnimation(
+                        dragSession.fromEl,
+                        null,
+                        lastDragDx,
+                        0,
+                        0,
+                        0,
+                        () => resetTouchTracking()
+                    );
+                } else {
+                    resetTouchTracking();
+                }
+                return;
+            }
+
+            endHorizontalDrag(dx);
         }, { passive: true });
 
         document.addEventListener('touchcancel', () => {
-            tracking = false;
+            if (!tracking || !dragSession || snapInProgress) {
+                resetTouchTracking();
+                return;
+            }
+            if (dragSession.neighborAttached) {
+                snapSwipeBack(lastDragDx);
+                return;
+            }
+            resetTouchTracking();
         }, { passive: true });
+
+        document.addEventListener('click', (e) => {
+            if (!suppressClickAfterSwipe) return;
+            if (e.target.closest('#screen-calendar .day')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
     }
 
     // === User Auth & Google Sheets sync ===
@@ -6862,16 +7598,16 @@
 
     async function fetchDepotRemoteVersion() {
         try {
-            const res = await fetch(buildDepotApiUrl({ check: 'version' }), {
+            const res = await fetchWithTimeout(buildDepotApiUrl({ check: 'version' }), {
                 method: 'GET',
                 redirect: 'follow',
                 cache: 'no-store',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            });
+            }, 20000);
             if (!res.ok) return null;
 
             const rawData = await res.json();
-            if (rawData && rawData.error) return null;
+            if (isDepotApiErrorResponse(rawData)) return null;
 
             return resolveDepotDataVersion(rawData);
         } catch (err) {
@@ -6887,16 +7623,18 @@
         if (!silent && typeof showGlobalLoader === 'function') showGlobalLoader();
 
         try {
-            const res = await fetch(buildDepotApiUrl(), {
+            const res = await fetchWithTimeout(buildDepotApiUrl(), {
                 method: 'GET',
                 redirect: 'follow',
                 cache: 'no-store',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            });
+            }, 25000);
             if (!res.ok) throw new Error(`Ошибка сети: ${res.status}`);
 
             const rawData = await res.json();
-            if (rawData && rawData.error) throw new Error(rawData.error);
+            if (isDepotApiErrorResponse(rawData)) {
+                throw new Error(getDepotApiErrorMessage(rawData));
+            }
 
             const normalizedBadge = normalizeTabNumber(badgeNum);
 
@@ -6906,10 +7644,12 @@
             }
 
             const freshTemplates = normalizeShiftsArray(shiftDetails);
-            depotShiftTemplates = freshTemplates;
-            localStorage.removeItem(DEPOT_TEMPLATES_KEY);
-            localStorage.removeItem(DEPOT_RAW_SHIFTS_KEY);
-            localStorage.setItem(DEPOT_TEMPLATES_KEY, JSON.stringify(freshTemplates));
+            if (freshTemplates.length || !isValidGlobalTemplateCache(depotShiftTemplates)) {
+                depotShiftTemplates = freshTemplates;
+                localStorage.removeItem(DEPOT_TEMPLATES_KEY);
+                localStorage.removeItem(DEPOT_RAW_SHIFTS_KEY);
+                localStorage.setItem(DEPOT_TEMPLATES_KEY, JSON.stringify(freshTemplates));
+            }
             localStorage.setItem(DEPOT_TAB_KEY, normalizedBadge);
 
             const dataVersion = resolveDepotDataVersion(rawData);
@@ -6938,6 +7678,9 @@
 
             refreshDepotUiAfterSync();
 
+            depotTemplatesLoadState = 'ready';
+            renderRouteComboboxListIfOpen();
+
             if (!silent && typeof showToast === 'function') {
                 showToast('График обновлён с сервера');
             }
@@ -6945,6 +7688,8 @@
             return true;
         } catch (err) {
             console.error('Критическая ошибка синхронизации данных:', err);
+            depotTemplatesLoadState = 'error';
+            renderRouteComboboxListIfOpen();
             if (!silent && typeof showToast === 'function') {
                 showToast('Не удалось обновить шаблоны смен с сервера');
             }
@@ -7063,6 +7808,7 @@
         const sessionTab = getAuthSessionTab();
         if (sessionTab) {
             unlockAppAuth();
+            void ensureDepotTemplatesLoaded();
             return;
         }
 
@@ -7076,6 +7822,8 @@
         clearDepotData();
         calendarUserShifts = {};
         depotShiftTemplates = [];
+        depotTemplatesLoadState = 'idle';
+        depotTemplatesSyncPromise = null;
         calendarSelectedDateKey = null;
         resetAuthForms();
         lockAppAuth();
@@ -7084,6 +7832,57 @@
     // === Calendar & Profile ===
     let calendarUserShifts = {};
     let depotShiftTemplates = [];
+    let depotTemplatesLoadState = 'idle';
+    let depotTemplatesSyncPromise = null;
+
+    function renderRouteComboboxListIfOpen() {
+        const list = document.getElementById('constructorRouteList');
+        if (!list || list.hidden) return;
+        const input = document.getElementById('constructorRouteInput');
+        renderRouteComboboxList(input?.value || '');
+    }
+
+    async function ensureDepotTemplatesLoaded(options = {}) {
+        const force = Boolean(options.force);
+        loadGlobalShiftTemplates({ forceStorage: true });
+
+        if (!force && isValidGlobalTemplateCache(depotShiftTemplates)) {
+            depotTemplatesLoadState = 'ready';
+            return true;
+        }
+
+        const tab = getAuthSessionTab();
+        if (!tab || document.body.classList.contains('auth-locked')) {
+            depotTemplatesLoadState = 'error';
+            return false;
+        }
+
+        if (depotTemplatesSyncPromise) {
+            await depotTemplatesSyncPromise;
+            return isValidGlobalTemplateCache(depotShiftTemplates);
+        }
+
+        depotTemplatesLoadState = 'loading';
+        renderRouteComboboxListIfOpen();
+
+        depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true })
+            .then((ok) => {
+                depotTemplatesLoadState = isValidGlobalTemplateCache(depotShiftTemplates)
+                    ? 'ready'
+                    : (ok ? 'ready' : 'error');
+                return isValidGlobalTemplateCache(depotShiftTemplates);
+            })
+            .catch(() => {
+                depotTemplatesLoadState = 'error';
+                return false;
+            })
+            .finally(() => {
+                depotTemplatesSyncPromise = null;
+                renderRouteComboboxListIfOpen();
+            });
+
+        return depotTemplatesSyncPromise;
+    }
     let depotVersionCheckPromise = null;
     let depotVersionMonitorTimer = null;
     let calendarCurrentDate = new Date();
@@ -7256,7 +8055,19 @@
         const selected = getConstructorSelectedRoute();
 
         if (!routes.length) {
-            list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
+            if (depotTemplatesLoadState === 'loading' || depotTemplatesSyncPromise) {
+                list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
+                return;
+            }
+            if (depotTemplatesLoadState === 'idle' && getAuthSessionTab() && !document.body.classList.contains('auth-locked')) {
+                list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
+                return;
+            }
+            if (depotTemplatesLoadState === 'error') {
+                list.innerHTML = '<li class="route-combobox-empty route-combobox-empty--retry" role="presentation">Не удалось загрузить маршруты. Нажмите, чтобы повторить.</li>';
+                return;
+            }
+            list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены в таблице</li>';
             return;
         }
 
@@ -7275,9 +8086,14 @@
         const list = document.getElementById('constructorRouteList');
         const input = document.getElementById('constructorRouteInput');
         if (!list || !input) return;
+        loadGlobalShiftTemplates({ forceStorage: true });
+        if (!isValidGlobalTemplateCache(depotShiftTemplates) && getAuthSessionTab() && !document.body.classList.contains('auth-locked')) {
+            if (depotTemplatesLoadState !== 'error') depotTemplatesLoadState = 'loading';
+        }
         renderRouteComboboxList(input.value);
         list.hidden = false;
         input.setAttribute('aria-expanded', 'true');
+        void ensureDepotTemplatesLoaded();
     }
 
     function closeRouteCombobox() {
@@ -7318,6 +8134,11 @@
         });
 
         list.addEventListener('click', (e) => {
+            const retry = e.target.closest('.route-combobox-empty--retry');
+            if (retry) {
+                void ensureDepotTemplatesLoaded({ force: true });
+                return;
+            }
             const option = e.target.closest('.route-combobox-option');
             if (!option) return;
             setConstructorRouteValue(option.getAttribute('data-route') || '');
@@ -7328,6 +8149,7 @@
             if (!combobox.contains(e.target)) closeRouteCombobox();
         };
         document.addEventListener('click', routeComboboxDocHandler);
+        void ensureDepotTemplatesLoaded();
     }
 
     function refreshConstructorRouteSelect() {
