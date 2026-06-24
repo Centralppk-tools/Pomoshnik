@@ -4166,7 +4166,9 @@
     const DEPOT_FIO_KEY = 'depotFio';
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
-    const DEPOT_VERSION_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+    const DEPOT_DAILY_PING_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
+    const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
 
@@ -7591,12 +7593,58 @@
         return formatted;
     }
 
+    function parseCalendarDateKeyParts(dateKey) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        if (!day || month < 0 || month > 11 || !year) return null;
+        return { day, month, year };
+    }
+
+    function isCalendarDateKeyInMonth(dateKey, targetMonth, targetYear) {
+        const parsed = parseCalendarDateKeyParts(dateKey);
+        if (!parsed) return false;
+        return parsed.month === targetMonth && parsed.year === targetYear;
+    }
+
+    function mergeServerGraphIntoLocal(localShifts, serverShifts, targetMonth, targetYear) {
+        const merged = { ...(localShifts && typeof localShifts === 'object' ? localShifts : {}) };
+        const serverFormatted = formatEmployeeShiftsFromNormalized(serverShifts);
+        Object.entries(serverFormatted).forEach(([dateKey, record]) => {
+            if (!isCalendarDateKeyInMonth(dateKey, targetMonth, targetYear)) return;
+            if (merged[dateKey]) return;
+            merged[dateKey] = record;
+        });
+        return merged;
+    }
+
+    function getCurrentMonthSyncKey(date = new Date()) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getTodayDateKey(date = new Date()) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
     function userShiftsStorageKey(tabNumber) {
         return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_SHIFTS_KEY}`;
     }
 
-    function refreshDepotUiAfterSync() {
-        loadUserShifts();
+    function userGraphSyncMonthStorageKey(tabNumber) {
+        return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_GRAPH_SYNC_MONTH_SUFFIX}`;
+    }
+
+    function userDailyCheckStorageKey(tabNumber) {
+        return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_DAILY_CHECK_SUFFIX}`;
+    }
+
+    function refreshDepotUiAfterSync(options = {}) {
+        if (options.calendarChanged) {
+            loadUserShifts();
+        }
+        loadGlobalShiftTemplates({ forceStorage: true });
         calendarRenderCalendar();
         if (calendarSelectedDateKey) {
             refreshConstructorRouteSelect();
@@ -7628,6 +7676,7 @@
         if (!badgeNum) return false;
 
         const silent = Boolean(options.silent);
+        const mergeGraph = Boolean(options.mergeGraph);
         if (!silent && typeof showGlobalLoader === 'function') showGlobalLoader();
 
         try {
@@ -7674,23 +7723,34 @@
                 if (fio) localStorage.setItem(DEPOT_FIO_KEY, fio);
                 if (position) localStorage.setItem(DEPOT_POSITION_KEY, position);
 
-                const normalizedEmployeeShifts = normalizeShiftsArray(employee.shifts || []);
-                calendarUserShifts = formatEmployeeShiftsFromNormalized(normalizedEmployeeShifts);
-                localStorage.removeItem(userShiftsStorageKey(normalizedBadge));
-                localStorage.setItem(userShiftsStorageKey(normalizedBadge), JSON.stringify(calendarUserShifts));
-            } else {
-                console.warn(`Сотрудник с табельным номером ${normalizedBadge} не найден в ответе API`);
+                if (mergeGraph) {
+                    loadUserShifts();
+                    const normalizedEmployeeShifts = normalizeShiftsArray(employee.shifts || []);
+                    const now = new Date();
+                    calendarUserShifts = mergeServerGraphIntoLocal(
+                        calendarUserShifts,
+                        normalizedEmployeeShifts,
+                        now.getMonth(),
+                        now.getFullYear()
+                    );
+                    localStorage.setItem(
+                        userShiftsStorageKey(normalizedBadge),
+                        JSON.stringify(calendarUserShifts)
+                    );
+                }
+            } else if (mergeGraph) {
+                console.warn(`Сотрудник с табельным номером ${normalizedBadge} не найден в ответе API — локальный календарь не изменён`);
             }
 
             console.log(`Успешно синхронизировано шаблонов смен: ${depotShiftTemplates.length}`);
 
-            refreshDepotUiAfterSync();
+            refreshDepotUiAfterSync({ calendarChanged: mergeGraph });
 
             depotTemplatesLoadState = 'ready';
             renderRouteComboboxListIfOpen();
 
             if (!silent && typeof showToast === 'function') {
-                showToast('График обновлён с сервера');
+                showToast(mergeGraph ? 'График подставлен в пустые дни месяца' : 'Справочник маршрутов обновлён');
             }
 
             return true;
@@ -7735,13 +7795,18 @@
         if (overlay) overlay.classList.remove('hidden');
     }
 
-    function unlockAppAuth() {
+    function unlockAppAuth(options = {}) {
         document.body.classList.remove('auth-locked');
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
         loadUserShifts();
         updateProfileScreen();
         startDepotVersionMonitor();
+        if (options.fromLogin) {
+            void runGraphSyncForCurrentMonth();
+        } else {
+            void runGraphSyncIfMonthStart();
+        }
         switchMainScreen('schedule');
     }
 
@@ -7772,7 +7837,7 @@
         setAuthButtonsLoading(true);
         try {
             if (isNewUser || !hasLocalDepotCache()) {
-                const synced = await syncEmployeeFromApi(tabNumber);
+                const synced = await syncEmployeeFromApi(tabNumber, { mergeGraph: true });
                 if (!synced) {
                     setAuthError('authErrorLogin', 'Не удалось загрузить данные с сервера. Проверьте интернет или табельный номер.');
                     return;
@@ -7787,7 +7852,7 @@
             }
 
             setAuthSessionTab(tabNumber);
-            unlockAppAuth();
+            unlockAppAuth({ fromLogin: true });
         } catch (err) {
             console.error('Ошибка входа:', err);
             setAuthError('authErrorLogin', err.message || 'Ошибка загрузки данных. Проверьте интернет.');
@@ -7873,7 +7938,7 @@
         depotTemplatesLoadState = 'loading';
         renderRouteComboboxListIfOpen();
 
-        depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true })
+        depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true, mergeGraph: false })
             .then((ok) => {
                 depotTemplatesLoadState = isValidGlobalTemplateCache(depotShiftTemplates)
                     ? 'ready'
@@ -7948,28 +8013,52 @@
         );
     }
 
-    async function runDepotVersionCheck(options = {}) {
-        const forceSync = Boolean(options.forceSync);
+    async function runGraphSyncForCurrentMonth() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+
+        const ok = await syncEmployeeFromApi(tab, { silent: true, mergeGraph: true });
+        if (ok) {
+            localStorage.setItem(userGraphSyncMonthStorageKey(tab), getCurrentMonthSyncKey());
+        }
+        return ok;
+    }
+
+    async function runGraphSyncIfMonthStart() {
+        const tab = getAuthSessionTab();
+        if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (new Date().getDate() !== 1) return false;
+
+        const monthKey = getCurrentMonthSyncKey();
+        if (localStorage.getItem(userGraphSyncMonthStorageKey(tab)) === monthKey) {
+            return false;
+        }
+
+        return runGraphSyncForCurrentMonth();
+    }
+
+    async function runDailyDepotPing() {
+        const tab = getAuthSessionTab();
+        if (!tab || document.body.classList.contains('auth-locked')) return false;
+
+        const todayKey = getTodayDateKey();
+        if (localStorage.getItem(userDailyCheckStorageKey(tab)) === todayKey) {
+            return false;
+        }
 
         if (depotVersionCheckPromise) return depotVersionCheckPromise;
 
         depotVersionCheckPromise = (async () => {
             try {
-                if (forceSync || !hasLocalDepotCache()) {
-                    return await syncEmployeeFromApi(tab, { silent: !forceSync });
-                }
-
                 const remoteVersion = await fetchDepotRemoteVersion();
-                if (!remoteVersion) return false;
-
-                const localVersion = getStoredDepotDataVersion();
-                if (remoteVersion === localVersion) {
-                    return false;
+                if (remoteVersion) {
+                    localStorage.setItem(userDailyCheckStorageKey(tab), todayKey);
+                    console.info('[ЦППК] Ежедневная проверка таблицы: связь есть, версия', remoteVersion);
                 }
-
-                return await syncEmployeeFromApi(tab, { silent: true });
+                return Boolean(remoteVersion);
+            } catch (err) {
+                console.warn('[ЦППК] Ежедневная проверка таблицы не удалась:', err);
+                return false;
             } finally {
                 depotVersionCheckPromise = null;
             }
@@ -7982,11 +8071,13 @@
         stopDepotVersionMonitor();
         if (!getAuthSessionTab() || document.body.classList.contains('auth-locked')) return;
 
-        void runDepotVersionCheck();
+        void runDailyDepotPing();
+        void runGraphSyncIfMonthStart();
 
         depotVersionMonitorTimer = setInterval(() => {
-            void runDepotVersionCheck();
-        }, DEPOT_VERSION_CHECK_INTERVAL_MS);
+            void runDailyDepotPing();
+            void runGraphSyncIfMonthStart();
+        }, DEPOT_DAILY_PING_INTERVAL_MS);
     }
 
     function stopDepotVersionMonitor() {
