@@ -6719,12 +6719,11 @@
             'input, textarea, select, button, a, label, ' +
             '.route-combobox-list, .route-combobox-input, .profile-position-combobox, .profile-position-trigger, .profile-position-list, ' +
             '.shift-constructor-btn, .profile-logout-btn, ' +
-            '.user-auth-overlay, .bottom-tabbar, ' +
+            '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-scroll, ' +
             '.shift-warnings-grid, .shift-warnings-table, .shift-warnings-input, ' +
             '.warn-dir-control, .warn-dir-switch, ' +
             '.calendar-nav-btn, ' +
-            '#tab-schedule, #scheduleHeader, #scheduleResults, #stationsList, .timeline, #scheduleLoader, ' +
             '#routeGrid, #routeSummary, .trains-dynamic, .shift-warnings-wrap, ' +
             '.trains-chip-popover, .trains-chip-panel, ' +
             '.shift-confirm-overlay.is-open'
@@ -6769,13 +6768,22 @@
                 toEl: null
             };
         }
-        if (state === 'route-tab' || state === 'schedule-tab') {
-            const tabId = state === 'route-tab' ? 'tab-route' : 'tab-schedule';
+        if (state === 'route-tab') {
+            const tabId = 'tab-route';
             return {
                 target: null,
                 kind: 'tab',
                 stage: document.getElementById('scheduleTabsStage'),
                 fromEl: document.getElementById(tabId),
+                toEl: null
+            };
+        }
+        if (state === 'schedule-tab') {
+            return {
+                target: null,
+                kind: 'main',
+                stage: document.getElementById('mainScreensStage'),
+                fromEl: document.getElementById('screen-schedule'),
                 toEl: null
             };
         }
