@@ -2072,6 +2072,10 @@
             touch-action: pan-y pinch-zoom;
         }
 
+        .main-screens-stage:not(.is-transitioning):not(.is-dragging) {
+            touch-action: pan-y pinch-zoom;
+        }
+
         .main-screens-stage:has(#screen-schedule:not(.hidden)) {
             overflow: visible;
         }
@@ -2221,6 +2225,10 @@
             position: relative;
             width: 100%;
             overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {
             touch-action: pan-y pinch-zoom;
         }
 
@@ -5841,6 +5849,17 @@
         });
     }
 
+    function resetMainScreensStage() {
+        const stage = document.getElementById('mainScreensStage');
+        stage?.classList.remove('is-transitioning', 'is-dragging', 'is-dragging--stacked');
+        stage?.style.removeProperty('--main-stage-height');
+        document.querySelectorAll('#mainScreensStage > .screen').forEach(el => {
+            cleanupSlideClasses(el);
+            el.style.transform = '';
+            el.style.transition = '';
+        });
+    }
+
     function finishTabTransition(fromEl, toEl, tabId, btn, deferTabButtons) {
         const stage = document.getElementById('scheduleTabsStage');
         fromEl.classList.remove('active');
@@ -6405,8 +6424,13 @@
         fromEl.classList.add('hidden');
         cleanupSlideClasses(fromEl);
         cleanupSlideClasses(toEl);
+        fromEl.style.transform = '';
+        fromEl.style.transition = '';
+        toEl.style.transform = '';
+        toEl.style.transition = '';
         stage?.classList.remove('is-transitioning');
         stage?.style.removeProperty('--main-stage-height');
+        stage?.classList.remove('is-dragging', 'is-dragging--stacked');
         screenTransitionLock = false;
 
         if (options.deferTabbar) {
@@ -6447,6 +6471,7 @@
 
         if (!animate || screenTransitionLock) {
             screenTransitionLock = false;
+            resetMainScreensStage();
             Object.entries(screens).forEach(([key, el]) => {
                 if (!el) return;
                 if (key === screen) {
@@ -6738,10 +6763,39 @@
     const SWIPE_THRESHOLD_RATIO = 0.3;
     const SWIPE_NEIGHBOR_PX = 20;
     const SWIPE_HORIZONTAL_START_PX = 12;
-    const SWIPE_VERTICAL_CANCEL_PX = 10;
-    const SWIPE_VERTICAL_CANCEL_RATIO = 1.2;
-    const SWIPE_HORIZONTAL_LOCK_RATIO = 1.15;
+    const SWIPE_VERTICAL_CANCEL_PX = 8;
+    const SWIPE_VERTICAL_CANCEL_RATIO = 1.05;
+    const SWIPE_HORIZONTAL_LOCK_RATIO = 1.45;
     const SWIPE_EDGE_RESISTANCE = 0.32;
+    const SWIPE_SCREEN_EDGE_PX = 32;
+
+    function isNearHorizontalSwipeEdge(touch) {
+        const x = touch.clientX;
+        const edge = Math.min(SWIPE_SCREEN_EDGE_PX, Math.max(20, Math.round(window.innerWidth * 0.09)));
+        return x <= edge || x >= window.innerWidth - edge;
+    }
+
+    function isScheduleScrollContent(target) {
+        if (!(target instanceof Element)) return false;
+        return Boolean(target.closest(
+            '#tab-schedule, #scheduleResults, #stationsList, .timeline.schedule-results-wrap, #scheduleLoader'
+        ));
+    }
+
+    function shouldReserveEdgeSwipeForScroll(target, touch) {
+        if (!isScheduleScrollContent(target)) return false;
+        return !isNearHorizontalSwipeEdge(touch);
+    }
+
+    function canConsumeVerticalScroll(dy) {
+        if (Math.abs(dy) < 2) return false;
+        const root = document.scrollingElement || document.documentElement;
+        if (!root) return false;
+        if (dy > 0) {
+            return root.scrollTop + window.innerHeight < root.scrollHeight - 2;
+        }
+        return root.scrollTop > 2;
+    }
 
     function isHorizontalSwipeIntent(dx, dy) {
         return Math.abs(dx) >= SWIPE_HORIZONTAL_START_PX
@@ -6783,9 +6837,9 @@
         if (state === 'schedule-tab') {
             return {
                 target: null,
-                kind: 'main',
-                stage: document.getElementById('mainScreensStage'),
-                fromEl: document.getElementById('screen-schedule'),
+                kind: 'tab',
+                stage: document.getElementById('scheduleTabsStage'),
+                fromEl: document.getElementById('tab-schedule'),
                 toEl: null
             };
         }
@@ -6882,11 +6936,14 @@
 
     function cancelSwipeTouchPrep(pair) {
         if (!pair?.fromEl) return;
-        const { stage, fromEl, toEl } = pair;
+        const { stage, fromEl, toEl, kind } = pair;
         clearInteractiveSwipeStyles(fromEl, toEl);
         stage?.classList.remove('is-dragging', 'is-dragging--stacked');
-        stage?.style.removeProperty('--main-stage-height');
-        stage?.style.removeProperty('--tabs-stage-height');
+        if (kind === 'main') {
+            stage?.style.removeProperty('--main-stage-height');
+        } else {
+            stage?.style.removeProperty('--tabs-stage-height');
+        }
     }
 
     function switchSwipeContext(session, pair, dx) {
@@ -7002,11 +7059,11 @@
         let lastDragDx = 0;
 
         function resetTouchTracking() {
-            if (dragSession?.kind === 'tab') {
-                resetScheduleTabsStage();
-            } else if (dragSession?.stageReady) {
+            if (dragSession?.stageReady) {
                 cancelSwipeTouchPrep(dragSession);
             }
+            resetScheduleTabsStage();
+            resetMainScreensStage();
             tracking = false;
             dragSession = null;
             lastDragDx = 0;
@@ -7196,6 +7253,7 @@
         document.addEventListener('touchstart', (e) => {
             if (snapInProgress || e.touches.length !== 1 || isSwipeGloballyBlocked()) return;
             if (isSwipeBlockedTarget(e.target)) return;
+            if (shouldReserveEdgeSwipeForScroll(e.target, e.touches[0])) return;
 
             const pair = getCurrentSwipeFromPair();
             if (!pair?.fromEl || !pair.stage) return;
@@ -7227,7 +7285,17 @@
             const dx = getTouchDeltaX(touch);
             const dy = getTouchDeltaY(touch);
 
+            if (!dragSession.dragStarted && canConsumeVerticalScroll(dy) && Math.abs(dy) >= SWIPE_VERTICAL_CANCEL_PX) {
+                resetTouchTracking();
+                return;
+            }
+
             if (isVerticalScrollIntent(dx, dy)) {
+                resetTouchTracking();
+                return;
+            }
+
+            if (dragSession.dragStarted && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= SWIPE_VERTICAL_CANCEL_PX) {
                 resetTouchTracking();
                 return;
             }
