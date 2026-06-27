@@ -300,3 +300,24 @@ chore: tools/extract-styles.mjs и расширенный snapshot (HTML + па�
 - Service Worker: cppk_v2_3_7.
 - Снимок HTML: Version/snapshots/index 2.3.7.html.
 - Снимок стилей: Version/snapshots/styles 2.3.7/.
+
+2.3.8 STABLE ★
+Основное:
+feat: стеклянная нижняя навигация — плавающая капсула ~50% экрана, выше под палец
+feat: schedule-glass-stack — вкладки Маршрут/Расписание + карточка поезда в одном стеклянном блоке
+feat: QR-код АСПОЖ в профиле — загрузка фото, автообрезка (BarcodeDetector + эвристика), полный экран
+fix: профиль split 2+1 (финансы и часы сверху, QR снизу), clamp-шрифты на узких экранах
+
+Приятные доработки (Плюшки):
+4. feat: кнопки «Новое фото», «На весь экран», «Удалить» для QR
+5. ui: отдельные состояния пусто/загружено — без заглушки рядом с превью
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- CSS-переменные --glass-* в tokens.css; bottom-tabbar и schedule-glass-stack в base/schedule.css.
+- syncScheduleGlassStack() — связка tabs-nav и scheduleHeader.
+- processAspozhQrFile: detectQrBoundingBox → crop → userStorage aspozhQrImage.
+- Service Worker: cppk_v2_3_8.
+- Снимок HTML: Version/snapshots/index 2.3.8.html.
+- Снимок стилей: Version/snapshots/styles 2.3.8/.

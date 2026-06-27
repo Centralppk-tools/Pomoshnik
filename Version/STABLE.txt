@@ -1,13 +1,13 @@
-2.3.7 STABLE ★
+2.3.8 STABLE ★
 
-Дата: 2026-06-27
+Дата: 2026-06-28
 Статус: стабильная версия, рекомендуется к выкладке на хостинг и в PWA.
 
-Service Worker: cppk_v2_3_7
-Снимок HTML: Version/snapshots/index 2.3.7.html
-Снимок стилей: Version/snapshots/styles 2.3.7/
+Service Worker: cppk_v2_3_8
+Снимок HTML: Version/snapshots/index 2.3.8.html
+Снимок стилей: Version/snapshots/styles 2.3.8/
 
 Ключевые изменения:
-- CSS вынесен из index.html в app/styles/ (8 файлов: tokens, base, routes, schedule, calendar, profile, responsive, auth)
-- справочники локальных часов смен в app/data/shift-hours/ + заготовка shift-templates.json
-- precache SW: все styles/*.css и data/shift-templates.json
+- стеклянная нижняя навигация (плавающая капсула) и schedule-glass-stack (вкладки + карточка поезда)
+- профиль: QR-код АСПОЖ — загрузка фото, автообрезка QR, полный экран, замена/удаление
+- профиль: сетка 2+1 (финансы/часы + QR снизу), адаптивные шрифты
