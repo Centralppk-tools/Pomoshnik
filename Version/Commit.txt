@@ -321,3 +321,26 @@ fix: профиль split 2+1 (финансы и часы сверху, QR сн�
 - Service Worker: cppk_v2_3_8.
 - Снимок HTML: Version/snapshots/index 2.3.8.html.
 - Снимок стилей: Version/snapshots/styles 2.3.8/.
+
+2.3.9 STABLE ★
+Коммиты: e900324 (fix QR на телефоне)
+
+Основное:
+fix: загрузка QR АСПОЖ на телефоне — createImageBitmap, HEIC, поворот EXIF
+fix: уменьшение больших фото до 2048 px до обработки (меньше сбоев по памяти)
+fix: запасное сохранение без обрезки QR, если детектор не сработал
+
+Приятные доработки (Плюшки):
+4. fix: проверка формата по расширению, когда iOS не передаёт file.type
+5. fix: отдельные сообщения — неподдерживаемый формат и переполнение localStorage
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- loadImageFromFile: createImageBitmap → blob URL → FileReader; imageOrientation from-image.
+- getAspozhQrDetectMaxSide: 540 px на телефоне, 720 на десктопе.
+- processAspozhQrFile: fallback на уменьшенное фото целиком при ошибке crop.
+- input accept + capture=environment для снимка камерой.
+- Service Worker: cppk_v2_3_9.
+- Снимок HTML: Version/snapshots/index 2.3.9.html.
+- Снимок стилей: Version/snapshots/styles 2.3.9/.
