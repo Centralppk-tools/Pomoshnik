@@ -1,13 +1,13 @@
-2.3.6 STABLE ★
+2.3.7 STABLE ★
 
 Дата: 2026-06-27
 Статус: стабильная версия, рекомендуется к выкладке на хостинг и в PWA.
 
-Service Worker: cppk_v2_3_6
-Снимок: Version/snapshots/index 2.3.6.html
+Service Worker: cppk_v2_3_7
+Снимок HTML: Version/snapshots/index 2.3.7.html
+Снимок стилей: Version/snapshots/styles 2.3.7/
 
-Ключевые исправления:
-- кэш поездов в localStorage без авто-обновления; кнопка «Обновить» в стиле приложения
-- локальная база trains-local.json + загрузка нитки по UID, если рейса нет в суточном расписании
-- fix: утренние поезда ночной смены — шаблон 61У по дню ночи, а не следующего календарного дня
-- spr.json и trains-local.json в precache Service Worker
+Ключевые изменения:
+- CSS вынесен из index.html в app/styles/ (8 файлов: tokens, base, routes, schedule, calendar, profile, responsive, auth)
+- справочники локальных часов смен в app/data/shift-hours/ + заготовка shift-templates.json
+- precache SW: все styles/*.css и data/shift-templates.json

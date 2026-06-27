@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "scope": "shift-hours-only",
+  "description": "Правила слияния локальных часов смен с Google API. Графики работы (employees) не затрагиваются.",
+  "defaultSource": "google-api",
+  "notMergedYet": true,
+  "modes": {
+    "google-only": {
+      "description": "Текущее поведение: depotShiftTemplates только из syncEmployeeFromApi → shiftDetails",
+      "active": true
+    },
+    "local-fallback": {
+      "description": "Если API недоступен — загрузить app/data/shift-templates.json",
+      "active": false
+    },
+    "local-override": {
+      "description": "merge: локальная строка перекрывает API при совпадении (date, route)",
+      "active": false
+    }
+  },
+  "matchKey": ["date", "route"],
+  "priority": ["iso-date", "weekday-marker", "fallback"],
+  "localPath": "./data/shift-templates.json",
+  "googleFields": {
+    "included": ["shiftDetails"],
+    "excluded": ["employees", "График работы_Прил"]
+  }
+}

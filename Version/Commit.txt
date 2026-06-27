@@ -279,3 +279,24 @@ fix: загрузка spr.json с нескольких путей для лок�
 - getMorningTrainsTextForNightShift: findShiftTemplate(morningRoute, dateKey) — тот же день, что ночь.
 - Service Worker: cppk_v2_3_6.
 - Снимок: Version/snapshots/index 2.3.6.html.
+
+2.3.7 STABLE ★
+Основное:
+refactor: CSS вынесен из index.html в app/styles/ — index.html ~6000 строк вместо ~10000
+feat: справочники локальных часов смен (app/data/shift-hours/) и заготовка shift-templates.json
+chore: precache SW — 8 файлов styles/*.css, data/shift-templates.json
+chore: tools/extract-styles.mjs и расширенный snapshot (HTML + папка styles)
+
+Приятные доработки (Плюшки):
+4. refactor: styles разбиты по зонам — tokens, routes, schedule, calendar, profile, responsive, auth
+5. docs: merge-rules.json — Google API для графиков не затрагивается, только shiftDetails
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- index.html подключает 8 link rel=stylesheet; логика JS без изменений.
+- app/data/shift-hours/: схемы, xlsx-column-map, примеры Н60, merge-rules (google-only пока).
+- app/data/shift-templates.json: пустой shiftDetails[], готов под export из Часы смен/.
+- Service Worker: cppk_v2_3_7.
+- Снимок HTML: Version/snapshots/index 2.3.7.html.
+- Снимок стилей: Version/snapshots/styles 2.3.7/.

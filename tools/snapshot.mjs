@@ -1,4 +1,4 @@
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,8 +13,17 @@ if (!match) {
 }
 
 const version = match[1].replace(/_/g, '.');
-const source = join(root, 'app', 'index.html');
-const target = join(root, 'Version', 'snapshots', `index ${version}.html`);
+const snapshotsDir = join(root, 'Version', 'snapshots');
+mkdirSync(snapshotsDir, { recursive: true });
 
-copyFileSync(source, target);
-console.log(`Снимок сохранён: Version/snapshots/index ${version}.html`);
+const indexSource = join(root, 'app', 'index.html');
+const indexTarget = join(snapshotsDir, `index ${version}.html`);
+copyFileSync(indexSource, indexTarget);
+console.log(`Снимок HTML: Version/snapshots/index ${version}.html`);
+
+const stylesSource = join(root, 'app', 'styles');
+const stylesTarget = join(snapshotsDir, `styles ${version}`);
+cpSync(stylesSource, stylesTarget, { recursive: true });
+
+const styleFiles = readdirSync(stylesTarget).filter((name) => name.endsWith('.css'));
+console.log(`Снимок стилей: Version/snapshots/styles ${version}/ (${styleFiles.length} файлов)`);
