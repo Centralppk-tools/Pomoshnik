@@ -81,50 +81,77 @@
     #screen-profile .profile-card--split {
         gap: 8px;
         padding: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #screen-profile .profile-mini-block--qr {
+        grid-column: 1 / -1;
+        padding: 8px 10px 10px;
+    }
+
+    #screen-profile .profile-mini-block--stats {
+        min-height: 118px;
+        padding: 8px 6px;
+    }
+
+    #screen-profile .profile-stat-hero {
+        min-height: 56px;
+    }
+
+    #screen-profile .profile-stat-hero-value,
+    #screen-profile #profileEarnedSalary {
+        font-size: clamp(10px, 3.2vw, 15px);
+    }
+
+    #screen-profile .profile-hours-ring--compact {
+        width: 58px;
+        height: 58px;
+    }
+
+    #screen-profile .profile-hours-ring--compact #profileHoursValue {
+        font-size: clamp(10px, 3vw, 14px);
+    }
+
+    #screen-profile .profile-hours-ring--compact #profileHoursNorm {
+        font-size: 8px;
+    }
+
+    #screen-profile .profile-stat-row {
+        font-size: clamp(8px, 2.4vw, 11px);
+        gap: 3px;
+    }
+
+    #screen-profile .profile-stat-row dd {
+        font-size: inherit;
+    }
+
+    #screen-profile .profile-scheduled-line {
+        font-size: clamp(8px, 2.3vw, 11px);
+    }
+
+    #screen-profile .profile-qr-upload--empty {
+        min-height: 56px;
+        padding: 8px 10px;
+    }
+
+    #screen-profile .profile-qr-frame {
+        max-width: 168px;
+        min-height: 108px;
+        padding: 10px;
+    }
+
+    #screen-profile .profile-qr-preview {
+        max-height: 112px;
+    }
+
+    #screen-profile .profile-qr-action-btn {
+        padding: 7px 8px;
+        font-size: clamp(9px, 2.4vw, 11px);
     }
 
     #screen-profile .profile-mini-block {
         padding: 12px 10px;
         min-height: 0;
-    }
-
-    #screen-profile .profile-mini-block--stats {
-        min-height: 128px;
-    }
-
-    #screen-profile .profile-stat-hero {
-        min-height: 64px;
-    }
-
-    #screen-profile .profile-stat-hero-value,
-    #screen-profile #profileEarnedSalary {
-        font-size: clamp(12px, 3.6vw, 15px);
-    }
-
-    #screen-profile .profile-hours-ring--compact {
-        width: 64px;
-        height: 64px;
-    }
-
-    #screen-profile .profile-hours-ring--compact #profileHoursValue {
-        font-size: clamp(12px, 3.4vw, 15px);
-    }
-
-    #screen-profile .profile-hours-ring--compact #profileHoursNorm {
-        font-size: 9px;
-    }
-
-    #screen-profile .profile-stat-row {
-        font-size: 10px;
-        gap: 4px;
-    }
-
-    #screen-profile .profile-stat-row dd {
-        font-size: 10px;
-    }
-
-    #screen-profile .profile-scheduled-line {
-        font-size: 10px;
     }
 
     #screen-profile .nearest-shift-route {
@@ -143,19 +170,33 @@
 
     /* Расписание */
     #screen-schedule .phone-screen {
-        padding: 16px 14px;
+        padding: 12px 12px 16px;
+    }
+
+    .schedule-glass-stack {
+        width: calc(100% - 4px);
+        top: 4px;
+        margin-bottom: 10px;
     }
 
     #tab-schedule {
         --schedule-pad-x: 14px;
     }
 
-    #scheduleHeader {
-        padding-bottom: 4px;
+    .tab-btn {
+        padding: 9px 8px;
+        min-height: 38px;
+        font-size: 12px;
     }
 
-    #screen-schedule .tabs-nav {
-        margin-bottom: 6px;
+    :root {
+        --glass-tabbar-width: min(72vw, 380px);
+        --glass-tabbar-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .bottom-tab-btn {
+        min-height: 44px;
+        padding: 7px 4px;
     }
 
     .schedule-route-card-middle {

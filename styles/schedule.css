@@ -270,12 +270,22 @@
         padding: 20px 12px;
     }
 
-    .tabs-nav {
+    .schedule-glass-tabs {
+        flex-wrap: nowrap;
+    }
+
+    .schedule-glass-tabs .tab-btn {
+        width: auto;
+        flex: 1;
+        border-radius: 14px;
+    }
+
+    .tabs-nav:not(.schedule-glass-tabs) {
         flex-wrap: wrap;
         gap: 8px;
     }
 
-    .tab-btn {
+    .tabs-nav:not(.schedule-glass-tabs) .tab-btn {
         width: 100%;
         border-radius: 14px;
     }
@@ -513,7 +523,7 @@
 .screen.screen-fade { opacity: 0; }
 
 body {
-    padding-bottom: 68px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 body.auth-locked {
@@ -522,19 +532,25 @@ body.auth-locked {
 
 .bottom-tabbar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    right: auto;
+    bottom: var(--glass-tabbar-bottom);
+    transform: translateX(-50%);
+    width: var(--glass-tabbar-width);
+    min-width: min(100%, 300px);
+    max-width: calc(100% - 24px);
     z-index: 2000;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: stretch;
-    gap: 4px;
-    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
-    background: rgba(10, 16, 24, 0.94);
-    border-top: 1px solid var(--app-border);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: var(--glass-radius);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
 }
 
 .bottom-tab-btn {
@@ -543,12 +559,13 @@ body.auth-locked {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 5px 4px;
+    gap: 3px;
+    padding: 8px 6px;
+    min-height: 48px;
     border: none;
-    border-radius: 10px;
+    border-radius: 16px;
     background: transparent;
-    color: #4e5d74;
+    color: rgba(139, 151, 171, 0.88);
     font-size: var(--font-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -582,8 +599,8 @@ body.auth-locked {
 
 .bottom-tab-btn.active {
     color: var(--app-green);
-    background: rgba(23, 128, 56, 0.14);
-    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.22), 0 0 12px var(--app-green-glow);
+    background: rgba(23, 128, 56, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.28), 0 0 16px rgba(23, 128, 56, 0.2);
 }
 
 .bottom-tab-btn.active .tab-icon {

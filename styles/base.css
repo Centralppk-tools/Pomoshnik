@@ -319,39 +319,36 @@ box-shadow: 0 0 8px rgba(23, 128, 56, 0.35);
 transform: translateX(20px);
     }
 
-/* Переключатель вкладок */
+/* Переключатель вкладок (базовые кнопки) */
 .tabs-nav {
     display: flex;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 2px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(5px);
+    gap: 4px;
+    padding: 4px;
 }
 
 .tab-btn {
     flex: 1;
     background: none;
     border: none;
-    padding: 8px 10px;
-    font-size: 13px;
+    padding: 10px 12px;
+    min-height: 40px;
+    font-size: var(--font-sm);
     font-weight: 500;
-    color: #c4d1e8;
+    color: rgba(196, 209, 232, 0.82);
     cursor: pointer;
-    border-radius: 10px;
-    transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+    border-radius: 14px;
+    transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tab-btn:hover {
     color: #f7fbff;
-    transform: translateY(-1px);
 }
 
 .tab-btn.active {
-    background: rgba(0, 113, 227, 0.14);
+    background: rgba(255, 255, 255, 0.12);
     color: #ffffff;
     font-weight: 600;
-    box-shadow: inset 0 0 0 1px rgba(0, 113, 227, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .tab-content {
@@ -375,20 +372,57 @@ transform: translateX(20px);
 
 #screen-schedule .phone-screen {
     overflow: visible;
+    padding-top: 4px;
 }
 
 #screen-schedule .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {
     overflow: visible;
 }
 
-#screen-schedule .tabs-nav {
+/* Стеклянный блок: вкладки Маршрут / Расписание + карточка поезда */
+.schedule-glass-stack {
+    width: var(--schedule-glass-width);
+    max-width: 100%;
+    margin: 0 auto 14px;
     position: sticky;
-    top: 0;
+    top: 8px;
     z-index: 40;
-    margin-bottom: 8px;
-    background: rgba(10, 16, 24, 0.98);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+}
+
+.schedule-glass-stack.has-route-card {
+    border-radius: var(--glass-radius);
+}
+
+.schedule-glass-tabs {
+    margin: 0;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--glass-border-soft);
+}
+
+.schedule-glass-stack.has-route-card .schedule-glass-tabs {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.schedule-glass-body {
+    padding: 0;
+    background: transparent;
+}
+
+#scheduleHeader.schedule-glass-body {
+    position: static;
+    margin: 0;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
 }
 
 #tab-schedule {
@@ -396,30 +430,27 @@ transform: translateX(20px);
     min-width: 0;
     overflow: visible;
     --schedule-pad-x: 24px;
-    --schedule-tabs-offset: 41px;
     gap: 8px;
-}
-
-#scheduleHeader {
-    position: sticky;
-    top: var(--schedule-tabs-offset, 41px);
-    z-index: 30;
-    flex-shrink: 0;
-    margin-left: calc(-1 * var(--schedule-pad-x));
-    margin-right: calc(-1 * var(--schedule-pad-x));
-    width: calc(100% + (2 * var(--schedule-pad-x)));
-    padding: 0 var(--schedule-pad-x) 6px;
-    background: linear-gradient(180deg, rgba(10, 16, 24, 0.98) 0%, rgba(10, 16, 24, 0.94) 72%, rgba(10, 16, 24, 0) 100%);
-    backdrop-filter: blur(10px);
 }
 
 #scheduleHeader .schedule-route-card {
     margin-bottom: 0;
     width: 100%;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
-    background: rgba(255, 255, 255, 0.04);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.schedule-glass-stack:not(.has-route-card) .schedule-glass-tabs {
+    border-bottom: none;
+}
+
+#scheduleHeader .schedule-route-card::before {
+    width: 4px;
+    background: linear-gradient(180deg, var(--app-green) 0%, var(--app-blue) 100%);
+    opacity: 0.85;
 }
 
 .schedule-route-card .route-card-section {

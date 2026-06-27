@@ -73,9 +73,12 @@
 <div id="screen-schedule" class="screen">
 
 <div class="phone-screen">
-    <div class="tabs-nav" aria-label="Вкладки маршрута">
-        <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
-        <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
+    <div class="schedule-glass-stack" id="scheduleGlassStack">
+        <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
+            <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
+            <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
+        </div>
+        <div id="scheduleHeader" class="schedule-glass-body" style="display:none;"></div>
     </div>
 
     <div id="scheduleTabsStage" class="schedule-tabs-stage">
@@ -138,7 +141,6 @@
     </div>
 
     <div id="tab-schedule" class="tab-content">
-        <div id="scheduleHeader" style="display:none;"></div>
         <div id="scheduleLoader" class="loader schedule-loader">Сборка нитки...</div>
 
         <div id="scheduleResults" class="timeline schedule-results-wrap" style="display: none;">
@@ -278,6 +280,38 @@
                     <p class="profile-scheduled-line" id="profileScheduledHours">заложено 0 часов</p>
                 </dl>
             </div>
+            <div class="profile-mini-block profile-mini-block--qr" id="profileAspozhQrBlock">
+                <div class="profile-qr-head">
+                    <div class="profile-mini-label">QR-код АСПОЖ</div>
+                </div>
+                <label class="profile-qr-upload profile-qr-upload--empty" id="profileAspozhQrEmpty" for="profileAspozhQrInput">
+                    <span class="profile-qr-placeholder">
+                        <span class="profile-qr-placeholder-visual" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h2v3h-2zM18 21h3v-3h-3zM21 18v3"/>
+                            </svg>
+                        </span>
+                        <span class="profile-qr-placeholder-copy">
+                            <span class="profile-qr-placeholder-title">Добавить QR-код</span>
+                            <span class="profile-qr-placeholder-text">Нажмите, чтобы выбрать фото</span>
+                        </span>
+                    </span>
+                </label>
+                <div class="profile-qr-loaded" id="profileAspozhQrLoaded" hidden>
+                    <button type="button" class="profile-qr-frame" id="profileAspozhQrFullscreenBtn" aria-label="QR-код на весь экран">
+                        <img id="profileAspozhQrPreview" class="profile-qr-preview" alt="QR-код АСПОЖ">
+                    </button>
+                    <div class="profile-qr-actions">
+                        <button type="button" class="profile-qr-action-btn" id="profileAspozhQrReplaceBtn">Новое фото</button>
+                        <button type="button" class="profile-qr-action-btn profile-qr-action-btn--primary" id="profileAspozhQrExpandBtn">На весь экран</button>
+                        <button type="button" class="profile-qr-action-btn profile-qr-action-btn--muted" id="profileAspozhQrClear">Удалить</button>
+                    </div>
+                </div>
+                <input type="file" id="profileAspozhQrInput" class="profile-qr-input" accept="image/*" hidden>
+            </div>
         </div>
         <div class="profile-card profile-card--nearest">
             <div class="profile-mini-block profile-mini-block--nearest" id="nearestShiftBlock">
@@ -288,6 +322,16 @@
 
         <div class="profile-footer">
             <button type="button" class="profile-logout-btn" onclick="handleLogout()">Выйти</button>
+        </div>
+
+        <div id="profileAspozhQrModal" class="profile-qr-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="QR-код АСПОЖ">
+            <button type="button" class="profile-qr-modal-close" id="profileAspozhQrModalClose" aria-label="Закрыть">×</button>
+            <div class="profile-qr-modal-body">
+                <img id="profileAspozhQrModalImg" class="profile-qr-modal-img" alt="QR-код АСПОЖ">
+            </div>
+            <div class="profile-qr-modal-actions">
+                <button type="button" class="profile-qr-action-btn profile-qr-action-btn--primary" id="profileAspozhQrModalReplace">Новое фото</button>
+            </div>
         </div>
     </div>
 </div>
@@ -593,6 +637,7 @@
 
         initShiftWarnings();
         initProfilePositionSelect();
+        initAspozhQrBlock();
 
         const savedTrains = userStorageGetJson('trainNumbers', []);
         renderTrainInputs(Array.isArray(savedTrains) ? savedTrains : []);
@@ -626,7 +671,7 @@
         if (activeBtn) {
             switchTab(activeTab, activeBtn);
         }
-        requestAnimationFrame(updateScheduleStickyOffset);
+        requestAnimationFrame(syncScheduleGlassStack);
 
         // Справочник тормозов и локальная база поездов
         loadReferenceData()
@@ -1270,6 +1315,7 @@
             header.style.display = 'none';
             header.innerHTML = '';
         }
+        syncScheduleGlassStack();
         if (list) list.innerHTML = '';
         updateScheduleDateHint();
         updateScheduleEmptyState();
@@ -2357,8 +2403,9 @@
         if (tabId === 'tab-schedule') {
             updateScheduleDateHint();
             updateScheduleEmptyState();
-            requestAnimationFrame(updateScheduleStickyOffset);
+            requestAnimationFrame(applyScheduleTextFit);
         }
+        syncScheduleGlassStack();
     }
 
     function switchTab(tabId, btn, options = {}) {
@@ -2387,6 +2434,7 @@
                 updateScheduleEmptyState();
                 requestAnimationFrame(applyScheduleTextFit);
             }
+            syncScheduleGlassStack();
             return true;
         }
 
@@ -2748,6 +2796,7 @@
                 </div>
             </div>`;
         header.style.display = 'block';
+        syncScheduleGlassStack();
         updateScheduleDateHint();
 
         const displayStops = buildScheduleDisplayStops(stops);
@@ -5977,20 +6026,39 @@
     function applyProfileTextFit() {
         fitTextToSingleLine(document.getElementById('profileUserName'), 11, 17);
         fitTextToSingleLine(document.getElementById('profileUserTab'), 9, 12);
-        fitTextToSingleLine(document.getElementById('profileEarnedSalary'), 11, 15);
+        fitTextToSingleLine(document.getElementById('profileEarnedSalary'), 10, 16);
+        fitTextToSingleLine(document.getElementById('profileEarnedFact'), 9, 12);
         const hoursValue = document.getElementById('profileHoursValue');
-        if (hoursValue) fitTextToSingleLine(hoursValue, 10, 15);
+        if (hoursValue) fitTextToSingleLine(hoursValue, 9, 14);
+    }
+
+    function syncScheduleGlassStack() {
+        const stack = document.getElementById('scheduleGlassStack');
+        const header = document.getElementById('scheduleHeader');
+        if (!stack) return;
+
+        const activeTab = getActiveScheduleTab();
+        const hasContent = header && header.innerHTML.trim().length > 0;
+        const showRouteCard = hasContent && activeTab === 'tab-schedule';
+
+        stack.classList.toggle('has-route-card', showRouteCard);
+
+        if (header && hasContent) {
+            header.style.display = showRouteCard ? 'block' : 'none';
+        }
+
+        requestAnimationFrame(updateScheduleStickyOffset);
     }
 
     function updateScheduleStickyOffset() {
-        const tabsNav = document.querySelector('#screen-schedule .tabs-nav');
+        const stack = document.getElementById('scheduleGlassStack');
         const tabSchedule = document.getElementById('tab-schedule');
-        if (!tabsNav || !tabSchedule) return;
-        tabSchedule.style.setProperty('--schedule-tabs-offset', `${tabsNav.offsetHeight}px`);
+        if (!stack || !tabSchedule) return;
+        tabSchedule.style.setProperty('--schedule-glass-stack-height', `${stack.offsetHeight}px`);
     }
 
     function applyScheduleTextFit() {
-        updateScheduleStickyOffset();
+        syncScheduleGlassStack();
         document.querySelectorAll('#scheduleHeader .route-card-title').forEach(el => {
             fitTextToSingleLine(el, 11, 16);
         });
@@ -6005,6 +6073,337 @@
     function applyMobileTextFit() {
         applyProfileTextFit();
         applyScheduleTextFit();
+    }
+
+    const ASPOZH_QR_STORAGE_KEY = 'aspozhQrImage';
+    let aspozhQrBlockInitialized = false;
+
+    function refreshAspozhQrUi() {
+        const block = document.getElementById('profileAspozhQrBlock');
+        const empty = document.getElementById('profileAspozhQrEmpty');
+        const loaded = document.getElementById('profileAspozhQrLoaded');
+        const preview = document.getElementById('profileAspozhQrPreview');
+        const modalImg = document.getElementById('profileAspozhQrModalImg');
+        const dataUrl = userStorageGet(ASPOZH_QR_STORAGE_KEY, '');
+
+        if (!empty || !loaded || !preview) return;
+
+        if (dataUrl) {
+            preview.src = dataUrl;
+            if (modalImg) modalImg.src = dataUrl;
+            empty.hidden = true;
+            loaded.hidden = false;
+            block?.classList.add('has-image');
+        } else {
+            preview.removeAttribute('src');
+            if (modalImg) modalImg.removeAttribute('src');
+            empty.hidden = false;
+            loaded.hidden = true;
+            block?.classList.remove('has-image');
+        }
+    }
+
+    function openAspozhQrModal() {
+        const dataUrl = userStorageGet(ASPOZH_QR_STORAGE_KEY, '');
+        if (!dataUrl) return;
+        const modal = document.getElementById('profileAspozhQrModal');
+        const modalImg = document.getElementById('profileAspozhQrModalImg');
+        if (!modal || !modalImg) return;
+        modalImg.src = dataUrl;
+        modal.hidden = false;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeAspozhQrModal() {
+        const modal = document.getElementById('profileAspozhQrModal');
+        if (!modal) return;
+        modal.hidden = true;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function triggerAspozhQrFilePick() {
+        document.getElementById('profileAspozhQrInput')?.click();
+    }
+
+    function loadImageFromFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('image'));
+                img.src = reader.result;
+            };
+            reader.onerror = () => reject(new Error('read'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function drawImageToCanvas(img, maxSide) {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('canvas');
+        ctx.drawImage(img, 0, 0, width, height);
+        return { canvas, ctx, width, height, scale };
+    }
+
+    function computeOtsuThreshold(ctx, width, height) {
+        const { data } = ctx.getImageData(0, 0, width, height);
+        const hist = new Uint32Array(256);
+        const total = width * height;
+        for (let i = 0; i < data.length; i += 4) {
+            const lum = Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+            hist[lum]++;
+        }
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * hist[i];
+        let sumB = 0;
+        let wB = 0;
+        let maxVar = 0;
+        let threshold = 128;
+        for (let t = 0; t < 256; t++) {
+            wB += hist[t];
+            if (!wB) continue;
+            const wF = total - wB;
+            if (!wF) break;
+            sumB += t * hist[t];
+            const mB = sumB / wB;
+            const mF = (sum - sumB) / wF;
+            const variance = wB * wF * (mB - mF) * (mB - mF);
+            if (variance > maxVar) {
+                maxVar = variance;
+                threshold = t;
+            }
+        }
+        return threshold;
+    }
+
+    function buildBinaryGrid(ctx, width, height, threshold) {
+        const { data } = ctx.getImageData(0, 0, width, height);
+        const grid = new Uint8Array(width * height);
+        for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+            const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            grid[p] = lum < threshold ? 1 : 0;
+        }
+        return grid;
+    }
+
+    function scoreQrRegion(grid, width, x, y, size) {
+        let transitions = 0;
+        let samples = 0;
+        const step = Math.max(1, Math.floor(size / 21));
+        for (let yy = y + step; yy < y + size - step; yy += step) {
+            for (let xx = x + 1; xx < x + size; xx += step) {
+                const idx = yy * width + xx;
+                if (grid[idx] !== grid[idx - 1]) transitions++;
+                samples++;
+            }
+        }
+        for (let xx = x + step; xx < x + size - step; xx += step) {
+            for (let yy = y + 1; yy < y + size; yy += step) {
+                const idx = yy * width + xx;
+                if (grid[idx] !== grid[idx - width]) transitions++;
+                samples++;
+            }
+        }
+        const ratio = samples ? transitions / samples : 0;
+        if (ratio < 0.14 || ratio > 0.72) return 0;
+
+        let dark = 0;
+        for (let yy = y; yy < y + size; yy++) {
+            for (let xx = x; xx < x + size; xx++) {
+                dark += grid[yy * width + xx];
+            }
+        }
+        const fill = dark / (size * size);
+        if (fill < 0.1 || fill > 0.9) return 0;
+
+        const sizeScore = size / Math.min(width, height);
+        if (sizeScore < 0.1 || sizeScore > 0.95) return 0;
+
+        return ratio * (1 - Math.abs(fill - 0.5) * 1.4) * sizeScore;
+    }
+
+    function findQrBoundingBoxHeuristic(ctx, width, height) {
+        const threshold = computeOtsuThreshold(ctx, width, height);
+        const grid = buildBinaryGrid(ctx, width, height, threshold);
+        const minSize = Math.floor(Math.min(width, height) * 0.1);
+        const maxSize = Math.floor(Math.min(width, height) * 0.95);
+        let best = null;
+        let bestScore = 0;
+        const stepBase = Math.max(3, Math.floor(Math.min(width, height) * 0.02));
+
+        for (let size = minSize; size <= maxSize; size += Math.max(4, Math.floor(size * 0.1))) {
+            const step = Math.max(stepBase, Math.floor(size * 0.14));
+            for (let y = 0; y <= height - size; y += step) {
+                for (let x = 0; x <= width - size; x += step) {
+                    const score = scoreQrRegion(grid, width, x, y, size);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = { x, y, width: size, height: size };
+                    }
+                }
+            }
+        }
+        return bestScore > 0.015 ? best : null;
+    }
+
+    async function detectQrBoundingBox(img) {
+        const detect = drawImageToCanvas(img, 720);
+        if (typeof BarcodeDetector !== 'undefined') {
+            try {
+                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                const codes = await detector.detect(detect.canvas);
+                if (codes?.length && codes[0].boundingBox) {
+                    const box = codes[0].boundingBox;
+                    return {
+                        x: box.x / detect.scale,
+                        y: box.y / detect.scale,
+                        width: box.width / detect.scale,
+                        height: box.height / detect.scale,
+                        method: 'barcode-detector'
+                    };
+                }
+            } catch (err) {
+                console.warn('[aspozhQr] BarcodeDetector:', err);
+            }
+        }
+
+        const bounds = findQrBoundingBoxHeuristic(detect.ctx, detect.width, detect.height);
+        if (!bounds) return null;
+        return {
+            x: bounds.x / detect.scale,
+            y: bounds.y / detect.scale,
+            width: bounds.width / detect.scale,
+            height: bounds.height / detect.scale,
+            method: 'heuristic'
+        };
+    }
+
+    function cropImageToBounds(img, bounds, outputMaxSide = 480) {
+        const side = Math.max(bounds.width, bounds.height);
+        const pad = Math.round(side * 0.08);
+        const sx = Math.max(0, Math.floor(bounds.x - pad));
+        const sy = Math.max(0, Math.floor(bounds.y - pad));
+        const sw = Math.min(img.width - sx, Math.ceil(side + pad * 2));
+        const sh = Math.min(img.height - sy, Math.ceil(side + pad * 2));
+
+        const scale = Math.min(1, outputMaxSide / Math.max(sw, sh));
+        const dw = Math.max(1, Math.round(sw * scale));
+        const dh = Math.max(1, Math.round(sh * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = dw;
+        canvas.height = dh;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('canvas');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, dw, dh);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+        return canvas;
+    }
+
+    function canvasToCompressedDataUrl(canvas, maxBytes = 520000) {
+        let quality = 0.9;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > maxBytes && quality > 0.45) {
+            quality -= 0.08;
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        return dataUrl;
+    }
+
+    async function processAspozhQrFile(file) {
+        const img = await loadImageFromFile(file);
+        const bounds = await detectQrBoundingBox(img);
+        const canvas = bounds
+            ? cropImageToBounds(img, bounds)
+            : drawImageToCanvas(img, 480).canvas;
+        return canvasToCompressedDataUrl(canvas);
+    }
+
+    function clearAspozhQrImage() {
+        userStorageRemove(ASPOZH_QR_STORAGE_KEY);
+        const input = document.getElementById('profileAspozhQrInput');
+        if (input) input.value = '';
+        closeAspozhQrModal();
+        refreshAspozhQrUi();
+    }
+
+    async function handleAspozhQrFileSelected(file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert('Выберите изображение (фото QR-кода).');
+            return;
+        }
+        const input = document.getElementById('profileAspozhQrInput');
+        try {
+            const dataUrl = await processAspozhQrFile(file);
+            userStorageSet(ASPOZH_QR_STORAGE_KEY, dataUrl);
+            refreshAspozhQrUi();
+        } catch (err) {
+            console.error('[aspozhQr]', err);
+            alert('Не удалось обработать изображение.');
+        } finally {
+            if (input) input.value = '';
+        }
+    }
+
+    function initAspozhQrBlock() {
+        refreshAspozhQrUi();
+        if (aspozhQrBlockInitialized) return;
+        aspozhQrBlockInitialized = true;
+
+        const input = document.getElementById('profileAspozhQrInput');
+        const clearBtn = document.getElementById('profileAspozhQrClear');
+        const replaceBtn = document.getElementById('profileAspozhQrReplaceBtn');
+        const expandBtn = document.getElementById('profileAspozhQrExpandBtn');
+        const fullscreenBtn = document.getElementById('profileAspozhQrFullscreenBtn');
+        const modal = document.getElementById('profileAspozhQrModal');
+        const modalClose = document.getElementById('profileAspozhQrModalClose');
+        const modalReplace = document.getElementById('profileAspozhQrModalReplace');
+
+        input?.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            handleAspozhQrFileSelected(file);
+        });
+
+        clearBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearAspozhQrImage();
+        });
+
+        replaceBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerAspozhQrFilePick();
+        });
+
+        modalReplace?.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAspozhQrModal();
+            triggerAspozhQrFilePick();
+        });
+
+        expandBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAspozhQrModal();
+        });
+
+        fullscreenBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAspozhQrModal();
+        });
+
+        modalClose?.addEventListener('click', closeAspozhQrModal);
+        modal?.addEventListener('click', (e) => {
+            if (e.target === modal) closeAspozhQrModal();
+        });
     }
 
     function updateProfileScreen() {
@@ -6047,6 +6446,7 @@
         if (scheduledHoursEl) scheduledHoursEl.textContent = formatScheduledHoursLine(totalHours);
 
         renderNearestShift();
+        initAspozhQrBlock();
         requestAnimationFrame(applyProfileTextFit);
     }
 

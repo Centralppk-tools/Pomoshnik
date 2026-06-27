@@ -21,4 +21,16 @@
     --font-lg: 17px;
     --font-xl: 19px;
     --font-2xl: 22px;
+
+    /* Стекло — плавающие панели */
+    --glass-bg: rgba(255, 255, 255, 0.07);
+    --glass-bg-strong: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --glass-border-soft: rgba(255, 255, 255, 0.08);
+    --glass-blur: saturate(180%) blur(22px);
+    --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    --glass-radius: 22px;
+    --glass-tabbar-width: min(52vw, 420px);
+    --glass-tabbar-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    --schedule-glass-width: min(590px, calc(100% - 24px));
 }
