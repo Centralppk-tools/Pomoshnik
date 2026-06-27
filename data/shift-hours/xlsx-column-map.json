@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "description": "Колонки печатной формы xlsx → сегменты → flat-row shiftDetails",
+  "source": {
+    "folder": "Часы смен/",
+    "note": "Папка в корне репозитория, не деплоится на GitHub Pages",
+    "sheet": "Sheet1",
+    "headerRow": 6,
+    "dataStartRow": 7,
+    "routeCellFilter": "^[ДН]\\d"
+  },
+  "parseOptions": {
+    "dataOnly": true,
+    "readOnly": false,
+    "reason": "read_only mode теряет merged cells — остаётся 2 колонки"
+  },
+  "segments": [
+    {
+      "id": "day",
+      "flatRouteFrom": "col1",
+      "columns": {
+        "route": 1,
+        "startPlace": 2,
+        "startTime": 3,
+        "trains": 4,
+        "endTime": 5,
+        "workHours": 6,
+        "lunch": 8,
+        "nightHours": 9,
+        "endPlace": 10
+      },
+      "emitFlatRow": true
+    },
+    {
+      "id": "night",
+      "flatRouteFrom": "col11",
+      "columns": {
+        "route": 11,
+        "startPlace": 12,
+        "startTime": 13,
+        "trains": 14,
+        "endTime": 15,
+        "workHours": 16,
+        "nightHours": 17,
+        "endPlace": 18,
+        "breakStart": 19,
+        "breakEnd": 20,
+        "morningRoute": 21
+      },
+      "lunchFromBreakEnd": true,
+      "emitFlatRow": true
+    },
+    {
+      "id": "morningCatalog",
+      "description": "Утренний маршрут каталога (61У, 58У…)",
+      "columns": {
+        "route": 22,
+        "startPlace": 23,
+        "startTime": 24,
+        "trains": 25,
+        "endTime": 26,
+        "workHours": 27,
+        "nightHours": 28,
+        "endPlace": 29,
+        "lunch": 8
+      },
+      "emitWhen": "col22 matches /^\\d+[УU]$/",
+      "emitFlatRow": true
+    },
+    {
+      "id": "nightTotals",
+      "description": "Итоги цепочки — в shiftDetails не экспортируем",
+      "columns": {
+        "shiftDurationNight": 30,
+        "nightHoursTotal": 31
+      },
+      "emitFlatRow": false
+    }
+  ]
+}

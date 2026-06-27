@@ -1,0 +1,607 @@
+/* ===== РАСПИСАНИЕ: Контейнер с вертикальной шкалой времени ===== */
+.timeline {
+    position: relative;
+    padding-left: 6px;
+    overflow: visible;
+    --km-marker-width: 44px;
+    --km-marker-gap: 10px;
+    --timeline-left: calc(6px + var(--km-marker-width) / 2);
+    --station-fill: #141b27;
+    --station-stroke: rgba(255, 255, 255, 0.05);
+    --station-brakes-fill: linear-gradient(135deg, #30291d, #171925);
+    --station-brakes-stroke: #47371b;
+    --station-brakes-badge-fill: #3d3018;
+    --station-brakes-badge-stroke: #5c4a28;
+    --station-brakes-badge-text: #fbbf24;
+    --station-active-stroke: #178038;
+    --station-active-glow: 0 0 12px #145a2e;
+}
+
+.timeline-line {
+    position: absolute;
+    left: var(--timeline-left);
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.station-node {
+    position: relative;
+    padding-left: calc(var(--km-marker-width) + var(--km-marker-gap));
+    margin-bottom: 14px;
+    width: 100%;
+    overflow: visible;
+}
+
+.station-card {
+    background: var(--station-fill);
+    border: 1px solid var(--station-stroke);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.station-card.has-brakes {
+    background: var(--station-brakes-fill);
+    border-color: var(--station-brakes-stroke);
+}
+
+@keyframes schedule-station-active-pulse {
+    0%, 100% {
+        border-color: rgba(23, 128, 56, 0.72);
+        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.28), 0 0 6px rgba(20, 90, 46, 0.32);
+    }
+    50% {
+        border-color: var(--station-active-stroke);
+        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.55), 0 0 14px rgba(20, 90, 46, 0.62);
+    }
+}
+
+.station-node.active .station-card {
+    border-color: var(--station-active-stroke);
+    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.35), 0 0 10px rgba(20, 90, 46, 0.45);
+    transition: none;
+    animation: schedule-station-active-pulse 1s ease-in-out infinite;
+}
+
+/* ===== РАСПИСАНИЕ: Верхняя строка карточки — название станции и время ===== */
+.card-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Название станции */
+.station-name {
+    font-size: clamp(14px, 3.8vw, 16px);
+    font-weight: 600;
+    color: #f4f7ff;
+    white-space: nowrap;
+    overflow: hidden;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Время остановки (вверху справа) */
+.time-badge {
+    color: #ffffff;
+    font-size: clamp(13px, 3.6vw, 18px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: transparent;
+    padding: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== РАСПИСАНИЕ: Нижняя строка карточки — пробы тормозов ===== */
+.card-row-bottom {
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    padding-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+/* Квадратик км/пикет — по высоте как карточка станции */
+.station-dot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--km-marker-width);
+    min-width: var(--km-marker-width);
+    min-height: 48px;
+    height: auto;
+    border-radius: 12px;
+    background: var(--station-fill);
+    border: 1px solid var(--station-stroke);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 8px 4px;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.station-dot::after {
+    content: attr(data-km);
+    color: #f4f7ff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.15;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.station-node.has-brakes .station-dot {
+    background: var(--station-brakes-fill);
+    border-color: rgba(245, 158, 11, 0.72);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45), inset 0 0 14px rgba(245, 158, 11, 0.28);
+}
+
+.station-node.has-brakes .station-dot::after {
+    color: #fbbf24;
+}
+
+@keyframes schedule-station-dot-active-pulse {
+    0%, 100% {
+        border-color: rgba(23, 128, 56, 0.72);
+        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.55), inset 0 0 8px rgba(23, 128, 56, 0.22);
+    }
+    50% {
+        border-color: var(--station-active-stroke);
+        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.95), inset 0 0 16px rgba(23, 128, 56, 0.48);
+    }
+}
+
+.station-node.active .station-dot {
+    border-color: var(--station-active-stroke);
+    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.85), inset 0 0 12px rgba(23, 128, 56, 0.38);
+    transition: none;
+    animation: schedule-station-dot-active-pulse 1s ease-in-out infinite;
+}
+
+@keyframes schedule-station-dot-brakes-active-pulse {
+    0%, 100% {
+        border-color: rgba(23, 128, 56, 0.72);
+        box-shadow:
+            inset 0 0 0 1px rgba(23, 128, 56, 0.55),
+            inset 0 0 8px rgba(23, 128, 56, 0.2),
+            inset 0 0 12px rgba(245, 158, 11, 0.14);
+    }
+    50% {
+        border-color: var(--station-active-stroke);
+        box-shadow:
+            inset 0 0 0 1px rgba(23, 128, 56, 0.95),
+            inset 0 0 16px rgba(23, 128, 56, 0.42),
+            inset 0 0 22px rgba(245, 158, 11, 0.28);
+    }
+}
+
+.station-node.active.has-brakes .station-dot {
+    border-color: var(--station-active-stroke);
+    box-shadow:
+        inset 0 0 0 1px rgba(23, 128, 56, 0.85),
+        inset 0 0 12px rgba(23, 128, 56, 0.34),
+        inset 0 0 18px rgba(245, 158, 11, 0.22);
+    animation: schedule-station-dot-brakes-active-pulse 1s ease-in-out infinite;
+}
+
+.station-node.active.has-brakes .station-dot::after {
+    color: #ffffff;
+}
+
+.station-node.pass-through .station-card {
+    background: rgba(20, 27, 39, 0.62);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.station-node.pass-through .station-name {
+    color: #8b97ab;
+    font-weight: 500;
+}
+
+.station-node.pass-through .time-badge {
+    color: #8b97ab;
+    font-weight: 600;
+}
+
+.station-node.pass-through .station-dot {
+    background: rgba(20, 27, 39, 0.62);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.station-node.pass-through .station-dot::after {
+    color: #6f7d92;
+}
+
+/* ===== РАСПИСАНИЕ: Индикатор загрузки ===== */
+.loader {
+    display: none; /* По умолчанию скрыт */
+    text-align: center; /* Выравнивание по центру */
+    color: #9db0cf; /* Серый цвет текста */
+    font-size: 14px; /* Размер шрифта */
+    margin: 16px 0; /* Отступы сверху и снизу */
+    position: relative; /* Базис для позиционирования */
+    height: 60px; /* Фиксированная высота */
+    align-items: center; /* Выравнивание по центру вертикали */
+    justify-content: center; /* Выравнивание по центру горизонтали */
+    flex-direction: column; /* Flex для вертикального расположения */
+    gap: 12px; /* Расстояние между элементами */
+}
+
+/* Анимирующееся колесо загрузки */
+.loader::before {
+    content: ''; /* Псевдоэлемент */
+    display: block; /* Блочный элемент */
+    box-sizing: border-box; /* Размер включает границу */
+    flex-shrink: 0; /* Не сжимается */
+    width: 24px; /* Диаметр */
+    height: 24px; /* Диаметр */
+    border: 3px solid rgba(23, 128, 56, 0.2); /* Приглушённая зелёная граница */
+    border-top-color: #178038; /* Ярко-зелёный верх — вращающаяся часть */
+    border-radius: 50%; /* Круглая форма */
+    animation: spin 0.8s linear infinite; /* Вращение */
+}
+
+/* Анимация вращения */
+@keyframes spin {
+    to { transform: rotate(360deg); } /* Полный оборот */
+}
+
+
+@media (max-width: 430px) {
+    .phone-screen {
+        min-height: auto;
+        padding: 20px 12px;
+    }
+
+    .tabs-nav {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tab-btn {
+        width: 100%;
+        border-radius: 14px;
+    }
+
+    .route-card {
+        padding: 0; /* Вычистили старый надувающий отступ */
+    }
+
+    .route-card-section {
+        padding: 6px 12px 6px 18px; /* Сделали экстремально узко по вертикали на мобилках */
+    }
+
+    .timeline {
+        --km-marker-width: 40px;
+        --km-marker-gap: 8px;
+        --timeline-left: calc(6px + var(--km-marker-width) / 2);
+    }
+}
+
+.main-screens-stage {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    overflow: hidden;
+    touch-action: pan-y pinch-zoom;
+}
+
+.main-screens-stage:not(.is-transitioning):not(.is-dragging) {
+    touch-action: pan-y pinch-zoom;
+}
+
+.main-screens-stage:has(#screen-schedule:not(.hidden)) {
+    overflow: visible;
+}
+
+.main-screens-stage.is-transitioning {
+    min-height: var(--main-stage-height, auto);
+    overflow: hidden;
+}
+
+.main-screens-stage.is-transitioning > .screen.screen-in-transition {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 640px;
+    will-change: transform, opacity;
+}
+
+.main-screens-stage.is-transitioning > .screen.slide-incoming {
+    z-index: 2;
+}
+
+.main-screens-stage.is-transitioning > .screen.slide-outgoing {
+    z-index: 1;
+}
+
+.main-screens-stage.is-dragging {
+    overflow: hidden;
+    touch-action: none;
+}
+
+.main-screens-stage.is-dragging:has(#screen-schedule.swipe-from) {
+    overflow: hidden;
+}
+
+.main-screens-stage.is-dragging > .screen.swipe-from {
+    z-index: 2;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: none !important;
+}
+
+.main-screens-stage.is-dragging.is-dragging--stacked {
+    min-height: var(--main-stage-height, auto);
+}
+
+.main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-from,
+.main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-neighbor {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 640px;
+    contain: layout style;
+}
+
+.main-screens-stage.is-dragging > .screen.swipe-neighbor {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 640px;
+    z-index: 1;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: none !important;
+    contain: layout style;
+}
+
+.main-screens-stage.is-dragging > .screen.swipe-from.swipe-snapping,
+.main-screens-stage.is-dragging > .screen.swipe-neighbor.swipe-snapping {
+    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.schedule-tabs-stage.is-dragging {
+    overflow: hidden;
+    touch-action: none;
+}
+
+.schedule-tabs-stage.is-dragging > .tab-content.swipe-from {
+    z-index: 2;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: none !important;
+}
+
+.schedule-tabs-stage.is-dragging.is-dragging--stacked {
+    min-height: var(--tabs-stage-height, auto);
+}
+
+.schedule-tabs-stage.is-dragging.is-dragging--stacked > .tab-content.swipe-from,
+.schedule-tabs-stage.is-dragging.is-dragging--stacked > .tab-content.swipe-neighbor {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    contain: layout style;
+}
+
+.schedule-tabs-stage.is-dragging > .tab-content.swipe-neighbor {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: none !important;
+    contain: layout style;
+}
+
+.schedule-tabs-stage.is-dragging > .tab-content.swipe-from.swipe-snapping,
+.schedule-tabs-stage.is-dragging > .tab-content.swipe-neighbor.swipe-snapping {
+    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.slide-incoming.slide-forward {
+    animation: slideInFromRight 0.26s var(--app-ease) forwards;
+}
+
+.slide-outgoing.slide-forward {
+    animation: slideOutToLeft 0.26s var(--app-ease) forwards;
+}
+
+.slide-incoming.slide-backward {
+    animation: slideInFromLeft 0.26s var(--app-ease) forwards;
+}
+
+.slide-outgoing.slide-backward {
+    animation: slideOutToRight 0.26s var(--app-ease) forwards;
+}
+
+.schedule-tabs-stage {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    touch-action: manipulation;
+}
+
+.schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {
+    touch-action: pan-y pinch-zoom;
+}
+
+.schedule-tabs-stage.is-transitioning {
+    min-height: var(--tabs-stage-height, auto);
+    overflow: hidden;
+}
+
+.schedule-tabs-stage.is-transitioning > .tab-content.tab-in-transition {
+    display: flex !important;
+    flex-direction: column;
+    gap: var(--app-gap);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    will-change: transform, opacity;
+}
+
+.schedule-tabs-stage.is-transitioning > .tab-content.tab-slide-incoming {
+    z-index: 2;
+}
+
+.schedule-tabs-stage.is-transitioning > .tab-content.tab-slide-outgoing {
+    z-index: 1;
+}
+
+.tab-slide-incoming.slide-forward {
+    animation: slideInFromRight 0.26s var(--app-ease) forwards;
+}
+
+.tab-slide-outgoing.slide-forward {
+    animation: slideOutToLeft 0.26s var(--app-ease) forwards;
+}
+
+.tab-slide-incoming.slide-backward {
+    animation: slideInFromLeft 0.26s var(--app-ease) forwards;
+}
+
+.tab-slide-outgoing.slide-backward {
+    animation: slideOutToRight 0.26s var(--app-ease) forwards;
+}
+
+.screen {
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    opacity: 1;
+}
+.screen.hidden { display: none !important; }
+.screen.screen-fade { opacity: 0; }
+
+body {
+    padding-bottom: 68px;
+}
+
+body.auth-locked {
+    padding-bottom: 0;
+}
+
+.bottom-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2000;
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: rgba(10, 16, 24, 0.94);
+    border-top: 1px solid var(--app-border);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.bottom-tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 5px 4px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #4e5d74;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 0.22s var(--app-ease), background 0.22s var(--app-ease), transform 0.12s ease, box-shadow 0.22s ease;
+}
+
+.bottom-tab-btn:active {
+    transform: scale(0.96);
+}
+
+.bottom-tab-btn .tab-icon {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.22s var(--app-ease);
+}
+
+.bottom-tab-btn .tab-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.22s ease;
+}
+
+.bottom-tab-btn.active {
+    color: var(--app-green);
+    background: rgba(23, 128, 56, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.22), 0 0 12px var(--app-green-glow);
+}
+
+.bottom-tab-btn.active .tab-icon {
+    transform: translateY(-1px);
+}
+
+.bottom-tab-btn.active .tab-icon svg {
+    stroke: var(--app-green);
+}
+
+button:active,
+.action-btn:active,
+.tab-btn:active,
+.calendar-nav-btn:active,
+.user-auth-btn:active,
+.user-auth-back:active,
+.shift-constructor-btn:active,
+.profile-logout-btn:active {
+    transform: scale(0.98);
+}
+
