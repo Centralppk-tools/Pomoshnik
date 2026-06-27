@@ -323,7 +323,7 @@ fix: профиль split 2+1 (финансы и часы сверху, QR сн�
 - Снимок стилей: Version/snapshots/styles 2.3.8/.
 
 2.3.9 STABLE ★
-Коммиты: e900324 (fix QR на телефоне)
+Коммиты: e900324 (fix QR на телефоне), 947c18b (release v2.3.9)
 
 Основное:
 fix: загрузка QR АСПОЖ на телефоне — createImageBitmap, HEIC, поворот EXIF
