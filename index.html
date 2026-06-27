@@ -310,7 +310,7 @@
                         <button type="button" class="profile-qr-action-btn profile-qr-action-btn--muted" id="profileAspozhQrClear">Удалить</button>
                     </div>
                 </div>
-                <input type="file" id="profileAspozhQrInput" class="profile-qr-input" accept="image/*" hidden>
+                <input type="file" id="profileAspozhQrInput" class="profile-qr-input" accept="image/jpeg,image/png,image/webp,image/*" capture="environment" hidden>
             </div>
         </div>
         <div class="profile-card profile-card--nearest">
@@ -6127,18 +6127,72 @@
         document.getElementById('profileAspozhQrInput')?.click();
     }
 
-    function loadImageFromFile(file) {
+    function isImageFile(file) {
+        if (!file) return false;
+        if (file.type && file.type.startsWith('image/')) return true;
+        return /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name || '');
+    }
+
+    function getAspozhQrDetectMaxSide() {
+        const mobile = window.matchMedia('(max-width: 768px), (hover: none) and (pointer: coarse)').matches;
+        return mobile ? 540 : 720;
+    }
+
+    function loadImageFromFileViaReader(file, maxLoadSide) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
                 const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('image'));
+                img.onload = () => {
+                    if (Math.max(img.width, img.height) > maxLoadSide) {
+                        resolve(drawImageToCanvas(img, maxLoadSide).canvas);
+                    } else {
+                        resolve(img);
+                    }
+                };
+                img.onerror = () => reject(new Error('image-decode'));
                 img.src = reader.result;
             };
             reader.onerror = () => reject(new Error('read'));
             reader.readAsDataURL(file);
         });
+    }
+
+    async function loadImageFromFile(file) {
+        const maxLoadSide = 2048;
+
+        if (typeof createImageBitmap === 'function') {
+            const bitmapOptions = { imageOrientation: 'from-image' };
+            try {
+                try {
+                    return await createImageBitmap(file, {
+                        ...bitmapOptions,
+                        resizeWidth: maxLoadSide,
+                        resizeHeight: maxLoadSide,
+                        resizeQuality: 'high'
+                    });
+                } catch (_) {
+                    return await createImageBitmap(file, bitmapOptions);
+                }
+            } catch (err) {
+                console.warn('[aspozhQr] createImageBitmap:', err);
+            }
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        try {
+            const viaUrl = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('image-decode'));
+                img.src = objectUrl;
+            });
+            return drawImageToCanvas(viaUrl, maxLoadSide).canvas;
+        } catch (_) {
+            return loadImageFromFileViaReader(file, maxLoadSide);
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
     }
 
     function drawImageToCanvas(img, maxSide) {
@@ -6256,7 +6310,7 @@
     }
 
     async function detectQrBoundingBox(img) {
-        const detect = drawImageToCanvas(img, 720);
+        const detect = drawImageToCanvas(img, getAspozhQrDetectMaxSide());
         if (typeof BarcodeDetector !== 'undefined') {
             try {
                 const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -6321,11 +6375,27 @@
 
     async function processAspozhQrFile(file) {
         const img = await loadImageFromFile(file);
-        const bounds = await detectQrBoundingBox(img);
-        const canvas = bounds
-            ? cropImageToBounds(img, bounds)
-            : drawImageToCanvas(img, 480).canvas;
-        return canvasToCompressedDataUrl(canvas);
+        try {
+            const bounds = await detectQrBoundingBox(img);
+            const canvas = bounds
+                ? cropImageToBounds(img, bounds)
+                : drawImageToCanvas(img, 480).canvas;
+            return canvasToCompressedDataUrl(canvas);
+        } catch (err) {
+            console.warn('[aspozhQr] crop fallback:', err);
+            return canvasToCompressedDataUrl(drawImageToCanvas(img, 480).canvas);
+        }
+    }
+
+    function aspozhQrErrorMessage(err) {
+        const code = String(err?.message || '');
+        if (code === 'image-decode' || code === 'read') {
+            return 'Фото в этом формате не открывается. Сделайте снимок камерой или выберите JPEG/PNG из галереи.';
+        }
+        if (code === 'quota' || err?.name === 'QuotaExceededError') {
+            return 'Не хватает места в памяти браузера. Удалите старое фото QR или очистите данные сайта.';
+        }
+        return 'Не удалось обработать изображение. Попробуйте другое фото или снимок камерой.';
     }
 
     function clearAspozhQrImage() {
@@ -6338,18 +6408,25 @@
 
     async function handleAspozhQrFileSelected(file) {
         if (!file) return;
-        if (!file.type.startsWith('image/')) {
+        if (!isImageFile(file)) {
             alert('Выберите изображение (фото QR-кода).');
             return;
         }
         const input = document.getElementById('profileAspozhQrInput');
         try {
             const dataUrl = await processAspozhQrFile(file);
-            userStorageSet(ASPOZH_QR_STORAGE_KEY, dataUrl);
+            try {
+                userStorageSet(ASPOZH_QR_STORAGE_KEY, dataUrl);
+            } catch (storageErr) {
+                if (storageErr?.name === 'QuotaExceededError') {
+                    throw Object.assign(new Error('quota'), { name: 'QuotaExceededError' });
+                }
+                throw storageErr;
+            }
             refreshAspozhQrUi();
         } catch (err) {
             console.error('[aspozhQr]', err);
-            alert('Не удалось обработать изображение.');
+            alert(aspozhQrErrorMessage(err));
         } finally {
             if (input) input.value = '';
         }
