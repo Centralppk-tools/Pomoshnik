@@ -257,3 +257,25 @@ fix: залипание is-dragging / transform на mainScreensStage после
 - shouldReserveEdgeSwipeForScroll — центр таймлайна для скролла, края экрана для свайпа.
 - Service Worker: cppk_v2_3_5.
 - Снимок: Version/snapshots/index 2.3.5.html.
+
+2.3.6 STABLE ★
+Основное:
+feat: кэш ниток поездов в localStorage — без повторного запроса к API до нажатия «Обновить»
+feat: кнопка «Обновить» и ссылка «Очистить смену»; precache spr.json и trains-local.json в SW
+feat: trains-local.json — резерв по UID нитки Яндекса (6002/6007, 7000-я серия, пн-пт)
+fix: поиск поезда — пагинация расписания, Пушкино, thread API при отсутствии рейса в суточном графике
+fix: Н60 + 61У — утро подставляется по дню недели ночной смены (Сб → 6804/6809, не 6002/6007 с Вс)
+fix: загрузка spr.json с нескольких путей для локального сервера
+
+Приятные доработки (Плюшки):
+4. feat: плашка «Не ходит в выбранный день» для будничных поездов в выходные
+5. feat: маркер пн-пт в шаблонах смен и локальной базе поездов
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- trainThreadsCache по номеру поезда; invalidateTrainCachesForNumbers при «Обновить».
+- findTrainInSchedules: Ярославский + Пушкино; fetchTrainByThreadUid из trains-local.json.
+- getMorningTrainsTextForNightShift: findShiftTemplate(morningRoute, dateKey) — тот же день, что ночь.
+- Service Worker: cppk_v2_3_6.
+- Снимок: Version/snapshots/index 2.3.6.html.
