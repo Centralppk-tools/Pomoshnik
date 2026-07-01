@@ -344,3 +344,25 @@ fix: запасное сохранение без обрезки QR, если д
 - Service Worker: cppk_v2_3_9.
 - Снимок HTML: Version/snapshots/index 2.3.9.html.
 - Снимок стилей: Version/snapshots/styles 2.3.9/.
+
+2.3.10 STABLE ★
+
+Основное:
+feat: календарь — гибрид: Google-таблица + локальные быстрые маршруты (calendar-local-routes.json)
+feat: Д99/Н99/У99/ТО/И — кнопки в конструкторе, без привязки к шаблонам Google
+feat: Н99 → У99 на следующий день; виртуальное утро без двойного начисления часов
+fix: renderRouteComboboxListIfOpen — синтаксическая ошибка ломала весь JS и вход
+
+Приятные доработки (Плюшки):
+4. ui: компактные chip-кнопки маршрутов 99/ТО/И в glass-панели календаря
+5. feat: «И» — единственный маршрут с ручным выбором часов
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app/data/calendar-local-routes.json: пресеты Д99 (11ч), Н99 (11, night 6, У99), У99, ТО (8), И (editable).
+- calendarAddShift: local preset → applyLocalPresetToCalendar; иначе findShiftTemplate (Google).
+- getShiftPartHours: isVirtualMorning → 0 (часы на ночной записи).
+- Service Worker: cppk_v2_3_10, precache calendar-local-routes.json.
+- Снимок HTML: Version/snapshots/index 2.3.10.html.
+- Снимок стилей: Version/snapshots/styles 2.3.10/.
