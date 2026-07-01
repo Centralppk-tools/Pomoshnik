@@ -346,6 +346,7 @@ fix: запасное сохранение без обрезки QR, если д
 - Снимок стилей: Version/snapshots/styles 2.3.9/.
 
 2.3.10 STABLE ★
+Коммиты: 1b4981f (release v2.3.10)
 
 Основное:
 feat: календарь — гибрид: Google-таблица + локальные быстрые маршруты (calendar-local-routes.json)
