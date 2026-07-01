@@ -1,0 +1,383 @@
+/* === Mobile: Profile, Calendar, Schedule & Warnings === */
+@media (max-width: 480px) {
+    #screen-calendar,
+    #screen-profile {
+        --font-xs: 11px;
+        --font-sm: 12px;
+        --font-base: 14px;
+        --font-md: 15px;
+        --font-lg: 16px;
+        --font-xl: 17px;
+        --app-gap: 10px;
+    }
+
+    #screen-calendar .phone-screen,
+    #screen-profile .phone-screen {
+        padding: 16px 14px;
+    }
+
+    #screen-calendar .calendar-grid {
+        gap: 2px;
+        padding: 8px 6px;
+    }
+
+    #screen-calendar .weekday {
+        font-size: 10px;
+        font-weight: 500;
+        padding-bottom: 0;
+    }
+
+    #screen-calendar .day {
+        padding: 2px 1px;
+        aspect-ratio: 1 / 1.12;
+        border-radius: 6px;
+    }
+
+    #screen-calendar .day:has(.day-route) .day-number {
+        flex-basis: 46%;
+        max-height: 46%;
+    }
+
+    #screen-calendar .day:has(.day-route) .day-number,
+    #screen-calendar .day:has(.day-route) .day-route {
+        font-size: clamp(9px, 20cqi, 11px);
+    }
+
+    #screen-calendar .day-route {
+        flex-basis: 54%;
+        padding-bottom: 2px;
+    }
+
+    #screen-calendar .day.selected {
+        transform: none;
+        z-index: 1;
+    }
+
+    #screen-calendar .day:active {
+        transform: scale(0.97);
+    }
+
+    #screen-calendar .day.today:not([class*="has-"]) {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    #screen-calendar #monthTitle {
+        font-size: var(--font-md);
+    }
+
+    #screen-calendar .calendar-legend {
+        gap: 10px;
+        font-size: 10px;
+    }
+
+    #screen-calendar .shift-constructor {
+        padding: 12px;
+    }
+
+    #screen-calendar .calendar-local-route-btn {
+        min-height: 30px;
+        padding: 4px 4px;
+        font-size: 12px;
+    }
+
+    #screen-profile .profile-card {
+        padding: 12px 14px;
+    }
+
+    #screen-profile .profile-card--split {
+        gap: 8px;
+        padding: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #screen-profile .profile-mini-block--qr {
+        grid-column: 1 / -1;
+        padding: 8px 10px 10px;
+    }
+
+    #screen-profile .profile-mini-block--stats {
+        min-height: 118px;
+        padding: 8px 6px;
+    }
+
+    #screen-profile .profile-stat-hero {
+        min-height: 56px;
+    }
+
+    #screen-profile .profile-stat-hero-value,
+    #screen-profile #profileEarnedSalary {
+        font-size: clamp(10px, 3.2vw, 15px);
+    }
+
+    #screen-profile .profile-hours-ring--compact {
+        width: 58px;
+        height: 58px;
+    }
+
+    #screen-profile .profile-hours-ring--compact #profileHoursValue {
+        font-size: clamp(10px, 3vw, 14px);
+    }
+
+    #screen-profile .profile-hours-ring--compact #profileHoursNorm {
+        font-size: 8px;
+    }
+
+    #screen-profile .profile-stat-row {
+        font-size: clamp(8px, 2.4vw, 11px);
+        gap: 3px;
+    }
+
+    #screen-profile .profile-stat-row dd {
+        font-size: inherit;
+    }
+
+    #screen-profile .profile-scheduled-line {
+        font-size: clamp(8px, 2.3vw, 11px);
+    }
+
+    #screen-profile .profile-qr-upload--empty {
+        min-height: 56px;
+        padding: 8px 10px;
+    }
+
+    #screen-profile .profile-qr-frame {
+        max-width: 168px;
+        min-height: 108px;
+        padding: 10px;
+    }
+
+    #screen-profile .profile-qr-preview {
+        max-height: 112px;
+    }
+
+    #screen-profile .profile-qr-action-btn {
+        padding: 7px 8px;
+        font-size: clamp(9px, 2.4vw, 11px);
+    }
+
+    #screen-profile .profile-mini-block {
+        padding: 12px 10px;
+        min-height: 0;
+    }
+
+    #screen-profile .nearest-shift-route {
+        font-size: var(--font-sm);
+    }
+
+    #screen-profile .nearest-shift-date {
+        font-size: 10px;
+        font-weight: 400;
+    }
+
+    #screen-profile .trains-chip-panel--capsule .train-num-chip {
+        padding: 3px 6px;
+        font-size: 9px;
+    }
+
+    /* Расписание */
+    #screen-schedule .phone-screen {
+        padding: 12px 12px 16px;
+    }
+
+    .schedule-glass-stack {
+        width: calc(100% - 4px);
+        top: 4px;
+        margin-bottom: 10px;
+    }
+
+    #tab-schedule {
+        --schedule-pad-x: 14px;
+    }
+
+    .tab-btn {
+        padding: 9px 8px;
+        min-height: 38px;
+        font-size: 12px;
+    }
+
+    :root {
+        --glass-tabbar-width: min(72vw, 380px);
+        --glass-tabbar-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .bottom-tab-btn {
+        min-height: 44px;
+        padding: 7px 4px;
+    }
+
+    .schedule-route-card-middle {
+        min-height: 36px;
+    }
+
+    .schedule-route-card .route-card-section {
+        padding: 4px 10px 4px 16px;
+    }
+
+    .schedule-route-card-footer .schedule-date-hint {
+        font-size: 10px;
+    }
+
+    .schedule-route-card .route-card-title {
+        font-size: clamp(12px, 3.4vw, 14px);
+    }
+
+    .schedule-route-card .route-card-subtitle {
+        font-size: 10px;
+        gap: 6px;
+    }
+
+    .schedule-route-time {
+        font-size: clamp(16px, 4.2vw, 20px);
+    }
+
+    .timeline.schedule-results-wrap {
+        --km-marker-width: 36px;
+        --km-marker-gap: 6px;
+        --timeline-left: calc(4px + var(--km-marker-width) / 2);
+        padding-left: 4px;
+    }
+
+    .station-node {
+        margin-bottom: 10px;
+    }
+
+    .station-card {
+        padding: 10px 12px;
+        gap: 8px;
+        border-radius: 10px;
+    }
+
+    .station-dot {
+        min-height: 44px;
+        padding: 6px 3px;
+        border-radius: 10px;
+    }
+
+    .station-dot::after {
+        font-size: 11px;
+    }
+
+    .card-row-bottom {
+        padding-top: 6px;
+        gap: 6px;
+    }
+
+    .route-brake-box {
+        padding: 3px 7px;
+        border-radius: 5px;
+    }
+
+    .route-brake-text {
+        font-size: 10px;
+        font-weight: 500;
+    }
+
+    .route-tags-container {
+        gap: 5px;
+    }
+
+    /* Предупреждения ДУ-61 */
+    .shift-warnings-modal.shift-confirm-overlay {
+        padding: 12px 14px;
+        align-items: center;
+    }
+
+    .shift-warnings-box {
+        max-width: none;
+        padding: 14px 12px;
+        border-radius: 12px;
+    }
+
+    .shift-warnings-title {
+        font-size: 15px;
+    }
+
+    .shift-warnings-header {
+        margin-bottom: 10px;
+        gap: 8px;
+    }
+
+    .shift-warnings-close {
+        width: 28px;
+        height: 28px;
+        font-size: 20px;
+    }
+
+    .shift-warnings-table {
+        --warn-grid-cols: minmax(0, 0.68fr) minmax(0, 0.68fr) minmax(0, 0.82fr) minmax(0, 1.55fr);
+        margin-bottom: 10px;
+    }
+
+    .shift-warnings-columns--4,
+    .shift-warnings-row--4 {
+        column-gap: 4px;
+        min-width: 300px;
+    }
+
+    .shift-warnings-columns {
+        font-size: 10px;
+        gap: 4px;
+    }
+
+    .shift-warnings-scroll {
+        max-height: min(52vh, 220px);
+    }
+
+    .shift-warnings-grid {
+        gap: 6px;
+        padding-right: 4px;
+    }
+
+    .shift-warnings-input {
+        padding: 5px 3px;
+        font-size: 16px;
+        border-radius: 7px;
+    }
+
+    .warn-dir-control {
+        gap: 3px;
+    }
+
+    .warn-dir-label {
+        font-size: 9px;
+    }
+
+    .warn-dir-switch {
+        width: 32px;
+        height: 18px;
+    }
+
+    .warn-dir-switch-slider::before {
+        height: 12px;
+        width: 12px;
+        left: 3px;
+        bottom: 3px;
+    }
+
+    .warn-dir-switch-input:checked + .warn-dir-switch-slider::before {
+        transform: translateX(14px);
+    }
+
+    .shift-warnings-save {
+        padding: 11px 12px;
+        font-size: 14px;
+    }
+
+    .shift-warnings-trigger {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .shift-warnings-trigger-title {
+        font-size: 14px;
+    }
+
+    .shift-warnings-trigger-hint {
+        font-size: 11px;
+    }
+
+    .shift-warnings-trigger-arrow {
+        font-size: 16px;
+    }
+}
+

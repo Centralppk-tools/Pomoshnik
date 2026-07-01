@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "description": "Классификация маршрутов для findShiftTemplate",
+  "kinds": {
+    "day": {
+      "prefix": ["Д", "D"],
+      "example": "Д60",
+      "flatExport": true
+    },
+    "night": {
+      "prefix": ["Н", "N"],
+      "example": "Н60",
+      "requiredFields": ["morningRoute"],
+      "flatExport": true
+    },
+    "morning": {
+      "suffix": ["У", "U"],
+      "example": "61У",
+      "flatExport": true,
+      "usedBy": ["getMorningTrainsTextForNightShift", "buildTrainsNavigationPayload"]
+    }
+  },
+  "matchingRule": {
+    "description": "Номер без Н/Д/У должен совпадать, но kind (день/ночь/утро) тоже проверяется",
+    "stripChars": "НУДNU",
+    "example": "findShiftTemplate(..., '61У', ...) не матчит route='Д61'"
+  },
+  "morningRouteLink": {
+    "xlsxColumn": 21,
+    "header": "№ марш. утром",
+    "description": "Ссылка на утренний маршрут в каталоге (61У, 58У…)"
+  },
+  "morningTrainsSource": {
+    "description": "Поезда для morningRoute — flat-строка route=61У (col 22=61У, col 25=trains в xlsx)",
+    "notForNavigation": {
+      "description": "Блок col 22=60У (7843-6600-6611) — норматив времени, не для train navigation"
+    }
+  }
+}

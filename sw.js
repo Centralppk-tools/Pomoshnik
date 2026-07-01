@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.9 STABLE)
-const CACHE_VERSION = 'cppk_v2_3_9';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.10 STABLE)
+const CACHE_VERSION = 'cppk_v2_3_10';
 const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -17,6 +17,7 @@ const PRECACHE_ASSETS = [
     './spr.json',
     './trains-local.json',
     './data/shift-templates.json',
+    './data/calendar-local-routes.json',
     './assets/cppk-logo.png',
     './assets/cppk-train.png'
 ];
