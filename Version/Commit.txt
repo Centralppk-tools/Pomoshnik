@@ -369,7 +369,7 @@ fix: renderRouteComboboxListIfOpen — синтаксическая ошибка
 - Снимок стилей: Version/snapshots/styles 2.3.10/.
 
 2.3.12 STABLE ★
-Коммиты: c711441 (release v2.3.12)
+Коммиты: cf63cf6 (release v2.3.12)
 
 Основное:
 feat: календарь — две смены в день (У + добавить Н), горизонтальный split в ячейке
