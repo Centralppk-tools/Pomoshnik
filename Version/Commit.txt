@@ -391,3 +391,26 @@ feat: мобильная адаптация календаря и констру
 - Service Worker: cppk_v2_3_12.
 - Снимок HTML: Version/snapshots/index 2.3.12.html.
 - Снимок стилей: Version/snapshots/styles 2.3.12/.
+
+2.3.13 STABLE ★
+
+Основное:
+feat: календарь — редизайн ячеек: day-number отдельно, chip-плашки (маршрут + время)
+feat: две смены в день — две горизонтальные плашки без вертикального split
+feat: главный экран при входе — календарь; оверлей «Что нового» из release-notes.json
+feat: футер Telegram в разделах (community.css), прекэш в Service Worker
+fix: дубль let activeServiceWorkerRegistration ломал весь JS и вход
+fix: читаемость ячеек — убрано сжатие flex, ellipsis и aspect-ratio на днях со сменами
+
+Приятные доработки (Плюшки):
+4. ui: пастельные подложки chip-блоков, контрастный текст, единые отступы
+5. ui: строка растёт по контенту (grid-auto-rows: auto), min-height для двойных смен
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- renderDayShiftChipHtml, renderDayCellContent; классы day-shift-chip, day--multi.
+- showAppReleaseOverlay, loadReleaseNotes, markAppVersionSeen.
+- Service Worker: cppk_v2_3_13, precache release-notes.json и community.css.
+- Снимок HTML: Version/snapshots/index 2.3.13.html.
+- Снимок стилей: Version/snapshots/styles 2.3.13/.
