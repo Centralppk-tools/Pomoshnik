@@ -357,6 +357,9 @@
     const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbyb9CYhosCuBgoA-Otddo31VQoL0oAICUUKAxE2J3qdtVzzjQBc2sRxpYuqjYC0ZyIP/exec';
     const DEPOT_SHIFTS_KEY = 'depotShifts';
     const DEPOT_TEMPLATES_KEY = 'depotShiftTemplates';
+    const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache';
+    const REFERENCE_TRAINS_STORAGE_KEY = 'cppk_trains_local_cache';
+    const CALENDAR_LOCAL_ROUTES_STORAGE_KEY = 'cppk_calendar_local_routes';
     const DEPOT_RAW_SHIFTS_KEY = 'depotRawShifts';
     const DEPOT_DATA_VERSION_KEY = 'depotDataVersion';
     const DEPOT_FIO_KEY = 'depotFio';
@@ -447,7 +450,53 @@
 
     function hasLocalDepotCache() {
         const templates = parseJSON(localStorage.getItem(DEPOT_TEMPLATES_KEY), []) || [];
-        return Array.isArray(templates) && templates.length > 0 && Boolean(getStoredDepotDataVersion());
+        return Array.isArray(templates) && templates.length > 0;
+    }
+
+    function hasLocalUserData(tabNumber) {
+        const tab = normalizeTabNumber(tabNumber);
+        if (!tab) return false;
+        if (hasLocalDepotCache()) return true;
+        const shiftsRaw = localStorage.getItem(userShiftsStorageKey(tab));
+        if (!shiftsRaw) return false;
+        const shifts = parseJSON(shiftsRaw, null);
+        return shifts && typeof shifts === 'object' && Object.keys(shifts).length > 0;
+    }
+
+    function isAppOffline() {
+        return typeof navigator !== 'undefined' && navigator.onLine === false;
+    }
+
+    function persistReferenceJsonCache(storageKey, data) {
+        if (!storageKey || data == null) return;
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        } catch (err) {
+            console.warn('[offline-cache] не удалось сохранить', storageKey, err);
+        }
+    }
+
+    function loadReferenceJsonCache(storageKey) {
+        if (!storageKey) return null;
+        const raw = localStorage.getItem(storageKey);
+        if (raw == null) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (err) {
+            console.warn('[offline-cache] повреждён кэш', storageKey, err);
+            return null;
+        }
+    }
+
+    function syncOfflineModeUi() {
+        document.body.classList.toggle('app-offline', isAppOffline());
+    }
+
+    function notifyOfflineModeIfNeeded() {
+        if (!isAppOffline()) return;
+        if (typeof showToast === 'function') {
+            showToast('Автономный режим — данные из памяти устройства');
+        }
     }
 
     function getCurrentUserTab() {
@@ -658,6 +707,13 @@
         initUserAuth();
         initSwipeNavigation();
         initServiceWorker();
+
+        syncOfflineModeUi();
+        window.addEventListener('online', syncOfflineModeUi);
+        window.addEventListener('offline', () => {
+            syncOfflineModeUi();
+            notifyOfflineModeIfNeeded();
+        });
 
         let mobileTextFitTimer = null;
         const scheduleMobileTextFit = () => {
@@ -950,13 +1006,13 @@
         return migrated;
     }
 
-    async function fetchJsonAsset(paths) {
+    async function fetchJsonAsset(paths, storageKey = null) {
         const candidates = Array.isArray(paths) ? paths : [paths];
         let lastError = null;
 
         for (const path of candidates) {
             try {
-                const res = await fetch(path, { cache: 'no-cache' });
+                const res = await fetch(path);
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${path}`);
                     continue;
@@ -966,10 +1022,18 @@
                     lastError = new Error(`Файл пуст: ${path}`);
                     continue;
                 }
-                return JSON.parse(text);
+                const parsed = JSON.parse(text);
+                persistReferenceJsonCache(storageKey, parsed);
+                return parsed;
             } catch (err) {
                 lastError = err;
             }
+        }
+
+        const cached = loadReferenceJsonCache(storageKey);
+        if (cached) {
+            console.warn('[offline-cache] JSON из localStorage:', storageKey || candidates[0]);
+            return cached;
         }
 
         throw lastError || new Error('Не удалось загрузить JSON');
@@ -980,25 +1044,37 @@
         const trainPaths = ['./trains-local.json', 'trains-local.json', 'app/trains-local.json'];
 
         try {
-            sprDataCache = await fetchJsonAsset(basePaths);
+            sprDataCache = await fetchJsonAsset(basePaths, REFERENCE_SPR_STORAGE_KEY);
             console.log('Справочник успешно загружен:', sprDataCache);
         } catch (err) {
-            if (window.location.protocol === 'file:') {
+            const cachedSpr = loadReferenceJsonCache(REFERENCE_SPR_STORAGE_KEY);
+            if (cachedSpr) {
+                sprDataCache = cachedSpr;
+                console.warn('Справочник из автономного кэша (spr.json недоступен)');
+            } else if (window.location.protocol === 'file:') {
                 alert('Не удалось загрузить spr.json. Открой приложение через локальный сервер: npm run serve (http://127.0.0.1:8765/)');
+                throw err;
             } else if (err?.name === 'SyntaxError') {
                 alert('Файл spr.json содержит ошибку (невалидный JSON). Проверь и сохрани файл (Ctrl+S).');
+                throw err;
             } else {
-                alert('Не удалось загрузить spr.json. Проверь, что файл есть в папке app и перезагрузи страницу.');
+                alert('Не удалось загрузить spr.json. Нужен интернет для первого входа или перезагрузите после работы онлайн.');
+                throw err;
             }
-            throw err;
         }
 
         try {
-            localTrainsCache = await fetchJsonAsset(trainPaths);
+            localTrainsCache = await fetchJsonAsset(trainPaths, REFERENCE_TRAINS_STORAGE_KEY);
             console.log('Локальная база поездов загружена:', localTrainsCache?.trains?.length || 0);
         } catch (err) {
-            console.warn('Локальная база поездов недоступна:', err);
-            localTrainsCache = null;
+            const cachedTrains = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY);
+            if (cachedTrains) {
+                localTrainsCache = cachedTrains;
+                console.warn('Локальная база поездов из автономного кэша');
+            } else {
+                console.warn('Локальная база поездов недоступна:', err);
+                localTrainsCache = null;
+            }
         }
     }
 
@@ -4297,6 +4373,21 @@
 
         const silent = Boolean(options.silent);
         const mergeGraph = Boolean(options.mergeGraph);
+        loadGlobalShiftTemplates({ forceStorage: true });
+
+        if (isAppOffline()) {
+            if (isValidGlobalTemplateCache(depotShiftTemplates)) {
+                depotTemplatesLoadState = 'ready';
+                if (!silent) notifyOfflineModeIfNeeded();
+                return true;
+            }
+            depotTemplatesLoadState = 'error';
+            if (!silent && typeof showToast === 'function') {
+                showToast('Нет интернета и нет сохранённых шаблонов смен');
+            }
+            return false;
+        }
+
         if (!silent && typeof showGlobalLoader === 'function') showGlobalLoader();
 
         try {
@@ -4376,12 +4467,16 @@
             return true;
         } catch (err) {
             console.error('Критическая ошибка синхронизации данных:', err);
-            depotTemplatesLoadState = 'error';
+            loadGlobalShiftTemplates({ forceStorage: true });
+            const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+            depotTemplatesLoadState = hasCache ? 'ready' : 'error';
             renderRouteComboboxListIfOpen();
             if (!silent && typeof showToast === 'function') {
-                showToast('Не удалось обновить шаблоны смен с сервера');
+                showToast(hasCache
+                    ? 'Сервер недоступен — используются сохранённые шаблоны'
+                    : 'Не удалось обновить шаблоны смен с сервера');
             }
-            return false;
+            return hasCache;
         } finally {
             if (!silent && typeof hideGlobalLoader === 'function') hideGlobalLoader();
         }
@@ -4420,12 +4515,20 @@
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
         loadUserShifts();
+        loadGlobalShiftTemplates({ forceStorage: true });
+        if (isValidGlobalTemplateCache(depotShiftTemplates)) {
+            depotTemplatesLoadState = 'ready';
+        }
         updateProfileScreen();
         startDepotVersionMonitor();
-        if (options.fromLogin) {
-            void runGraphSyncForCurrentMonth();
+        if (!isAppOffline()) {
+            if (options.fromLogin) {
+                void runGraphSyncForCurrentMonth();
+            } else {
+                void runGraphSyncIfMonthStart();
+            }
         } else {
-            void runGraphSyncIfMonthStart();
+            notifyOfflineModeIfNeeded();
         }
         switchMainScreen('schedule');
     }
@@ -4456,12 +4559,24 @@
 
         setAuthButtonsLoading(true);
         try {
-            if (isNewUser || !hasLocalDepotCache()) {
+            const canOffline = hasLocalUserData(tabNumber);
+            if (isNewUser && isAppOffline()) {
+                setAuthError('authErrorLogin', 'Первый вход возможен только при наличии интернета.');
+                return;
+            }
+
+            const needsServerSync = isNewUser || (!hasLocalDepotCache() && !canOffline);
+            if (needsServerSync) {
                 const synced = await syncEmployeeFromApi(tabNumber, { mergeGraph: true });
-                if (!synced) {
+                if (!synced && !canOffline) {
                     setAuthError('authErrorLogin', 'Не удалось загрузить данные с сервера. Проверьте интернет или табельный номер.');
                     return;
                 }
+                if (!synced && canOffline) {
+                    notifyOfflineModeIfNeeded();
+                }
+            } else if (isAppOffline()) {
+                notifyOfflineModeIfNeeded();
             }
 
             if (isNewUser) {
@@ -4552,12 +4667,14 @@
 
         calendarLocalRoutesPromise = (async () => {
             try {
-                const res = await fetch('./data/calendar-local-routes.json', { cache: 'no-cache' });
+                const res = await fetch('./data/calendar-local-routes.json');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 calendarLocalRoutesData = await res.json();
+                persistReferenceJsonCache(CALENDAR_LOCAL_ROUTES_STORAGE_KEY, calendarLocalRoutesData);
             } catch (err) {
                 console.warn('[calendarLocalRoutes]', err);
-                calendarLocalRoutesData = CALENDAR_LOCAL_ROUTES_FALLBACK;
+                calendarLocalRoutesData = loadReferenceJsonCache(CALENDAR_LOCAL_ROUTES_STORAGE_KEY)
+                    || CALENDAR_LOCAL_ROUTES_FALLBACK;
             }
             return calendarLocalRoutesData;
         })();
@@ -4735,14 +4852,16 @@
 
         depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true, mergeGraph: false })
             .then((ok) => {
-                depotTemplatesLoadState = isValidGlobalTemplateCache(depotShiftTemplates)
-                    ? 'ready'
-                    : (ok ? 'ready' : 'error');
-                return isValidGlobalTemplateCache(depotShiftTemplates);
+                loadGlobalShiftTemplates({ forceStorage: true });
+                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+                depotTemplatesLoadState = hasCache ? 'ready' : (ok ? 'ready' : 'error');
+                return hasCache;
             })
             .catch(() => {
-                depotTemplatesLoadState = 'error';
-                return false;
+                loadGlobalShiftTemplates({ forceStorage: true });
+                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+                depotTemplatesLoadState = hasCache ? 'ready' : 'error';
+                return hasCache;
             })
             .finally(() => {
                 depotTemplatesSyncPromise = null;
@@ -4811,6 +4930,7 @@
     async function runGraphSyncForCurrentMonth() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
 
         const ok = await syncEmployeeFromApi(tab, { silent: true, mergeGraph: true });
         if (ok) {
@@ -4822,6 +4942,7 @@
     async function runGraphSyncIfMonthStart() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
         if (new Date().getDate() !== 1) return false;
 
         const monthKey = getCurrentMonthSyncKey();
@@ -4835,6 +4956,7 @@
     async function runDailyDepotPing() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
 
         const todayKey = getTodayDateKey();
         if (localStorage.getItem(userDailyCheckStorageKey(tab)) === todayKey) {
