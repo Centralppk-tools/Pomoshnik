@@ -27,100 +27,71 @@
     }
 
     #screen-calendar .calendar-grid {
-        gap: 2px;
-        padding: 6px 4px;
+        gap: 3px;
+        padding: 8px 6px;
+        border-radius: 12px;
     }
 
     #screen-calendar .weekday {
-        font-size: 10px;
-        font-weight: 500;
-        padding-bottom: 0;
+        font-size: 9px;
+        padding-bottom: 2px;
     }
 
     #screen-calendar .day {
-        aspect-ratio: 1;
+        padding: 4px;
         border-radius: 8px;
-        min-height: 0;
+        min-height: 38px;
+    }
+
+    #screen-calendar .day--has-shift {
+        min-height: 48px;
+    }
+
+    #screen-calendar .day--multi {
+        min-height: 64px;
     }
 
     #screen-calendar .day-number {
-        font-size: clamp(11px, 30cqi, 13px);
-        font-weight: 500;
+        font-size: 12px;
+        padding: 0 1px 3px;
     }
 
-    #screen-calendar .day-shift-card,
-    #screen-calendar .day-shift-slot {
-        border-radius: 8px;
-        padding: 9% 2px 7%;
+    #screen-calendar .day-shifts {
+        gap: 2px;
     }
 
-    #screen-calendar .day-shift-top {
-        flex-basis: 22%;
-        padding-top: 3%;
+    #screen-calendar .day-shift-chip {
+        padding: 2px 4px;
+        border-radius: 6px;
     }
 
-    #screen-calendar .day-shift-badge {
-        width: clamp(16px, 22cqi, 22px);
-        height: clamp(16px, 22cqi, 22px);
-        line-height: clamp(16px, 22cqi, 22px);
-        font-size: clamp(9px, 16cqi, 11px);
-        font-weight: 600;
-        border-radius: 4px;
-    }
-
-    #screen-calendar .day-shift-route {
-        font-size: clamp(10px, 24cqi, 13px);
-        gap: 0.12em;
-    }
-
-    #screen-calendar .day-shift-route[data-route-len="5"],
-    #screen-calendar .day-shift-route[data-route-len="6"] {
-        font-size: clamp(9px, 21cqi, 12px);
-    }
-
-    #screen-calendar .day-shift-route[data-route-len="7"],
-    #screen-calendar .day-shift-route[data-route-len="8"] {
-        font-size: clamp(8px, 19cqi, 11px);
+    #screen-calendar .day-shift-label {
+        font-size: 11px;
+        line-height: 1.25;
     }
 
     #screen-calendar .day-shift-time {
-        font-size: clamp(9px, 20cqi, 11px);
-        font-weight: 500;
+        font-size: 10px;
+        line-height: 1.2;
     }
 
-    #screen-calendar .day-shift-divider {
-        margin: 7% -2px 6%;
-        width: calc(100% + 4px);
-        border-top-color: rgba(255, 255, 255, 0.22);
+    #screen-calendar .day--multi .day-shift-chip {
+        padding: 2px 3px;
     }
 
-    #screen-calendar .day--split-h .day-shift-slot {
-        padding: 8% 1px 6%;
+    #screen-calendar .day--multi .day-shift-label {
+        font-size: 10px;
+        line-height: 1.2;
     }
 
-    #screen-calendar .day--split-h .day-shift-top {
-        flex-basis: 20%;
+    #screen-calendar .day--multi .day-shift-time {
+        font-size: 9px;
+        line-height: 1.2;
     }
 
-    #screen-calendar .day--split-h .day-shift-badge {
-        width: clamp(14px, 20cqi, 18px);
-        height: clamp(14px, 20cqi, 18px);
-        line-height: clamp(14px, 20cqi, 18px);
-        font-size: clamp(8px, 14cqi, 10px);
-    }
-
-    #screen-calendar .day--split-h .day-shift-route {
-        font-size: clamp(8px, 20cqi, 10px);
-        gap: 0.08em;
-    }
-
-    #screen-calendar .day--split-h .day-shift-time {
-        font-size: clamp(7px, 16cqi, 9px);
-    }
-
-    #screen-calendar .day--split-h .day-shift-divider {
-        margin: 6% -1px 5%;
-        width: calc(100% + 2px);
+    #screen-calendar .day.today::before,
+    #screen-calendar .day.selected::before {
+        border-radius: 9px;
     }
 
     #screen-calendar .day.selected {
@@ -132,13 +103,8 @@
         transform: scale(0.97);
     }
 
-    #screen-calendar .day.today:not(.day--has-shift):not(.day--split-h) {
-        background: rgba(255, 255, 255, 0.04);
-    }
-
-    #screen-calendar .day.today::before,
-    #screen-calendar .day.selected::before {
-        border-radius: 8px;
+    #screen-calendar .day.today:not(.day--has-shift) {
+        background: rgba(255, 255, 255, 0.05);
     }
 
     #screen-calendar #monthTitle {

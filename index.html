@@ -18,12 +18,24 @@
     <link rel="stylesheet" href="styles/profile.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="styles/auth.css">
+    <link rel="stylesheet" href="styles/community.css">
 </head>
 <body class="auth-locked">
 
 <div id="appUpdateToast" class="appUpdateToast" role="status" aria-live="polite" hidden>
     <p class="appUpdateToastText">Доступна новая версия приложения.</p>
     <button type="button" class="appUpdateToastBtn" id="appUpdateToastBtn">Обновить</button>
+</div>
+
+<div id="appReleaseOverlay" class="app-release-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="appReleaseTitle">
+    <div class="app-release-box">
+        <p class="app-release-kicker">Обновление установлено</p>
+        <h2 id="appReleaseTitle" class="app-release-title">Что нового</h2>
+        <p class="app-release-version" id="appReleaseVersion"></p>
+        <ul class="app-release-list" id="appReleaseList"></ul>
+        <p class="app-release-telegram" id="appReleaseTelegram"></p>
+        <button type="button" class="app-release-btn" id="appReleaseDismissBtn">Понятно, спасибо</button>
+    </div>
 </div>
 
 <div id="screen-auth" class="screen user-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="userAuthTitle">
@@ -48,13 +60,13 @@
 </div>
 
 <nav class="bottom-tabbar" aria-label="Главная навигация">
-    <button type="button" class="bottom-tab-btn" data-screen="calendar" onclick="switchMainScreenAnimated('calendar')">
+    <button type="button" class="bottom-tab-btn active" data-screen="calendar" onclick="switchMainScreenAnimated('calendar')">
         <span class="tab-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
         </span>
         <span>Календарь</span>
     </button>
-    <button type="button" class="bottom-tab-btn active" data-screen="schedule" onclick="switchMainScreenAnimated('schedule')">
+    <button type="button" class="bottom-tab-btn" data-screen="schedule" onclick="switchMainScreenAnimated('schedule')">
         <span class="tab-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h10M4 18h6"/><circle cx="19" cy="17" r="3"/></svg>
         </span>
@@ -70,7 +82,7 @@
 
 <div id="mainScreensStage" class="main-screens-stage">
 
-<div id="screen-schedule" class="screen">
+<div id="screen-schedule" class="screen hidden">
 
 <div class="phone-screen">
     <div class="schedule-glass-stack" id="scheduleGlassStack">
@@ -151,6 +163,8 @@
 
     </div>
 
+    <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
+
     <div id="shiftResetConfirm" class="shift-confirm-overlay" aria-hidden="true" role="alertdialog" aria-labelledby="shiftConfirmText" aria-modal="true">
         <div class="shift-confirm-box">
             <p id="shiftConfirmText" class="shift-confirm-text">Очистить все данные текущей смены?</p>
@@ -185,7 +199,7 @@
 
 </div>
 
-<div id="screen-calendar" class="screen hidden">
+<div id="screen-calendar" class="screen">
     <div class="phone-screen calendar-app-wrap">
         <div class="app-brand-strip">
             <img src="assets/cppk-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
@@ -213,6 +227,8 @@
                 <p class="shift-constructor-hint">Выберите день, быстрый маршрут из справочника или номер из таблицы.</p>
             </div>
         </div>
+
+        <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
     </div>
 </div>
 
@@ -320,6 +336,8 @@
             </div>
         </div>
 
+        <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
+
         <div class="profile-footer">
             <button type="button" class="profile-logout-btn" onclick="handleLogout()">Выйти</button>
         </div>
@@ -368,6 +386,9 @@
     const DEPOT_DAILY_PING_INTERVAL_MS = 24 * 60 * 60 * 1000;
     const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
     const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
+    const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
+    const APP_RELEASE_VERSION = '2.3.13';
+    const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
 
@@ -707,6 +728,7 @@
         initUserAuth();
         initSwipeNavigation();
         initServiceWorker();
+        void initReleaseNotesUi();
 
         syncOfflineModeUi();
         window.addEventListener('online', syncOfflineModeUi);
@@ -2385,10 +2407,12 @@
 
     function getActiveMainScreen() {
         const calendarEl = document.getElementById('screen-calendar');
+        const scheduleEl = document.getElementById('screen-schedule');
         const profileEl = document.getElementById('screen-profile');
         if (calendarEl && !calendarEl.classList.contains('hidden')) return 'calendar';
+        if (scheduleEl && !scheduleEl.classList.contains('hidden')) return 'schedule';
         if (profileEl && !profileEl.classList.contains('hidden')) return 'profile';
-        return 'schedule';
+        return 'calendar';
     }
 
     function getActiveScheduleTab() {
@@ -3077,7 +3101,8 @@
             animate = false,
             direction = null,
             deferTabbar = false,
-            afterTransition = null
+            afterTransition = null,
+            forceEffects = false
         } = options;
 
         const screens = {
@@ -3090,6 +3115,7 @@
         const fromScreen = getActiveMainScreen();
         if (fromScreen === screen) {
             if (typeof afterTransition === 'function') afterTransition();
+            if (options.forceEffects) runScreenSideEffects(screen);
             return true;
         }
 
@@ -3259,6 +3285,149 @@
 
     let activeServiceWorkerRegistration = null;
     let serviceWorkerReloadPending = false;
+    let releaseNotesCache = null;
+    let releaseNotesLoadPromise = null;
+
+    const RELEASE_NOTES_FALLBACK = {
+        version: APP_RELEASE_VERSION,
+        title: 'Что нового',
+        tags: [
+            'Календарь открывается сразу при входе',
+            'Утро и ночь можно поставить в один день',
+            'После ночной смены утро на следующий день ставится само',
+            'В ячейке видно маршрут и часы работы',
+            'Удобнее на телефоне'
+        ],
+        highlights: [
+            'Главный экран — календарь смен.',
+            'Два выхода в один день: утро и ночь в одной ячейке.',
+            'Сводка по смене с маршрутом, временем, поездами и часами.',
+            'Группа в Telegram — все новости и обновления.'
+        ],
+        telegramUrl: APP_TELEGRAM_URL,
+        telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
+    };
+
+    async function loadReleaseNotes() {
+        if (releaseNotesCache) return releaseNotesCache;
+        if (releaseNotesLoadPromise) return releaseNotesLoadPromise;
+
+        releaseNotesLoadPromise = (async () => {
+            try {
+                const res = await fetch('./data/release-notes.json', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(String(res.status));
+                const data = await res.json();
+                releaseNotesCache = {
+                    ...RELEASE_NOTES_FALLBACK,
+                    ...data,
+                    tags: Array.isArray(data.tags) && data.tags.length ? data.tags : RELEASE_NOTES_FALLBACK.tags,
+                    highlights: Array.isArray(data.highlights) && data.highlights.length ? data.highlights : RELEASE_NOTES_FALLBACK.highlights
+                };
+            } catch (err) {
+                console.warn('[ЦППК] release-notes.json недоступен, используем встроенный список:', err);
+                releaseNotesCache = { ...RELEASE_NOTES_FALLBACK };
+            }
+            return releaseNotesCache;
+        })();
+
+        return releaseNotesLoadPromise;
+    }
+
+    function renderAppCommunityFooterHtml(notes) {
+        const tags = (notes.tags || []).slice(0, 8);
+        const tagsHtml = tags.map(tag => `<span class="app-release-tag">${escapeHtml(tag)}</span>`).join('');
+        const tgUrl = notes.telegramUrl || APP_TELEGRAM_URL;
+        const tgHint = notes.telegramHint || RELEASE_NOTES_FALLBACK.telegramHint;
+
+        return `
+            <section class="app-community-block">
+                <div class="app-community-tags" aria-label="Что нового в последней версии">${tagsHtml}</div>
+                <p class="app-community-text">
+                    ${escapeHtml(tgHint)} —
+                    <a class="app-community-link" href="${escapeAttr(tgUrl)}" target="_blank" rel="noopener noreferrer">@pomoshnikcppk</a>
+                </p>
+            </section>
+        `;
+    }
+
+    function mountAppCommunityFooters(notes) {
+        document.querySelectorAll('[data-app-footer]').forEach(node => {
+            node.innerHTML = renderAppCommunityFooterHtml(notes);
+        });
+    }
+
+    function markAppVersionSeen(version = APP_RELEASE_VERSION) {
+        localStorage.setItem(APP_LAST_SEEN_VERSION_KEY, version);
+    }
+
+    function showAppReleaseOverlay(notes) {
+        const overlay = document.getElementById('appReleaseOverlay');
+        const titleEl = document.getElementById('appReleaseTitle');
+        const versionEl = document.getElementById('appReleaseVersion');
+        const listEl = document.getElementById('appReleaseList');
+        const tgEl = document.getElementById('appReleaseTelegram');
+        if (!overlay || !listEl) return;
+
+        if (titleEl) titleEl.textContent = notes.title || 'Что нового';
+        if (versionEl) versionEl.textContent = `Версия ${notes.version || APP_RELEASE_VERSION}`;
+        listEl.innerHTML = (notes.highlights || notes.tags || []).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+
+        const tgUrl = notes.telegramUrl || APP_TELEGRAM_URL;
+        const tgHint = notes.telegramHint || RELEASE_NOTES_FALLBACK.telegramHint;
+        if (tgEl) {
+            tgEl.innerHTML = `${escapeHtml(tgHint)} — <a class="app-community-link" href="${escapeAttr(tgUrl)}" target="_blank" rel="noopener noreferrer">Telegram @pomoshnikcppk</a>`;
+        }
+
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('release-overlay-open');
+    }
+
+    function hideAppReleaseOverlay(markSeen = true) {
+        const overlay = document.getElementById('appReleaseOverlay');
+        if (!overlay) return;
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('release-overlay-open');
+        if (markSeen) markAppVersionSeen();
+    }
+
+    async function maybeShowReleaseNotesOverlay() {
+        if (document.body.classList.contains('auth-locked')) return;
+
+        const notes = await loadReleaseNotes();
+        mountAppCommunityFooters(notes);
+
+        const lastSeen = localStorage.getItem(APP_LAST_SEEN_VERSION_KEY);
+        if (!lastSeen) {
+            markAppVersionSeen();
+            return;
+        }
+        if (lastSeen === APP_RELEASE_VERSION) return;
+
+        showAppReleaseOverlay({ ...notes, version: APP_RELEASE_VERSION });
+    }
+
+    let releaseNotesUiBound = false;
+
+    function bindReleaseNotesUi() {
+        if (releaseNotesUiBound) return;
+        releaseNotesUiBound = true;
+
+        document.getElementById('appReleaseDismissBtn')?.addEventListener('click', () => {
+            hideAppReleaseOverlay(true);
+        });
+
+        document.getElementById('appReleaseOverlay')?.addEventListener('click', (e) => {
+            if (e.target.id === 'appReleaseOverlay') hideAppReleaseOverlay(true);
+        });
+    }
+
+    async function initReleaseNotesUi() {
+        bindReleaseNotesUi();
+        mountAppCommunityFooters(RELEASE_NOTES_FALLBACK);
+        await maybeShowReleaseNotesOverlay();
+    }
 
     function showAppUpdateToast(registration) {
         activeServiceWorkerRegistration = registration;
@@ -4530,7 +4699,8 @@
         } else {
             notifyOfflineModeIfNeeded();
         }
-        switchMainScreen('schedule');
+        switchMainScreen('calendar', { forceEffects: true });
+        void maybeShowReleaseNotesOverlay();
     }
 
     function migrateAuthSession() {
@@ -6064,36 +6234,28 @@
         return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-num">${escapeHtml(parts.num)}</span></span>`;
     }
 
-    function getShiftBadgeDay(dateKey, shift, calendarDay) {
-        if (!isNightRoute(shift?.route)) return calendarDay;
-        const linkedKey = shift.linkedMorningDateKey || calendarKeyAddDays(dateKey, 1);
-        if (!linkedKey) return calendarDay;
-        return parseInt(linkedKey.split('.')[0], 10) || calendarDay;
-    }
-
-    function renderDayShiftCardHtml(shift, dateKey, badgeDay, inSplit = false) {
+    function renderDayShiftChipHtml(shift, dateKey) {
         const routeDisplay = String(shift.route || '').trim();
         const skipRouteText = ['выходной', 'в', 'отпуск', 'о'];
         if (!routeDisplay || skipRouteText.includes(routeDisplay.toLowerCase())) return '';
 
         const colorClasses = getShiftColorClass(shift).split(/\s+/).filter(Boolean).join(' ');
-        const routeHtml = renderCalendarRouteLabelHtml(routeDisplay);
+        const label = formatCalendarShiftLabel(routeDisplay);
         const workTime = getShiftWorkTimeDisplay(shift, dateKey);
         const timeHtml = workTime && workTime !== '—'
             ? `<span class="day-shift-time">${escapeHtml(workTime)}</span>`
-            : '<span class="day-shift-time day-shift-time--empty" aria-hidden="true">0:00</span>';
-        const slotClass = inSplit ? 'day-shift-slot' : 'day-shift-card';
+            : '';
 
-        return `<div class="${slotClass} ${colorClasses}">
-            <div class="day-shift-top">
-                <span class="day-shift-badge">${escapeHtml(String(badgeDay))}</span>
-            </div>
-            <div class="day-shift-main">
-                ${routeHtml}
-                <span class="day-shift-divider" aria-hidden="true"></span>
-                ${timeHtml}
-            </div>
+        return `<div class="day-shift-chip ${colorClasses}">
+            <span class="day-shift-label">${escapeHtml(label)}</span>
+            ${timeHtml}
         </div>`;
+    }
+
+    function renderDayCellContent(dayNum, shifts, dateKey) {
+        const sorted = sortDayShiftsForDisplay(shifts);
+        const chips = sorted.map(shift => renderDayShiftChipHtml(shift, dateKey)).join('');
+        return `<span class="day-number">${dayNum}</span><div class="day-shifts">${chips}</div>`;
     }
 
     function buildUnifiedShiftSummaryRows(shift, dateKey, context = {}) {
@@ -6339,15 +6501,10 @@
 
             if (shifts.length === 0) {
                 div.innerHTML = `<span class="day-number">${d}</span>`;
-            } else if (shifts.length === 1) {
+            } else {
                 div.classList.add('day--has-shift');
-                div.innerHTML = renderDayShiftCardHtml(shifts[0], dateKey, d, false);
-            } else if (shifts.length >= 2) {
-                div.classList.add('day--split-h');
-                const sortedShifts = sortDayShiftsForDisplay(shifts);
-                div.innerHTML = `<div class="day-shifts-split">${sortedShifts.map(shift =>
-                    renderDayShiftCardHtml(shift, dateKey, getShiftBadgeDay(dateKey, shift, d), true)
-                ).join('')}</div>`;
+                if (shifts.length >= 2) div.classList.add('day--multi');
+                div.innerHTML = renderDayCellContent(d, shifts, dateKey);
             }
             grid.appendChild(div);
         }
