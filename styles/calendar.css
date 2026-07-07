@@ -178,11 +178,12 @@
 #screen-calendar .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 4px;
+    grid-auto-rows: 1fr;
+    gap: 3px;
     width: 100%;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    padding: 10px;
+    padding: 8px;
     border-radius: var(--app-radius);
     box-sizing: border-box;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -198,87 +199,281 @@
 }
 
 #screen-calendar .day {
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 3px 2px;
-    min-height: 0;
-    aspect-ratio: 1 / 1.08;
+    align-items: stretch;
+    justify-content: stretch;
     width: 100%;
-    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1;
+    padding: 0;
+    border-radius: 12px;
     box-sizing: border-box;
-    font-size: var(--font-sm);
-    border-radius: 8px;
-    position: relative;
     cursor: pointer;
     overflow: hidden;
+    background: transparent;
     container-type: inline-size;
-    transition: transform 0.15s var(--app-ease), box-shadow 0.15s ease, background 0.15s ease;
+    transition: transform 0.15s var(--app-ease);
 }
 
-#screen-calendar .day:not(:has(.day-route)) {
+#screen-calendar .day-shift-card,
+#screen-calendar .day-shift-slot {
+    container-type: normal;
+}
+
+#screen-calendar .day:not(.day--has-shift):not(.day--split-h) {
+    align-items: center;
     justify-content: center;
 }
 
 #screen-calendar .day:active {
-    transform: scale(0.94);
-}
-
-#screen-calendar .day:has(.day-route) {
-    justify-content: flex-start;
-    gap: 0;
+    transform: scale(0.96);
 }
 
 #screen-calendar .day-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
     font-weight: 600;
-    font-size: var(--font-sm);
+    font-size: clamp(12px, 34cqi, 15px);
     line-height: 1;
+    color: var(--text-main);
     position: relative;
     z-index: 2;
 }
 
-#screen-calendar .day:has(.day-route) .day-number {
-    flex: 0 0 48%;
+#screen-calendar .day--has-shift,
+#screen-calendar .day--split-h {
+    padding: 0;
+}
+
+#screen-calendar .day--has-shift .day-shift-card,
+#screen-calendar .day--split-h .day-shifts-split {
+    flex: 1 1 auto;
     width: 100%;
-    max-height: 48%;
-}
-
-#screen-calendar .day:has(.day-route) .day-number,
-#screen-calendar .day:has(.day-route) .day-route {
-    font-size: clamp(10px, 22cqi, var(--font-sm));
-    font-weight: 600;
-    line-height: 1;
-}
-
-#screen-calendar .day-route {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1 1 52%;
+    height: 100%;
     min-height: 0;
+}
+
+#screen-calendar .day-shift-card,
+#screen-calendar .day-shift-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
-    max-width: 100%;
-    margin-top: 0;
-    padding: 0 1px 1px;
+    height: 100%;
+    min-height: 0;
+    padding: 7% 5% 6%;
     box-sizing: border-box;
+    overflow: hidden;
+    border-radius: 12px;
+    color: #fff;
+    position: relative;
+    z-index: 2;
+}
+
+#screen-calendar .day-shift-top {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex: 0 0 26%;
+    min-height: 0;
+    padding-top: 2%;
+    box-sizing: border-box;
+}
+
+#screen-calendar .day-shift-main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+}
+
+#screen-calendar .day-shift-badge {
+    display: block;
+    flex-shrink: 0;
+    width: clamp(20px, 24cqi, 28px);
+    height: clamp(20px, 24cqi, 28px);
+    line-height: clamp(20px, 24cqi, 28px);
+    border-radius: 5px;
+    background: rgba(6, 12, 28, 0.34);
+    color: #fff;
+    font-size: clamp(10px, 18cqi, 13px);
+    font-weight: 600;
     text-align: center;
-    word-break: normal;
-    overflow-wrap: normal;
-    color: #ffffff;
-    opacity: 0.95;
+    padding: 0;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums lining-nums;
+}
+
+#screen-calendar .day-shift-route {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.22em;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0 1px;
+    box-sizing: border-box;
+    font-size: clamp(11px, 26cqi, 16px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+#screen-calendar .day-shift-route[data-route-len="5"],
+#screen-calendar .day-shift-route[data-route-len="6"] {
+    font-size: clamp(11px, 26cqi, 15px);
+}
+
+#screen-calendar .day-shift-route[data-route-len="7"],
+#screen-calendar .day-shift-route[data-route-len="8"] {
+    font-size: clamp(10px, 22cqi, 14px);
+}
+
+#screen-calendar .day-shift-route-kind,
+#screen-calendar .day-shift-route-num {
+    display: inline-block;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+#screen-calendar .day-shift-route-kind {
+    flex: 0 0 auto;
+}
+
+#screen-calendar .day-shift-route-num {
+    flex: 0 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    position: relative;
-    z-index: 2;
 }
 
-#screen-calendar .day.today:not([class*="has-"]) {
+#screen-calendar .day-shift-divider {
+    display: block;
+    align-self: stretch;
+    width: calc(100% + 10%);
+    margin: 8% -5% 7%;
+    height: 0;
+    border: 0;
+    border-top: 1px dashed rgba(255, 255, 255, 0.24);
+}
+
+#screen-calendar .day-shift-time {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(10px, 24cqi, 14px);
+    font-weight: 500;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#screen-calendar .day-shift-time--empty {
+    visibility: hidden;
+}
+
+#screen-calendar .day--split-h .day-shifts-split {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#screen-calendar .day--split-h .day-shift-slot {
+    flex: 1 1 50%;
+    width: 50%;
+    min-width: 0;
+    border-radius: 0;
+    padding: 7% 4% 6%;
+}
+
+#screen-calendar .day--split-h .day-shift-slot + .day-shift-slot {
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+#screen-calendar .day--split-h .day-shift-top {
+    flex-basis: 24%;
+}
+
+#screen-calendar .day--split-h .day-shift-badge {
+    width: clamp(18px, 22cqi, 24px);
+    height: clamp(18px, 22cqi, 24px);
+    line-height: clamp(18px, 22cqi, 24px);
+    font-size: clamp(9px, 16cqi, 11px);
+}
+
+#screen-calendar .day--split-h .day-shift-route {
+    font-size: clamp(9px, 22cqi, 12px);
+}
+
+#screen-calendar .day--split-h .day-shift-route[data-route-len="5"],
+#screen-calendar .day--split-h .day-shift-route[data-route-len="6"],
+#screen-calendar .day--split-h .day-shift-route[data-route-len="7"],
+#screen-calendar .day--split-h .day-shift-route[data-route-len="8"] {
+    font-size: clamp(8px, 20cqi, 11px);
+}
+
+#screen-calendar .day--split-h .day-shift-time {
+    font-size: clamp(8px, 18cqi, 11px);
+}
+
+#screen-calendar .day--split-h .day-shift-divider {
+    margin: 7% -4% 6%;
+    width: calc(100% + 8%);
+}
+
+/* Цвета карточек — плоские, как в референсе */
+#screen-calendar .day-shift-card.has-day-shift,
+#screen-calendar .day-shift-slot.has-day-shift {
+    background: var(--day-shift);
+}
+
+#screen-calendar .day-shift-card.has-night-shift,
+#screen-calendar .day-shift-slot.has-night-shift {
+    background: var(--night-shift);
+}
+
+#screen-calendar .day-shift-card.has-study-shift,
+#screen-calendar .day-shift-slot.has-study-shift {
+    background: var(--study-shift);
+}
+
+#screen-calendar .day-shift-card.has-vacation-shift,
+#screen-calendar .day-shift-slot.has-vacation-shift {
+    background: var(--vacation-shift);
+}
+
+#screen-calendar .day-shift-card.has-tech-shift,
+#screen-calendar .day-shift-slot.has-tech-shift {
+    background: var(--tech-shift);
+}
+
+#screen-calendar .day-shift-card.has-route99-day,
+#screen-calendar .day-shift-slot.has-route99-day {
+    background: #787f8c;
+}
+
+#screen-calendar .day-shift-card.has-route99-night,
+#screen-calendar .day-shift-slot.has-route99-night {
+    background: #5f6d82;
+}
+
+#screen-calendar .day-shift-card.has-route99-morning,
+#screen-calendar .day-shift-slot.has-route99-morning {
+    background: #6d777d;
+}
+
+#screen-calendar .day.today:not(.day--has-shift):not(.day--split-h) {
     background: rgba(255, 255, 255, 0.04);
 }
 
@@ -286,61 +481,29 @@
 #screen-calendar .day.selected::before {
     content: '';
     position: absolute;
-    inset: 2px;
-    border-radius: 6px;
+    inset: 0;
+    border-radius: 12px;
     pointer-events: none;
-    z-index: 1;
+    z-index: 4;
     box-sizing: border-box;
 }
 
-#screen-calendar .day.today::before {
-    border: 2px solid rgba(255, 255, 255, 0.42);
+#screen-calendar .day.today:not(.selected)::before {
+    border: 2px solid rgba(255, 255, 255, 0.38);
 }
 
-#screen-calendar .day.today[class*="has-"]::before {
-    border-color: rgba(255, 255, 255, 0.72);
+#screen-calendar .day.today.day--has-shift:not(.selected)::before,
+#screen-calendar .day.today.day--split-h:not(.selected)::before {
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 #screen-calendar .day.selected::before {
-    inset: 1px;
-    border: 2px solid var(--app-green);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
-}
-
-#screen-calendar .day.today.selected::before {
-    border-color: var(--app-green);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    box-shadow: none;
 }
 
 #screen-calendar .day.other-month { color: #3a4558; }
-#screen-calendar .day.has-day-shift {
-    background: linear-gradient(145deg, #1a9a48, var(--day-shift));
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(23, 128, 56, 0.35);
-}
-#screen-calendar .day.has-night-shift {
-    background: linear-gradient(145deg, #3d8fef, var(--night-shift));
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(47, 128, 237, 0.35);
-}
-#screen-calendar .day.has-study-shift { background-color: var(--study-shift); color: #fff; }
-#screen-calendar .day.has-vacation-shift { background-color: var(--vacation-shift); color: #fff; }
-#screen-calendar .day.has-tech-shift { background-color: var(--tech-shift); color: #fff; }
-#screen-calendar .day.has-route99-day {
-    background: linear-gradient(145deg, #a8adb8, #787f8c);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(120, 127, 140, 0.35);
-}
-#screen-calendar .day.has-route99-night {
-    background: linear-gradient(145deg, #8f9bb0, #5f6d82);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(95, 109, 130, 0.35);
-}
-#screen-calendar .day.has-route99-morning {
-    background: linear-gradient(145deg, #9aa3a8, #6d777d);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(109, 119, 125, 0.35);
-}
+
 #screen-calendar .day.selected {
     transform: none;
     z-index: 2;
@@ -419,10 +582,25 @@
     border: 1px solid rgba(255, 69, 58, 0.28);
     color: #ff7b7b;
     box-shadow: none;
+}
+
+#screen-calendar .shift-constructor-btn--danger:hover {
+    background: rgba(255, 69, 58, 0.2);
+    border-color: rgba(255, 69, 58, 0.42);
+    color: #ff9494;
+}
+
+#screen-calendar .shift-constructor-btn--danger:active {
+    background: rgba(255, 69, 58, 0.32);
+    border-color: rgba(255, 69, 58, 0.55);
+    color: #ffb4b4;
+}
+
+#screen-calendar .shift-constructor-btn--danger:not(.shift-constructor-btn--compact) {
     margin-top: var(--app-gap);
 }
 
-#screen-calendar .shift-constructor--has-summary .shift-constructor-btn--danger {
+#screen-calendar .shift-constructor--has-summary .shift-constructor-btn--danger:not(.shift-constructor-btn--compact) {
     width: 100%;
 }
 

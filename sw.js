@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.10 STABLE)
-const CACHE_VERSION = 'cppk_v2_3_10';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.12 STABLE)
+const CACHE_VERSION = 'cppk_v2_3_12';
 const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -39,8 +39,51 @@ async function precacheAssets(cache) {
     );
 }
 
-async function networkFirst(request) {
+async function matchNavigationFallback(cache) {
+    return cache.match('./index.html')
+        || cache.match('index.html')
+        || cache.match('./')
+        || cache.match('/');
+}
+
+async function matchCachedRequest(cache, request) {
+    const direct = await cache.match(request);
+    if (direct) return direct;
+
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const fileName = path.split('/').pop() || '';
+
+    if (fileName) {
+        const byName = await cache.match(`./${fileName}`) || await cache.match(fileName);
+        if (byName) return byName;
+    }
+
+    if (request.mode === 'navigate' || path.endsWith('/')) {
+        return matchNavigationFallback(cache);
+    }
+
+    return null;
+}
+
+function revalidateInBackground(cache, request) {
+    fetch(request)
+        .then((response) => {
+            if (response && response.ok) {
+                cache.put(request, response.clone());
+            }
+        })
+        .catch(() => {});
+}
+
+async function cacheFirst(request) {
     const cache = await caches.open(CACHE_NAME);
+    const cached = await matchCachedRequest(cache, request);
+
+    if (cached) {
+        revalidateInBackground(cache, request);
+        return cached;
+    }
 
     try {
         const response = await fetch(request);
@@ -49,16 +92,8 @@ async function networkFirst(request) {
         }
         return response;
     } catch (err) {
-        const cached = await cache.match(request);
-        if (cached) return cached;
-
-        if (request.mode === 'navigate') {
-            const fallback = await cache.match('./index.html')
-                || await cache.match('index.html')
-                || await cache.match('./');
-            if (fallback) return fallback;
-        }
-
+        const fallback = await matchCachedRequest(cache, request);
+        if (fallback) return fallback;
         throw err;
     }
 }
@@ -67,6 +102,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => precacheAssets(cache))
+            .then(() => self.skipWaiting())
             .catch((err) => console.warn('[sw] прекэш отклонён из-за отсутствия файлов:', err))
     );
 });
@@ -95,6 +131,6 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return;
 
     if (request.mode === 'navigate' || isPrecachePath(url.pathname)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(cacheFirst(request));
     }
 });

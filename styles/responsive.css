@@ -16,9 +16,19 @@
         padding: 16px 14px;
     }
 
+    #screen-calendar .calendar-header {
+        margin-bottom: 4px;
+    }
+
+    #screen-calendar .calendar-nav-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
     #screen-calendar .calendar-grid {
         gap: 2px;
-        padding: 8px 6px;
+        padding: 6px 4px;
     }
 
     #screen-calendar .weekday {
@@ -28,24 +38,89 @@
     }
 
     #screen-calendar .day {
-        padding: 2px 1px;
-        aspect-ratio: 1 / 1.12;
-        border-radius: 6px;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        min-height: 0;
     }
 
-    #screen-calendar .day:has(.day-route) .day-number {
-        flex-basis: 46%;
-        max-height: 46%;
+    #screen-calendar .day-number {
+        font-size: clamp(11px, 30cqi, 13px);
+        font-weight: 500;
     }
 
-    #screen-calendar .day:has(.day-route) .day-number,
-    #screen-calendar .day:has(.day-route) .day-route {
+    #screen-calendar .day-shift-card,
+    #screen-calendar .day-shift-slot {
+        border-radius: 8px;
+        padding: 9% 2px 7%;
+    }
+
+    #screen-calendar .day-shift-top {
+        flex-basis: 22%;
+        padding-top: 3%;
+    }
+
+    #screen-calendar .day-shift-badge {
+        width: clamp(16px, 22cqi, 22px);
+        height: clamp(16px, 22cqi, 22px);
+        line-height: clamp(16px, 22cqi, 22px);
+        font-size: clamp(9px, 16cqi, 11px);
+        font-weight: 600;
+        border-radius: 4px;
+    }
+
+    #screen-calendar .day-shift-route {
+        font-size: clamp(10px, 24cqi, 13px);
+        gap: 0.12em;
+    }
+
+    #screen-calendar .day-shift-route[data-route-len="5"],
+    #screen-calendar .day-shift-route[data-route-len="6"] {
+        font-size: clamp(9px, 21cqi, 12px);
+    }
+
+    #screen-calendar .day-shift-route[data-route-len="7"],
+    #screen-calendar .day-shift-route[data-route-len="8"] {
+        font-size: clamp(8px, 19cqi, 11px);
+    }
+
+    #screen-calendar .day-shift-time {
         font-size: clamp(9px, 20cqi, 11px);
+        font-weight: 500;
     }
 
-    #screen-calendar .day-route {
-        flex-basis: 54%;
-        padding-bottom: 2px;
+    #screen-calendar .day-shift-divider {
+        margin: 7% -2px 6%;
+        width: calc(100% + 4px);
+        border-top-color: rgba(255, 255, 255, 0.22);
+    }
+
+    #screen-calendar .day--split-h .day-shift-slot {
+        padding: 8% 1px 6%;
+    }
+
+    #screen-calendar .day--split-h .day-shift-top {
+        flex-basis: 20%;
+    }
+
+    #screen-calendar .day--split-h .day-shift-badge {
+        width: clamp(14px, 20cqi, 18px);
+        height: clamp(14px, 20cqi, 18px);
+        line-height: clamp(14px, 20cqi, 18px);
+        font-size: clamp(8px, 14cqi, 10px);
+    }
+
+    #screen-calendar .day--split-h .day-shift-route {
+        font-size: clamp(8px, 20cqi, 10px);
+        gap: 0.08em;
+    }
+
+    #screen-calendar .day--split-h .day-shift-time {
+        font-size: clamp(7px, 16cqi, 9px);
+    }
+
+    #screen-calendar .day--split-h .day-shift-divider {
+        margin: 6% -1px 5%;
+        width: calc(100% + 2px);
     }
 
     #screen-calendar .day.selected {
@@ -57,8 +132,13 @@
         transform: scale(0.97);
     }
 
-    #screen-calendar .day.today:not([class*="has-"]) {
+    #screen-calendar .day.today:not(.day--has-shift):not(.day--split-h) {
         background: rgba(255, 255, 255, 0.04);
+    }
+
+    #screen-calendar .day.today::before,
+    #screen-calendar .day.selected::before {
+        border-radius: 8px;
     }
 
     #screen-calendar #monthTitle {
@@ -71,13 +151,98 @@
     }
 
     #screen-calendar .shift-constructor {
-        padding: 12px;
+        padding: 12px 10px;
+    }
+
+    #screen-calendar .shift-constructor-input {
+        padding: 11px 10px;
+        font-size: 16px;
+    }
+
+    #screen-calendar .shift-constructor-btn {
+        min-height: 44px;
+        padding: 11px 16px;
+        font-size: var(--font-base);
+        font-weight: 500;
+        border-radius: 12px;
+    }
+
+    #screen-calendar .shift-constructor-hint {
+        font-size: var(--font-xs);
+        line-height: 1.45;
+    }
+
+    #screen-calendar .calendar-local-routes {
+        padding: 8px 6px;
+    }
+
+    #screen-calendar .calendar-local-routes-grid {
+        gap: 5px;
     }
 
     #screen-calendar .calendar-local-route-btn {
-        min-height: 30px;
-        padding: 4px 4px;
+        flex: 1 1 calc(33.33% - 4px);
+        min-width: 0;
+        min-height: 36px;
+        padding: 6px 4px;
         font-size: 12px;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
+    #screen-calendar .shift-summary--stacked {
+        --shift-summary-inset: 12px;
+    }
+
+    #screen-calendar .shift-summary--stacked + .shift-summary--stacked {
+        margin-top: 10px;
+    }
+
+    #screen-calendar .shift-summary--stacked .shift-constructor-btn--compact {
+        margin-top: 8px;
+        min-height: 40px;
+        font-size: var(--font-sm);
+    }
+
+    #screen-calendar .shift-summary-title {
+        font-size: var(--font-base);
+        padding: 12px 12px 8px;
+        font-weight: 500;
+    }
+
+    #screen-calendar .shift-summary-row {
+        padding: 10px 12px;
+        font-size: var(--font-sm);
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    #screen-calendar .shift-summary-row span:first-child {
+        font-size: var(--font-xs);
+        padding-top: 1px;
+    }
+
+    #screen-calendar .shift-summary-row span:last-child,
+    #screen-calendar .shift-summary-row .shift-summary-value {
+        font-weight: 500;
+    }
+
+    #screen-calendar .shift-summary-row--trains {
+        align-items: center;
+    }
+
+    #screen-calendar .shift-summary-row .money-caption {
+        font-size: 10px;
+    }
+
+    #screen-calendar .shift-summary-row .money-amount {
+        font-size: var(--font-base);
+        font-weight: 500;
+    }
+
+    #screen-calendar .trains-chip-panel--capsule .train-num-chip {
+        padding: 2px 5px;
+        font-size: 9px;
     }
 
     #screen-profile .profile-card {

@@ -622,3 +622,22 @@ button:active,
     transform: scale(0.98);
 }
 
+body.app-offline::after {
+    content: 'Автономный режим';
+    position: fixed;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12000;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(20, 28, 40, 0.88);
+    color: rgba(244, 247, 255, 0.88);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+

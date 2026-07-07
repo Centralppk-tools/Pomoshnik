@@ -270,12 +270,33 @@
 
 /* ===== КАЛЕНДАРЬ: Сводка по смене (плоская) ===== */
 #screen-calendar .shift-summary {
+    display: flex;
+    flex-direction: column;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--app-radius);
-    overflow: visible;
     margin-top: 0;
     animation: fadeInScale 0.3s ease-out;
+}
+
+#screen-calendar .shift-summary--stacked {
+    animation: none;
+    --shift-summary-inset: 14px;
+    padding-bottom: var(--shift-summary-inset);
+    box-sizing: border-box;
+}
+
+#screen-calendar .shift-summary--stacked + .shift-summary--stacked {
+    margin-top: 12px;
+}
+
+#screen-calendar .shift-summary--stacked .shift-constructor-btn--compact {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: auto;
+    max-width: none;
+    margin: 10px var(--shift-summary-inset) 0;
+    box-sizing: border-box;
 }
 
 #screen-calendar .shift-summary-title {
@@ -290,6 +311,8 @@
 #screen-calendar .shift-summary-body {
     display: flex;
     flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
 }
 
 #screen-calendar .shift-summary-row {

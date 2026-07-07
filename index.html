@@ -357,6 +357,9 @@
     const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbyb9CYhosCuBgoA-Otddo31VQoL0oAICUUKAxE2J3qdtVzzjQBc2sRxpYuqjYC0ZyIP/exec';
     const DEPOT_SHIFTS_KEY = 'depotShifts';
     const DEPOT_TEMPLATES_KEY = 'depotShiftTemplates';
+    const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache';
+    const REFERENCE_TRAINS_STORAGE_KEY = 'cppk_trains_local_cache';
+    const CALENDAR_LOCAL_ROUTES_STORAGE_KEY = 'cppk_calendar_local_routes';
     const DEPOT_RAW_SHIFTS_KEY = 'depotRawShifts';
     const DEPOT_DATA_VERSION_KEY = 'depotDataVersion';
     const DEPOT_FIO_KEY = 'depotFio';
@@ -447,7 +450,53 @@
 
     function hasLocalDepotCache() {
         const templates = parseJSON(localStorage.getItem(DEPOT_TEMPLATES_KEY), []) || [];
-        return Array.isArray(templates) && templates.length > 0 && Boolean(getStoredDepotDataVersion());
+        return Array.isArray(templates) && templates.length > 0;
+    }
+
+    function hasLocalUserData(tabNumber) {
+        const tab = normalizeTabNumber(tabNumber);
+        if (!tab) return false;
+        if (hasLocalDepotCache()) return true;
+        const shiftsRaw = localStorage.getItem(userShiftsStorageKey(tab));
+        if (!shiftsRaw) return false;
+        const shifts = parseJSON(shiftsRaw, null);
+        return shifts && typeof shifts === 'object' && Object.keys(shifts).length > 0;
+    }
+
+    function isAppOffline() {
+        return typeof navigator !== 'undefined' && navigator.onLine === false;
+    }
+
+    function persistReferenceJsonCache(storageKey, data) {
+        if (!storageKey || data == null) return;
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        } catch (err) {
+            console.warn('[offline-cache] не удалось сохранить', storageKey, err);
+        }
+    }
+
+    function loadReferenceJsonCache(storageKey) {
+        if (!storageKey) return null;
+        const raw = localStorage.getItem(storageKey);
+        if (raw == null) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (err) {
+            console.warn('[offline-cache] повреждён кэш', storageKey, err);
+            return null;
+        }
+    }
+
+    function syncOfflineModeUi() {
+        document.body.classList.toggle('app-offline', isAppOffline());
+    }
+
+    function notifyOfflineModeIfNeeded() {
+        if (!isAppOffline()) return;
+        if (typeof showToast === 'function') {
+            showToast('Автономный режим — данные из памяти устройства');
+        }
     }
 
     function getCurrentUserTab() {
@@ -658,6 +707,13 @@
         initUserAuth();
         initSwipeNavigation();
         initServiceWorker();
+
+        syncOfflineModeUi();
+        window.addEventListener('online', syncOfflineModeUi);
+        window.addEventListener('offline', () => {
+            syncOfflineModeUi();
+            notifyOfflineModeIfNeeded();
+        });
 
         let mobileTextFitTimer = null;
         const scheduleMobileTextFit = () => {
@@ -950,13 +1006,13 @@
         return migrated;
     }
 
-    async function fetchJsonAsset(paths) {
+    async function fetchJsonAsset(paths, storageKey = null) {
         const candidates = Array.isArray(paths) ? paths : [paths];
         let lastError = null;
 
         for (const path of candidates) {
             try {
-                const res = await fetch(path, { cache: 'no-cache' });
+                const res = await fetch(path);
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${path}`);
                     continue;
@@ -966,10 +1022,18 @@
                     lastError = new Error(`Файл пуст: ${path}`);
                     continue;
                 }
-                return JSON.parse(text);
+                const parsed = JSON.parse(text);
+                persistReferenceJsonCache(storageKey, parsed);
+                return parsed;
             } catch (err) {
                 lastError = err;
             }
+        }
+
+        const cached = loadReferenceJsonCache(storageKey);
+        if (cached) {
+            console.warn('[offline-cache] JSON из localStorage:', storageKey || candidates[0]);
+            return cached;
         }
 
         throw lastError || new Error('Не удалось загрузить JSON');
@@ -980,25 +1044,37 @@
         const trainPaths = ['./trains-local.json', 'trains-local.json', 'app/trains-local.json'];
 
         try {
-            sprDataCache = await fetchJsonAsset(basePaths);
+            sprDataCache = await fetchJsonAsset(basePaths, REFERENCE_SPR_STORAGE_KEY);
             console.log('Справочник успешно загружен:', sprDataCache);
         } catch (err) {
-            if (window.location.protocol === 'file:') {
+            const cachedSpr = loadReferenceJsonCache(REFERENCE_SPR_STORAGE_KEY);
+            if (cachedSpr) {
+                sprDataCache = cachedSpr;
+                console.warn('Справочник из автономного кэша (spr.json недоступен)');
+            } else if (window.location.protocol === 'file:') {
                 alert('Не удалось загрузить spr.json. Открой приложение через локальный сервер: npm run serve (http://127.0.0.1:8765/)');
+                throw err;
             } else if (err?.name === 'SyntaxError') {
                 alert('Файл spr.json содержит ошибку (невалидный JSON). Проверь и сохрани файл (Ctrl+S).');
+                throw err;
             } else {
-                alert('Не удалось загрузить spr.json. Проверь, что файл есть в папке app и перезагрузи страницу.');
+                alert('Не удалось загрузить spr.json. Нужен интернет для первого входа или перезагрузите после работы онлайн.');
+                throw err;
             }
-            throw err;
         }
 
         try {
-            localTrainsCache = await fetchJsonAsset(trainPaths);
+            localTrainsCache = await fetchJsonAsset(trainPaths, REFERENCE_TRAINS_STORAGE_KEY);
             console.log('Локальная база поездов загружена:', localTrainsCache?.trains?.length || 0);
         } catch (err) {
-            console.warn('Локальная база поездов недоступна:', err);
-            localTrainsCache = null;
+            const cachedTrains = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY);
+            if (cachedTrains) {
+                localTrainsCache = cachedTrains;
+                console.warn('Локальная база поездов из автономного кэша');
+            } else {
+                console.warn('Локальная база поездов недоступна:', err);
+                localTrainsCache = null;
+            }
         }
     }
 
@@ -4208,7 +4284,7 @@
                     record.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
                 }
             }
-            formatted[dateKey] = record;
+            formatted[dateKey] = enrichShiftWithCalculatedHours(record, dateKey);
         });
         return formatted;
     }
@@ -4297,6 +4373,21 @@
 
         const silent = Boolean(options.silent);
         const mergeGraph = Boolean(options.mergeGraph);
+        loadGlobalShiftTemplates({ forceStorage: true });
+
+        if (isAppOffline()) {
+            if (isValidGlobalTemplateCache(depotShiftTemplates)) {
+                depotTemplatesLoadState = 'ready';
+                if (!silent) notifyOfflineModeIfNeeded();
+                return true;
+            }
+            depotTemplatesLoadState = 'error';
+            if (!silent && typeof showToast === 'function') {
+                showToast('Нет интернета и нет сохранённых шаблонов смен');
+            }
+            return false;
+        }
+
         if (!silent && typeof showGlobalLoader === 'function') showGlobalLoader();
 
         try {
@@ -4376,12 +4467,16 @@
             return true;
         } catch (err) {
             console.error('Критическая ошибка синхронизации данных:', err);
-            depotTemplatesLoadState = 'error';
+            loadGlobalShiftTemplates({ forceStorage: true });
+            const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+            depotTemplatesLoadState = hasCache ? 'ready' : 'error';
             renderRouteComboboxListIfOpen();
             if (!silent && typeof showToast === 'function') {
-                showToast('Не удалось обновить шаблоны смен с сервера');
+                showToast(hasCache
+                    ? 'Сервер недоступен — используются сохранённые шаблоны'
+                    : 'Не удалось обновить шаблоны смен с сервера');
             }
-            return false;
+            return hasCache;
         } finally {
             if (!silent && typeof hideGlobalLoader === 'function') hideGlobalLoader();
         }
@@ -4420,12 +4515,20 @@
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
         loadUserShifts();
+        loadGlobalShiftTemplates({ forceStorage: true });
+        if (isValidGlobalTemplateCache(depotShiftTemplates)) {
+            depotTemplatesLoadState = 'ready';
+        }
         updateProfileScreen();
         startDepotVersionMonitor();
-        if (options.fromLogin) {
-            void runGraphSyncForCurrentMonth();
+        if (!isAppOffline()) {
+            if (options.fromLogin) {
+                void runGraphSyncForCurrentMonth();
+            } else {
+                void runGraphSyncIfMonthStart();
+            }
         } else {
-            void runGraphSyncIfMonthStart();
+            notifyOfflineModeIfNeeded();
         }
         switchMainScreen('schedule');
     }
@@ -4456,12 +4559,24 @@
 
         setAuthButtonsLoading(true);
         try {
-            if (isNewUser || !hasLocalDepotCache()) {
+            const canOffline = hasLocalUserData(tabNumber);
+            if (isNewUser && isAppOffline()) {
+                setAuthError('authErrorLogin', 'Первый вход возможен только при наличии интернета.');
+                return;
+            }
+
+            const needsServerSync = isNewUser || (!hasLocalDepotCache() && !canOffline);
+            if (needsServerSync) {
                 const synced = await syncEmployeeFromApi(tabNumber, { mergeGraph: true });
-                if (!synced) {
+                if (!synced && !canOffline) {
                     setAuthError('authErrorLogin', 'Не удалось загрузить данные с сервера. Проверьте интернет или табельный номер.');
                     return;
                 }
+                if (!synced && canOffline) {
+                    notifyOfflineModeIfNeeded();
+                }
+            } else if (isAppOffline()) {
+                notifyOfflineModeIfNeeded();
             }
 
             if (isNewUser) {
@@ -4552,12 +4667,14 @@
 
         calendarLocalRoutesPromise = (async () => {
             try {
-                const res = await fetch('./data/calendar-local-routes.json', { cache: 'no-cache' });
+                const res = await fetch('./data/calendar-local-routes.json');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 calendarLocalRoutesData = await res.json();
+                persistReferenceJsonCache(CALENDAR_LOCAL_ROUTES_STORAGE_KEY, calendarLocalRoutesData);
             } catch (err) {
                 console.warn('[calendarLocalRoutes]', err);
-                calendarLocalRoutesData = CALENDAR_LOCAL_ROUTES_FALLBACK;
+                calendarLocalRoutesData = loadReferenceJsonCache(CALENDAR_LOCAL_ROUTES_STORAGE_KEY)
+                    || CALENDAR_LOCAL_ROUTES_FALLBACK;
             }
             return calendarLocalRoutesData;
         })();
@@ -4609,10 +4726,7 @@
 
     function applyLocalPresetToCalendar(dateKey, preset, customHours) {
         const shift = buildShiftFromLocalPreset(preset, customHours);
-        if (isNightRoute(shift.route) && shift.morningRoute) {
-            shift.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
-        }
-        calendarUserShifts[dateKey] = shift;
+        applyShiftToCalendarDay(dateKey, shift);
     }
 
     function buildLocalRoutesPickerBlock(selectedPresetId = '', customHoursValue = '') {
@@ -4678,21 +4792,29 @@
         document.getElementById('constructorLocalRoutes')?.removeAttribute('data-ready');
     }
 
-    function buildCalendarRoutePickerBlock(storedShift) {
+    function buildCalendarRoutePickerBlock(storedShifts) {
+        const shifts = normalizeDayShiftsRecord(storedShifts);
+        const storedShift = shifts[0] || null;
         const selectedRoute = storedShift ? String(storedShift.route || '').trim() : '';
         const selectedPresetId = resolveLocalPresetIdForShift(storedShift);
         const customHours = storedShift && getLocalRoutePresetByRoute(storedShift.route)?.hoursEditable
             ? String(parseShiftHours(storedShift.hours) || storedShift.hours || '')
             : '';
+        const addLabel = shifts.length === 0
+            ? 'Добавить'
+            : canAddNightSecondShift(shifts)
+                ? 'Добавить ночь (Н)'
+                : 'Изменить маршрут';
         return `
             ${buildLocalRoutesPickerBlock(selectedPresetId, customHours)}
             ${buildRouteComboboxBlock(selectedRoute)}
             <p id="constructorError" class="shift-constructor-error" role="alert"></p>
-            <button type="button" class="shift-constructor-btn" onclick="calendarAddShift()">${storedShift ? 'Изменить маршрут' : 'Добавить'}</button>`;
+            <button type="button" class="shift-constructor-btn" onclick="calendarAddShift()">${addLabel}</button>`;
     }
 
-    function initCalendarRoutePicker(storedShift) {
+    function initCalendarRoutePicker(storedShifts) {
         resetLocalRoutePresetsBinding();
+        const storedShift = normalizeDayShiftsRecord(storedShifts)[0] || null;
         const selectedRoute = storedShift ? String(storedShift.route || '').trim() : '';
         const selectedPresetId = resolveLocalPresetIdForShift(storedShift);
         const customHours = storedShift && getLocalRoutePresetByRoute(storedShift.route)?.hoursEditable
@@ -4735,14 +4857,16 @@
 
         depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true, mergeGraph: false })
             .then((ok) => {
-                depotTemplatesLoadState = isValidGlobalTemplateCache(depotShiftTemplates)
-                    ? 'ready'
-                    : (ok ? 'ready' : 'error');
-                return isValidGlobalTemplateCache(depotShiftTemplates);
+                loadGlobalShiftTemplates({ forceStorage: true });
+                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+                depotTemplatesLoadState = hasCache ? 'ready' : (ok ? 'ready' : 'error');
+                return hasCache;
             })
             .catch(() => {
-                depotTemplatesLoadState = 'error';
-                return false;
+                loadGlobalShiftTemplates({ forceStorage: true });
+                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
+                depotTemplatesLoadState = hasCache ? 'ready' : 'error';
+                return hasCache;
             })
             .finally(() => {
                 depotTemplatesSyncPromise = null;
@@ -4811,6 +4935,7 @@
     async function runGraphSyncForCurrentMonth() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
 
         const ok = await syncEmployeeFromApi(tab, { silent: true, mergeGraph: true });
         if (ok) {
@@ -4822,6 +4947,7 @@
     async function runGraphSyncIfMonthStart() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
         if (new Date().getDate() !== 1) return false;
 
         const monthKey = getCurrentMonthSyncKey();
@@ -4835,6 +4961,7 @@
     async function runDailyDepotPing() {
         const tab = getAuthSessionTab();
         if (!tab || document.body.classList.contains('auth-locked')) return false;
+        if (isAppOffline()) return false;
 
         const todayKey = getTodayDateKey();
         if (localStorage.getItem(userDailyCheckStorageKey(tab)) === todayKey) {
@@ -4895,6 +5022,9 @@
             calendarUserShifts = {};
         }
         loadGlobalShiftTemplates();
+        if (syncMaterializedMorningShifts()) {
+            persistUserShifts();
+        }
     }
 
     let routeComboboxDocHandler = null;
@@ -5061,10 +5191,10 @@
     }
 
     function refreshConstructorRouteSelect() {
-        const storedRoute = calendarSelectedDateKey
-            ? String(calendarUserShifts[calendarSelectedDateKey]?.route || '').trim()
-            : '';
-        initRouteCombobox(getConstructorSelectedRoute() || storedRoute);
+        const storedShift = calendarSelectedDateKey
+            ? getPrimaryStoredShift(calendarSelectedDateKey)
+            : null;
+        initRouteCombobox(getConstructorSelectedRoute() || (storedShift ? String(storedShift.route || '').trim() : ''));
     }
 
     function renderTrainNumChip(num, inline = false) {
@@ -5256,8 +5386,9 @@
         const todayKey = buildTodayDateKey(realToday);
         const candidates = [];
 
-        const todayShift = resolveShiftForCalendarDay(todayKey);
-        if (todayShift && isWorkShiftRoute(todayShift) && isShiftStillRelevantToday(todayShift, nowMinutes)) {
+        const todayShifts = resolveShiftsForCalendarDay(todayKey);
+        todayShifts.forEach(todayShift => {
+            if (!todayShift || !isWorkShiftRoute(todayShift) || !isShiftStillRelevantToday(todayShift, nowMinutes)) return;
             candidates.push({
                 dateKey: todayKey,
                 shift: todayShift,
@@ -5268,27 +5399,29 @@
                 sortTime: getShiftReportMinutes(todayShift) ?? 0,
                 isToday: true
             });
-        }
+        });
 
-        Object.entries(calendarUserShifts).forEach(([dateKey, shift]) => {
-            const parts = dateKey.split('.');
-            if (parts.length !== 3) return;
-            const d = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) - 1;
-            const y = parseInt(parts[2], 10);
-            const shiftDate = new Date(y, m, d);
-            if (shiftDate <= todayDateOnly) return;
-            if (!isWorkShiftRoute(shift)) return;
+        Object.entries(calendarUserShifts).forEach(([dateKey, rawShift]) => {
+            normalizeDayShiftsRecord(rawShift).forEach(shift => {
+                const parts = dateKey.split('.');
+                if (parts.length !== 3) return;
+                const d = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10) - 1;
+                const y = parseInt(parts[2], 10);
+                const shiftDate = new Date(y, m, d);
+                if (shiftDate <= todayDateOnly) return;
+                if (!isWorkShiftRoute(shift)) return;
 
-            candidates.push({
-                dateKey,
-                shift,
-                day: d,
-                month: m,
-                year: y,
-                sortDate: shiftDate.getTime(),
-                sortTime: getShiftReportMinutes(shift) ?? 0,
-                isToday: false
+                candidates.push({
+                    dateKey,
+                    shift,
+                    day: d,
+                    month: m,
+                    year: y,
+                    sortDate: shiftDate.getTime(),
+                    sortTime: getShiftReportMinutes(shift) ?? 0,
+                    isToday: false
+                });
             });
         });
 
@@ -5304,6 +5437,22 @@
     function isNightRoute(route) {
         const r = String(route || '').trim();
         return /^[нН]/.test(r) || /^n/i.test(r);
+    }
+
+    function isMorningRoute(route) {
+        const r = String(route || '').trim();
+        const upper = r.toUpperCase();
+        if (/^[УU]/.test(upper)) return true;
+        if (/У$/.test(upper)) return true;
+        return /U$/i.test(r) && /\d/.test(r);
+    }
+
+    function getShiftRouteKind(route) {
+        if (isNightRoute(route)) return 'night';
+        if (isMorningRoute(route)) return 'morning';
+        const r = String(route || '').trim().toLowerCase();
+        if (/^[дd]/.test(r) || (r.includes('д') && !r.includes('отпуск'))) return 'day';
+        return 'other';
     }
 
     function isNightShiftRoute(route) {
@@ -5427,6 +5576,16 @@
         return `${h}:${String(m).padStart(2, '0')}`;
     }
 
+    function formatCalendarCellHours(hours) {
+        const raw = Number(hours);
+        if (!Number.isFinite(raw) || raw <= 0) return '0:00';
+
+        const totalMinutes = Math.round(raw * 60);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `${h}:${String(m).padStart(2, '0')}`;
+    }
+
     function formatShiftHoursDisplay(hours) {
         const compact = formatShiftHoursCompact(hours);
         return compact === '0' ? '0 ч' : `${compact} ч`;
@@ -5439,19 +5598,132 @@
         return formatShiftHoursDisplay(parseShiftHours(raw));
     }
 
-    function getShiftPartHours(part) {
-        if (!part) return 0;
-        if (part.isVirtualMorning) return 0;
-        const hours = parseShiftHours(part.hours);
-        return hours > 0 ? hours : parseShiftHours(part.nightHours);
+    function parseLunchDurationMinutes(lunchRaw) {
+        const { lunch } = parseShiftLunchField(lunchRaw);
+        if (!lunch) return 0;
+
+        const cleaned = lunch.replace(/ИП/gi, ' ').trim();
+        if (!cleaned || cleaned === '*' || cleaned === '**') return 0;
+
+        const times = (cleaned.match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
+        if (times.length >= 2) {
+            const start = parseTimeToMinutes(times[0]);
+            const end = parseTimeToMinutes(times[1]);
+            if (start != null && end != null) {
+                let diff = end - start;
+                if (diff <= 0) diff += 1440;
+                return diff;
+            }
+        }
+        if (times.length === 1) {
+            const parts = times[0].split(':');
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            if (Number.isFinite(h) && Number.isFinite(m) && h <= 3) return h * 60 + m;
+        }
+        return 0;
     }
 
-    function getCalendarShiftHours(shift) {
-        return getShiftPartHours(shift);
+    function calculateShiftSpanMinutes(startTime, endTime) {
+        const start = parseTimeToMinutes(normalizeShiftTimeToken(startTime));
+        const end = parseTimeToMinutes(normalizeShiftTimeToken(endTime));
+        if (start == null || end == null) return null;
+        let diff = end - start;
+        if (diff <= 0) diff += 1440;
+        return diff;
     }
 
-    function getCalendarShiftPayment(shift) {
-        return getShiftPartHours(shift) * calendarGetShiftRate(shift);
+    function calculateShiftWorkHoursFromTimes(shift) {
+        if (!shift) return null;
+        const startRaw = shift.startTime || shift.reportTime || '';
+        const endRaw = shift.endTime || '';
+        const spanMin = calculateShiftSpanMinutes(startRaw, endRaw);
+        if (spanMin == null) return null;
+        const lunchMin = parseLunchDurationMinutes(shift.lunch);
+        return Math.max(0, spanMin - lunchMin) / 60;
+    }
+
+    function enrichShiftFromDepotTemplate(shift, dateKey) {
+        if (!shift?.route || !dateKey) return shift;
+
+        loadGlobalShiftTemplates();
+        const tmpl = findShiftTemplate(depotShiftTemplates, shift.route, dateKey);
+        if (!tmpl) return shift;
+
+        const merged = { ...shift };
+        if (!merged.startTime && !merged.reportTime) {
+            merged.startTime = tmpl.startTime || '';
+            merged.reportTime = tmpl.startTime || '';
+        }
+        if (!merged.endTime) merged.endTime = tmpl.endTime || '';
+        if (merged.lunch == null || String(merged.lunch).trim() === '') {
+            merged.lunch = tmpl.lunch || '';
+        }
+        if (!merged.trainNum) merged.trainNum = tmpl.trainNum || tmpl.trains || '';
+        if (!merged.nightHours) merged.nightHours = tmpl.nightHours || '';
+        if (!merged.morningRoute) merged.morningRoute = tmpl.morningRoute || '';
+
+        const hoursEmpty = merged.hours == null || String(merged.hours).trim() === '';
+        const tmplWork = tmpl.workHours || tmpl.hours || '';
+        if (hoursEmpty && tmplWork) merged.hours = tmplWork;
+
+        return merged;
+    }
+
+    function resolveCalendarShiftHours(shift, dateKey) {
+        if (!shift) return 0;
+
+        const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
+
+        const calculated = calculateShiftWorkHoursFromTimes(enriched);
+        if (calculated != null && calculated > 0) return calculated;
+
+        const hoursVal = parseShiftHours(enriched.hours);
+        const hasClockTimes = Boolean((enriched.startTime || enriched.reportTime) && enriched.endTime);
+
+        if (hoursVal > 0 && (!hasClockTimes || hoursVal >= 4)) {
+            return hoursVal;
+        }
+
+        const nightVal = parseShiftHours(enriched.nightHours);
+        if (nightVal > 0) return nightVal;
+
+        return hoursVal > 0 ? hoursVal : 0;
+    }
+
+    function enrichShiftWithCalculatedHours(shift, dateKey) {
+        if (!shift) return shift;
+        const hours = resolveCalendarShiftHours(shift, dateKey);
+        if (hours > 0) {
+            return { ...shift, hours: formatShiftHoursCompact(hours) };
+        }
+        return shift;
+    }
+
+    function getShiftPartHours(part, dateKey) {
+        return resolveCalendarShiftHours(part, dateKey);
+    }
+
+    function getCalendarShiftHours(shift, dateKey) {
+        return resolveCalendarShiftHours(shift, dateKey);
+    }
+
+    function getShiftWorkTimeLine(shift, dateKey) {
+        const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
+        const start = enriched?.startTime || enriched?.reportTime || '';
+        const end = enriched?.endTime || '';
+        if (start || end) return `${start || '?'} – ${end || '?'}`;
+        return '—';
+    }
+
+    function getShiftWorkTimeDisplay(shift, dateKey) {
+        const hours = getCalendarShiftHours(shift, dateKey);
+        if (hours > 0) return formatCalendarCellHours(hours);
+        return getShiftWorkTimeLine(shift, dateKey);
+    }
+
+    function getCalendarShiftPayment(shift, dateKey) {
+        return getCalendarShiftHours(shift, dateKey) * calendarGetShiftRate(shift);
     }
 
     function calendarKeyAddDays(dateKey, days) {
@@ -5519,14 +5791,337 @@
         };
     }
 
-    function resolveShiftForCalendarDay(dateKey) {
-        const stored = calendarUserShifts[dateKey];
-        if (stored) return stored;
+    function buildStoredMorningShiftFromNight(nightShift, nightDateKey) {
+        const virtual = buildVirtualMorningShift(nightShift, nightDateKey);
+        if (!virtual) return null;
+
+        const { isVirtualMorning, ...rest } = virtual;
+        return {
+            ...rest,
+            linkedFromNightDateKey: nightDateKey,
+            linkedFromNightRoute: nightShift.route || ''
+        };
+    }
+
+    function materializeLinkedMorningShift(nightDateKey, nightShift) {
+        if (!nightShift || !isNightRoute(nightShift.route)) return false;
+
+        const linkedKey = nightShift.linkedMorningDateKey || calendarKeyAddDays(nightDateKey, 1);
+        if (!linkedKey) return false;
+
+        const expectedRoute = resolveMorningRouteForNight(nightShift.route, nightDateKey, nightShift);
+        if (!expectedRoute) return false;
+
+        const linkedStored = getStoredDayShifts(linkedKey);
+        if (linkedStored.length) {
+            const existingMorning = findMorningShiftOnDay(linkedStored);
+            if (
+                existingMorning
+                && normalizeCalendarRouteKey(existingMorning.route) === normalizeCalendarRouteKey(expectedRoute)
+                && !existingMorning.linkedFromNightDateKey
+            ) {
+                existingMorning.linkedFromNightDateKey = nightDateKey;
+                existingMorning.linkedFromNightRoute = nightShift.route || '';
+                setStoredDayShifts(linkedKey, linkedStored);
+                return true;
+            }
+            return false;
+        }
+
+        const morningShift = buildStoredMorningShiftFromNight(nightShift, nightDateKey);
+        if (!morningShift) return false;
+
+        setStoredDayShifts(linkedKey, [enrichShiftWithCalculatedHours(morningShift, linkedKey)]);
+        return true;
+    }
+
+    function syncMaterializedMorningShifts() {
+        loadGlobalShiftTemplates();
+        let changed = false;
+
+        Object.keys(calendarUserShifts).forEach(dateKey => {
+            getStoredDayShifts(dateKey).forEach(shift => {
+                if (isNightRoute(shift.route) && shift.morningOnSameDay) {
+                    delete shift.morningOnSameDay;
+                    shift.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
+                    changed = true;
+                }
+            });
+            setStoredDayShifts(dateKey, getStoredDayShifts(dateKey));
+        });
+
+        Object.keys(calendarUserShifts).forEach(nightDateKey => {
+            getStoredDayShifts(nightDateKey).forEach(nightShift => {
+                if (isNightRoute(nightShift.route) && materializeLinkedMorningShift(nightDateKey, nightShift)) {
+                    changed = true;
+                }
+            });
+        });
+        return changed;
+    }
+
+    function isLinkedMorningFromNight(shift) {
+        return Boolean(shift?.linkedFromNightDateKey && isMorningRoute(shift.route));
+    }
+
+    function normalizeDayShiftsRecord(raw) {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw.filter(Boolean).slice(0, 2);
+        return [raw];
+    }
+
+    function getStoredDayShifts(dateKey) {
+        return normalizeDayShiftsRecord(calendarUserShifts[dateKey]);
+    }
+
+    function getPrimaryStoredShift(dateKey) {
+        return getStoredDayShifts(dateKey)[0] || null;
+    }
+
+    function sortDayShiftsForDisplay(shifts) {
+        const order = { morning: 0, day: 1, night: 2, other: 3 };
+        return [...shifts].sort((a, b) => {
+            const ka = getShiftRouteKind(a.route);
+            const kb = getShiftRouteKind(b.route);
+            return (order[ka] ?? 3) - (order[kb] ?? 3);
+        });
+    }
+
+    function setStoredDayShifts(dateKey, shifts) {
+        const list = sortDayShiftsForDisplay(shifts.filter(Boolean).slice(0, 2));
+        if (!list.length) {
+            delete calendarUserShifts[dateKey];
+        } else if (list.length === 1) {
+            calendarUserShifts[dateKey] = list[0];
+        } else {
+            calendarUserShifts[dateKey] = list;
+        }
+    }
+
+    function canAddSecondShiftToDay(existingShifts, newRoute) {
+        if (existingShifts.length !== 1) return false;
+        if (!isMorningRoute(existingShifts[0].route)) return false;
+        return isNightRoute(newRoute);
+    }
+
+    function canAddNightSecondShift(storedShifts) {
+        return storedShifts.length === 1 && isMorningRoute(storedShifts[0].route);
+    }
+
+    function findMorningShiftOnDay(shifts) {
+        return shifts.find(s => isMorningRoute(s.route)) || null;
+    }
+
+    function removeMaterializedMorningForNight(nightDateKey, nightShift) {
+        if (!nightShift || !isNightRoute(nightShift.route)) return;
+        const linkedKey = nightShift.linkedMorningDateKey || calendarKeyAddDays(nightDateKey, 1);
+        if (!linkedKey) return;
+
+        const linked = getStoredDayShifts(linkedKey);
+        const nextLinked = linked.filter(s => s.linkedFromNightDateKey !== nightDateKey);
+        if (nextLinked.length !== linked.length) {
+            setStoredDayShifts(linkedKey, nextLinked);
+        }
+    }
+
+    function findNightShiftOnDay(shifts) {
+        return shifts.find(s => isNightRoute(s.route)) || null;
+    }
+
+    function prepareShiftForCalendar(dateKey, shift) {
+        shift = enrichShiftWithCalculatedHours(shift, dateKey);
+
+        if (isNightRoute(shift.route)) {
+            const morningRouteName = shift.morningRoute || resolveMorningRouteForNight(shift.route, dateKey, shift);
+            if (morningRouteName) {
+                shift.morningRoute = morningRouteName;
+            }
+            delete shift.morningOnSameDay;
+            shift.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
+        }
+
+        return shift;
+    }
+
+    function applyShiftToCalendarDay(dateKey, shift) {
+        shift = prepareShiftForCalendar(dateKey, shift);
+
+        let shifts = getStoredDayShifts(dateKey);
+        const newKind = getShiftRouteKind(shift.route);
+        const replaceIndex = shifts.findIndex(s => getShiftRouteKind(s.route) === newKind);
+
+        if (!shifts.length) {
+            shifts = [shift];
+        } else if (replaceIndex >= 0) {
+            if (isNightRoute(shifts[replaceIndex]?.route)) {
+                removeMaterializedMorningForNight(dateKey, shifts[replaceIndex]);
+            }
+            shifts[replaceIndex] = shift;
+        } else if (canAddSecondShiftToDay(shifts, shift.route)) {
+            shifts.push(shift);
+        } else {
+            const nightOnDay = findNightShiftOnDay(shifts);
+            if (nightOnDay) {
+                removeMaterializedMorningForNight(dateKey, nightOnDay);
+            }
+            shifts = [shift];
+        }
+
+        setStoredDayShifts(dateKey, shifts);
+
+        getStoredDayShifts(dateKey)
+            .filter(s => isNightRoute(s.route))
+            .forEach(nightShift => materializeLinkedMorningShift(dateKey, nightShift));
+    }
+
+    function resolveShiftsForCalendarDay(dateKey) {
+        const stored = sortDayShiftsForDisplay(getStoredDayShifts(dateKey));
+        if (stored.length) return stored;
 
         const prevDateKey = calendarKeyAddDays(dateKey, -1);
-        if (!prevDateKey) return null;
+        if (!prevDateKey) return [];
 
-        return buildVirtualMorningShift(calendarUserShifts[prevDateKey], prevDateKey);
+        const prevShifts = getStoredDayShifts(prevDateKey);
+        for (const prev of prevShifts) {
+            if (!isNightRoute(prev.route)) continue;
+            const linkedKey = prev.linkedMorningDateKey || calendarKeyAddDays(prevDateKey, 1);
+            if (linkedKey === dateKey) {
+                const virtual = buildVirtualMorningShift(prev, prevDateKey);
+                if (virtual) return [virtual];
+            }
+        }
+        return [];
+    }
+
+    function resolveShiftForCalendarDay(dateKey) {
+        return resolveShiftsForCalendarDay(dateKey)[0] || null;
+    }
+
+    function formatCalendarShiftLabel(route) {
+        const raw = String(route || '').trim();
+        if (!raw) return '';
+
+        if (isRoute99Variant(raw)) {
+            const kind = getRoute99Kind(raw);
+            const num = raw.toUpperCase().replace(/[НУДNU]/g, '').trim();
+            if (kind === 'night') return num ? `Н ${num}` : 'Н';
+            if (kind === 'morning') return num ? `${num} У` : 'У';
+            if (kind === 'day') return num ? `Д ${num}` : 'Д';
+        }
+
+        const upper = raw.toUpperCase();
+        if (/^[НN]/.test(upper)) {
+            const num = upper.replace(/^[НN]/, '').trim();
+            return num ? `Н ${num}` : 'Н';
+        }
+        if (/^[ДD]/.test(upper)) {
+            const num = upper.replace(/^[ДD]/, '').trim();
+            return num ? `Д ${num}` : 'Д';
+        }
+        if (/^[УU]/.test(upper)) {
+            const num = upper.replace(/^[УU]/, '').trim();
+            return num ? `${num} У` : 'У';
+        }
+        if (/У$/.test(upper)) {
+            const num = upper.replace(/У$/, '').trim();
+            return num ? `${num} У` : 'У';
+        }
+        if (/U$/i.test(raw) && /\d/.test(raw)) {
+            const num = raw.replace(/U$/i, '').trim();
+            return `${num} У`;
+        }
+
+        return raw;
+    }
+
+    function parseCalendarShiftLabelParts(route) {
+        const label = formatCalendarShiftLabel(route);
+        const nightMatch = label.match(/^Н\s+(.+)$/);
+        if (nightMatch) {
+            return { layout: 'kind-first', kind: 'Н', num: nightMatch[1], len: label.length };
+        }
+        const dayMatch = label.match(/^Д\s+(.+)$/);
+        if (dayMatch) {
+            return { layout: 'kind-first', kind: 'Д', num: dayMatch[1], len: label.length };
+        }
+        const morningMatch = label.match(/^(.+)\s+У$/);
+        if (morningMatch) {
+            return { layout: 'kind-last', kind: 'У', num: morningMatch[1], len: label.length };
+        }
+        return { layout: 'plain', kind: '', num: label, len: label.length };
+    }
+
+    function renderCalendarRouteLabelHtml(route) {
+        const parts = parseCalendarShiftLabelParts(route);
+        const lenAttr = escapeAttr(String(parts.len || parts.num.length || 1));
+
+        if (parts.layout === 'kind-first') {
+            return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-kind">${escapeHtml(parts.kind)}</span><span class="day-shift-route-num">${escapeHtml(parts.num)}</span></span>`;
+        }
+        if (parts.layout === 'kind-last') {
+            return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-num">${escapeHtml(parts.num)}</span><span class="day-shift-route-kind">${escapeHtml(parts.kind)}</span></span>`;
+        }
+        return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-num">${escapeHtml(parts.num)}</span></span>`;
+    }
+
+    function getShiftBadgeDay(dateKey, shift, calendarDay) {
+        if (!isNightRoute(shift?.route)) return calendarDay;
+        const linkedKey = shift.linkedMorningDateKey || calendarKeyAddDays(dateKey, 1);
+        if (!linkedKey) return calendarDay;
+        return parseInt(linkedKey.split('.')[0], 10) || calendarDay;
+    }
+
+    function renderDayShiftCardHtml(shift, dateKey, badgeDay, inSplit = false) {
+        const routeDisplay = String(shift.route || '').trim();
+        const skipRouteText = ['выходной', 'в', 'отпуск', 'о'];
+        if (!routeDisplay || skipRouteText.includes(routeDisplay.toLowerCase())) return '';
+
+        const colorClasses = getShiftColorClass(shift).split(/\s+/).filter(Boolean).join(' ');
+        const routeHtml = renderCalendarRouteLabelHtml(routeDisplay);
+        const workTime = getShiftWorkTimeDisplay(shift, dateKey);
+        const timeHtml = workTime && workTime !== '—'
+            ? `<span class="day-shift-time">${escapeHtml(workTime)}</span>`
+            : '<span class="day-shift-time day-shift-time--empty" aria-hidden="true">0:00</span>';
+        const slotClass = inSplit ? 'day-shift-slot' : 'day-shift-card';
+
+        return `<div class="${slotClass} ${colorClasses}">
+            <div class="day-shift-top">
+                <span class="day-shift-badge">${escapeHtml(String(badgeDay))}</span>
+            </div>
+            <div class="day-shift-main">
+                ${routeHtml}
+                <span class="day-shift-divider" aria-hidden="true"></span>
+                ${timeHtml}
+            </div>
+        </div>`;
+    }
+
+    function buildUnifiedShiftSummaryRows(shift, dateKey, context = {}) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        let rows = '';
+        const route = String(enriched.route || enriched.name || '—');
+        rows += calendarSummaryRow('Маршрут', escapeHtml(route));
+        rows += calendarSummaryRow('Время работы', escapeHtml(getShiftWorkTimeLine(enriched, dateKey)));
+
+        const payload = buildTrainsNavigationPayload(enriched, dateKey, context);
+        const trainsDisplay = payload.trainsText || getShiftTrainsText(enriched);
+        if (trainsDisplay) {
+            rows += `<div class="shift-summary-row shift-summary-row--trains"><span>Поезда</span><div class="shift-summary-value shift-summary-value--full">${renderShiftTrainsChip(payload, trainsDisplay)}</div></div>`;
+        } else {
+            rows += calendarSummaryRow('Поезда', '—');
+        }
+
+        const totalHours = getCalendarShiftHours(enriched, dateKey);
+        rows += calendarSummaryRow('Часов в смене', escapeHtml(formatShiftHoursDisplay(totalHours)));
+
+        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+        if (shiftPayment > 0) {
+            rows += `<div class="shift-summary-row"><span>Оплата за смену</span>${renderMoneyBlockHtml(shiftPayment)}</div>`;
+        } else {
+            rows += calendarSummaryRow('Оплата за смену', '—');
+        }
+
+        return rows;
     }
 
     function buildCalendarShiftFromTemplate(template) {
@@ -5721,6 +6316,9 @@
         }
 
         loadGlobalShiftTemplates();
+        if (syncMaterializedMorningShifts()) {
+            persistUserShifts();
+        }
 
         for (let d = 1; d <= totalDays; d++) {
             const div = document.createElement('div');
@@ -5734,39 +6332,23 @@
             const mStr = String(month + 1).padStart(2, '0');
             const dateKey = `${dStr}.${mStr}.${year}`;
 
-            let shift = calendarUserShifts[dateKey];
+            const shifts = resolveShiftsForCalendarDay(dateKey);
 
-            const prevDateObj = new Date(year, month, d - 1);
-            const prevDStr = String(prevDateObj.getDate()).padStart(2, '0');
-            const prevMStr = String(prevDateObj.getMonth() + 1).padStart(2, '0');
-            const prevDateKey = `${prevDStr}.${prevMStr}.${prevDateObj.getFullYear()}`;
-
-            const prevShift = calendarUserShifts[prevDateKey];
-
-            if (prevShift && String(prevShift.route || '').trim().toUpperCase().startsWith('Н') && !shift) {
-                const virtualMorning = buildVirtualMorningShift(prevShift, prevDateKey);
-                if (virtualMorning) {
-                    shift = virtualMorning;
-                }
-            }
-
-            let cellHTML = `<span class="day-number">${d}</span>`;
             div.dataset.dateKey = dateKey;
+            div.onclick = () => calendarSelectDay(dateKey, d, month, year, div);
 
-            if (shift) {
-                getShiftColorClass(shift).split(/\s+/).filter(Boolean).forEach(cls => div.classList.add(cls));
-                const routeDisplay = String(shift.route || '').trim();
-                div.onclick = () => calendarSelectDay(dateKey, d, month, year, div);
-
-                const skipRouteText = ['выходной', 'в', 'отпуск', 'о'];
-                if (routeDisplay && !skipRouteText.includes(routeDisplay.toLowerCase())) {
-                    cellHTML += `<span class="day-route">${escapeHtml(routeDisplay)}</span>`;
-                }
-            } else {
-                div.onclick = () => calendarSelectDay(dateKey, d, month, year, div);
+            if (shifts.length === 0) {
+                div.innerHTML = `<span class="day-number">${d}</span>`;
+            } else if (shifts.length === 1) {
+                div.classList.add('day--has-shift');
+                div.innerHTML = renderDayShiftCardHtml(shifts[0], dateKey, d, false);
+            } else if (shifts.length >= 2) {
+                div.classList.add('day--split-h');
+                const sortedShifts = sortDayShiftsForDisplay(shifts);
+                div.innerHTML = `<div class="day-shifts-split">${sortedShifts.map(shift =>
+                    renderDayShiftCardHtml(shift, dateKey, getShiftBadgeDay(dateKey, shift, d), true)
+                ).join('')}</div>`;
             }
-
-            div.innerHTML = cellHTML;
             grid.appendChild(div);
         }
 
@@ -5991,121 +6573,81 @@
         const prevDateObj = new Date(currentValidDate.getTime() - 24 * 60 * 60 * 1000);
         const prevDateKey = `${String(prevDateObj.getDate()).padStart(2, '0')}.${String(prevDateObj.getMonth() + 1).padStart(2, '0')}.${prevDateObj.getFullYear()}`;
 
-        const prevShift = calendarUserShifts[prevDateKey];
-        let isVirtualMorning = false;
-        let effectiveShift = calendarUserShifts[dateKey];
-
-        if (prevShift && isNightRoute(prevShift.route) && !effectiveShift) {
-            const virtualMorning = buildVirtualMorningShift(prevShift, prevDateKey);
-            if (virtualMorning) {
-                effectiveShift = virtualMorning;
-                isVirtualMorning = true;
-            }
-        }
+        const prevShift = getPrimaryStoredShift(prevDateKey);
+        const storedShifts = getStoredDayShifts(dateKey);
+        const displayShifts = resolveShiftsForCalendarDay(dateKey);
+        const isVirtualMorning = Boolean(
+            !storedShifts.length
+            && displayShifts.length === 1
+            && displayShifts[0]?.isVirtualMorning
+        );
+        const effectiveShifts = displayShifts;
 
         content.classList.remove('constructor-animate');
         void content.offsetWidth;
         content.classList.add('constructor-animate');
 
         if (constructor) {
-            constructor.classList.toggle('shift-constructor--has-summary', Boolean(effectiveShift));
+            constructor.classList.toggle('shift-constructor--has-summary', Boolean(effectiveShifts.length));
         }
 
         loadGlobalShiftTemplates();
 
-        const storedShift = calendarUserShifts[dateKey];
-        const routeSelectBlock = buildCalendarRoutePickerBlock(storedShift);
+        const routeSelectBlock = buildCalendarRoutePickerBlock(storedShifts);
 
-        if (!effectiveShift) {
+        if (!effectiveShifts.length) {
             content.innerHTML = `
                 <p class="shift-constructor-hint" style="margin-bottom:10px;">Выберите день, быстрый маршрут или номер из таблицы и нажмите «Добавить».</p>
                 ${routeSelectBlock}
             `;
-            initCalendarRoutePicker(storedShift);
+            initCalendarRoutePicker(storedShifts);
             return;
         }
 
-        const typeInfo = getShiftTypeInfo(effectiveShift);
-        const totalHours = getCalendarShiftHours(effectiveShift);
-        const shiftPayment = getCalendarShiftPayment(effectiveShift);
-
-        function appendShiftPartRows(part, title) {
-            let partRows = '';
-            const trains = part.trainNum || (Array.isArray(part.trains) ? part.trains.join(' / ') : '');
-            const startTime = part.startTime || part.reportTime || '';
-            const endTime = part.endTime || '';
-            const timeLine = (startTime || endTime) ? `${startTime || '?'} – ${endTime || '?'}` : '—';
-            const nightHours = part.nightHours ? String(part.nightHours).replace(',', '.') : '';
-
-            if (title) {
-                partRows += calendarSummaryRow('Часть смены', escapeHtml(title));
-            }
-            partRows += calendarSummaryRow('Маршрут', escapeHtml(String(part.route || part.name || '—')));
-            partRows += calendarSummaryRow('Время работы', escapeHtml(timeLine));
-            if (trains) {
-                const payload = buildTrainsNavigationPayload(part, dateKey, { isVirtualMorning, prevShift, prevDateKey });
-                partRows += `<div class="shift-summary-row shift-summary-row--trains"><span>Поезда</span><div class="shift-summary-value shift-summary-value--full">${renderShiftTrainsChip(payload, trains)}</div></div>`;
-            }
-
-            const { lunch, dutyPoint } = parseShiftLunchField(part.lunch);
-            if (lunch) {
-                partRows += calendarSummaryRow('Обед / отдых', escapeHtml(lunch));
-            }
-            if (dutyPoint) {
-                partRows += calendarSummaryRow('Пункт заступления', escapeHtml(dutyPoint));
-            }
-            if (nightHours) {
-                partRows += calendarSummaryRow('Ночные', escapeHtml(formatShiftHoursField(nightHours)));
-            }
-            return partRows;
-        }
-
-        let rows = calendarSummaryRow('Тип смены', escapeHtml(typeInfo.label), `color:${typeInfo.color}`);
-        rows += appendShiftPartRows(effectiveShift, isVirtualMorning ? 'Утро (явка этого дня)' : '');
-
-        if (!isVirtualMorning && effectiveShift.linkedMorningDateKey && effectiveShift.morningRoute) {
-            rows += calendarSummaryRow(
-                'Утро (след. дата явки)',
-                escapeHtml(`${formatCalendarKeyLabel(effectiveShift.linkedMorningDateKey)} · ${effectiveShift.morningRoute}`)
-            );
-        }
-        if (effectiveShift.linkedFromNightDateKey || isVirtualMorning) {
-            const nightDateKey = effectiveShift.linkedFromNightDateKey || prevDateKey;
-            const nightRoute = effectiveShift.linkedFromNightRoute || prevShift?.route || '—';
-            rows += calendarSummaryRow(
-                'Ночь (дата заступления)',
-                escapeHtml(`${formatCalendarKeyLabel(nightDateKey)} · ${nightRoute}`)
-            );
-        }
-
-        if (totalHours > 0) {
-            rows += calendarSummaryRow('Часов в смене', escapeHtml(formatShiftHoursDisplay(totalHours)));
-        }
-        if (shiftPayment > 0) {
-            rows += `<div class="shift-summary-row"><span>Оплата за смену</span>${renderMoneyBlockHtml(shiftPayment)}</div>`;
-        }
+        const summaryContext = { isVirtualMorning, prevShift, prevDateKey };
+        let summariesHtml = effectiveShifts.map((shift, index) => {
+            const title = effectiveShifts.length > 1
+                ? `${getShiftTypeInfo(shift).label} · ${String(shift.route || '').trim()}`
+                : 'Сводка по смене';
+            const deleteHtml = !shift.isVirtualMorning && storedShifts.length > 1
+                ? `<button type="button" class="shift-constructor-btn shift-constructor-btn--danger shift-constructor-btn--compact" onclick="calendarDeleteShift(${index})">Удалить</button>`
+                : '';
+            return `
+                <div class="shift-summary${effectiveShifts.length > 1 ? ' shift-summary--stacked' : ''}">
+                    <div class="shift-summary-title">${escapeHtml(title)}</div>
+                    <div class="shift-summary-body">${buildUnifiedShiftSummaryRows(shift, dateKey, summaryContext)}</div>
+                    ${deleteHtml}
+                </div>`;
+        }).join('');
 
         let footerHtml = '';
         if (isVirtualMorning) {
-            footerHtml = `<p class="shift-constructor-hint" style="color:#8295ff; margin-top:10px;">Это утренний выход от ночной смены ${escapeHtml(prevShift.route)}. Чтобы изменить или удалить его, выберите дату начала ночной смены (${prevDateObj.getDate()} ${calendarFormatMonthGenitive(prevDateObj.getMonth())}).</p>`;
+            footerHtml = `<p class="shift-constructor-hint" style="color:#8295ff; margin-top:10px;">Это утренний выход от ночной смены ${escapeHtml(prevShift?.route || '')}. Чтобы изменить или удалить его, выберите дату начала ночной смены (${prevDateObj.getDate()} ${calendarFormatMonthGenitive(prevDateObj.getMonth())}).</p>`;
         } else {
+            const linkedMorning = storedShifts.length === 1 ? storedShifts.find(isLinkedMorningFromNight) : null;
+            const linkedNightDateKey = linkedMorning?.linkedFromNightDateKey || '';
+            const linkedNightRoute = linkedMorning?.linkedFromNightRoute || '';
+            const linkedNightHint = linkedMorning && linkedNightDateKey
+                ? `<p class="shift-constructor-hint" style="margin-bottom:8px;color:#8295ff;">Утренний выход от ночной смены ${escapeHtml(linkedNightRoute)} (${escapeHtml(formatCalendarKeyLabel(linkedNightDateKey))}).</p>`
+                : '';
+            const dualHint = canAddNightSecondShift(storedShifts)
+                ? '<p class="shift-constructor-hint" style="margin-bottom:8px;">На дату с утренней сменой (У) можно добавить ночь (Н).</p>'
+                : '';
             footerHtml = `
-                <p class="shift-constructor-hint" style="margin:10px 0 8px;">Сменить маршрут на выбранный день:</p>
+                ${linkedNightHint}
+                ${dualHint}
+                <p class="shift-constructor-hint" style="margin:10px 0 8px;">${storedShifts.length >= 2 ? 'Заменить утро (У) или ночь (Н):' : 'Сменить маршрут на выбранный день:'}</p>
                 ${routeSelectBlock}
-                <button type="button" class="shift-constructor-btn shift-constructor-btn--danger" onclick="calendarDeleteShift()">Удалить</button>
             `;
+            if (storedShifts.length === 1) {
+                footerHtml += `<button type="button" class="shift-constructor-btn shift-constructor-btn--danger" onclick="calendarDeleteShift()">Удалить смену</button>`;
+            }
         }
 
-        content.innerHTML = `
-            <div class="shift-summary">
-                <div class="shift-summary-title">Сводка по смене</div>
-                <div class="shift-summary-body">${rows}</div>
-            </div>
-            ${footerHtml}
-        `;
+        content.innerHTML = `${summariesHtml}${footerHtml}`;
         bindTrainsChipLinks(content);
         if (!isVirtualMorning) {
-            initCalendarRoutePicker(storedShift);
+            initCalendarRoutePicker(storedShifts);
         }
     }
 
@@ -6123,7 +6665,6 @@
 
             if (morningRouteName) {
                 shift.morningRoute = morningRouteName;
-                shift.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
             }
 
             Object.assign(shift, {
@@ -6136,7 +6677,7 @@
             });
         }
 
-        calendarUserShifts[dateKey] = shift;
+        applyShiftToCalendarDay(dateKey, shift);
     }
 
     function calendarAddShift() {
@@ -6169,6 +6710,11 @@
                 }
             }
             if (errorEl) errorEl.textContent = '';
+            const existing = getStoredDayShifts(dateKey);
+            if (existing.length >= 2 && !existing.some(s => getShiftRouteKind(s.route) === getShiftRouteKind(localPreset.route))) {
+                if (errorEl) errorEl.textContent = 'На этот день уже две смены. Можно заменить утро (У) или ночь (Н).';
+                return;
+            }
             applyLocalPresetToCalendar(dateKey, localPreset, customHours);
             persistUserShifts();
             calendarRenderCalendar();
@@ -6178,6 +6724,12 @@
 
         if (!routeNumber) {
             if (errorEl) errorEl.textContent = 'Выберите номер маршрута.';
+            return;
+        }
+
+        const existing = getStoredDayShifts(dateKey);
+        if (existing.length >= 2 && !existing.some(s => getShiftRouteKind(s.route) === getShiftRouteKind(routeNumber))) {
+            if (errorEl) errorEl.textContent = 'На этот день уже две смены. Можно заменить утро (У) или ночь (Н).';
             return;
         }
 
@@ -6196,10 +6748,24 @@
         updateProfileScreen();
     }
 
-    function calendarDeleteShift() {
+    function calendarDeleteShift(slotIndex) {
         if (!calendarSelectedDateKey) return;
 
-        delete calendarUserShifts[calendarSelectedDateKey];
+        const shifts = getStoredDayShifts(calendarSelectedDateKey);
+        if (typeof slotIndex === 'number' && shifts.length > 1) {
+            const removed = shifts[slotIndex];
+            if (removed && isNightRoute(removed.route)) {
+                removeMaterializedMorningForNight(calendarSelectedDateKey, removed);
+            }
+            shifts.splice(slotIndex, 1);
+            setStoredDayShifts(calendarSelectedDateKey, shifts);
+        } else {
+            getStoredDayShifts(calendarSelectedDateKey)
+                .filter(s => isNightRoute(s.route))
+                .forEach(night => removeMaterializedMorningForNight(calendarSelectedDateKey, night));
+            delete calendarUserShifts[calendarSelectedDateKey];
+        }
+
         persistUserShifts();
         calendarRenderCalendar();
         updateProfileScreen();
@@ -6220,20 +6786,22 @@
             const dStr = String(d).padStart(2, '0');
             const mStr = String(month + 1).padStart(2, '0');
             const dateKey = `${dStr}.${mStr}.${year}`;
-            const shift = resolveShiftForCalendarDay(dateKey);
-            if (!shift) continue;
+            const shifts = resolveShiftsForCalendarDay(dateKey);
+            shifts.forEach(shift => {
+                if (!shift || shift.isVirtualMorning) return;
 
-            const shiftHours = getCalendarShiftHours(shift);
-            const shiftPay = getCalendarShiftPayment(shift);
-            const shiftDateOnly = new Date(year, month, d);
+                const shiftHours = getCalendarShiftHours(shift, dateKey);
+                const shiftPay = getCalendarShiftPayment(shift, dateKey);
+                const shiftDateOnly = new Date(year, month, d);
 
-            if (shiftDateOnly <= todayDateOnly) {
-                factHours += shiftHours;
-                factPay += shiftPay;
-            } else {
-                planHours += shiftHours;
-                planPay += shiftPay;
-            }
+                if (shiftDateOnly <= todayDateOnly) {
+                    factHours += shiftHours;
+                    factPay += shiftPay;
+                } else {
+                    planHours += shiftHours;
+                    planPay += shiftPay;
+                }
+            });
         }
 
         const normHours = calendarGetWorkHoursNorm(year, month);
