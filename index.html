@@ -38,6 +38,25 @@
     </div>
 </div>
 
+<div id="donateSheet" class="donate-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="donateSheetTitle">
+    <div class="donate-sheet">
+        <div class="donate-sheet-header">
+            <h2 id="donateSheetTitle" class="donate-sheet-title">☕ Поддержать проект</h2>
+            <button type="button" id="donateSheetClose" class="donate-sheet-close" aria-label="Закрыть">✕</button>
+        </div>
+        <p class="donate-sheet-intro">Приветствую! Я развиваю этот цифровой помощник в одиночку. Если приложение экономит ваше время и помогает в работе, вы можете поддержать проект любой суммой на оплату сервисов и чашку кофе автору.</p>
+        <div class="donate-quick-amounts" role="group" aria-label="Добавить к сумме">
+            <button type="button" class="donate-quick-btn" data-donate-increment="500">+500 ₽</button>
+            <button type="button" class="donate-quick-btn" data-donate-increment="1000">+1000 ₽</button>
+            <button type="button" class="donate-quick-btn" data-donate-increment="2000">+2000 ₽</button>
+        </div>
+        <input type="number" id="donateAmountInput" class="donate-amount-input" placeholder="Сумма..." min="1" step="1" inputmode="numeric" autocomplete="off">
+        <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере, приложение останется здесь.</p>
+        <p id="donateSheetHint" class="donate-sheet-hint" aria-live="polite"></p>
+        <button type="button" id="donateSendBtn" class="donate-send-btn" disabled>Перевести</button>
+    </div>
+</div>
+
 <div id="screen-auth" class="screen user-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="userAuthTitle">
     <div class="user-auth-card">
         <div class="user-auth-brand">
@@ -163,6 +182,10 @@
 
     </div>
 
+    <div class="app-donate-wrap app-donate-wrap--route">
+        <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
+    </div>
+
     <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
 
     <div id="shiftResetConfirm" class="shift-confirm-overlay" aria-hidden="true" role="alertdialog" aria-labelledby="shiftConfirmText" aria-modal="true">
@@ -195,6 +218,17 @@
             <button type="button" id="shiftWarningsSave" class="shift-warnings-save">Сохранить</button>
         </div>
     </div>
+
+    <div id="stationNoteSheet" class="station-note-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="stationNoteSheetTitle">
+        <div class="station-note-sheet">
+            <div class="station-note-sheet-header">
+                <h2 id="stationNoteSheetTitle" class="station-note-sheet-title">Добавить заметку</h2>
+                <button type="button" id="stationNoteSheetClose" class="station-note-sheet-close" aria-label="Закрыть">✕</button>
+            </div>
+            <textarea id="stationNoteInput" class="station-note-input" placeholder="Текст заметки... (например, 'в хвосте на 2 вагона')" rows="4"></textarea>
+            <button type="button" id="stationNoteSaveBtn" class="station-note-save-btn">Добавить заметку</button>
+        </div>
+    </div>
 </div>
 
 </div>
@@ -204,6 +238,7 @@
         <div class="app-brand-strip">
             <img src="assets/cppk-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
             <span class="app-brand-text"><span>Ц</span>ППК · График смен</span>
+            <button type="button" class="app-donate-trigger app-donate-trigger--corner" data-donate-open>☕ Поддержать автора</button>
         </div>
         <div class="calendar-header">
             <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(-1)" aria-label="Предыдущий месяц">◀</button>
@@ -225,6 +260,17 @@
             <div class="shift-constructor-title" id="constructorTitle">Выберите день</div>
             <div id="constructorContent">
                 <p class="shift-constructor-hint">Выберите день, быстрый маршрут из справочника или номер из таблицы.</p>
+            </div>
+        </div>
+
+        <div id="shiftNoteSheet" class="shift-note-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="shiftNoteSheetTitle">
+            <div class="shift-note-sheet">
+                <div class="shift-note-sheet-header">
+                    <h2 id="shiftNoteSheetTitle" class="shift-note-sheet-title">Заметка к смене</h2>
+                    <button type="button" id="shiftNoteSheetClose" class="shift-note-sheet-close" aria-label="Закрыть">✕</button>
+                </div>
+                <textarea id="shiftNoteInput" class="shift-note-input" placeholder="Текст заметки к смене..." rows="4"></textarea>
+                <button type="button" id="shiftNoteSaveBtn" class="shift-note-save-btn">Сохранить</button>
             </div>
         </div>
 
@@ -329,6 +375,11 @@
                 <input type="file" id="profileAspozhQrInput" class="profile-qr-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" hidden>
             </div>
         </div>
+
+        <div class="app-donate-wrap app-donate-wrap--profile">
+            <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
+        </div>
+
         <div class="profile-card profile-card--nearest">
             <div class="profile-mini-block profile-mini-block--nearest" id="nearestShiftBlock">
                 <div class="profile-mini-label">Ближайшая смена</div>
@@ -387,7 +438,7 @@
     const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
     const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.3.13';
+    const APP_RELEASE_VERSION = '2.3.15';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -708,6 +759,9 @@
         initShiftWarnings();
         initProfilePositionSelect();
         initAspozhQrBlock();
+        initStationNotesUi();
+        initShiftNotesUi();
+        initDonateUi();
         void loadCalendarLocalRoutes();
 
         const savedTrains = userStorageGetJson('trainNumbers', []);
@@ -727,6 +781,7 @@
 
         initUserAuth();
         initSwipeNavigation();
+        initScheduleLiveClockResume();
         initServiceWorker();
         void initReleaseNotesUi();
 
@@ -835,6 +890,228 @@
     let scheduleLiveClockTime = null;
     let scheduleDisplayStops = null;
     let scheduleActiveDate = null;
+    let scheduleCurrentTrain = null;
+
+    const STATION_NOTES_STORAGE_KEY = 'stationNotes';
+    const STATION_SELECTIONS_STORAGE_KEY = 'stationSelections';
+    const STATION_LONG_PRESS_MS = 500;
+
+    let stationNoteSheetContext = null;
+    let stationLongPressTimer = null;
+    let stationLongPressTriggered = false;
+    let stationLongPressPointerId = null;
+
+    function getStationContextKey() {
+        const train = scheduleCurrentTrain || userStorageGet('lastSingleTrain') || '';
+        const date = scheduleActiveDate || getSelectedDate() || '';
+        return `${train}|${date}`;
+    }
+
+    function getStationItemKey(stationIndex) {
+        return `${getStationContextKey()}|${stationIndex}`;
+    }
+
+    function getStationNotesMap() {
+        return userStorageGetJson(STATION_NOTES_STORAGE_KEY, {});
+    }
+
+    function getStationSelectionsMap() {
+        return userStorageGetJson(STATION_SELECTIONS_STORAGE_KEY, {});
+    }
+
+    function getStationNote(stationIndex) {
+        return getStationNotesMap()[getStationItemKey(stationIndex)] || '';
+    }
+
+    function isStationSelected(stationIndex) {
+        return Boolean(getStationSelectionsMap()[getStationItemKey(stationIndex)]);
+    }
+
+    function saveStationNote(stationIndex, text) {
+        const map = getStationNotesMap();
+        const key = getStationItemKey(stationIndex);
+        const trimmed = String(text || '').trim();
+        if (trimmed) {
+            map[key] = trimmed;
+        } else {
+            delete map[key];
+        }
+        userStorageSet(STATION_NOTES_STORAGE_KEY, map);
+    }
+
+    function setStationSelection(stationIndex, selected) {
+        const map = getStationSelectionsMap();
+        const key = getStationItemKey(stationIndex);
+        if (selected) {
+            map[key] = true;
+        } else {
+            delete map[key];
+        }
+        userStorageSet(STATION_SELECTIONS_STORAGE_KEY, map);
+    }
+
+    function renderStationNoteBadgeHtml(stationIndex) {
+        const noteText = getStationNote(stationIndex);
+        if (!noteText) return '';
+        return `<div class="station-note-badge"><span class="station-note-icon" aria-hidden="true">📝</span><span class="station-note-text">${escapeHtml(noteText)}</span><button type="button" class="station-note-delete" aria-label="Удалить заметку">✕</button></div>`;
+    }
+
+    function getStationCardFromEventTarget(target) {
+        if (!(target instanceof Element)) return null;
+        const card = target.closest('#stationsList .station-card');
+        if (!card) return null;
+        const node = card.closest('.station-node');
+        if (!node) return null;
+        return { card, node };
+    }
+
+    function openStationNoteSheet(stationIndex, stationTitle) {
+        const overlay = document.getElementById('stationNoteSheet');
+        const titleEl = document.getElementById('stationNoteSheetTitle');
+        const inputEl = document.getElementById('stationNoteInput');
+        if (!overlay || !titleEl || !inputEl) return;
+
+        stationNoteSheetContext = { stationIndex, stationTitle };
+        titleEl.textContent = `Добавить заметку: ${stationTitle}`;
+        inputEl.value = getStationNote(stationIndex);
+
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => inputEl.focus());
+    }
+
+    function closeStationNoteSheet() {
+        const overlay = document.getElementById('stationNoteSheet');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        stationNoteSheetContext = null;
+    }
+
+    function saveStationNoteFromSheet() {
+        if (!stationNoteSheetContext) return;
+        const inputEl = document.getElementById('stationNoteInput');
+        const text = inputEl?.value || '';
+        const { stationIndex } = stationNoteSheetContext;
+        saveStationNote(stationIndex, text);
+        closeStationNoteSheet();
+        refreshStationNoteBadge(stationIndex);
+    }
+
+    function refreshStationNoteBadge(stationIndex) {
+        const node = document.querySelector(`#stationsList .station-node[data-station-index="${stationIndex}"]`);
+        if (!node) return;
+        const card = node.querySelector('.station-card');
+        const topRow = card?.querySelector('.card-row-top');
+        if (!topRow) return;
+
+        const existing = card.querySelector('.station-note-badge');
+        const noteHtml = renderStationNoteBadgeHtml(stationIndex);
+
+        if (existing) existing.remove();
+        if (noteHtml) {
+            topRow.insertAdjacentHTML('afterend', noteHtml);
+        }
+    }
+
+    function clearStationLongPressTimer() {
+        if (stationLongPressTimer) {
+            clearTimeout(stationLongPressTimer);
+            stationLongPressTimer = null;
+        }
+    }
+
+    function handleStationPointerDown(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target instanceof Element && e.target.closest('.station-note-delete')) return;
+        const hit = getStationCardFromEventTarget(e.target);
+        if (!hit) return;
+
+        stationLongPressTriggered = false;
+        stationLongPressPointerId = e.pointerId;
+        clearStationLongPressTimer();
+
+        const stationIndex = Number(hit.node.dataset.stationIndex);
+        const stationTitle = hit.node.dataset.stationTitle || 'Станция';
+
+        stationLongPressTimer = setTimeout(() => {
+            stationLongPressTriggered = true;
+            if (navigator.vibrate) navigator.vibrate(20);
+            openStationNoteSheet(stationIndex, stationTitle);
+            clearStationLongPressTimer();
+        }, STATION_LONG_PRESS_MS);
+    }
+
+    function handleStationPointerUp(e) {
+        if (stationLongPressPointerId !== null && e.pointerId !== stationLongPressPointerId) return;
+        clearStationLongPressTimer();
+        stationLongPressPointerId = null;
+    }
+
+    function handleStationClick(e) {
+        if (stationLongPressTriggered) {
+            stationLongPressTriggered = false;
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+
+        const deleteBtn = e.target instanceof Element ? e.target.closest('.station-note-delete') : null;
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const node = deleteBtn.closest('.station-node');
+            const stationIndex = Number(node?.dataset.stationIndex);
+            if (!Number.isNaN(stationIndex)) {
+                saveStationNote(stationIndex, '');
+                refreshStationNoteBadge(stationIndex);
+            }
+            return;
+        }
+
+        const hit = getStationCardFromEventTarget(e.target);
+        if (!hit) return;
+
+        e.preventDefault();
+        const stationIndex = Number(hit.node.dataset.stationIndex);
+        hit.node.classList.toggle('is-selected');
+        setStationSelection(stationIndex, hit.node.classList.contains('is-selected'));
+    }
+
+    function handleStationContextMenu(e) {
+        const hit = getStationCardFromEventTarget(e.target);
+        if (!hit) return;
+
+        e.preventDefault();
+        clearStationLongPressTimer();
+        stationLongPressTriggered = true;
+
+        const stationIndex = Number(hit.node.dataset.stationIndex);
+        const stationTitle = hit.node.dataset.stationTitle || 'Станция';
+        openStationNoteSheet(stationIndex, stationTitle);
+    }
+
+    function initStationNotesUi() {
+        const list = document.getElementById('stationsList');
+        if (!list || list.dataset.stationNotesBound === '1') return;
+        list.dataset.stationNotesBound = '1';
+
+        list.addEventListener('pointerdown', handleStationPointerDown);
+        list.addEventListener('pointerup', handleStationPointerUp);
+        list.addEventListener('pointercancel', handleStationPointerUp);
+        list.addEventListener('click', handleStationClick);
+        list.addEventListener('contextmenu', handleStationContextMenu);
+
+        const overlay = document.getElementById('stationNoteSheet');
+        const closeBtn = document.getElementById('stationNoteSheetClose');
+        const saveBtn = document.getElementById('stationNoteSaveBtn');
+
+        closeBtn?.addEventListener('click', closeStationNoteSheet);
+        saveBtn?.addEventListener('click', saveStationNoteFromSheet);
+        overlay?.addEventListener('click', (e) => {
+            if (e.target === overlay) closeStationNoteSheet();
+        });
+    }
 
     function formatLiveClockTime(date) {
         const h = String(date.getHours()).padStart(2, '0');
@@ -886,8 +1163,8 @@
     }
 
     function tickScheduleLiveClock() {
-        if (!scheduleLiveClockSynced || !scheduleLiveClockTime) return;
-        scheduleLiveClockTime = new Date(scheduleLiveClockTime.getTime() + 1000);
+        if (!scheduleLiveClockSynced) return;
+        scheduleLiveClockTime = new Date();
         updateScheduleLiveClockDisplay();
     }
 
@@ -895,8 +1172,32 @@
         scheduleLiveClockTime = new Date();
         scheduleLiveClockSynced = true;
         updateScheduleLiveClockDisplay();
-        if (scheduleLiveClockTimer) return;
+        if (scheduleLiveClockTimer) {
+            clearInterval(scheduleLiveClockTimer);
+            scheduleLiveClockTimer = null;
+        }
         scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+    }
+
+    function resumeScheduleLiveClockIfNeeded() {
+        if (!scheduleLiveClockSynced) return;
+        syncScheduleLiveClock();
+    }
+
+    function refreshScheduleLiveClock(e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        if (!document.getElementById('scheduleLiveClock')) return;
+        syncScheduleLiveClock();
+    }
+
+    function initScheduleLiveClockResume() {
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) resumeScheduleLiveClockIfNeeded();
+        });
+        window.addEventListener('pageshow', () => {
+            resumeScheduleLiveClockIfNeeded();
+        });
     }
 
     function stopScheduleLiveClock() {
@@ -1402,6 +1703,7 @@
     }
 
     window.refreshRouteData = refreshRouteData;
+    window.refreshScheduleLiveClock = refreshScheduleLiveClock;
 
     function resetScheduleResults() {
         const results = document.getElementById('scheduleResults');
@@ -1409,6 +1711,7 @@
         const list = document.getElementById('stationsList');
         scheduleDisplayStops = null;
         scheduleActiveDate = null;
+        scheduleCurrentTrain = null;
         if (results) results.style.display = 'none';
         if (header) {
             header.style.display = 'none';
@@ -1427,11 +1730,54 @@
         'lastSingleTrain',
         'stationScheduleCache',
         'trainThreadsCache',
-        'shiftWarnings'
+        'shiftWarnings',
+        'stationNotes',
+        'stationSelections'
     ];
 
     const SHIFT_WARNINGS_ROWS = 10;
     const SHIFT_WARNINGS_INPUT_FIELDS = ['km', 'pk', 'speed'];
+    const SHIFT_WARNINGS_FIELD_LIMITS = { km: 3, pk: 1, speed: 3 };
+
+    function sanitizeShiftWarningFieldValue(field, rawValue) {
+        const digits = String(rawValue ?? '').replace(/\D/g, '');
+        const limit = SHIFT_WARNINGS_FIELD_LIMITS[field];
+        return typeof limit === 'number' ? digits.slice(0, limit) : digits;
+    }
+
+    function focusShiftWarningField(rowIndex, field) {
+        const input = document.querySelector(
+            `#shiftWarningsGrid .shift-warnings-input[data-row="${rowIndex}"][data-field="${field}"]`
+        );
+        if (!input) return false;
+        input.focus();
+        if (typeof input.select === 'function') input.select();
+        return true;
+    }
+
+    function focusNextShiftWarningField(rowIndex, field) {
+        const fieldIndex = SHIFT_WARNINGS_INPUT_FIELDS.indexOf(field);
+        if (fieldIndex >= 0 && fieldIndex < SHIFT_WARNINGS_INPUT_FIELDS.length - 1) {
+            return focusShiftWarningField(rowIndex, SHIFT_WARNINGS_INPUT_FIELDS[fieldIndex + 1]);
+        }
+        if (rowIndex + 1 < SHIFT_WARNINGS_ROWS) {
+            return focusShiftWarningField(rowIndex + 1, SHIFT_WARNINGS_INPUT_FIELDS[0]);
+        }
+        return false;
+    }
+
+    function handleShiftWarningInputEvent(input) {
+        const field = input.dataset.field;
+        const rowIndex = Number(input.dataset.row);
+        if (!SHIFT_WARNINGS_FIELD_LIMITS[field]) return;
+
+        const sanitized = sanitizeShiftWarningFieldValue(field, input.value);
+        if (input.value !== sanitized) input.value = sanitized;
+
+        if (sanitized.length >= SHIFT_WARNINGS_FIELD_LIMITS[field]) {
+            focusNextShiftWarningField(rowIndex, field);
+        }
+    }
 
     function createEmptyShiftWarningRow() {
         return { km: '', pk: '', speed: '', dir: 'out' };
@@ -1443,9 +1789,9 @@
         for (let i = 0; i < SHIFT_WARNINGS_ROWS; i++) {
             const row = normalized[i] || {};
             result.push({
-                km: String(row.km ?? '').trim(),
-                pk: String(row.pk ?? '').trim(),
-                speed: String(row.speed ?? '').trim(),
+                km: sanitizeShiftWarningFieldValue('km', row.km ?? ''),
+                pk: sanitizeShiftWarningFieldValue('pk', row.pk ?? ''),
+                speed: sanitizeShiftWarningFieldValue('speed', row.speed ?? ''),
                 dir: row.dir === 'to' ? 'to' : 'out'
             });
         }
@@ -1557,6 +1903,7 @@
                 input.placeholder = placeholder;
                 input.dataset.row = String(rowIndex);
                 input.dataset.field = field;
+                input.maxLength = SHIFT_WARNINGS_FIELD_LIMITS[field];
                 rowEl.appendChild(input);
             });
 
@@ -1648,6 +1995,18 @@
             if (!e.target.classList.contains('warn-dir-switch-input')) return;
             const control = e.target.closest('.warn-dir-control');
             if (control) applyWarnDirControl(control, e.target.checked ? 'to' : 'out');
+        });
+
+        document.getElementById('shiftWarningsGrid')?.addEventListener('input', (e) => {
+            if (!e.target.classList.contains('shift-warnings-input')) return;
+            handleShiftWarningInputEvent(e.target);
+        });
+
+        document.getElementById('shiftWarningsGrid')?.addEventListener('keydown', (e) => {
+            if (!e.target.classList.contains('shift-warnings-input')) return;
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            focusNextShiftWarningField(Number(e.target.dataset.row), e.target.dataset.field);
         });
 
         const warningsOverlay = document.getElementById('shiftWarningsModal');
@@ -2187,6 +2546,17 @@
         return -1;
     }
 
+    function formatShiftWarningPlaqueText(warn) {
+        const km = String(warn.km || '').trim();
+        const pk = String(warn.pk || '').trim();
+        const speed = String(warn.speed || '').trim();
+        let location = '';
+        if (km) location += `${km} км`;
+        if (pk) location += location ? ` ${pk} пк` : `${pk} пк`;
+        if (!location) location = '—';
+        return `⚠️ Скорость ${speed} км/ч на ${location}`;
+    }
+
     function buildWarningsByStationIndex(stops, trainDir) {
         const stopChainages = stops.map(stop => stationChainage(stop.station?.title || ''));
         const warningsByStation = {};
@@ -2200,7 +2570,7 @@
                 const displayIdx = findWarningDisplayStationIndex(warnKmFloat, stopChainages, trainDir);
                 if (displayIdx < 0) return;
 
-                const text = `⚠️ Скорость ${warn.speed} км/ч на ${warn.km} км`;
+                const text = formatShiftWarningPlaqueText(warn);
                 if (!warningsByStation[displayIdx]) warningsByStation[displayIdx] = [];
                 warningsByStation[displayIdx].push(text);
             });
@@ -2450,6 +2820,8 @@
         if (screen === 'calendar') {
             loadUserShifts();
             calendarRenderCalendar();
+        } else if (screen === 'schedule') {
+            resumeScheduleLiveClockIfNeeded();
         } else if (screen === 'profile') {
             updateProfileScreen();
         }
@@ -2502,6 +2874,7 @@
 
         userStorageSet('activeTab', tabId);
         if (tabId === 'tab-schedule') {
+            resumeScheduleLiveClockIfNeeded();
             updateScheduleDateHint();
             updateScheduleEmptyState();
             requestAnimationFrame(applyScheduleTextFit);
@@ -2531,6 +2904,7 @@
             syncScheduleTabsNavActive(tabId);
             userStorageSet('activeTab', tabId);
             if (tabId === 'tab-schedule') {
+                resumeScheduleLiveClockIfNeeded();
                 updateScheduleDateHint();
                 updateScheduleEmptyState();
                 requestAnimationFrame(applyScheduleTextFit);
@@ -2888,8 +3262,13 @@
                     </div>
                 </div>
                 <div class="route-card-section route-card-middle schedule-route-card-middle">
-                    <div class="route-card-middle-head">
+                    <div class="route-card-middle-head schedule-route-clock-row">
                         <div class="route-time schedule-route-time" id="scheduleLiveClock">--:--:--</div>
+                        <button type="button" class="schedule-live-clock-refresh" aria-label="Обновить часы" onclick="refreshScheduleLiveClock(event)">
+                            <span class="schedule-live-clock-refresh-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                            </span>
+                        </button>
                     </div>
                 </div>
                 <div class="route-card-section schedule-route-card-footer">
@@ -2903,6 +3282,7 @@
         const displayStops = buildScheduleDisplayStops(stops);
         scheduleDisplayStops = displayStops;
         scheduleActiveDate = selectedDate;
+        scheduleCurrentTrain = trainNumber;
 
         const firstStationTitle = first.station?.title || '';
         const trainDir = resolveTrainDir(stops);
@@ -2946,14 +3326,28 @@
                     }
                 }
 
+                const stationWarningTexts = warningsByStation[index] || [];
+                let warningHtml = '';
+                if (stationWarningTexts.length) {
+                    const plaques = stationWarningTexts.map(text =>
+                        `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(text)}</span></div>`
+                    ).join('');
+                    warningHtml = `<div class="card${D}row${D}bottom"><div class="route${D}tags${D}container">${plaques}</div></div>`;
+                }
+
+                const selectedClass = isStationSelected(index) ? ' is-selected' : '';
+                const noteHtml = renderStationNoteBadgeHtml(index);
+
                 return `
-                    <div class="station${D}node pass-through">
+                    <div class="station${D}node pass-through${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}">
                         <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
-                        <div class="station${D}card">
+                        <div class="station${D}card${stationWarningTexts.length ? ' has-brakes' : ''}">
                             <div class="card${D}row${D}top">
                                 <span class="station${D}name">${stationTitle}</span>
                                 <span class="time${D}badge">---</span>
                             </div>
+                            ${noteHtml}
+                            ${warningHtml}
                         </div>
                     </div>
                 `;
@@ -3039,14 +3433,18 @@
                 brakeHtml = `<div class="route${D}tags${D}container">${bottomPlaques.join('')}</div>`;
             }
 
+            const selectedClass = isStationSelected(index) ? ' is-selected' : '';
+            const noteHtml = renderStationNoteBadgeHtml(index);
+
             return `
-                <div class="station${D}node${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}">
+                <div class="station${D}node${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}">
                     <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
                     <div class="station${D}card${hasBrakes ? ' has-brakes' : ''}">
                         <div class="card${D}row${D}top">
                             <span class="station${D}name">${stationTitle}</span>
                             <span class="time${D}badge">${escapeHtml(timeText)}</span>
                         </div>
+                        ${noteHtml}
                         ${brakeHtml ? `<div class="card${D}row${D}bottom">${brakeHtml}</div>` : ''}
                     </div>
                 </div>
@@ -3101,8 +3499,7 @@
             animate = false,
             direction = null,
             deferTabbar = false,
-            afterTransition = null,
-            forceEffects = false
+            afterTransition = null
         } = options;
 
         const screens = {
@@ -3115,7 +3512,6 @@
         const fromScreen = getActiveMainScreen();
         if (fromScreen === screen) {
             if (typeof afterTransition === 'function') afterTransition();
-            if (options.forceEffects) runScreenSideEffects(screen);
             return true;
         }
 
@@ -3292,17 +3688,20 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Календарь открывается сразу при входе',
-            'Утро и ночь можно поставить в один день',
-            'После ночной смены утро на следующий день ставится само',
-            'В ячейке видно маршрут и часы работы',
-            'Удобнее на телефоне'
+            'Предупреждения видны и на проходных станциях',
+            'Добавлена станция Абрамцево',
+            'Часы на расписании не отстают после сворачивания',
+            'Заметки к станциям — долгое нажатие на карточку',
+            'Заметки к сменам в календаре',
+            '☕ Поддержать автора — донат через CloudTips'
         ],
         highlights: [
-            'Главный экран — календарь смен.',
-            'Два выхода в один день: утро и ночь в одной ячейке.',
-            'Сводка по смене с маршрутом, временем, поездами и часами.',
-            'Группа в Telegram — все новости и обновления.'
+            'Ограничения скорости показываются и там, где поезд проходит без остановки.',
+            'Абрамцево появилось в справочнике станций.',
+            'Часы на вкладке «Расписание» снова показывают точное время после возврата в приложение.',
+            'К станции можно прикрепить заметку — например, про длину состава.',
+            'К смене в календаре можно добавить напоминание — оно видно в сводке дня.',
+            'Появилась кнопка «Поддержать автора» — донат через CloudTips, оплата в браузере.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -3423,6 +3822,139 @@
         });
     }
 
+    const DONATE_CONFIG = {
+        paymentPageUrl: 'https://pay.cloudtips.ru/p/0c990fdb'
+    };
+
+    let donateUiBound = false;
+
+    function getDonateAmountValue() {
+        const input = document.getElementById('donateAmountInput');
+        const raw = String(input?.value || '').trim();
+        if (!raw) return 0;
+        const value = Math.floor(Number(raw));
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    function updateDonateSendButtonState() {
+        const sendBtn = document.getElementById('donateSendBtn');
+        if (!sendBtn) return;
+        sendBtn.disabled = getDonateAmountValue() <= 0;
+    }
+
+    function addDonateAmount(incrementRub) {
+        const input = document.getElementById('donateAmountInput');
+        if (!input) return;
+        const increment = Math.round(Number(incrementRub));
+        if (!Number.isFinite(increment) || increment <= 0) return;
+        const current = getDonateAmountValue();
+        const next = current + increment;
+        input.value = String(next);
+        updateDonateSendButtonState();
+    }
+
+    function setDonateHint(text) {
+        const hint = document.getElementById('donateSheetHint');
+        if (hint) hint.textContent = text || '';
+    }
+
+    function buildDonatePaymentUrl(amountRub) {
+        const amount = Math.round(Number(amountRub));
+        const base = String(DONATE_CONFIG.paymentPageUrl || '').trim();
+        if (!base || !Number.isFinite(amount) || amount <= 0) return '';
+        const url = new URL(base);
+        url.searchParams.set('amount', String(amount));
+        return url.toString();
+    }
+
+    /** Открывает ссылку во внешнем браузере, PWA остаётся на месте */
+    function openInExternalBrowser(url) {
+        if (!url || !/^https?:\/\//i.test(url)) return false;
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return true;
+    }
+
+    function openDonateSheet() {
+        const overlay = document.getElementById('donateSheet');
+        const input = document.getElementById('donateAmountInput');
+        if (!overlay) return;
+        if (input) input.value = '';
+        setDonateHint('');
+        updateDonateSendButtonState();
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('donate-sheet-open');
+        requestAnimationFrame(() => input?.focus());
+    }
+
+    function closeDonateSheet() {
+        const overlay = document.getElementById('donateSheet');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('donate-sheet-open');
+    }
+
+    function openDonatePayment(amountRub) {
+        const amount = Math.round(Number(amountRub));
+        if (!Number.isFinite(amount) || amount <= 0) return;
+
+        const paymentUrl = buildDonatePaymentUrl(amount);
+        if (!paymentUrl) {
+            setDonateHint('Не удалось открыть страницу оплаты. Попробуйте позже.');
+            return;
+        }
+
+        if (!openInExternalBrowser(paymentUrl)) {
+            setDonateHint('Не удалось открыть страницу оплаты. Попробуйте позже.');
+            return;
+        }
+
+        setDonateHint(`Страница оплаты на ${amount} ₽ открыта в браузере.`);
+    }
+
+    function handleDonateSend() {
+        const amount = getDonateAmountValue();
+        if (amount <= 0) return;
+        openDonatePayment(amount);
+    }
+
+    function initDonateUi() {
+        if (donateUiBound) return;
+        donateUiBound = true;
+
+        document.querySelectorAll('[data-donate-open]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openDonateSheet();
+            });
+        });
+
+        document.getElementById('donateSheetClose')?.addEventListener('click', closeDonateSheet);
+        document.getElementById('donateSheet')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeDonateSheet();
+        });
+
+        document.querySelectorAll('.donate-quick-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const increment = Number(btn.dataset.donateIncrement);
+                if (Number.isFinite(increment) && increment > 0) addDonateAmount(increment);
+            });
+        });
+
+        document.getElementById('donateAmountInput')?.addEventListener('input', () => {
+            updateDonateSendButtonState();
+        });
+
+        document.getElementById('donateSendBtn')?.addEventListener('click', handleDonateSend);
+    }
+
     async function initReleaseNotesUi() {
         bindReleaseNotesUi();
         mountAppCommunityFooters(RELEASE_NOTES_FALLBACK);
@@ -3532,6 +4064,9 @@
         if (document.body.classList.contains('auth-locked')) return true;
         if (document.getElementById('shiftWarningsModal')?.classList.contains('is-open')) return true;
         if (document.getElementById('shiftResetConfirm')?.classList.contains('is-open')) return true;
+        if (document.getElementById('stationNoteSheet')?.classList.contains('is-open')) return true;
+        if (document.getElementById('shiftNoteSheet')?.classList.contains('is-open')) return true;
+        if (document.getElementById('donateSheet')?.classList.contains('is-open')) return true;
         if (screenTransitionLock) return true;
         return false;
     }
@@ -3544,6 +4079,10 @@
             '.shift-constructor-btn, .profile-logout-btn, ' +
             '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-scroll, ' +
+            '#stationNoteSheet, .station-note-sheet, .station-note-input, ' +
+            '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, ' +
+            '#donateSheet, .donate-sheet, .donate-amount-input, .donate-quick-btn, .donate-send-btn, ' +
+            '.app-donate-trigger, ' +
             '.shift-warnings-grid, .shift-warnings-table, .shift-warnings-input, ' +
             '.warn-dir-control, .warn-dir-switch, ' +
             '.calendar-nav-btn, ' +
@@ -4453,6 +4992,9 @@
                     record.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
                 }
             }
+            if (shift.note) {
+                record.note = String(shift.note).trim();
+            }
             formatted[dateKey] = enrichShiftWithCalculatedHours(record, dateKey);
         });
         return formatted;
@@ -4699,7 +5241,7 @@
         } else {
             notifyOfflineModeIfNeeded();
         }
-        switchMainScreen('calendar', { forceEffects: true });
+        switchMainScreen('calendar');
         void maybeShowReleaseNotesOverlay();
     }
 
@@ -6234,6 +6776,136 @@
         return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-num">${escapeHtml(parts.num)}</span></span>`;
     }
 
+    function getShiftNoteText(shift) {
+        return String(shift?.note || '').trim();
+    }
+
+    let shiftNoteSheetContext = null;
+
+    function buildShiftNoteTriggerAttrs(dateKey, shiftIndex) {
+        return `data-shift-note-trigger data-date-key="${escapeAttr(dateKey)}" data-shift-index="${shiftIndex}"`;
+    }
+
+    function renderShiftSummaryNoteHtml(dateKey, shiftIndex, shift, editable = true) {
+        if (!editable) return '';
+
+        const attrs = buildShiftNoteTriggerAttrs(dateKey, shiftIndex);
+        const noteText = getShiftNoteText(shift);
+
+        if (noteText) {
+            return `<div class="shift-summary-note" ${attrs} role="button" tabindex="0" aria-label="Редактировать заметку к смене">
+                <span class="shift-summary-note-icon" aria-hidden="true">📝</span>
+                <span class="shift-summary-note-text">${escapeHtml(noteText)}</span>
+            </div>`;
+        }
+
+        return `<button type="button" class="shift-summary-note-add" ${attrs}>+ Добавить заметку к смене</button>`;
+    }
+
+    function formatShiftNoteSheetTitle(dateKey) {
+        const parts = parseCalendarDateKeyParts(dateKey);
+        if (!parts) return 'Заметка к смене';
+        return `Заметка к смене · ${parts.day} ${calendarFormatMonthGenitive(parts.month)} ${parts.year}`;
+    }
+
+    function openShiftNoteSheet(dateKey, shiftIndex) {
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return;
+
+        const overlay = document.getElementById('shiftNoteSheet');
+        const titleEl = document.getElementById('shiftNoteSheetTitle');
+        const inputEl = document.getElementById('shiftNoteInput');
+        if (!overlay || !titleEl || !inputEl) return;
+
+        shiftNoteSheetContext = { dateKey, shiftIndex };
+        titleEl.textContent = formatShiftNoteSheetTitle(dateKey);
+        inputEl.value = getShiftNoteText(shift);
+
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => inputEl.focus());
+    }
+
+    function closeShiftNoteSheet() {
+        const overlay = document.getElementById('shiftNoteSheet');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        shiftNoteSheetContext = null;
+    }
+
+    function refreshShiftNoteUi(dateKey) {
+        calendarRenderCalendar();
+
+        if (calendarSelectedDateKey !== dateKey) return;
+
+        const parts = parseCalendarDateKeyParts(dateKey);
+        if (!parts) return;
+
+        renderShiftConstructor(dateKey, parts.day, parts.month, parts.year);
+
+        const selectedDay = document.querySelector(`#calendarGrid .day[data-date-key="${dateKey}"]`);
+        if (selectedDay) {
+            document.querySelectorAll('#calendarGrid .day.selected').forEach(day => day.classList.remove('selected'));
+            selectedDay.classList.add('selected');
+        }
+    }
+
+    function saveShiftNoteFromSheet() {
+        if (!shiftNoteSheetContext) return;
+
+        const { dateKey, shiftIndex } = shiftNoteSheetContext;
+        const inputEl = document.getElementById('shiftNoteInput');
+        const text = String(inputEl?.value || '').trim();
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return;
+
+        if (text) {
+            shift.note = text;
+        } else {
+            delete shift.note;
+        }
+
+        setStoredDayShifts(dateKey, shifts);
+        persistUserShifts();
+        closeShiftNoteSheet();
+        refreshShiftNoteUi(dateKey);
+    }
+
+    function bindShiftSummaryNoteActions(container) {
+        if (!container) return;
+
+        container.querySelectorAll('[data-shift-note-trigger]').forEach(el => {
+            if (el.dataset.noteBound === '1') return;
+            el.dataset.noteBound = '1';
+
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openShiftNoteSheet(el.dataset.dateKey, Number(el.dataset.shiftIndex));
+            });
+
+            el.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                openShiftNoteSheet(el.dataset.dateKey, Number(el.dataset.shiftIndex));
+            });
+        });
+    }
+
+    function initShiftNotesUi() {
+        if (document.body.dataset.shiftNotesBound === '1') return;
+        document.body.dataset.shiftNotesBound = '1';
+
+        document.getElementById('shiftNoteSheetClose')?.addEventListener('click', closeShiftNoteSheet);
+        document.getElementById('shiftNoteSaveBtn')?.addEventListener('click', saveShiftNoteFromSheet);
+        document.getElementById('shiftNoteSheet')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeShiftNoteSheet();
+        });
+    }
+
     function renderDayShiftChipHtml(shift, dateKey) {
         const routeDisplay = String(shift.route || '').trim();
         const skipRouteText = ['выходной', 'в', 'отпуск', 'о'];
@@ -6245,8 +6917,10 @@
         const timeHtml = workTime && workTime !== '—'
             ? `<span class="day-shift-time">${escapeHtml(workTime)}</span>`
             : '';
+        const hasNote = Boolean(getShiftNoteText(shift));
+        const noteTitle = hasNote ? ' title="Есть заметка к смене"' : '';
 
-        return `<div class="day-shift-chip ${colorClasses}">
+        return `<div class="day-shift-chip ${colorClasses}${hasNote ? ' has-shift-note' : ''}"${noteTitle}>
             <span class="day-shift-label">${escapeHtml(label)}</span>
             ${timeHtml}
         </div>`;
@@ -6769,10 +7443,12 @@
             const deleteHtml = !shift.isVirtualMorning && storedShifts.length > 1
                 ? `<button type="button" class="shift-constructor-btn shift-constructor-btn--danger shift-constructor-btn--compact" onclick="calendarDeleteShift(${index})">Удалить</button>`
                 : '';
+            const noteHtml = renderShiftSummaryNoteHtml(dateKey, index, shift, !shift.isVirtualMorning);
             return `
                 <div class="shift-summary${effectiveShifts.length > 1 ? ' shift-summary--stacked' : ''}">
                     <div class="shift-summary-title">${escapeHtml(title)}</div>
                     <div class="shift-summary-body">${buildUnifiedShiftSummaryRows(shift, dateKey, summaryContext)}</div>
+                    ${noteHtml}
                     ${deleteHtml}
                 </div>`;
         }).join('');
@@ -6803,6 +7479,7 @@
 
         content.innerHTML = `${summariesHtml}${footerHtml}`;
         bindTrainsChipLinks(content);
+        bindShiftSummaryNoteActions(content);
         if (!isVirtualMorning) {
             initCalendarRoutePicker(storedShifts);
         }

@@ -269,6 +269,7 @@
     justify-content: center;
     gap: 2px;
     flex: 0 0 auto;
+    position: relative;
     padding: 3px 4px;
     border-radius: 7px;
     box-sizing: border-box;
@@ -316,6 +317,26 @@
 #screen-calendar .day--multi .day-shift-time {
     font-size: 9px;
     line-height: 1.2;
+}
+
+#screen-calendar .day-shift-chip.has-shift-note::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 9px 9px 0;
+    border-color: transparent rgba(251, 191, 36, 0.92) transparent transparent;
+    border-top-right-radius: 6px;
+    pointer-events: none;
+    filter: drop-shadow(-1px 1px 1px rgba(0, 0, 0, 0.18));
+}
+
+#screen-calendar .day--multi .day-shift-chip.has-shift-note::after {
+    border-width: 0 7px 7px 0;
+    border-top-right-radius: 5px;
 }
 
 /* Пастельные подложки с контрастным текстом */
@@ -632,6 +653,222 @@
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-main);
     font-size: var(--font-base);
+}
+
+#screen-calendar .shift-summary-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 14px 14px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--app-green);
+    border-radius: 0 10px 10px 0;
+    background: rgba(23, 128, 56, 0.1);
+    color: #e8fff0;
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+#screen-calendar .shift-summary--stacked .shift-summary-note {
+    margin-left: var(--shift-summary-inset, 14px);
+    margin-right: var(--shift-summary-inset, 14px);
+}
+
+#screen-calendar .shift-summary-note:hover {
+    background: rgba(23, 128, 56, 0.16);
+    border-left-color: #1f9a47;
+}
+
+#screen-calendar .shift-summary-note-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+#screen-calendar .shift-summary-note-text {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+    text-align: left;
+}
+
+#screen-calendar .shift-summary-note-add {
+    display: block;
+    width: calc(100% - 28px);
+    margin: 0 14px 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(23, 128, 56, 0.32);
+    border-radius: 14px;
+    background: transparent;
+    color: rgba(168, 230, 190, 0.92);
+    font-family: inherit;
+    font-size: var(--font-md);
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+    box-shadow: none;
+}
+
+#screen-calendar .shift-summary--stacked .shift-summary-note-add {
+    width: calc(100% - var(--shift-summary-inset, 14px) * 2);
+    margin-left: var(--shift-summary-inset, 14px);
+    margin-right: var(--shift-summary-inset, 14px);
+}
+
+#screen-calendar .shift-summary-note-add:hover {
+    background: rgba(23, 128, 56, 0.1);
+    border-color: rgba(23, 128, 56, 0.48);
+    color: #d4f5e0;
+}
+
+#screen-calendar .shift-summary-note-add:active {
+    transform: scale(0.98);
+    background: rgba(23, 128, 56, 0.16);
+    border-color: rgba(23, 128, 56, 0.58);
+}
+
+.shift-note-sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 11000;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    background: rgba(6, 10, 18, 0.58);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.shift-note-sheet-overlay.is-open {
+    display: flex;
+}
+
+.shift-note-sheet {
+    width: 100%;
+    max-width: 640px;
+    background: #141b27;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.42);
+    transform: translateY(100%);
+    transition: transform 0.32s var(--app-ease);
+}
+
+.shift-note-sheet-overlay.is-open .shift-note-sheet {
+    transform: translateY(0);
+}
+
+.shift-note-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.shift-note-sheet-title {
+    margin: 0;
+    color: #f4f7ff;
+    font-size: clamp(16px, 4vw, 18px);
+    font-weight: 700;
+    line-height: 1.35;
+    flex: 1;
+    min-width: 0;
+}
+
+.shift-note-sheet-close {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #9db0cf;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.shift-note-sheet-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f4f7ff;
+}
+
+.shift-note-input {
+    width: 100%;
+    min-height: 112px;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(8, 12, 20, 0.72);
+    color: #f4f7ff;
+    font: inherit;
+    font-size: 15px;
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.shift-note-input::placeholder {
+    color: #6f7d92;
+}
+
+.shift-note-input:focus {
+    outline: none;
+    border-color: rgba(23, 128, 56, 0.72);
+    box-shadow: 0 0 0 2px rgba(23, 128, 56, 0.18);
+}
+
+.shift-note-save-btn {
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    border-radius: 14px;
+    background: var(--app-green);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px rgba(23, 128, 56, 0.28);
+}
+
+.shift-note-save-btn:hover {
+    background: #1a9a47;
+}
+
+.shift-note-save-btn:active {
+    transform: scale(0.98);
+}
+
+@media (min-width: 768px) {
+    .shift-note-sheet-overlay {
+        align-items: center;
+        padding: 24px;
+    }
+
+    .shift-note-sheet {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        max-width: 480px;
+        transform: translateY(24px);
+        opacity: 0;
+        transition: transform 0.32s var(--app-ease), opacity 0.32s var(--app-ease);
+    }
+
+    .shift-note-sheet-overlay.is-open .shift-note-sheet {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 #screen-profile .profile-app-wrap .app-hint {

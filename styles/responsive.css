@@ -361,6 +361,17 @@
         font-size: clamp(16px, 4.2vw, 20px);
     }
 
+    .schedule-live-clock-refresh {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+    }
+
+    .schedule-live-clock-refresh-icon {
+        width: 13px;
+        height: 13px;
+    }
+
     .timeline.schedule-results-wrap {
         --km-marker-width: 36px;
         --km-marker-gap: 6px;
