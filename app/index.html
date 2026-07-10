@@ -727,6 +727,7 @@
 
         initUserAuth();
         initSwipeNavigation();
+        initScheduleLiveClockResume();
         initServiceWorker();
         void initReleaseNotesUi();
 
@@ -886,8 +887,8 @@
     }
 
     function tickScheduleLiveClock() {
-        if (!scheduleLiveClockSynced || !scheduleLiveClockTime) return;
-        scheduleLiveClockTime = new Date(scheduleLiveClockTime.getTime() + 1000);
+        if (!scheduleLiveClockSynced) return;
+        scheduleLiveClockTime = new Date();
         updateScheduleLiveClockDisplay();
     }
 
@@ -895,8 +896,32 @@
         scheduleLiveClockTime = new Date();
         scheduleLiveClockSynced = true;
         updateScheduleLiveClockDisplay();
-        if (scheduleLiveClockTimer) return;
+        if (scheduleLiveClockTimer) {
+            clearInterval(scheduleLiveClockTimer);
+            scheduleLiveClockTimer = null;
+        }
         scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+    }
+
+    function resumeScheduleLiveClockIfNeeded() {
+        if (!scheduleLiveClockSynced) return;
+        syncScheduleLiveClock();
+    }
+
+    function refreshScheduleLiveClock(e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        if (!document.getElementById('scheduleLiveClock')) return;
+        syncScheduleLiveClock();
+    }
+
+    function initScheduleLiveClockResume() {
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) resumeScheduleLiveClockIfNeeded();
+        });
+        window.addEventListener('pageshow', () => {
+            resumeScheduleLiveClockIfNeeded();
+        });
     }
 
     function stopScheduleLiveClock() {
@@ -1402,6 +1427,7 @@
     }
 
     window.refreshRouteData = refreshRouteData;
+    window.refreshScheduleLiveClock = refreshScheduleLiveClock;
 
     function resetScheduleResults() {
         const results = document.getElementById('scheduleResults');
@@ -2515,6 +2541,8 @@
         if (screen === 'calendar') {
             loadUserShifts();
             calendarRenderCalendar();
+        } else if (screen === 'schedule') {
+            resumeScheduleLiveClockIfNeeded();
         } else if (screen === 'profile') {
             updateProfileScreen();
         }
@@ -2567,6 +2595,7 @@
 
         userStorageSet('activeTab', tabId);
         if (tabId === 'tab-schedule') {
+            resumeScheduleLiveClockIfNeeded();
             updateScheduleDateHint();
             updateScheduleEmptyState();
             requestAnimationFrame(applyScheduleTextFit);
@@ -2596,6 +2625,7 @@
             syncScheduleTabsNavActive(tabId);
             userStorageSet('activeTab', tabId);
             if (tabId === 'tab-schedule') {
+                resumeScheduleLiveClockIfNeeded();
                 updateScheduleDateHint();
                 updateScheduleEmptyState();
                 requestAnimationFrame(applyScheduleTextFit);
@@ -2953,8 +2983,13 @@
                     </div>
                 </div>
                 <div class="route-card-section route-card-middle schedule-route-card-middle">
-                    <div class="route-card-middle-head">
+                    <div class="route-card-middle-head schedule-route-clock-row">
                         <div class="route-time schedule-route-time" id="scheduleLiveClock">--:--:--</div>
+                        <button type="button" class="schedule-live-clock-refresh" aria-label="Обновить часы" onclick="refreshScheduleLiveClock(event)">
+                            <span class="schedule-live-clock-refresh-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                            </span>
+                        </button>
                     </div>
                 </div>
                 <div class="route-card-section schedule-route-card-footer">

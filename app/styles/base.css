@@ -490,6 +490,68 @@ transform: translateX(20px);
     justify-content: center;
 }
 
+.schedule-route-clock-row {
+    position: relative;
+    align-items: center;
+    min-height: 32px;
+    padding-inline: 34px;
+}
+
+.schedule-route-clock-row .schedule-route-time {
+    width: 100%;
+    text-align: center;
+}
+
+.schedule-live-clock-refresh {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #8393af;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+
+.schedule-live-clock-refresh:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.schedule-live-clock-refresh:active {
+    transform: translateY(-50%) scale(0.94);
+}
+
+.schedule-live-clock-refresh:focus-visible {
+    outline: 2px solid rgba(29, 167, 69, 0.45);
+    outline-offset: 2px;
+}
+
+.schedule-live-clock-refresh-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.schedule-live-clock-refresh-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .schedule-route-time {
     width: 100%;
     text-align: center;
