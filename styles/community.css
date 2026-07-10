@@ -367,6 +367,17 @@ body.donate-sheet-open {
     box-shadow: 0 0 0 2px rgba(23, 128, 56, 0.18);
 }
 
+.donate-fee-summary {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(23, 128, 56, 0.08);
+    border: 1px solid rgba(23, 128, 56, 0.16);
+    color: #d4f5e0;
+    font-size: var(--font-xs);
+    line-height: 1.45;
+}
+
 .donate-sheet-note {
     margin: 0 0 12px;
     color: #8b97ab;

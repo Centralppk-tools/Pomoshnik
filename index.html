@@ -51,7 +51,8 @@
             <button type="button" class="donate-quick-btn" data-donate-increment="2000">+2000 ₽</button>
         </div>
         <input type="number" id="donateAmountInput" class="donate-amount-input" placeholder="Сумма..." min="1" step="1" inputmode="numeric" autocomplete="off">
-        <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере, приложение останется здесь.</p>
+        <p id="donateFeeSummary" class="donate-fee-summary" hidden aria-live="polite"></p>
+        <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере телефона, приложение останется здесь.</p>
         <p id="donateSheetHint" class="donate-sheet-hint" aria-live="polite"></p>
         <button type="button" id="donateSendBtn" class="donate-send-btn" disabled>Перевести</button>
     </div>
@@ -3499,7 +3500,8 @@
             animate = false,
             direction = null,
             deferTabbar = false,
-            afterTransition = null
+            afterTransition = null,
+            forceSideEffects = false
         } = options;
 
         const screens = {
@@ -3511,6 +3513,7 @@
 
         const fromScreen = getActiveMainScreen();
         if (fromScreen === screen) {
+            if (forceSideEffects) runScreenSideEffects(screen);
             if (typeof afterTransition === 'function') afterTransition();
             return true;
         }
@@ -3712,19 +3715,35 @@
         if (releaseNotesLoadPromise) return releaseNotesLoadPromise;
 
         releaseNotesLoadPromise = (async () => {
+            const buildNotes = (data = {}) => {
+                const remoteVersion = String(data.version || '').trim();
+                const isCurrentRelease = remoteVersion === APP_RELEASE_VERSION;
+
+                return {
+                    version: APP_RELEASE_VERSION,
+                    title: data.title || RELEASE_NOTES_FALLBACK.title,
+                    tags: isCurrentRelease && Array.isArray(data.tags) && data.tags.length
+                        ? data.tags
+                        : RELEASE_NOTES_FALLBACK.tags,
+                    highlights: isCurrentRelease && Array.isArray(data.highlights) && data.highlights.length
+                        ? data.highlights
+                        : RELEASE_NOTES_FALLBACK.highlights,
+                    telegramUrl: data.telegramUrl || RELEASE_NOTES_FALLBACK.telegramUrl,
+                    telegramHint: data.telegramHint || RELEASE_NOTES_FALLBACK.telegramHint
+                };
+            };
+
             try {
-                const res = await fetch('./data/release-notes.json', { cache: 'no-cache' });
+                const res = await fetch(`./data/release-notes.json?v=${encodeURIComponent(APP_RELEASE_VERSION)}`, { cache: 'no-store' });
                 if (!res.ok) throw new Error(String(res.status));
                 const data = await res.json();
-                releaseNotesCache = {
-                    ...RELEASE_NOTES_FALLBACK,
-                    ...data,
-                    tags: Array.isArray(data.tags) && data.tags.length ? data.tags : RELEASE_NOTES_FALLBACK.tags,
-                    highlights: Array.isArray(data.highlights) && data.highlights.length ? data.highlights : RELEASE_NOTES_FALLBACK.highlights
-                };
+                releaseNotesCache = buildNotes(data);
+                if (String(data.version || '').trim() !== APP_RELEASE_VERSION) {
+                    console.warn('[ЦППК] release-notes.json устарел, используем встроенный список для', APP_RELEASE_VERSION);
+                }
             } catch (err) {
                 console.warn('[ЦППК] release-notes.json недоступен, используем встроенный список:', err);
-                releaseNotesCache = { ...RELEASE_NOTES_FALLBACK };
+                releaseNotesCache = buildNotes();
             }
             return releaseNotesCache;
         })();
@@ -3768,7 +3787,7 @@
         if (!overlay || !listEl) return;
 
         if (titleEl) titleEl.textContent = notes.title || 'Что нового';
-        if (versionEl) versionEl.textContent = `Версия ${notes.version || APP_RELEASE_VERSION}`;
+        if (versionEl) versionEl.textContent = `Версия ${APP_RELEASE_VERSION}`;
         listEl.innerHTML = (notes.highlights || notes.tags || []).map(item => `<li>${escapeHtml(item)}</li>`).join('');
 
         const tgUrl = notes.telegramUrl || APP_TELEGRAM_URL;
@@ -3823,10 +3842,95 @@
     }
 
     const DONATE_CONFIG = {
-        paymentPageUrl: 'https://pay.cloudtips.ru/p/0c990fdb'
+        layoutId: '0c990fdb',
+        paymentPageUrl: 'https://pay.cloudtips.ru/p/0c990fdb',
+        feeApiUrl: 'https://api.cloudtips.ru/api/payment/fee'
     };
 
     let donateUiBound = false;
+    let donateFeeRequestId = 0;
+    let donateFeePreviewTimer = null;
+
+    function isStandalonePwa() {
+        return window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+    }
+
+    function formatDonateRub(value) {
+        const amount = Math.round(Number(value) * 100) / 100;
+        if (!Number.isFinite(amount)) return '0';
+        return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+    }
+
+    async function fetchDonateCloudTipsFee(amountRub) {
+        const amount = Math.round(Number(amountRub));
+        if (!Number.isFinite(amount) || amount <= 0) return null;
+
+        const url = new URL(DONATE_CONFIG.feeApiUrl);
+        url.searchParams.set('amount', String(amount));
+        url.searchParams.set('layoutId', DONATE_CONFIG.layoutId);
+
+        const res = await fetch(url.toString(), { cache: 'no-store' });
+        if (!res.ok) throw new Error(String(res.status));
+
+        const payload = await res.json();
+        if (!payload?.succeed || !payload?.data) return null;
+
+        const data = payload.data;
+        const tipAmount = Number(data.amount);
+        const totalAmount = Number(data.amountFromPayer);
+        if (!Number.isFinite(tipAmount) || !Number.isFinite(totalAmount)) return null;
+
+        return {
+            amount: tipAmount,
+            feeAmount: Number(data.feeAmount),
+            amountFromPayer: totalAmount
+        };
+    }
+
+    function scheduleDonateFeePreview() {
+        clearTimeout(donateFeePreviewTimer);
+        donateFeePreviewTimer = setTimeout(() => {
+            void updateDonateFeePreview();
+        }, 180);
+    }
+
+    async function updateDonateFeePreview() {
+        const summaryEl = document.getElementById('donateFeeSummary');
+        if (!summaryEl) return;
+
+        const amount = getDonateAmountValue();
+        if (amount <= 0) {
+            summaryEl.textContent = '';
+            summaryEl.hidden = true;
+            return;
+        }
+
+        const requestId = ++donateFeeRequestId;
+        summaryEl.hidden = false;
+        summaryEl.textContent = 'Считаем комиссию CloudTips…';
+
+        try {
+            const fee = await fetchDonateCloudTipsFee(amount);
+            if (requestId !== donateFeeRequestId) return;
+
+            if (!fee) {
+                summaryEl.textContent = `Автору: ${formatDonateRub(amount)} ₽. Точную комиссию увидите на странице CloudTips.`;
+                return;
+            }
+
+            const feeExtra = Math.max(0, Math.round((fee.amountFromPayer - fee.amount) * 100) / 100);
+            if (feeExtra > 0.009) {
+                summaryEl.textContent = `Автору: ${formatDonateRub(fee.amount)} ₽ · комиссия ${formatDonateRub(feeExtra)} ₽ · к оплате ${formatDonateRub(fee.amountFromPayer)} ₽`;
+            } else {
+                summaryEl.textContent = `К оплате: ${formatDonateRub(fee.amountFromPayer)} ₽`;
+            }
+        } catch (err) {
+            if (requestId !== donateFeeRequestId) return;
+            console.warn('[donate] fee API недоступен:', err);
+            summaryEl.textContent = `Автору: ${formatDonateRub(amount)} ₽. Точную комиссию увидите на странице CloudTips.`;
+        }
+    }
 
     function getDonateAmountValue() {
         const input = document.getElementById('donateAmountInput');
@@ -3851,6 +3955,7 @@
         const next = current + increment;
         input.value = String(next);
         updateDonateSendButtonState();
+        scheduleDonateFeePreview();
     }
 
     function setDonateHint(text) {
@@ -3868,8 +3973,33 @@
     }
 
     /** Открывает ссылку во внешнем браузере, PWA остаётся на месте */
-    function openInExternalBrowser(url) {
+    async function openInExternalBrowser(url) {
         if (!url || !/^https?:\/\//i.test(url)) return false;
+
+        const ua = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(ua);
+        const isIos = /iPhone|iPad|iPod/i.test(ua);
+        const standalone = isStandalonePwa();
+
+        if (standalone && isAndroid) {
+            const intentPath = url.replace(/^https?:\/\//i, '');
+            const fallback = encodeURIComponent(url);
+            window.location.href = `intent://${intentPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${fallback};end`;
+            return true;
+        }
+
+        if (standalone && isIos && typeof navigator.share === 'function') {
+            try {
+                await navigator.share({ title: 'Оплата CloudTips', text: 'Поддержка проекта', url });
+                return true;
+            } catch (err) {
+                if (err?.name === 'AbortError') return false;
+            }
+        }
+
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        if (opened) return true;
+
         const link = document.createElement('a');
         link.href = url;
         link.target = '_blank';
@@ -3885,6 +4015,12 @@
         const input = document.getElementById('donateAmountInput');
         if (!overlay) return;
         if (input) input.value = '';
+        const feeSummary = document.getElementById('donateFeeSummary');
+        if (feeSummary) {
+            feeSummary.textContent = '';
+            feeSummary.hidden = true;
+        }
+        donateFeeRequestId += 1;
         setDonateHint('');
         updateDonateSendButtonState();
         overlay.classList.add('is-open');
@@ -3911,12 +4047,20 @@
             return;
         }
 
-        if (!openInExternalBrowser(paymentUrl)) {
-            setDonateHint('Не удалось открыть страницу оплаты. Попробуйте позже.');
-            return;
-        }
+        void (async () => {
+            const opened = await openInExternalBrowser(paymentUrl);
+            if (!opened) {
+                setDonateHint('Не удалось открыть браузер. Попробуйте ещё раз.');
+                return;
+            }
 
-        setDonateHint(`Страница оплаты на ${amount} ₽ открыта в браузере.`);
+            if (isStandalonePwa() && /iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
+                setDonateHint('Выберите «Открыть в Safari» или «Chrome», чтобы оплатить.');
+                return;
+            }
+
+            setDonateHint(`Страница оплаты на ${formatDonateRub(amount)} ₽ открыта в браузере.`);
+        })();
     }
 
     function handleDonateSend() {
@@ -3950,6 +4094,7 @@
 
         document.getElementById('donateAmountInput')?.addEventListener('input', () => {
             updateDonateSendButtonState();
+            scheduleDonateFeePreview();
         });
 
         document.getElementById('donateSendBtn')?.addEventListener('click', handleDonateSend);
@@ -5241,7 +5386,7 @@
         } else {
             notifyOfflineModeIfNeeded();
         }
-        switchMainScreen('calendar');
+        switchMainScreen('calendar', { forceSideEffects: true });
         void maybeShowReleaseNotesOverlay();
     }
 
@@ -7124,13 +7269,15 @@
         return hours;
     }
 
+    const CALENDAR_WEEKDAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
     function calendarRenderCalendar() {
         const grid = document.getElementById('calendarGrid');
         if (!grid) return;
 
-        const weekdays = grid.querySelectorAll('.weekday');
-        grid.innerHTML = '';
-        weekdays.forEach(w => grid.appendChild(w));
+        grid.innerHTML = CALENDAR_WEEKDAY_LABELS
+            .map(label => `<div class="weekday">${label}</div>`)
+            .join('');
 
         const realToday = new Date();
 
