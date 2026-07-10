@@ -52,7 +52,7 @@
         </div>
         <input type="number" id="donateAmountInput" class="donate-amount-input" placeholder="Сумма..." min="1" step="1" inputmode="numeric" autocomplete="off">
         <p id="donateFeeSummary" class="donate-fee-summary" hidden aria-live="polite"></p>
-        <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере телефона, приложение останется здесь.</p>
+        <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере, приложение останется здесь.</p>
         <p id="donateSheetHint" class="donate-sheet-hint" aria-live="polite"></p>
         <button type="button" id="donateSendBtn" class="donate-send-btn" disabled>Перевести</button>
     </div>
@@ -3851,11 +3851,6 @@
     let donateFeeRequestId = 0;
     let donateFeePreviewTimer = null;
 
-    function isStandalonePwa() {
-        return window.matchMedia('(display-mode: standalone)').matches
-            || window.navigator.standalone === true;
-    }
-
     function formatDonateRub(value) {
         const amount = Math.round(Number(value) * 100) / 100;
         if (!Number.isFinite(amount)) return '0';
@@ -3973,33 +3968,8 @@
     }
 
     /** Открывает ссылку во внешнем браузере, PWA остаётся на месте */
-    async function openInExternalBrowser(url) {
+    function openInExternalBrowser(url) {
         if (!url || !/^https?:\/\//i.test(url)) return false;
-
-        const ua = navigator.userAgent || '';
-        const isAndroid = /Android/i.test(ua);
-        const isIos = /iPhone|iPad|iPod/i.test(ua);
-        const standalone = isStandalonePwa();
-
-        if (standalone && isAndroid) {
-            const intentPath = url.replace(/^https?:\/\//i, '');
-            const fallback = encodeURIComponent(url);
-            window.location.href = `intent://${intentPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${fallback};end`;
-            return true;
-        }
-
-        if (standalone && isIos && typeof navigator.share === 'function') {
-            try {
-                await navigator.share({ title: 'Оплата CloudTips', text: 'Поддержка проекта', url });
-                return true;
-            } catch (err) {
-                if (err?.name === 'AbortError') return false;
-            }
-        }
-
-        const opened = window.open(url, '_blank', 'noopener,noreferrer');
-        if (opened) return true;
-
         const link = document.createElement('a');
         link.href = url;
         link.target = '_blank';
@@ -4047,20 +4017,12 @@
             return;
         }
 
-        void (async () => {
-            const opened = await openInExternalBrowser(paymentUrl);
-            if (!opened) {
-                setDonateHint('Не удалось открыть браузер. Попробуйте ещё раз.');
-                return;
-            }
+        if (!openInExternalBrowser(paymentUrl)) {
+            setDonateHint('Не удалось открыть страницу оплаты. Попробуйте позже.');
+            return;
+        }
 
-            if (isStandalonePwa() && /iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
-                setDonateHint('Выберите «Открыть в Safari» или «Chrome», чтобы оплатить.');
-                return;
-            }
-
-            setDonateHint(`Страница оплаты на ${formatDonateRub(amount)} ₽ открыта в браузере.`);
-        })();
+        setDonateHint(`Страница оплаты на ${formatDonateRub(amount)} ₽ открыта в браузере.`);
     }
 
     function handleDonateSend() {
