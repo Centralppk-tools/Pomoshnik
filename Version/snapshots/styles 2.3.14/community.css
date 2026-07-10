@@ -1,0 +1,161 @@
+/* === Сообщество и changelog === */
+.app-community-footer {
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 4px;
+}
+
+.app-community-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 2px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-community-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.app-release-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(255, 214, 66, 0.16);
+    border: 1px solid rgba(255, 214, 66, 0.34);
+    color: #ffe98a;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+}
+
+.app-community-text {
+    margin: 0;
+    font-size: var(--font-xs);
+    line-height: 1.45;
+    color: var(--app-caption);
+}
+
+.app-community-link {
+    color: #8ec5ff;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(142, 197, 255, 0.35);
+}
+
+.app-community-link:hover {
+    color: #b3d8ff;
+    border-bottom-color: rgba(179, 216, 255, 0.55);
+}
+
+body.release-overlay-open {
+    overflow: hidden;
+}
+
+.app-release-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 13000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: rgba(4, 8, 14, 0.82);
+    backdrop-filter: blur(8px);
+}
+
+.app-release-overlay[hidden] {
+    display: none !important;
+}
+
+.app-release-box {
+    width: min(100%, 420px);
+    max-height: min(86vh, 640px);
+    overflow: auto;
+    padding: 18px 16px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(16, 22, 32, 0.96);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.48);
+}
+
+.app-release-kicker {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--app-green);
+}
+
+.app-release-title {
+    margin: 0 0 4px;
+    font-size: var(--font-lg);
+    font-weight: 600;
+    color: var(--app-text);
+}
+
+.app-release-version {
+    margin: 0 0 12px;
+    font-size: var(--font-sm);
+    color: var(--app-caption);
+}
+
+.app-release-list {
+    margin: 0 0 14px;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    color: #d7e0f0;
+}
+
+.app-release-list li::marker {
+    color: rgba(255, 214, 66, 0.85);
+}
+
+.app-release-telegram {
+    margin: 0 0 14px;
+    font-size: var(--font-xs);
+    line-height: 1.45;
+    color: var(--app-caption);
+}
+
+.app-release-btn {
+    width: 100%;
+    min-height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: var(--app-green);
+    color: #fff;
+    font-size: var(--font-base);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.app-release-btn:active {
+    transform: scale(0.98);
+    background: #0f5a2c;
+}
+
+@media (max-width: 480px) {
+    .app-community-footer {
+        margin-top: 14px;
+    }
+
+    .app-community-block {
+        padding-top: 10px;
+    }
+
+    .app-release-tag {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
