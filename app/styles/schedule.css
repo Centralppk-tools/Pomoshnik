@@ -13,6 +13,8 @@
     --station-brakes-badge-fill: #3d3018;
     --station-brakes-badge-stroke: #5c4a28;
     --station-brakes-badge-text: #fbbf24;
+    --station-pass-brakes-fill: linear-gradient(135deg, rgba(38, 34, 28, 0.72), rgba(18, 24, 36, 0.88));
+    --station-pass-brakes-stroke: rgba(71, 55, 27, 0.32);
     --station-active-stroke: #178038;
     --station-active-glow: 0 0 12px #145a2e;
 }
@@ -227,6 +229,41 @@
 
 .station-node.pass-through .station-dot::after {
     color: #6f7d92;
+}
+
+.station-node.pass-through.has-brakes .station-card {
+    background: var(--station-pass-brakes-fill);
+    border-color: var(--station-pass-brakes-stroke);
+}
+
+.station-node.pass-through.has-brakes .station-name {
+    color: #8b97ab;
+    font-weight: 500;
+}
+
+.station-node.pass-through.has-brakes .time-badge {
+    color: #8b97ab;
+    font-weight: 600;
+}
+
+.station-node.pass-through.has-brakes .station-dot {
+    background: var(--station-pass-brakes-fill);
+    border-color: rgba(245, 158, 11, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+.station-node.pass-through.has-brakes .station-dot::after {
+    color: #6f7d92;
+}
+
+.station-node.pass-through.has-brakes .route-brake-box {
+    border-color: rgba(234, 179, 8, 0.14);
+    background: rgba(234, 179, 8, 0.035);
+}
+
+.station-node.pass-through.has-brakes .route-brake-text {
+    color: #9a8860;
+    font-weight: 500;
 }
 
 /* ===== РАСПИСАНИЕ: Индикатор загрузки ===== */

@@ -1432,6 +1432,47 @@
 
     const SHIFT_WARNINGS_ROWS = 10;
     const SHIFT_WARNINGS_INPUT_FIELDS = ['km', 'pk', 'speed'];
+    const SHIFT_WARNINGS_FIELD_LIMITS = { km: 3, pk: 1, speed: 3 };
+
+    function sanitizeShiftWarningFieldValue(field, rawValue) {
+        const digits = String(rawValue ?? '').replace(/\D/g, '');
+        const limit = SHIFT_WARNINGS_FIELD_LIMITS[field];
+        return typeof limit === 'number' ? digits.slice(0, limit) : digits;
+    }
+
+    function focusShiftWarningField(rowIndex, field) {
+        const input = document.querySelector(
+            `#shiftWarningsGrid .shift-warnings-input[data-row="${rowIndex}"][data-field="${field}"]`
+        );
+        if (!input) return false;
+        input.focus();
+        if (typeof input.select === 'function') input.select();
+        return true;
+    }
+
+    function focusNextShiftWarningField(rowIndex, field) {
+        const fieldIndex = SHIFT_WARNINGS_INPUT_FIELDS.indexOf(field);
+        if (fieldIndex >= 0 && fieldIndex < SHIFT_WARNINGS_INPUT_FIELDS.length - 1) {
+            return focusShiftWarningField(rowIndex, SHIFT_WARNINGS_INPUT_FIELDS[fieldIndex + 1]);
+        }
+        if (rowIndex + 1 < SHIFT_WARNINGS_ROWS) {
+            return focusShiftWarningField(rowIndex + 1, SHIFT_WARNINGS_INPUT_FIELDS[0]);
+        }
+        return false;
+    }
+
+    function handleShiftWarningInputEvent(input) {
+        const field = input.dataset.field;
+        const rowIndex = Number(input.dataset.row);
+        if (!SHIFT_WARNINGS_FIELD_LIMITS[field]) return;
+
+        const sanitized = sanitizeShiftWarningFieldValue(field, input.value);
+        if (input.value !== sanitized) input.value = sanitized;
+
+        if (sanitized.length >= SHIFT_WARNINGS_FIELD_LIMITS[field]) {
+            focusNextShiftWarningField(rowIndex, field);
+        }
+    }
 
     function createEmptyShiftWarningRow() {
         return { km: '', pk: '', speed: '', dir: 'out' };
@@ -1443,9 +1484,9 @@
         for (let i = 0; i < SHIFT_WARNINGS_ROWS; i++) {
             const row = normalized[i] || {};
             result.push({
-                km: String(row.km ?? '').trim(),
-                pk: String(row.pk ?? '').trim(),
-                speed: String(row.speed ?? '').trim(),
+                km: sanitizeShiftWarningFieldValue('km', row.km ?? ''),
+                pk: sanitizeShiftWarningFieldValue('pk', row.pk ?? ''),
+                speed: sanitizeShiftWarningFieldValue('speed', row.speed ?? ''),
                 dir: row.dir === 'to' ? 'to' : 'out'
             });
         }
@@ -1557,6 +1598,7 @@
                 input.placeholder = placeholder;
                 input.dataset.row = String(rowIndex);
                 input.dataset.field = field;
+                input.maxLength = SHIFT_WARNINGS_FIELD_LIMITS[field];
                 rowEl.appendChild(input);
             });
 
@@ -1648,6 +1690,18 @@
             if (!e.target.classList.contains('warn-dir-switch-input')) return;
             const control = e.target.closest('.warn-dir-control');
             if (control) applyWarnDirControl(control, e.target.checked ? 'to' : 'out');
+        });
+
+        document.getElementById('shiftWarningsGrid')?.addEventListener('input', (e) => {
+            if (!e.target.classList.contains('shift-warnings-input')) return;
+            handleShiftWarningInputEvent(e.target);
+        });
+
+        document.getElementById('shiftWarningsGrid')?.addEventListener('keydown', (e) => {
+            if (!e.target.classList.contains('shift-warnings-input')) return;
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            focusNextShiftWarningField(Number(e.target.dataset.row), e.target.dataset.field);
         });
 
         const warningsOverlay = document.getElementById('shiftWarningsModal');
@@ -2187,6 +2241,17 @@
         return -1;
     }
 
+    function formatShiftWarningPlaqueText(warn) {
+        const km = String(warn.km || '').trim();
+        const pk = String(warn.pk || '').trim();
+        const speed = String(warn.speed || '').trim();
+        let location = '';
+        if (km) location += `${km} км`;
+        if (pk) location += location ? ` ${pk} пк` : `${pk} пк`;
+        if (!location) location = '—';
+        return `⚠️ Скорость ${speed} км/ч на ${location}`;
+    }
+
     function buildWarningsByStationIndex(stops, trainDir) {
         const stopChainages = stops.map(stop => stationChainage(stop.station?.title || ''));
         const warningsByStation = {};
@@ -2200,7 +2265,7 @@
                 const displayIdx = findWarningDisplayStationIndex(warnKmFloat, stopChainages, trainDir);
                 if (displayIdx < 0) return;
 
-                const text = `⚠️ Скорость ${warn.speed} км/ч на ${warn.km} км`;
+                const text = formatShiftWarningPlaqueText(warn);
                 if (!warningsByStation[displayIdx]) warningsByStation[displayIdx] = [];
                 warningsByStation[displayIdx].push(text);
             });
@@ -2946,14 +3011,24 @@
                     }
                 }
 
+                const stationWarningTexts = warningsByStation[index] || [];
+                let warningHtml = '';
+                if (stationWarningTexts.length) {
+                    const plaques = stationWarningTexts.map(text =>
+                        `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(text)}</span></div>`
+                    ).join('');
+                    warningHtml = `<div class="card${D}row${D}bottom"><div class="route${D}tags${D}container">${plaques}</div></div>`;
+                }
+
                 return `
-                    <div class="station${D}node pass-through">
+                    <div class="station${D}node pass-through${stationWarningTexts.length ? ' has-brakes' : ''}">
                         <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
-                        <div class="station${D}card">
+                        <div class="station${D}card${stationWarningTexts.length ? ' has-brakes' : ''}">
                             <div class="card${D}row${D}top">
                                 <span class="station${D}name">${stationTitle}</span>
                                 <span class="time${D}badge">---</span>
                             </div>
+                            ${warningHtml}
                         </div>
                     </div>
                 `;
