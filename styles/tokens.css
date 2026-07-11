@@ -12,8 +12,8 @@
     --app-text: #f4f7ff;
     --app-muted: #8b97ab;
     --app-caption: rgba(139, 151, 171, 0.62);
-    --app-radius: 16px;
-    --card-radius: 16px;
+    --app-radius: 8px;
+    --card-radius: 8px;
     --card-padding: 24px;
     --surface-card: rgba(255, 255, 255, 0.06);
     --surface-card-inner: rgba(0, 0, 0, 0.14);
@@ -35,7 +35,7 @@
     --glass-border-soft: rgba(255, 255, 255, 0.08);
     --glass-blur: saturate(180%) blur(22px);
     --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    --glass-radius: 22px;
+    --glass-radius: 11px;
     --glass-tabbar-width: min(52vw, 420px);
     --glass-tabbar-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
     --schedule-glass-width: min(590px, calc(100% - 24px));

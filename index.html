@@ -104,16 +104,20 @@
 <div id="screen-schedule" class="screen hidden">
 
 <div class="phone-screen schedule-app-wrap">
-    <div class="app-brand-strip">
-        <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-        <span class="app-brand-text">Цифровой помощник</span>
-    </div>
+    <header class="app-screen-header">
+        <div class="app-header-bar">
+            <div class="app-header-bar-brand">
+                <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+            </div>
+            <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+        </div>
+        <div class="schedule-title-plate">
+            <h2 class="screen-section-title">Расписание</h2>
+        </div>
+    </header>
 
     <div class="screen-card screen-card--schedule">
-        <div class="screen-card-head">
-            <h2 class="screen-section-title">Расписание</h2>
-            <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
-        </div>
 
     <div class="schedule-glass-stack" id="scheduleGlassStack">
         <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
@@ -244,16 +248,20 @@
 
 <div id="screen-calendar" class="screen">
     <div class="phone-screen calendar-app-wrap">
-        <div class="app-brand-strip">
-            <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-            <span class="app-brand-text">Цифровой помощник</span>
-        </div>
+        <header class="app-screen-header">
+            <div class="app-header-bar">
+                <div class="app-header-bar-brand">
+                    <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+                </div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+            </div>
+            <div class="schedule-title-plate">
+                <h2 class="screen-section-title">График смен</h2>
+            </div>
+        </header>
 
         <div class="screen-card screen-card--calendar">
-            <div class="screen-card-head">
-                <h2 class="screen-section-title">График смен</h2>
-                <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
-            </div>
 
         <div class="calendar-header">
             <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(-1)" aria-label="Предыдущий месяц">◀</button>
@@ -297,16 +305,20 @@
 
 <div id="screen-profile" class="screen hidden">
     <div class="phone-screen profile-app-wrap">
-        <div class="app-brand-strip">
-            <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-            <span class="app-brand-text">Цифровой помощник</span>
-        </div>
+        <header class="app-screen-header">
+            <div class="app-header-bar">
+                <div class="app-header-bar-brand">
+                    <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+                </div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+            </div>
+            <div class="schedule-title-plate">
+                <h2 class="screen-section-title">Личный кабинет</h2>
+            </div>
+        </header>
 
         <div class="screen-card screen-card--profile">
-            <div class="screen-card-head">
-                <h2 class="screen-section-title">Личный кабинет</h2>
-                <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
-            </div>
 
         <div class="profile-card profile-card--hero">
             <div class="profile-identity">
@@ -462,7 +474,7 @@
     const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
     const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.3.16';
+    const APP_RELEASE_VERSION = '2.3.17';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -3714,19 +3726,18 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Новый бренд и логотип «Цифровой помощник»',
-            'Обновлён дизайн календаря, расписания и личного кабинета',
-            'Аватар в профиле — квадрат с логотипом M',
-            'Кнопка «Поддержать автора» в шапке каждого раздела',
-            'Превью комиссии CloudTips перед донатом',
-            'Пастельные цвета смен в календаре'
+            'Мобильная вёрстка на всю ширину экрана с аккуратными отступами',
+            'Новая двухстрочная шапка: бренд + «Поддержать» и glass-плашка раздела',
+            'Кнопка «Поддержать» без иконки, компактная в правом углу',
+            'Стрелки календаря удержаны внутри карточки месяца',
+            'Скругления углов уменьшены для более строгого вида'
         ],
         highlights: [
-            'Приложение переименовано в «Цифровой помощник» с новым логотипом.',
-            'Экраны оформлены карточками с заголовками разделов.',
-            'В личном кабинете — аватар с логотипом, имя и должность по центру.',
-            'Перед переводом видно комиссию CloudTips и итоговую сумму к оплате.',
-            'Плашки смен в календаре стали мягче и читабельнее.'
+            'Контент на телефоне занимает почти всю ширину экрана — без лишнего сжатия по бокам.',
+            'Шапка разделена на верхнюю строку (логотип и донат) и стеклянную плашку с названием раздела.',
+            'Кнопка «Поддержать» всегда справа в одной линии с логотипом и скроллится вместе со страницей.',
+            'Навигация по месяцам в календаре больше не выходит за границы карточки.',
+            'Интерфейс стал компактнее: меньше скругления, плотнее шапка и отступы.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

@@ -1,3 +1,185 @@
+/* === Mobile: Full width layout (≤768px) === */
+@media (max-width: 768px) {
+    :root {
+        --card-padding: 0;
+        --mobile-edge: 8px;
+        --schedule-glass-width: 100%;
+        --app-gap: 6px;
+    }
+
+    body {
+        padding: 0;
+        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+        align-items: stretch;
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    body.auth-locked {
+        padding-bottom: 0;
+    }
+
+    .main-screens-stage {
+        width: 100%;
+        max-width: none;
+    }
+
+    .main-screens-stage.is-transitioning > .screen.screen-in-transition,
+    .main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-from,
+    .main-screens-stage.is-dragging.is-dragging--stacked > .screen.swipe-neighbor,
+    .main-screens-stage.is-dragging > .screen.swipe-neighbor {
+        max-width: none;
+        width: 100%;
+    }
+
+    .screen,
+    #screen-schedule,
+    #screen-calendar,
+    #screen-profile {
+        width: 100%;
+        max-width: none;
+        align-items: stretch;
+    }
+
+    .phone-screen,
+    #screen-schedule .phone-screen,
+    #screen-schedule .phone-screen.schedule-app-wrap,
+    #screen-calendar .phone-screen,
+    #screen-calendar .phone-screen.calendar-app-wrap,
+    #screen-profile .phone-screen,
+    #screen-profile .phone-screen.profile-app-wrap,
+    #screen-schedule .schedule-app-wrap,
+    #screen-calendar .calendar-app-wrap,
+    #screen-profile .profile-app-wrap {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        box-sizing: border-box;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        gap: 0;
+    }
+
+    .app-screen-header {
+        width: 100%;
+        margin: 0;
+        padding:
+            calc(16px + env(safe-area-inset-top, 0px))
+            max(16px, calc(var(--mobile-edge) + env(safe-area-inset-right, 0px)))
+            8px
+            max(16px, calc(var(--mobile-edge) + env(safe-area-inset-left, 0px)));
+        background: transparent;
+        border-bottom: none;
+    }
+
+    .app-header-bar {
+        align-items: center;
+    }
+
+    .screen-card,
+    #screen-schedule .screen-card--schedule,
+    #screen-calendar .screen-card--calendar,
+    #screen-profile .screen-card--profile {
+        width: calc(100% - (var(--mobile-edge) * 2));
+        max-width: none;
+        margin-left: var(--mobile-edge);
+        margin-right: var(--mobile-edge);
+        margin-top: 6px;
+        padding: 0;
+        border-radius: var(--card-radius);
+        gap: 6px;
+        box-sizing: border-box;
+        background: var(--surface-card);
+    }
+
+    .schedule-glass-stack {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        top: 8px;
+        border-radius: 6px;
+    }
+
+    #screen-schedule .screen-card--schedule .schedule-glass-stack {
+        width: 100%;
+    }
+
+    .route-grid,
+    .route-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    #screen-profile .profile-identity-text {
+        max-width: none;
+    }
+
+    #screen-profile .profile-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    .trains-list {
+        width: 100%;
+    }
+
+    .train-field,
+    .train-input {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #tab-route,
+    #tab-schedule {
+        padding: 0 12px 12px;
+        box-sizing: border-box;
+    }
+
+    #screen-calendar .screen-card--calendar {
+        padding: 6px 10px 0;
+        overflow: hidden;
+    }
+
+    #screen-calendar .calendar-header,
+    #screen-calendar .calendar-legend,
+    #screen-calendar .shift-constructor {
+        padding-left: 0;
+        padding-right: 0;
+        box-sizing: border-box;
+    }
+
+    #screen-calendar .calendar-grid {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        box-sizing: border-box;
+    }
+
+    #screen-calendar .calendar-local-routes-grid {
+        width: 100%;
+    }
+
+    #screen-calendar .calendar-local-route-btn {
+        flex: 1 1 calc(33.33% - 4px);
+        min-width: 0;
+    }
+
+    #screen-calendar .shift-summary-note-add {
+        width: calc(100% - var(--shift-summary-inset, 14px) * 2);
+    }
+
+    #screen-profile .screen-card--profile .profile-card {
+        margin-left: 12px;
+        margin-right: 12px;
+        width: calc(100% - 24px);
+    }
+
+    .bottom-tabbar {
+        max-width: calc(100% - 32px);
+    }
+}
+
 /* === Mobile: Profile, Calendar, Schedule & Warnings === */
 @media (max-width: 480px) {
     #screen-calendar,
@@ -13,23 +195,26 @@
 
     #screen-calendar .phone-screen,
     #screen-profile .phone-screen {
-        padding: 16px 14px;
+        padding: 0;
     }
 
     #screen-calendar .calendar-header {
+        margin-top: 4px;
         margin-bottom: 4px;
+        padding-top: 2px;
     }
 
     #screen-calendar .calendar-nav-btn {
         width: 32px;
         height: 32px;
-        border-radius: 8px;
+        margin-top: 1px;
+        border-radius: 4px;
     }
 
     #screen-calendar .calendar-grid {
         gap: 3px;
         padding: 8px 6px;
-        border-radius: 12px;
+        border-radius: 6px;
     }
 
     #screen-calendar .weekday {
@@ -39,7 +224,7 @@
 
     #screen-calendar .day {
         padding: 4px;
-        border-radius: 8px;
+        border-radius: 4px;
         min-height: 38px;
     }
 
@@ -62,7 +247,7 @@
 
     #screen-calendar .day-shift-chip {
         padding: 2px 4px;
-        border-radius: 6px;
+        border-radius: 3px;
     }
 
     #screen-calendar .day-shift-label {
@@ -91,7 +276,7 @@
 
     #screen-calendar .day.today::before,
     #screen-calendar .day.selected::before {
-        border-radius: 9px;
+        border-radius: 4.5px;
     }
 
     #screen-calendar .day.selected {
@@ -130,7 +315,7 @@
         padding: 11px 16px;
         font-size: var(--font-base);
         font-weight: 500;
-        border-radius: 12px;
+        border-radius: 6px;
     }
 
     #screen-calendar .shift-constructor-hint {
@@ -153,7 +338,7 @@
         padding: 6px 4px;
         font-size: 12px;
         font-weight: 600;
-        border-radius: 8px;
+        border-radius: 4px;
     }
 
     #screen-calendar .shift-summary--stacked {
@@ -307,11 +492,11 @@
 
     /* Расписание */
     #screen-schedule .phone-screen {
-        padding: 12px 12px 16px;
+        padding: 0;
     }
 
     .schedule-glass-stack {
-        width: calc(100% - 4px);
+        width: 100%;
         top: 4px;
         margin-bottom: 10px;
     }
@@ -364,7 +549,7 @@
     .schedule-live-clock-refresh {
         width: 26px;
         height: 26px;
-        border-radius: 7px;
+        border-radius: 3.5px;
     }
 
     .schedule-live-clock-refresh-icon {
@@ -386,13 +571,13 @@
     .station-card {
         padding: 10px 12px;
         gap: 8px;
-        border-radius: 10px;
+        border-radius: 5px;
     }
 
     .station-dot {
         min-height: 44px;
         padding: 6px 3px;
-        border-radius: 10px;
+        border-radius: 5px;
     }
 
     .station-dot::after {
@@ -406,7 +591,7 @@
 
     .route-brake-box {
         padding: 3px 7px;
-        border-radius: 5px;
+        border-radius: 2.5px;
     }
 
     .route-brake-text {
@@ -427,7 +612,7 @@
     .shift-warnings-box {
         max-width: none;
         padding: 14px 12px;
-        border-radius: 12px;
+        border-radius: 6px;
     }
 
     .shift-warnings-title {
@@ -473,7 +658,7 @@
     .shift-warnings-input {
         padding: 5px 3px;
         font-size: 16px;
-        border-radius: 7px;
+        border-radius: 3.5px;
     }
 
     .warn-dir-control {

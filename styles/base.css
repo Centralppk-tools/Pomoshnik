@@ -127,13 +127,66 @@ body {
     50% { transform: translateX(6px); opacity: 0.65; }
 }
 
-.app-brand-strip {
+.app-screen-header {
+    width: 100%;
+    flex-shrink: 0;
+    padding:
+        calc(16px + env(safe-area-inset-top, 0px))
+        16px
+        8px
+        16px;
+    background: transparent;
+    border-bottom: none;
+    box-sizing: border-box;
+}
+
+.app-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.app-header-bar-brand {
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
-    padding: 0 2px 6px;
-    margin-bottom: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.app-header-bar-brand .app-brand-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+}
+
+.schedule-title-plate {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 12px;
+    box-sizing: border-box;
+    min-height: 0;
+}
+
+.schedule-title-plate .screen-section-title {
+    margin: 0;
+    font-size: var(--font-md);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    line-height: 1.15;
 }
 
 .app-brand-logo {
@@ -148,7 +201,7 @@ body {
     font-size: var(--font-xs);
     font-weight: 800;
     letter-spacing: 0.08em;
-    color: var(--app-muted);
+    color: #e0e0e0;
     text-transform: uppercase;
 }
 
@@ -173,8 +226,6 @@ body {
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
     margin-left: calc(-1 * var(--card-padding));
     margin-right: calc(-1 * var(--card-padding));
     padding: 0 var(--card-padding) 16px;
@@ -202,28 +253,13 @@ body {
     min-width: 0;
 }
 
-.screen-card-head .app-donate-trigger {
-    flex-shrink: 0;
-}
-
-@media (max-width: 420px) {
-    .screen-card-head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .screen-card-head .app-donate-trigger {
-        width: 100%;
-    }
-}
-
 .phone-screen {
     width: 100%;
     max-width: 640px;
     min-height: auto;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 24px;
+    border-radius: 12px;
     padding: 28px 24px;
     position: relative;
     overflow: hidden;
@@ -355,7 +391,7 @@ position: absolute;
 cursor: pointer;
 inset: 0;
 background: #252d3a;
-border-radius: 26px;
+border-radius: 13px;
 transition: background 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -397,7 +433,7 @@ transform: translateX(20px);
     font-weight: 500;
     color: rgba(196, 209, 232, 0.82);
     cursor: pointer;
-    border-radius: 14px;
+    border-radius: 7px;
     transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -595,7 +631,7 @@ transform: translateX(20px);
     height: 28px;
     padding: 0;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     background: rgba(255, 255, 255, 0.08);
     color: #8393af;
     cursor: pointer;
@@ -678,7 +714,7 @@ transform: translateX(20px);
     background-color: #178038;
     color: #ffffff;
     border: none;
-    border-radius: 14px;
+    border-radius: 7px;
     padding: 12px 22px;
     font-size: var(--font-md);
     font-weight: 600;
@@ -726,7 +762,7 @@ button:focus-visible,
     height: 26px;
     padding: 0;
     border: none;
-    border-radius: 6px;
+    border-radius: 3px;
     background: transparent;
     color: #5a6a82;
     font-size: 18px;
@@ -756,7 +792,7 @@ button:focus-visible,
     padding: 12px 10px;
     font-size: 14px;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
+    border-radius: 5px;
     outline: none;
     background: rgba(255, 255, 255, 0.06);
     color: #f4f7ff;
