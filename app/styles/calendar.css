@@ -130,20 +130,24 @@
 
 #screen-calendar .calendar-header {
     display: grid;
-    grid-template-columns: 36px 1fr 36px;
+    grid-template-columns: 32px 1fr 32px;
     align-items: center;
     justify-items: center;
+    gap: 6px;
+    margin-top: 2px;
     margin-bottom: 4px;
+    padding: 2px 0 0;
     width: 100%;
+    box-sizing: border-box;
 }
 
 #screen-calendar .calendar-nav-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     padding: 0;
-    margin: 0;
+    margin: 1px 0 0;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: var(--surface-card-inner);
     color: var(--text-main);
     font-size: var(--font-base);
@@ -205,7 +209,7 @@
     width: 100%;
     background: var(--surface-card-inner);
     padding: 12px;
-    border-radius: 12px;
+    border-radius: 6px;
     box-sizing: border-box;
 }
 
@@ -229,7 +233,7 @@
     min-width: 0;
     min-height: 44px;
     padding: 5px;
-    border-radius: 10px;
+    border-radius: 5px;
     box-sizing: border-box;
     cursor: pointer;
     overflow: visible;
@@ -291,7 +295,7 @@
     flex: 0 0 auto;
     position: relative;
     padding: 3px 4px;
-    border-radius: 7px;
+    border-radius: 3.5px;
     box-sizing: border-box;
     border: none;
     text-align: center;
@@ -300,7 +304,7 @@
 #screen-calendar .day--multi .day-shift-chip {
     padding: 2px 4px;
     gap: 1px;
-    border-radius: 6px;
+    border-radius: 3px;
 }
 
 #screen-calendar .day-shift-label {
@@ -417,7 +421,7 @@
     content: '';
     position: absolute;
     inset: -1px;
-    border-radius: 11px;
+    border-radius: 5.5px;
     pointer-events: none;
     z-index: 4;
     box-sizing: border-box;
@@ -453,7 +457,7 @@
 #screen-calendar .shift-constructor {
     background: var(--surface-card-inner);
     border: none;
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 16px;
     width: 100%;
     box-sizing: border-box;
@@ -480,7 +484,7 @@
     margin-bottom: 8px;
     font-size: var(--font-base);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-main);
     text-align: left;
@@ -504,7 +508,7 @@
     width: 100%;
     padding: 12px 22px;
     border: none;
-    border-radius: 14px;
+    border-radius: 7px;
     background-color: #178038;
     color: #fff;
     font-size: var(--font-md);
@@ -572,7 +576,7 @@
 #screen-calendar .calendar-local-routes {
     margin-bottom: 2px;
     padding: 8px;
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--glass-border-soft);
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -598,7 +602,7 @@
     min-height: 32px;
     padding: 5px 6px;
     border: 1px solid var(--glass-border-soft);
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.045);
     color: var(--app-text);
     font-family: inherit;
@@ -667,7 +671,7 @@
     padding: 10px 12px;
     margin-bottom: 0;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-main);
     font-size: var(--font-base);
@@ -680,7 +684,7 @@
     margin: 0 14px 14px;
     padding: 10px 12px;
     border-left: 3px solid var(--app-green);
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 5px 5px 0;
     background: rgba(23, 128, 56, 0.1);
     color: #e8fff0;
     font-size: var(--font-sm);
@@ -718,7 +722,7 @@
     margin: 0 14px 14px;
     padding: 12px 14px;
     border: 1px solid rgba(23, 128, 56, 0.32);
-    border-radius: 14px;
+    border-radius: 7px;
     background: transparent;
     color: rgba(168, 230, 190, 0.92);
     font-family: inherit;
@@ -772,7 +776,7 @@
     background: #141b27;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
-    border-radius: 18px 18px 0 0;
+    border-radius: 9px 9px 0 0;
     padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.42);
     transform: translateY(100%);
@@ -806,7 +810,7 @@
     width: 34px;
     height: 34px;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.06);
     color: #9db0cf;
     font-size: 18px;
@@ -827,7 +831,7 @@
     margin-bottom: 14px;
     padding: 12px 14px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 6px;
     background: rgba(8, 12, 20, 0.72);
     color: #f4f7ff;
     font: inherit;
@@ -850,7 +854,7 @@
     width: 100%;
     padding: 14px 16px;
     border: none;
-    border-radius: 14px;
+    border-radius: 7px;
     background: var(--app-green);
     color: #ffffff;
     font-size: 16px;
@@ -876,7 +880,7 @@
 
     .shift-note-sheet {
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
+        border-radius: 9px;
         max-width: 480px;
         transform: translateY(24px);
         opacity: 0;

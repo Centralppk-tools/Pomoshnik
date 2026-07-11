@@ -24,7 +24,7 @@
     display: inline-flex;
     align-items: center;
     padding: 5px 9px;
-    border-radius: 999px;
+    border-radius: 499.5px;
     background: rgba(255, 214, 66, 0.16);
     border: 1px solid rgba(255, 214, 66, 0.34);
     color: #ffe98a;
@@ -78,7 +78,7 @@ body.release-overlay-open {
     max-height: min(86vh, 640px);
     overflow: auto;
     padding: 18px 16px 16px;
-    border-radius: 16px;
+    border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(16, 22, 32, 0.96);
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.48);
@@ -132,7 +132,7 @@ body.release-overlay-open {
     width: 100%;
     min-height: 44px;
     border: none;
-    border-radius: 12px;
+    border-radius: 6px;
     background: var(--app-green);
     color: #fff;
     font-size: var(--font-base);
@@ -184,7 +184,7 @@ body.release-overlay-open {
     min-height: 40px;
     padding: 10px 16px;
     border: 1px solid rgba(26, 111, 82, 0.32);
-    border-radius: 12px;
+    border-radius: 6px;
     background: rgba(26, 111, 82, 0.14);
     color: #b8ebd0;
     font-family: inherit;
@@ -219,6 +219,45 @@ body.release-overlay-open {
     padding: 8px 12px;
 }
 
+.app-donate-trigger--header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    align-self: center;
+    margin-left: auto;
+    max-width: none;
+    width: auto;
+    min-height: 0;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    line-height: 1.2;
+    box-shadow: none;
+}
+
+.app-donate-icon {
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.app-donate-text {
+    line-height: 1.2;
+}
+
+@media (max-width: 400px) {
+    .app-donate-text-full {
+        display: none;
+    }
+}
+
+@media (max-width: 359px) {
+    .app-donate-trigger:not(.app-donate-trigger--header) .app-donate-text {
+        display: none;
+    }
+}
+
 body.donate-sheet-open {
     overflow: hidden;
 }
@@ -246,7 +285,7 @@ body.donate-sheet-open {
     background: #141b27;
     border: 1px solid rgba(23, 128, 56, 0.18);
     border-bottom: none;
-    border-radius: 18px 18px 0 0;
+    border-radius: 9px 9px 0 0;
     padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.42);
     transform: translateY(100%);
@@ -280,7 +319,7 @@ body.donate-sheet-open {
     width: 34px;
     height: 34px;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(23, 128, 56, 0.12);
     color: #9db0cf;
     font-size: 18px;
@@ -312,7 +351,7 @@ body.donate-sheet-open {
     min-height: 52px;
     padding: 12px 10px;
     border: 1px solid rgba(23, 128, 56, 0.32);
-    border-radius: 14px;
+    border-radius: 7px;
     background: rgba(23, 128, 56, 0.1);
     color: #d4f5e0;
     font-family: inherit;
@@ -338,7 +377,7 @@ body.donate-sheet-open {
     margin-bottom: 14px;
     padding: 13px 14px;
     border: 1px solid rgba(23, 128, 56, 0.22);
-    border-radius: 14px;
+    border-radius: 7px;
     background: rgba(8, 14, 24, 0.72);
     color: #e8f0fa;
     font-family: inherit;
@@ -368,7 +407,7 @@ body.donate-sheet-open {
 .donate-fee-summary {
     margin: 0 0 10px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: 6px;
     background: rgba(23, 128, 56, 0.08);
     border: 1px solid rgba(23, 128, 56, 0.16);
     color: #d4f5e0;
@@ -395,7 +434,7 @@ body.donate-sheet-open {
     width: 100%;
     padding: 15px 16px;
     border: none;
-    border-radius: 14px;
+    border-radius: 7px;
     background: var(--app-green);
     color: #ffffff;
     font-family: inherit;
@@ -430,7 +469,7 @@ body.donate-sheet-open {
 
     .donate-sheet {
         border-bottom: 1px solid rgba(23, 128, 56, 0.18);
-        border-radius: 18px;
+        border-radius: 9px;
         max-width: 480px;
         transform: translateY(24px);
         opacity: 0;

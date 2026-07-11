@@ -39,7 +39,7 @@
 .station-card {
     background: var(--station-fill);
     border: 1px solid var(--station-stroke);
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
@@ -108,7 +108,7 @@
     gap: 8px;
     padding: 8px 6px 8px 10px;
     border-left: 3px solid rgba(96, 165, 250, 0.85);
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 4px 4px 0;
     background: rgba(59, 130, 246, 0.1);
     color: #dbeafe;
     font-size: 13px;
@@ -137,7 +137,7 @@
     margin-left: auto;
     padding: 0;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     background: transparent;
     color: rgba(191, 219, 254, 0.72);
     font-size: 14px;
@@ -178,7 +178,7 @@
     background: #141b27;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
-    border-radius: 18px 18px 0 0;
+    border-radius: 9px 9px 0 0;
     padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.42);
     transform: translateY(100%);
@@ -212,7 +212,7 @@
     width: 34px;
     height: 34px;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: rgba(255, 255, 255, 0.06);
     color: #9db0cf;
     font-size: 18px;
@@ -233,7 +233,7 @@
     margin-bottom: 14px;
     padding: 12px 14px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border-radius: 6px;
     background: rgba(8, 12, 20, 0.72);
     color: #f4f7ff;
     font: inherit;
@@ -256,7 +256,7 @@
     width: 100%;
     padding: 14px 16px;
     border: none;
-    border-radius: 14px;
+    border-radius: 7px;
     background: var(--app-green);
     color: #ffffff;
     font-size: 16px;
@@ -282,7 +282,7 @@
 
     .station-note-sheet {
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
+        border-radius: 9px;
         max-width: 480px;
         transform: translateY(24px);
         opacity: 0;
@@ -351,7 +351,7 @@
     min-width: var(--km-marker-width);
     min-height: 48px;
     height: auto;
-    border-radius: 12px;
+    border-radius: 6px;
     background: var(--station-fill);
     border: 1px solid var(--station-stroke);
     z-index: 2;
@@ -526,9 +526,13 @@
 
 
 @media (max-width: 430px) {
+    #screen-schedule .phone-screen,
+    #screen-schedule .phone-screen.schedule-app-wrap,
+    #screen-calendar .phone-screen,
+    #screen-profile .phone-screen,
     .phone-screen {
         min-height: auto;
-        padding: 20px 12px;
+        padding: 0;
     }
 
     .schedule-glass-tabs {
@@ -538,7 +542,7 @@
     .schedule-glass-tabs .tab-btn {
         width: auto;
         flex: 1;
-        border-radius: 14px;
+        border-radius: 7px;
     }
 
     .tabs-nav:not(.schedule-glass-tabs) {
@@ -548,7 +552,7 @@
 
     .tabs-nav:not(.schedule-glass-tabs) .tab-btn {
         width: 100%;
-        border-radius: 14px;
+        border-radius: 7px;
     }
 
     .route-card {
@@ -824,7 +828,7 @@ body.auth-locked {
     padding: 8px 6px;
     min-height: 48px;
     border: none;
-    border-radius: 16px;
+    border-radius: 8px;
     background: transparent;
     color: rgba(139, 151, 171, 0.88);
     font-size: var(--font-xs);
@@ -891,7 +895,7 @@ body.app-offline::after {
     transform: translateX(-50%);
     z-index: 12000;
     padding: 5px 12px;
-    border-radius: 999px;
+    border-radius: 499.5px;
     border: 1px solid rgba(255, 255, 255, 0.16);
     background: rgba(20, 28, 40, 0.88);
     color: rgba(244, 247, 255, 0.88);

@@ -59,7 +59,7 @@ body.auth-locked .screen:not(#screen-auth) {
     flex-direction: column;
     align-items: center;
     padding: 20px 18px 16px;
-    border-radius: 18px;
+    border-radius: 9px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--app-border);
     backdrop-filter: blur(12px);
@@ -155,7 +155,7 @@ body.auth-locked .screen:not(#screen-auth) {
     margin-bottom: 8px;
     font-size: var(--font-base);
     border: 1px solid var(--app-border);
-    border-radius: 10px;
+    border-radius: 5px;
     outline: none;
     background: rgba(0, 0, 0, 0.3);
     color: var(--app-text);
@@ -186,7 +186,7 @@ body.auth-locked .screen:not(#screen-auth) {
     padding: 11px 14px;
     margin-bottom: 8px;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: linear-gradient(180deg, #1f9a4a, var(--app-green));
     color: #ffffff;
     font-size: 14px;
@@ -303,7 +303,7 @@ body.auth-locked .screen:not(#screen-auth) {
     flex-shrink: 0;
     padding: 8px 14px;
     border: none;
-    border-radius: 10px;
+    border-radius: 5px;
     background: var(--app-green);
     color: #fff;
     font-size: var(--font-sm);
