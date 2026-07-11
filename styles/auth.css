@@ -41,8 +41,8 @@ body.auth-locked .screen:not(#screen-auth) {
     transform: translateX(-50%);
     width: min(90vw, 360px);
     height: 100px;
-    background: url('assets/cppk-train.png') no-repeat center / contain;
-    opacity: 0.06;
+    background: url('../assets/brand-logo.png') no-repeat center / contain;
+    opacity: 0.04;
     pointer-events: none;
     filter: grayscale(1) brightness(1.6);
 }
@@ -76,42 +76,30 @@ body.auth-locked .screen:not(#screen-auth) {
 }
 
 .user-auth-logo {
-    width: 76px;
-    height: 76px;
+    width: 96px;
+    height: 96px;
     object-fit: contain;
     animation: logoPulse 4s ease-in-out infinite;
 }
 
-.user-auth-train {
-    width: 100%;
-    max-width: 260px;
-    height: auto;
-    margin-top: 6px;
-    object-fit: contain;
-    opacity: 0.55;
-    filter: grayscale(0.15) brightness(1.1);
-    animation: trainDrift 6s ease-in-out infinite;
-}
-
 .user-auth-title {
-    font-size: 15px;
+    font-size: 22px;
     font-weight: 800;
-    letter-spacing: 0.14em;
+    letter-spacing: -0.02em;
     color: #ffffff;
     text-align: center;
-    margin: 0 0 4px;
-    line-height: 1.2;
+    margin: 0 0 6px;
+    line-height: 1.15;
 }
 
-.user-auth-cppk {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
+.user-auth-tagline {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     text-align: center;
-    color: var(--cppk-green);
-    margin: 0 0 12px;
-    opacity: 0.9;
+    color: var(--brand-teal);
+    margin: 0 0 16px;
+    opacity: 0.92;
 }
 
 .user-auth-panels {

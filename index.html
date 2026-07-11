@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Цифровой помощник ЦППК</title>
+    <title>Цифровой помощник</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="assets/cppk-logo.png" type="image/png">
-    <link rel="apple-touch-icon" href="assets/cppk-logo.png">
+    <link rel="icon" href="assets/brand-logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/brand-logo.png">
     <meta name="theme-color" content="#0a1018">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -61,11 +61,10 @@
 <div id="screen-auth" class="screen user-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="userAuthTitle">
     <div class="user-auth-card">
         <div class="user-auth-brand">
-            <img src="assets/cppk-logo.png" alt="Логотип ЦППК" class="user-auth-logo" width="76" height="76">
-            <img src="assets/cppk-train.png" alt="" class="user-auth-train" width="260" height="80" aria-hidden="true">
+            <img src="assets/brand-logo.png" alt="Логотип цифрового помощника" class="user-auth-logo" width="96" height="96">
         </div>
-        <h1 id="userAuthTitle" class="user-auth-title">ЦИФРОВОЙ ПОМОЩНИК</h1>
-        <p class="user-auth-cppk">Центральная ППК</p>
+        <h1 id="userAuthTitle" class="user-auth-title">Цифровой помощник</h1>
+        <p class="user-auth-tagline">Быстрее к правильному действию</p>
 
         <div class="user-auth-panels">
             <div id="authPanelLogin" class="user-auth-panel active">
@@ -104,7 +103,18 @@
 
 <div id="screen-schedule" class="screen hidden">
 
-<div class="phone-screen">
+<div class="phone-screen schedule-app-wrap">
+    <div class="app-brand-strip">
+        <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+        <span class="app-brand-text">Цифровой помощник</span>
+    </div>
+
+    <div class="screen-card screen-card--schedule">
+        <div class="screen-card-head">
+            <h2 class="screen-section-title">Расписание</h2>
+            <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
+        </div>
+
     <div class="schedule-glass-stack" id="scheduleGlassStack">
         <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
             <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
@@ -183,11 +193,9 @@
 
     </div>
 
-    <div class="app-donate-wrap app-donate-wrap--route">
-        <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
-    </div>
-
     <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
+
+    </div>
 
     <div id="shiftResetConfirm" class="shift-confirm-overlay" aria-hidden="true" role="alertdialog" aria-labelledby="shiftConfirmText" aria-modal="true">
         <div class="shift-confirm-box">
@@ -237,13 +245,19 @@
 <div id="screen-calendar" class="screen">
     <div class="phone-screen calendar-app-wrap">
         <div class="app-brand-strip">
-            <img src="assets/cppk-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-            <span class="app-brand-text"><span>Ц</span>ППК · График смен</span>
-            <button type="button" class="app-donate-trigger app-donate-trigger--corner" data-donate-open>☕ Поддержать автора</button>
+            <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+            <span class="app-brand-text">Цифровой помощник</span>
         </div>
+
+        <div class="screen-card screen-card--calendar">
+            <div class="screen-card-head">
+                <h2 class="screen-section-title">График смен</h2>
+                <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
+            </div>
+
         <div class="calendar-header">
             <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(-1)" aria-label="Предыдущий месяц">◀</button>
-            <h2 id="monthTitle">Май 2026</h2>
+            <p id="monthTitle" class="calendar-month-title">Май 2026</p>
             <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(1)" aria-label="Следующий месяц">▶</button>
         </div>
         <div class="calendar-legend" aria-hidden="true">
@@ -264,6 +278,8 @@
             </div>
         </div>
 
+        </div>
+
         <div id="shiftNoteSheet" class="shift-note-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="shiftNoteSheetTitle">
             <div class="shift-note-sheet">
                 <div class="shift-note-sheet-header">
@@ -282,12 +298,21 @@
 <div id="screen-profile" class="screen hidden">
     <div class="phone-screen profile-app-wrap">
         <div class="app-brand-strip">
-            <img src="assets/cppk-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-            <span class="app-brand-text"><span>Ц</span>ППК · Личный кабинет</span>
+            <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+            <span class="app-brand-text">Цифровой помощник</span>
         </div>
+
+        <div class="screen-card screen-card--profile">
+            <div class="screen-card-head">
+                <h2 class="screen-section-title">Личный кабинет</h2>
+                <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
+            </div>
+
         <div class="profile-card profile-card--hero">
             <div class="profile-identity">
-                <img src="assets/cppk-logo.png" alt="ЦППК" class="profile-cppk-logo" width="40" height="40">
+                <div class="profile-avatar" aria-hidden="true">
+                    <img src="assets/brand-logo.png" alt="" class="profile-brand-logo" width="58" height="58">
+                </div>
                 <div class="profile-identity-text">
                     <div id="profileUserName" class="profile-text-fit">Сотрудник</div>
                     <div class="profile-position-combobox route-combobox" id="profilePositionCombobox">
@@ -377,10 +402,6 @@
             </div>
         </div>
 
-        <div class="app-donate-wrap app-donate-wrap--profile">
-            <button type="button" class="app-donate-trigger" data-donate-open>☕ Поддержать автора</button>
-        </div>
-
         <div class="profile-card profile-card--nearest">
             <div class="profile-mini-block profile-mini-block--nearest" id="nearestShiftBlock">
                 <div class="profile-mini-label">Ближайшая смена</div>
@@ -388,11 +409,13 @@
             </div>
         </div>
 
-        <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
-
         <div class="profile-footer">
             <button type="button" class="profile-logout-btn" onclick="handleLogout()">Выйти</button>
         </div>
+
+        </div>
+
+        <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
 
         <div id="profileAspozhQrModal" class="profile-qr-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="QR-код АСПОЖ">
             <button type="button" class="profile-qr-modal-close" id="profileAspozhQrModalClose" aria-label="Закрыть">×</button>
@@ -439,7 +462,7 @@
     const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
     const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.3.15';
+    const APP_RELEASE_VERSION = '2.3.16';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -3691,20 +3714,19 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Предупреждения видны и на проходных станциях',
-            'Добавлена станция Абрамцево',
-            'Часы на расписании не отстают после сворачивания',
-            'Заметки к станциям — долгое нажатие на карточку',
-            'Заметки к сменам в календаре',
-            '☕ Поддержать автора — донат через CloudTips'
+            'Новый бренд и логотип «Цифровой помощник»',
+            'Обновлён дизайн календаря, расписания и личного кабинета',
+            'Аватар в профиле — квадрат с логотипом M',
+            'Кнопка «Поддержать автора» в шапке каждого раздела',
+            'Превью комиссии CloudTips перед донатом',
+            'Пастельные цвета смен в календаре'
         ],
         highlights: [
-            'Ограничения скорости показываются и там, где поезд проходит без остановки.',
-            'Абрамцево появилось в справочнике станций.',
-            'Часы на вкладке «Расписание» снова показывают точное время после возврата в приложение.',
-            'К станции можно прикрепить заметку — например, про длину состава.',
-            'К смене в календаре можно добавить напоминание — оно видно в сводке дня.',
-            'Появилась кнопка «Поддержать автора» — донат через CloudTips, оплата в браузере.'
+            'Приложение переименовано в «Цифровой помощник» с новым логотипом.',
+            'Экраны оформлены карточками с заголовками разделов.',
+            'В личном кабинете — аватар с логотипом, имя и должность по центру.',
+            'Перед переводом видно комиссию CloudTips и итоговую сумму к оплате.',
+            'Плашки смен в календаре стали мягче и читабельнее.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

@@ -141,19 +141,80 @@ body {
     height: 28px;
     object-fit: contain;
     flex-shrink: 0;
-    filter: drop-shadow(0 2px 6px rgba(0, 122, 74, 0.35));
+    filter: drop-shadow(0 2px 6px rgba(26, 111, 82, 0.35));
 }
 
 .app-brand-text {
     font-size: var(--font-xs);
     font-weight: 800;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.08em;
     color: var(--app-muted);
     text-transform: uppercase;
 }
 
-.app-brand-text span {
-    color: var(--cppk-green);
+.screen-section-title {
+    margin: 0;
+    font-size: var(--font-xl);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--app-text);
+    line-height: 1.15;
+}
+
+.screen-card {
+    width: 100%;
+    padding: var(--card-padding);
+    border-radius: var(--card-radius);
+    background: var(--surface-card);
+    box-sizing: border-box;
+}
+
+.screen-card-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-left: calc(-1 * var(--card-padding));
+    margin-right: calc(-1 * var(--card-padding));
+    padding: 0 var(--card-padding) 16px;
+    margin-bottom: 18px;
+}
+
+.screen-card-head::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 12%,
+        rgba(255, 255, 255, 0.1) 88%,
+        transparent 100%
+    );
+}
+
+.screen-card-head .screen-section-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.screen-card-head .app-donate-trigger {
+    flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+    .screen-card-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .screen-card-head .app-donate-trigger {
+        width: 100%;
+    }
 }
 
 .phone-screen {
@@ -372,7 +433,27 @@ transform: translateX(20px);
 
 #screen-schedule .phone-screen {
     overflow: visible;
-    padding-top: 4px;
+    padding: 24px;
+}
+
+#screen-schedule .schedule-app-wrap {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-gap);
+}
+
+#screen-schedule .screen-card--schedule .schedule-glass-stack {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+#screen-schedule .screen-card--schedule .app-community-footer {
+    margin-top: 4px;
+    margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
 #screen-schedule .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {

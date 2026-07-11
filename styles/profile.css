@@ -1,49 +1,73 @@
 /* === Profile screen === */
+#screen-profile .screen-card--profile {
+    gap: 14px;
+}
+
 #screen-profile .profile-card {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--app-radius);
-    padding: 14px 16px;
+    background: var(--surface-card-inner);
+    border: none;
+    border-radius: 12px;
+    padding: var(--card-padding);
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
     animation: cardRise 0.35s var(--app-ease) backwards;
 }
 
-#screen-profile .profile-card:nth-child(1) { animation-delay: 0.04s; }
-#screen-profile .profile-card:nth-child(2) { animation-delay: 0.1s; }
-#screen-profile .profile-card:nth-child(3) { animation-delay: 0.14s; }
+#screen-profile .profile-card:nth-child(2) { animation-delay: 0.04s; }
+#screen-profile .profile-card:nth-child(3) { animation-delay: 0.1s; }
+#screen-profile .profile-card:nth-child(4) { animation-delay: 0.14s; }
 #screen-profile .profile-footer { animation-delay: 0.18s; }
 
 #screen-profile .profile-card--hero {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
+    justify-content: center;
+    padding-top: 20px;
+    padding-bottom: 20px;
 }
 
 #screen-profile .profile-identity {
     flex: 1;
     min-width: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
+    text-align: center;
 }
 
-#screen-profile .profile-cppk-logo {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
+#screen-profile .profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 22px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
-    filter: drop-shadow(0 2px 8px rgba(0, 122, 74, 0.3));
+    background: linear-gradient(180deg, #243538 0%, #203133 48%, #1c292c 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+#screen-profile .profile-brand-logo {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    object-position: center center;
+    display: block;
+    flex-shrink: 0;
 }
 
 #screen-profile .profile-identity-text {
     min-width: 0;
-    flex: 1;
+    width: 100%;
+    max-width: 320px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 6px;
 }
 
 #screen-profile .profile-text-fit {
@@ -56,15 +80,16 @@
 }
 
 #screen-profile #profileUserName {
-    font-weight: 600;
-    font-size: var(--font-lg);
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    font-size: var(--font-2xl);
+    letter-spacing: -0.03em;
+    color: #ffffff;
 }
 
 #screen-profile .profile-user-meta {
-    font-size: var(--font-xs);
+    font-size: 12px;
     font-weight: 400;
-    color: var(--app-caption);
+    color: rgba(139, 151, 171, 0.62);
     line-height: 1.3;
 }
 
@@ -74,33 +99,33 @@
 
 #screen-profile .profile-position-combobox {
     position: relative;
-    width: 100%;
-    margin: 1px 0 0;
+    width: min(100%, 240px);
+    margin: 0;
 }
 
 #screen-profile .profile-position-trigger {
     display: flex;
     align-items: center;
+    justify-content: center;
     width: 100%;
     margin: 0;
-    padding: 4px 28px 4px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 28px 6px 12px;
+    border: none;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b97ab' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
-    font-size: var(--font-xs);
+    background: rgba(255, 255, 255, 0.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b97ab' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+    font-size: var(--font-sm);
     font-weight: 500;
-    color: var(--app-caption);
+    color: var(--app-muted);
     line-height: 1.3;
     cursor: pointer;
     font-family: inherit;
-    text-align: left;
-    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    text-align: center;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 #screen-profile .profile-position-trigger:hover,
 #screen-profile .profile-position-combobox.is-open .profile-position-trigger {
-    border-color: rgba(23, 128, 56, 0.35);
-    background-color: rgba(23, 128, 56, 0.08);
+    background-color: rgba(255, 255, 255, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b8c4d8' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
     color: var(--app-text);
 }
 
@@ -218,8 +243,8 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
-    gap: var(--app-gap);
-    padding: 14px;
+    gap: 12px;
+    padding: 16px;
 }
 
 #screen-profile .profile-mini-block--qr {
@@ -227,10 +252,10 @@
 }
 
 #screen-profile .profile-mini-block {
-    padding: 12px 10px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 16px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: none;
     min-height: 88px;
     display: flex;
     flex-direction: column;
@@ -283,7 +308,7 @@
     gap: 5px;
     margin: 0;
     padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     flex-shrink: 0;
 }
 
@@ -593,7 +618,7 @@
 }
 
 #screen-profile .profile-card--nearest {
-    padding: 12px 14px;
+    padding: 20px var(--card-padding);
 }
 
 #screen-profile .profile-mini-block--nearest {
@@ -651,9 +676,8 @@
     margin: 0 auto;
     padding: 12px 22px;
     border: none;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
     color: var(--app-muted);
     font-size: var(--font-base);
     font-weight: 500;

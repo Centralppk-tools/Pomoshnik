@@ -1,6 +1,6 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.15 STABLE)
-const CACHE_VERSION = 'cppk_v2_3_15_r1';
-const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.16 STABLE)
+const CACHE_VERSION = 'da_v2_3_16';
+const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
     './',
@@ -20,8 +20,7 @@ const PRECACHE_ASSETS = [
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
     './data/release-notes.json',
-    './assets/cppk-logo.png',
-    './assets/cppk-train.png'
+    './assets/brand-logo.png'
 ];
 
 function isPrecachePath(pathname) {

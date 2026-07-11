@@ -163,13 +163,13 @@ body.release-overlay-open {
 /* === Поддержать автора === */
 .app-donate-wrap {
     width: 100%;
-    padding: 0 2px;
-    margin-top: 12px;
+    padding: 0;
+    margin-top: 16px;
 }
 
 .app-donate-wrap--profile {
-    margin-top: 14px;
-    margin-bottom: 4px;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .app-donate-wrap--route {
@@ -179,46 +179,44 @@ body.release-overlay-open {
 .app-donate-trigger {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: rgba(168, 230, 190, 0.78);
+    min-height: 40px;
+    padding: 10px 16px;
+    border: 1px solid rgba(26, 111, 82, 0.32);
+    border-radius: 12px;
+    background: rgba(26, 111, 82, 0.14);
+    color: #b8ebd0;
     font-family: inherit;
-    font-size: var(--font-xs);
-    font-weight: 500;
-    line-height: 1.4;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    line-height: 1.3;
     cursor: pointer;
-    transition: color 0.2s ease, opacity 0.2s ease;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+
+.app-donate-wrap .app-donate-trigger {
+    width: 100%;
 }
 
 .app-donate-trigger:hover {
+    background: rgba(26, 111, 82, 0.22);
+    border-color: rgba(26, 111, 82, 0.48);
     color: #d4f5e0;
 }
 
 .app-donate-trigger:active {
-    opacity: 0.78;
+    transform: scale(0.98);
+    background: rgba(26, 111, 82, 0.28);
 }
 
 .app-donate-trigger--corner {
-    position: absolute;
-    top: 10px;
-    right: 0;
-    max-width: min(46vw, 168px);
-    font-size: 10px;
-    line-height: 1.25;
-    text-align: right;
-    white-space: normal;
-}
-
-#screen-calendar .calendar-app-wrap .app-brand-strip {
-    position: relative;
-    padding-right: 0;
+    position: static;
+    max-width: none;
+    font-size: var(--font-xs);
     min-height: 36px;
-}
-
-#screen-calendar .calendar-app-wrap .app-brand-text {
-    padding-right: min(46vw, 172px);
+    padding: 8px 12px;
 }
 
 body.donate-sheet-open {
@@ -442,13 +440,5 @@ body.donate-sheet-open {
     .donate-sheet-overlay.is-open .donate-sheet {
         transform: translateY(0);
         opacity: 1;
-    }
-}
-
-@media (max-width: 480px) {
-    .app-donate-trigger--corner {
-        top: 8px;
-        font-size: 9px;
-        max-width: 42vw;
     }
 }
