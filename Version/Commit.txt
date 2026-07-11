@@ -499,3 +499,29 @@ ui: пастельные цвета смен в календаре, обновл
 - Service Worker: da_v2_3_16, precache brand-logo.png.
 - Снимок HTML: Version/snapshots/index 2.3.16.html.
 - Снимок стилей: Version/snapshots/styles 2.3.16/.
+
+2.3.17 STABLE ★
+
+Основное:
+feat: мобильная полноширинная вёрстка — контент на всю ширину с отступами 8px
+feat: двухстрочная шапка — app-header-bar (логотип + «Поддержать») и glass schedule-title-plate
+ui: кнопка «Поддержать» без иконки, uppercase бренд «ЦИФРОВОЙ ПОМОЩНИК», цвет #E0E0E0
+fix: стрелки календаря удержаны внутри screen-card, выровнена шапка месяца
+ui: скругления углов уменьшены вдвое по всему приложению
+
+Приятные доработки (Плюшки):
+4. ui: glassmorphism для плашки заголовка раздела (blur 16px, полупрозрачный фон)
+5. fix: убрана фиксированная шапка, донат скроллится вместе с контентом
+6. fix: устранено наложение sticky-блоков и синяя полупрозрачная подложка
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app-screen-header: padding 16px, app-header-bar flex space-between.
+- schedule-title-plate: glass-эффект, компактный заголовок medium 16px.
+- responsive.css: mobile-edge 8px, full-width phone-screen и screen-card.
+- calendar.css: grid 32px для nav-кнопок, padding внутри screen-card.
+- tokens.css: --app-radius 8px, --card-radius 8px, --glass-radius 11px.
+- Service Worker: da_v2_3_17.
+- Снимок HTML: Version/snapshots/index 2.3.17.html.
+- Снимок стилей: Version/snapshots/styles 2.3.17/.
