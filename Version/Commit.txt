@@ -474,7 +474,7 @@ feat: кнопка «Поддержать автора» — донат чере
 - Снимок стилей: Version/snapshots/styles 2.3.15/.
 
 2.3.16 STABLE ★
-Коммиты: a8cc957, 3e5853a, be27ff6, 7fe4ade, d3ced18, 9c5ffe9
+Коммиты: a8cc957, 3e5853a, be27ff6, 7fe4ade, d3ced18, 9c5ffe9, aa7a600
 
 Основное:
 feat: ребрендинг — «Цифровой помощник» и логотип brand-logo вместо ЦППК

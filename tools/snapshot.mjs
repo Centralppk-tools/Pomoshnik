@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const swPath = join(root, 'app', 'sw.js');
 const swSource = readFileSync(swPath, 'utf8');
-const match = swSource.match(/cppk_v(\d+_\d+_\d+)/);
+const match = swSource.match(/(?:cppk_v|da_v)(\d+_\d+_\d+)/);
 
 if (!match) {
-    console.error('Не удалось прочитать версию из app/sw.js (cppk_vX_Y_Z).');
+    console.error('Не удалось прочитать версию из app/sw.js (cppk_vX_Y_Z или da_vX_Y_Z).');
     process.exit(1);
 }
 
