@@ -1,6 +1,6 @@
 // Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.15 STABLE)
-const CACHE_VERSION = 'cppk_v2_3_15';
-const CACHE_NAME = `cppk_assistant_${CACHE_VERSION}`;
+const CACHE_VERSION = 'da_v2_3_15_r2';
+const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
     './',
@@ -20,8 +20,7 @@ const PRECACHE_ASSETS = [
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
     './data/release-notes.json',
-    './assets/cppk-logo.png',
-    './assets/cppk-train.png'
+    './assets/brand-logo.png'
 ];
 
 function isPrecachePath(pathname) {
@@ -78,6 +77,26 @@ function revalidateInBackground(cache, request) {
         .catch(() => {});
 }
 
+function isReleaseNotesRequest(pathname) {
+    return pathname.endsWith('/data/release-notes.json') || pathname.endsWith('release-notes.json');
+}
+
+async function networkFirst(request) {
+    const cache = await caches.open(CACHE_NAME);
+
+    try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch (err) {
+        const cached = await matchCachedRequest(cache, request);
+        if (cached) return cached;
+        throw err;
+    }
+}
+
 async function cacheFirst(request) {
     const cache = await caches.open(CACHE_NAME);
     const cached = await matchCachedRequest(cache, request);
@@ -131,6 +150,11 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
+
+    if (isReleaseNotesRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
 
     if (request.mode === 'navigate' || isPrecachePath(url.pathname)) {
         event.respondWith(cacheFirst(request));
