@@ -2,15 +2,22 @@
 #screen-calendar,
 #screen-profile {
     --bg-color: transparent;
-    --card-bg: rgba(255, 255, 255, 0.06);
-    --card-border: rgba(255, 255, 255, 0.12);
+    --card-bg: var(--surface-card);
+    --card-border: transparent;
     --text-main: var(--app-text);
     --text-muted: var(--app-muted);
-    --day-shift: var(--app-green);
-    --night-shift: var(--app-blue);
-    --study-shift: #0dafb5;
-    --vacation-shift: #f39c12;
-    --tech-shift: #9b59b6;
+    --shift-day-solid: #72a882;
+    --shift-night-solid: #6a8fc4;
+    --shift-tech-solid: #9a7fc4;
+    --shift-day-bg: rgba(72, 155, 102, 0.42);
+    --shift-day-border: rgba(130, 210, 160, 0.28);
+    --shift-night-bg: rgba(68, 110, 175, 0.44);
+    --shift-night-border: rgba(130, 170, 230, 0.28);
+    --shift-tech-bg: rgba(130, 105, 175, 0.4);
+    --shift-tech-border: rgba(180, 150, 220, 0.28);
+    --day-shift: var(--shift-day-solid);
+    --night-shift: var(--shift-night-solid);
+    --tech-shift: var(--shift-tech-solid);
     --accent: #c8d4ef;
     width: 100%;
     margin: 0;
@@ -109,14 +116,24 @@
 #screen-profile .phone-screen {
     width: 100%;
     max-width: 640px;
-    padding: 28px 24px;
+    padding: 24px;
+}
+
+#screen-calendar .screen-card--calendar,
+#screen-profile .screen-card--profile,
+#screen-schedule .screen-card--schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 0;
 }
 
 #screen-calendar .calendar-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
     align-items: center;
-    margin-bottom: 6px;
+    justify-items: center;
+    margin-bottom: 4px;
     width: 100%;
 }
 
@@ -125,55 +142,59 @@
     height: 36px;
     padding: 0;
     margin: 0;
-    border: 1px solid var(--card-border);
+    border: none;
     border-radius: 10px;
-    background: var(--card-bg);
+    background: var(--surface-card-inner);
     color: var(--text-main);
     font-size: var(--font-base);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+    transition: background 0.2s ease, transform 0.12s ease;
 }
 
 #screen-calendar .calendar-nav-btn:hover {
-    border-color: rgba(23, 128, 56, 0.35);
-    background: rgba(23, 128, 56, 0.08);
+    background: rgba(26, 111, 82, 0.18);
 }
 
+#screen-calendar .calendar-month-title,
 #screen-calendar #monthTitle {
     font-size: var(--font-lg);
     font-weight: 600;
     margin: 0;
     letter-spacing: -0.02em;
+    text-align: center;
+    width: 100%;
+    color: var(--text-main);
 }
 
 #screen-calendar .calendar-legend {
     display: flex;
     justify-content: center;
-    gap: 14px;
-    margin-bottom: 8px;
-    font-size: var(--font-xs);
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-bottom: 4px;
+    font-size: 10px;
     color: var(--app-caption);
 }
 
 #screen-calendar .calendar-legend span {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
 }
 
 #screen-calendar .legend-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     flex-shrink: 0;
 }
 
-#screen-calendar .legend-dot--day { background: var(--day-shift); }
-#screen-calendar .legend-dot--night { background: var(--night-shift); }
-#screen-calendar .legend-dot--tech { background: var(--tech-shift); }
+#screen-calendar .legend-dot--day { background: var(--shift-day-solid); }
+#screen-calendar .legend-dot--night { background: var(--shift-night-solid); }
+#screen-calendar .legend-dot--tech { background: var(--shift-tech-solid); }
 
 #screen-calendar .calendar-grid {
     display: grid;
@@ -182,10 +203,9 @@
     align-items: stretch;
     gap: 4px;
     width: 100%;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 10px;
-    border-radius: 14px;
+    background: var(--surface-card-inner);
+    padding: 12px;
+    border-radius: 12px;
     box-sizing: border-box;
 }
 
@@ -213,8 +233,8 @@
     box-sizing: border-box;
     cursor: pointer;
     overflow: visible;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
     transition: transform 0.15s var(--app-ease), border-color 0.15s ease;
 }
 
@@ -273,7 +293,7 @@
     padding: 3px 4px;
     border-radius: 7px;
     box-sizing: border-box;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: none;
     text-align: center;
 }
 
@@ -339,17 +359,16 @@
     border-top-right-radius: 5px;
 }
 
-/* Пастельные подложки с контрастным текстом */
 #screen-calendar .day-shift-chip.has-day-shift {
-    background: rgba(72, 155, 102, 0.42);
+    background: var(--shift-day-bg);
     color: #f2fff6;
-    border-color: rgba(130, 210, 160, 0.28);
+    border-color: var(--shift-day-border);
 }
 
 #screen-calendar .day-shift-chip.has-night-shift {
-    background: rgba(68, 110, 175, 0.44);
+    background: var(--shift-night-bg);
     color: #f0f6ff;
-    border-color: rgba(130, 170, 230, 0.28);
+    border-color: var(--shift-night-border);
 }
 
 #screen-calendar .day-shift-chip.has-study-shift {
@@ -365,9 +384,9 @@
 }
 
 #screen-calendar .day-shift-chip.has-tech-shift {
-    background: rgba(130, 105, 175, 0.4);
+    background: var(--shift-tech-bg);
     color: #f7f2ff;
-    border-color: rgba(180, 150, 220, 0.28);
+    border-color: var(--shift-tech-border);
 }
 
 #screen-calendar .day-shift-chip.has-route99-day {
@@ -432,13 +451,12 @@
 }
 
 #screen-calendar .shift-constructor {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--app-radius);
-    padding: 14px;
+    background: var(--surface-card-inner);
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
 }
 
 #screen-calendar .shift-constructor:not(.shift-constructor--has-summary) .shift-constructor-title {
