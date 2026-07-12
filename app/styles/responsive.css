@@ -62,19 +62,31 @@
     }
 
     .app-screen-header {
-        width: 100%;
-        margin: 0;
-        padding:
-            calc(16px + env(safe-area-inset-top, 0px))
-            max(16px, calc(var(--mobile-edge) + env(safe-area-inset-right, 0px)))
-            8px
-            max(16px, calc(var(--mobile-edge) + env(safe-area-inset-left, 0px)));
-        background: transparent;
-        border-bottom: none;
+        width: calc(100% - (var(--mobile-edge) * 2));
+        margin: 6px var(--mobile-edge) 0;
+        position: sticky;
+        top: calc(6px + env(safe-area-inset-top, 0px));
+        z-index: 120;
+        padding: 0;
+        background: rgba(28, 39, 42, 0.94);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: var(--card-radius);
+        overflow: hidden;
     }
 
     .app-header-bar {
         align-items: center;
+        min-height: 44px;
+        padding: 6px 12px;
+        gap: 8px;
+    }
+
+    .app-community-footer {
+        width: calc(100% - (var(--mobile-edge) * 2));
+        margin-left: var(--mobile-edge);
+        margin-right: var(--mobile-edge);
     }
 
     .screen-card,
@@ -91,6 +103,7 @@
         gap: 6px;
         box-sizing: border-box;
         background: var(--surface-card);
+        border: var(--card-border);
     }
 
     .schedule-glass-stack {
@@ -98,11 +111,12 @@
         max-width: none;
         margin: 0;
         top: 8px;
-        border-radius: 6px;
+        border-radius: var(--card-radius);
     }
 
     #screen-schedule .screen-card--schedule .schedule-glass-stack {
         width: 100%;
+        top: 0;
     }
 
     .route-grid,
@@ -137,8 +151,19 @@
     }
 
     #screen-calendar .screen-card--calendar {
-        padding: 6px 10px 0;
-        overflow: hidden;
+        padding: 6px 10px 12px;
+        overflow: visible;
+    }
+
+    #screen-profile .screen-card--profile {
+        margin-top: 10px;
+        padding: 10px 0 12px;
+        overflow: visible;
+        gap: 10px;
+    }
+
+    #screen-profile .screen-card--profile .profile-card--hero {
+        margin-top: 0;
     }
 
     #screen-calendar .calendar-header,
@@ -147,6 +172,11 @@
         padding-left: 0;
         padding-right: 0;
         box-sizing: border-box;
+    }
+
+    #screen-calendar .shift-constructor {
+        padding-bottom: 18px;
+        margin-bottom: 2px;
     }
 
     #screen-calendar .calendar-grid {
@@ -167,6 +197,7 @@
 
     #screen-calendar .shift-summary-note-add {
         width: calc(100% - var(--shift-summary-inset, 14px) * 2);
+        border-radius: var(--app-radius);
     }
 
     #screen-profile .screen-card--profile .profile-card {
@@ -208,13 +239,13 @@
         width: 32px;
         height: 32px;
         margin-top: 1px;
-        border-radius: 4px;
+        border-radius: var(--app-radius);
     }
 
     #screen-calendar .calendar-grid {
         gap: 3px;
         padding: 8px 6px;
-        border-radius: 6px;
+        border-radius: var(--card-radius);
     }
 
     #screen-calendar .weekday {
@@ -223,8 +254,8 @@
     }
 
     #screen-calendar .day {
-        padding: 4px;
-        border-radius: 4px;
+        padding: 4px 3px;
+        border-radius: var(--app-radius);
         min-height: 38px;
     }
 
@@ -246,8 +277,8 @@
     }
 
     #screen-calendar .day-shift-chip {
-        padding: 2px 4px;
-        border-radius: 3px;
+        padding: 3px 5px;
+        border-radius: 7px;
     }
 
     #screen-calendar .day-shift-label {
@@ -261,7 +292,8 @@
     }
 
     #screen-calendar .day--multi .day-shift-chip {
-        padding: 2px 3px;
+        padding: 2px 4px;
+        border-radius: 6px;
     }
 
     #screen-calendar .day--multi .day-shift-label {
@@ -302,7 +334,7 @@
     }
 
     #screen-calendar .shift-constructor {
-        padding: 12px 10px;
+        padding: 12px 10px 18px;
     }
 
     #screen-calendar .shift-constructor-input {
@@ -315,7 +347,7 @@
         padding: 11px 16px;
         font-size: var(--font-base);
         font-weight: 500;
-        border-radius: 6px;
+        border-radius: var(--app-radius);
     }
 
     #screen-calendar .shift-constructor-hint {
@@ -324,7 +356,8 @@
     }
 
     #screen-calendar .calendar-local-routes {
-        padding: 8px 6px;
+        padding: 10px 8px;
+        border-radius: var(--app-radius);
     }
 
     #screen-calendar .calendar-local-routes-grid {
@@ -335,10 +368,10 @@
         flex: 1 1 calc(33.33% - 4px);
         min-width: 0;
         min-height: 36px;
-        padding: 6px 4px;
+        padding: 6px 6px;
         font-size: 12px;
         font-weight: 600;
-        border-radius: 4px;
+        border-radius: var(--app-radius);
     }
 
     #screen-calendar .shift-summary--stacked {
@@ -392,12 +425,19 @@
     }
 
     #screen-calendar .trains-chip-panel--capsule .train-num-chip {
-        padding: 2px 5px;
+        padding: 3px 6px;
         font-size: 9px;
+        border-radius: 8px;
     }
 
     #screen-profile .profile-card {
         padding: 12px 14px;
+    }
+
+    #screen-profile .profile-month-selector {
+        width: calc(100% - 24px);
+        margin: 0 12px;
+        padding: 8px 10px;
     }
 
     #screen-profile .profile-card--split {
@@ -497,8 +537,11 @@
 
     .schedule-glass-stack {
         width: 100%;
-        top: 4px;
         margin-bottom: 10px;
+    }
+
+    #screen-schedule .screen-card--schedule .schedule-glass-stack {
+        top: 0;
     }
 
     #tab-schedule {
@@ -571,13 +614,13 @@
     .station-card {
         padding: 10px 12px;
         gap: 8px;
-        border-radius: 5px;
+        border-radius: 12px;
     }
 
     .station-dot {
         min-height: 44px;
         padding: 6px 3px;
-        border-radius: 5px;
+        border-radius: 10px;
     }
 
     .station-dot::after {
@@ -590,8 +633,8 @@
     }
 
     .route-brake-box {
-        padding: 3px 7px;
-        border-radius: 2.5px;
+        padding: 4px 8px;
+        border-radius: var(--app-radius);
     }
 
     .route-brake-text {

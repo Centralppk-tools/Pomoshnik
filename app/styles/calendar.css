@@ -147,7 +147,7 @@
     padding: 0;
     margin: 1px 0 0;
     border: none;
-    border-radius: 5px;
+    border-radius: var(--app-radius);
     background: var(--surface-card-inner);
     color: var(--text-main);
     font-size: var(--font-base);
@@ -170,7 +170,7 @@
     letter-spacing: -0.02em;
     text-align: center;
     width: 100%;
-    color: var(--text-main);
+    color: var(--app-text-bright);
 }
 
 #screen-calendar .calendar-legend {
@@ -209,7 +209,8 @@
     width: 100%;
     background: var(--surface-card-inner);
     padding: 12px;
-    border-radius: 6px;
+    border-radius: var(--card-radius);
+    border: var(--card-border);
     box-sizing: border-box;
 }
 
@@ -232,8 +233,8 @@
     width: 100%;
     min-width: 0;
     min-height: 44px;
-    padding: 5px;
-    border-radius: 5px;
+    padding: 6px 5px;
+    border-radius: var(--app-radius);
     box-sizing: border-box;
     cursor: pointer;
     overflow: visible;
@@ -281,9 +282,10 @@
     flex-direction: column;
     justify-content: flex-end;
     align-items: stretch;
-    gap: 3px;
+    gap: 4px;
     flex: 0 0 auto;
     width: 100%;
+    padding: 0 1px;
 }
 
 #screen-calendar .day-shift-chip {
@@ -294,17 +296,17 @@
     gap: 2px;
     flex: 0 0 auto;
     position: relative;
-    padding: 3px 4px;
-    border-radius: 3.5px;
+    padding: 4px 6px;
+    border-radius: 8px;
     box-sizing: border-box;
     border: none;
     text-align: center;
 }
 
 #screen-calendar .day--multi .day-shift-chip {
-    padding: 2px 4px;
+    padding: 3px 5px;
     gap: 1px;
-    border-radius: 3px;
+    border-radius: 7px;
 }
 
 #screen-calendar .day-shift-label {
@@ -456,11 +458,12 @@
 
 #screen-calendar .shift-constructor {
     background: var(--surface-card-inner);
-    border: none;
-    border-radius: 6px;
-    padding: 16px;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
+    padding: 16px 16px 20px;
     width: 100%;
     box-sizing: border-box;
+    margin-bottom: 4px;
 }
 
 #screen-calendar .shift-constructor:not(.shift-constructor--has-summary) .shift-constructor-title {
@@ -483,8 +486,8 @@
     padding: 12px 10px;
     margin-bottom: 8px;
     font-size: var(--font-base);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--app-radius);
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-main);
     text-align: left;
@@ -508,7 +511,7 @@
     width: 100%;
     padding: 12px 22px;
     border: none;
-    border-radius: 7px;
+    border-radius: var(--app-radius);
     background-color: #178038;
     color: #fff;
     font-size: var(--font-md);
@@ -575,12 +578,10 @@
 
 #screen-calendar .calendar-local-routes {
     margin-bottom: 2px;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid var(--glass-border-soft);
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 10px;
+    border-radius: var(--app-radius);
+    border: var(--card-border);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 #screen-calendar .calendar-local-routes-divider {
@@ -600,9 +601,9 @@
     flex: 1 1 calc(20% - 5px);
     min-width: 44px;
     min-height: 32px;
-    padding: 5px 6px;
-    border: 1px solid var(--glass-border-soft);
-    border-radius: 5px;
+    padding: 6px 8px;
+    border: var(--card-border);
+    border-radius: var(--app-radius);
     background: rgba(255, 255, 255, 0.045);
     color: var(--app-text);
     font-family: inherit;
@@ -670,8 +671,8 @@
     box-sizing: border-box;
     padding: 10px 12px;
     margin-bottom: 0;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--app-radius);
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-main);
     font-size: var(--font-base);
@@ -684,7 +685,7 @@
     margin: 0 14px 14px;
     padding: 10px 12px;
     border-left: 3px solid var(--app-green);
-    border-radius: 0 5px 5px 0;
+    border-radius: 0 var(--app-radius) var(--app-radius) 0;
     background: rgba(23, 128, 56, 0.1);
     color: #e8fff0;
     font-size: var(--font-sm);
@@ -722,7 +723,7 @@
     margin: 0 14px 14px;
     padding: 12px 14px;
     border: 1px solid rgba(23, 128, 56, 0.32);
-    border-radius: 7px;
+    border-radius: var(--app-radius);
     background: transparent;
     color: rgba(168, 230, 190, 0.92);
     font-family: inherit;

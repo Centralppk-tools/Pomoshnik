@@ -1,41 +1,62 @@
 /* === Сообщество и changelog === */
 .app-community-footer {
     width: 100%;
-    margin-top: 18px;
+    margin-top: 14px;
     margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: 4px;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 .app-community-block {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px 2px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-sizing: border-box;
 }
 
-.app-community-tags {
+.app-community-block .app-release-list {
+    margin: 0;
+    padding: 12px 14px 12px 12px;
+    list-style: none;
+    border: 1px solid rgba(255, 214, 66, 0.42);
+    border-radius: var(--card-radius);
+    background: rgba(255, 214, 66, 0.14);
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 7px;
+    box-sizing: border-box;
 }
 
-.app-release-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 9px;
-    border-radius: 499.5px;
-    background: rgba(255, 214, 66, 0.16);
-    border: 1px solid rgba(255, 214, 66, 0.34);
-    color: #ffe98a;
-    font-size: 11px;
+.app-community-block .app-release-list li {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 14px;
+    font-size: 12px;
     font-weight: 500;
-    line-height: 1.25;
+    line-height: 1.45;
+    color: #fff0b3;
     letter-spacing: 0.01em;
+}
+
+.app-community-block .app-release-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.58em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #ffd84d;
+    box-shadow: 0 0 0 2px rgba(255, 214, 66, 0.22);
 }
 
 .app-community-text {
     margin: 0;
+    padding: 0 2px;
     font-size: var(--font-xs);
     line-height: 1.45;
     color: var(--app-caption);
@@ -106,7 +127,7 @@ body.release-overlay-open {
     color: var(--app-caption);
 }
 
-.app-release-list {
+.app-release-box .app-release-list {
     margin: 0 0 14px;
     padding-left: 18px;
     display: flex;
@@ -115,9 +136,11 @@ body.release-overlay-open {
     font-size: var(--font-sm);
     line-height: 1.45;
     color: #d7e0f0;
+    border: none;
+    background: transparent;
 }
 
-.app-release-list li::marker {
+.app-release-box .app-release-list li::marker {
     color: rgba(255, 214, 66, 0.85);
 }
 
@@ -147,16 +170,20 @@ body.release-overlay-open {
 
 @media (max-width: 480px) {
     .app-community-footer {
-        margin-top: 14px;
+        width: calc(100% - (var(--mobile-edge) * 2));
+        margin-left: var(--mobile-edge);
+        margin-right: var(--mobile-edge);
+        margin-top: 12px;
     }
 
-    .app-community-block {
-        padding-top: 10px;
+    .app-community-block .app-release-list {
+        padding: 10px 12px 10px 10px;
+        gap: 6px;
     }
 
-    .app-release-tag {
-        font-size: 10px;
-        padding: 4px 8px;
+    .app-community-block .app-release-list li {
+        font-size: 11px;
+        padding-left: 13px;
     }
 }
 
@@ -184,7 +211,7 @@ body.release-overlay-open {
     min-height: 40px;
     padding: 10px 16px;
     border: 1px solid rgba(26, 111, 82, 0.32);
-    border-radius: 6px;
+    border-radius: var(--app-radius);
     background: rgba(26, 111, 82, 0.14);
     color: #b8ebd0;
     font-family: inherit;
@@ -229,12 +256,15 @@ body.release-overlay-open {
     max-width: none;
     width: auto;
     min-height: 0;
-    padding: 6px 16px;
+    padding: 5px 10px;
     border-radius: 8px;
-    font-size: var(--font-xs);
-    font-weight: 600;
-    line-height: 1.2;
-    box-shadow: none;
+    border-color: rgba(0, 190, 155, 0.36);
+    background: rgba(0, 120, 96, 0.12);
+    color: rgba(202, 237, 226, 0.9);
+    font-size: clamp(10px, 2.6vw, 12px);
+    font-weight: 700;
+    line-height: 1.1;
+    box-shadow: inset 0 0 0 1px rgba(0, 190, 155, 0.1);
 }
 
 .app-donate-icon {
