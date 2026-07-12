@@ -525,3 +525,28 @@ ui: скругления углов уменьшены вдвое по всем�
 - Service Worker: da_v2_3_17.
 - Снимок HTML: Version/snapshots/index 2.3.17.html.
 - Снимок стилей: Version/snapshots/styles 2.3.17/.
+
+2.4.1 STABLE ★
+
+Основное:
+ui: доработка дизайна — унификация скруглений, glass-шапка расписания, sticky-блок, карточки станций и маршрута
+feat: селектор месяца в профиле — просмотр финансов и баланса времени за прошлые и будущие месяцы
+feat: пуш-уведомления по живым часам — проба тормозов, ТО-1, минутная готовность, ограничение скорости, тупик
+
+Приятные доработки (Плюшки):
+4. ui: единый жёлтый список доработок в футере сообщества вместо отдельных плашек
+5. fix: hero-карточка профиля больше не обрезается сверху на мобильных
+6. ui: компактные часы на вкладке «Маршрут» в glass-шапке
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- tokens.css: --card-radius 16px, --app-radius 10px, единые границы карточек.
+- base.css: компактная glass-шапка, sticky schedule-glass-stack на вкладке расписания.
+- profile.css: profile-month-selector, отступы screen-card--profile.
+- community.css: app-release-list — жёлтый список с точками в футере.
+- schedule.css: стили пуш-уведомлений schedule-push-stack.
+- index.html: buildRouteNotificationTrains, checkSchedulePushNotifications, синхронизация с scheduleLiveClock.
+- Service Worker: da_v2_4_1.
+- Снимок HTML: Version/snapshots/index 2.4.1.html.
+- Снимок стилей: Version/snapshots/styles 2.4.1/.
