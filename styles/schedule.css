@@ -38,8 +38,8 @@
 
 .station-card {
     background: var(--station-fill);
-    border: 1px solid var(--station-stroke);
-    border-radius: 6px;
+    border: var(--card-border);
+    border-radius: 14px;
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
@@ -108,7 +108,7 @@
     gap: 8px;
     padding: 8px 6px 8px 10px;
     border-left: 3px solid rgba(96, 165, 250, 0.85);
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 var(--app-radius) var(--app-radius) 0;
     background: rgba(59, 130, 246, 0.1);
     color: #dbeafe;
     font-size: 13px;
@@ -309,7 +309,7 @@
 .station-name {
     font-size: clamp(14px, 3.8vw, 16px);
     font-weight: 600;
-    color: #f4f7ff;
+    color: var(--app-text-bright);
     white-space: nowrap;
     overflow: hidden;
     word-break: keep-all;
@@ -320,7 +320,7 @@
 
 /* Время остановки (вверху справа) */
 .time-badge {
-    color: #ffffff;
+    color: var(--app-text-bright);
     font-size: clamp(13px, 3.6vw, 18px);
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -351,7 +351,7 @@
     min-width: var(--km-marker-width);
     min-height: 48px;
     height: auto;
-    border-radius: 6px;
+    border-radius: 12px;
     background: var(--station-fill);
     border: 1px solid var(--station-stroke);
     z-index: 2;
@@ -365,8 +365,8 @@
 
 .station-dot::after {
     content: attr(data-km);
-    color: #f4f7ff;
-    font-size: 13px;
+    color: var(--app-text-bright);
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.15;
     white-space: nowrap;
@@ -380,7 +380,7 @@
 }
 
 .station-node.has-brakes .station-dot::after {
-    color: #fbbf24;
+    color: var(--app-text-bright);
 }
 
 @keyframes schedule-station-dot-active-pulse {
@@ -437,12 +437,12 @@
 }
 
 .station-node.pass-through .station-name {
-    color: #8b97ab;
+    color: var(--app-muted-soft);
     font-weight: 500;
 }
 
 .station-node.pass-through .time-badge {
-    color: #8b97ab;
+    color: var(--app-muted-soft);
     font-weight: 600;
 }
 
@@ -452,7 +452,8 @@
 }
 
 .station-node.pass-through .station-dot::after {
-    color: #6f7d92;
+    color: var(--app-muted-soft);
+    font-weight: 600;
 }
 
 .station-node.pass-through.has-brakes .station-card {
@@ -542,7 +543,7 @@
     .schedule-glass-tabs .tab-btn {
         width: auto;
         flex: 1;
-        border-radius: 7px;
+        border-radius: var(--app-radius);
     }
 
     .tabs-nav:not(.schedule-glass-tabs) {
@@ -552,7 +553,7 @@
 
     .tabs-nav:not(.schedule-glass-tabs) .tab-btn {
         width: 100%;
-        border-radius: 7px;
+        border-radius: var(--app-radius);
     }
 
     .route-card {
@@ -582,7 +583,9 @@
     touch-action: pan-y pinch-zoom;
 }
 
-.main-screens-stage:has(#screen-schedule:not(.hidden)) {
+.main-screens-stage:has(#screen-schedule:not(.hidden)),
+.main-screens-stage:has(#screen-profile:not(.hidden)),
+.main-screens-stage:has(#screen-calendar:not(.hidden)) {
     overflow: visible;
 }
 
@@ -810,7 +813,7 @@ body.auth-locked {
     align-items: stretch;
     gap: 6px;
     padding: 8px 10px;
-    border-radius: var(--glass-radius);
+    border-radius: var(--tabbar-radius);
     border: 1px solid var(--glass-border);
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -828,7 +831,7 @@ body.auth-locked {
     padding: 8px 6px;
     min-height: 48px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--app-radius);
     background: transparent;
     color: rgba(139, 151, 171, 0.88);
     font-size: var(--font-xs);
@@ -865,6 +868,7 @@ body.auth-locked {
 .bottom-tab-btn.active {
     color: var(--app-green);
     background: rgba(23, 128, 56, 0.16);
+    border-radius: var(--tabbar-active-radius);
     box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.28), 0 0 16px rgba(23, 128, 56, 0.2);
 }
 
@@ -904,5 +908,159 @@ body.app-offline::after {
     letter-spacing: 0.02em;
     pointer-events: none;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+/* === Пуш-уведомления смены (синхрон с живыми часами) === */
+.schedule-push-stack {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12500;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(92vw, 420px);
+    pointer-events: none;
+}
+
+.schedule-push {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px 11px 14px;
+    border-radius: var(--card-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(20, 28, 38, 0.96);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    opacity: 0;
+    transform: translateY(-14px) scale(0.98);
+    transition: opacity 0.28s var(--app-ease), transform 0.32s var(--app-ease);
+    pointer-events: auto;
+}
+
+.schedule-push.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.schedule-push.is-hiding {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+}
+
+.schedule-push-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.schedule-push-kicker {
+    margin: 0 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.58);
+}
+
+.schedule-push-title {
+    margin: 0;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--app-text-bright);
+}
+
+.schedule-push-body {
+    margin: 5px 0 0;
+    font-size: var(--font-xs);
+    line-height: 1.4;
+    color: var(--app-caption);
+}
+
+.schedule-push-close {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    margin: -2px -2px 0 0;
+    padding: 0;
+    border: none;
+    border-radius: var(--app-radius);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.schedule-push-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.schedule-push--brake {
+    border-color: rgba(255, 214, 66, 0.34);
+    background: linear-gradient(135deg, rgba(48, 41, 22, 0.97), rgba(24, 28, 36, 0.97));
+}
+
+.schedule-push--brake .schedule-push-kicker {
+    color: #ffd84d;
+}
+
+.schedule-push--ready {
+    border-color: rgba(255, 120, 84, 0.36);
+    background: linear-gradient(135deg, rgba(52, 24, 20, 0.97), rgba(24, 24, 34, 0.97));
+}
+
+.schedule-push--ready .schedule-push-kicker {
+    color: #ff9b7a;
+}
+
+.schedule-push--to1 {
+    border-color: rgba(110, 176, 255, 0.34);
+    background: linear-gradient(135deg, rgba(18, 34, 54, 0.97), rgba(20, 26, 38, 0.97));
+}
+
+.schedule-push--to1 .schedule-push-kicker {
+    color: #8ec5ff;
+}
+
+.schedule-push--speed {
+    border-color: rgba(251, 191, 36, 0.34);
+    background: linear-gradient(135deg, rgba(48, 36, 18, 0.97), rgba(22, 24, 34, 0.97));
+}
+
+.schedule-push--speed .schedule-push-kicker {
+    color: #fbbf24;
+}
+
+.schedule-push--deadend {
+    border-color: rgba(196, 132, 255, 0.34);
+    background: linear-gradient(135deg, rgba(36, 22, 48, 0.97), rgba(22, 24, 36, 0.97));
+}
+
+.schedule-push--deadend .schedule-push-kicker {
+    color: #d8b4fe;
+}
+
+@media (max-width: 480px) {
+    .schedule-push-stack {
+        width: calc(100% - 16px);
+    }
+
+    .schedule-push {
+        padding: 10px 10px 10px 12px;
+    }
+
+    .schedule-push-title {
+        font-size: 12px;
+    }
+
+    .schedule-push-body {
+        font-size: 11px;
+    }
 }
 

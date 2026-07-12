@@ -27,6 +27,8 @@
     <button type="button" class="appUpdateToastBtn" id="appUpdateToastBtn">Обновить</button>
 </div>
 
+<div id="schedulePushStack" class="schedule-push-stack" aria-live="polite" aria-label="Уведомления смены"></div>
+
 <div id="appReleaseOverlay" class="app-release-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="appReleaseTitle">
     <div class="app-release-box">
         <p class="app-release-kicker">Обновление установлено</p>
@@ -342,6 +344,11 @@
                 </div>
             </div>
         </div>
+        <div class="profile-month-selector" id="profileMonthSelector">
+            <button type="button" class="profile-month-nav" id="profileMonthPrev" aria-label="Предыдущий месяц">‹</button>
+            <span class="profile-month-label" id="profileMonthLabel">Июль 2026</span>
+            <button type="button" class="profile-month-nav" id="profileMonthNext" aria-label="Следующий месяц">›</button>
+        </div>
         <div class="profile-card profile-card--split">
             <div class="profile-mini-block profile-mini-block--stats" id="profileFinanceBlock">
                 <div class="profile-mini-label">Финансы за месяц</div>
@@ -474,7 +481,7 @@
     const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
     const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.3.17';
+    const APP_RELEASE_VERSION = '2.4.1';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -794,6 +801,7 @@
 
         initShiftWarnings();
         initProfilePositionSelect();
+        initProfileMonthSelector();
         initAspozhQrBlock();
         initStationNotesUi();
         initShiftNotesUi();
@@ -852,6 +860,9 @@
                 const hasTrains = getTrainNumbersFromDom().length > 0;
                 if (hasTrains && activeTab === 'tab-route') {
                     getRouteData();
+                    if (lastSingle) {
+                        getScheduleData(lastSingle, { fromCacheOnly: true });
+                    }
                 } else if (lastSingle && activeTab === 'tab-schedule') {
                     getScheduleData(lastSingle);
                 }
@@ -927,6 +938,12 @@
     let scheduleDisplayStops = null;
     let scheduleActiveDate = null;
     let scheduleCurrentTrain = null;
+    let routeNotificationTrains = null;
+    let scheduleNotificationTargets = null;
+    const schedulePushFiredKeys = new Set();
+    const schedulePushAutoHideTimers = new Map();
+    const SCHEDULE_PUSH_MAX_VISIBLE = 4;
+    const SCHEDULE_PUSH_AUTO_HIDE_MS = 8000;
 
     const STATION_NOTES_STORAGE_KEY = 'stationNotes';
     const STATION_SELECTIONS_STORAGE_KEY = 'stationSelections';
@@ -1202,6 +1219,7 @@
         if (!scheduleLiveClockSynced) return;
         scheduleLiveClockTime = new Date();
         updateScheduleLiveClockDisplay();
+        checkSchedulePushNotifications();
     }
 
     function syncScheduleLiveClock() {
@@ -1213,6 +1231,7 @@
             scheduleLiveClockTimer = null;
         }
         scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+        checkSchedulePushNotifications();
     }
 
     function resumeScheduleLiveClockIfNeeded() {
@@ -1245,7 +1264,277 @@
         scheduleLiveClockTime = null;
         scheduleDisplayStops = null;
         scheduleActiveDate = null;
+        scheduleNotificationTargets = null;
+        routeNotificationTrains = null;
+        clearSchedulePushFiredKeys();
         clearScheduleActiveStationHighlight();
+    }
+
+    function clearSchedulePushFiredKeys() {
+        schedulePushFiredKeys.clear();
+    }
+
+    function formatLiveDateIso(date) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
+    }
+
+    function liveDateMatchesShift(nowDate, shiftDate) {
+        if (!nowDate || !shiftDate) return false;
+        return formatLiveDateIso(nowDate) === shiftDate;
+    }
+
+    function resolveStopEventDate(scheduleDate, trainDeparture, trainArrival, stopTime) {
+        if (!scheduleDate || !stopTime) return scheduleDate;
+        const baseDate = resolveEffectiveDate(scheduleDate, trainDeparture);
+        const depMin = parseTimeToMinutes(trainDeparture);
+        const stopMin = parseTimeToMinutes(stopTime);
+        if (depMin === null || stopMin === null) return baseDate;
+        if (tripCrossesMidnight(trainDeparture, trainArrival) && stopMin < depMin) {
+            return addDaysToDateStr(baseDate, 1);
+        }
+        return baseDate;
+    }
+
+    function buildRouteNotificationTrains(allTrainsData, selectedDate) {
+        if (!Array.isArray(allTrainsData) || !selectedDate) return [];
+
+        const trains = [];
+        for (let i = 0; i < allTrainsData.length; i++) {
+            const train = allTrainsData[i];
+            if (!train) continue;
+
+            const departure = train.departure;
+            const arrival = train.arrival;
+            let turnaroundMinutes = null;
+
+            if (i < allTrainsData.length - 1) {
+                const nextTrain = allTrainsData[i + 1];
+                if (nextTrain) {
+                    const arrCurrentMinutes = parseTimeToMinutes(arrival);
+                    const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
+                    if (arrCurrentMinutes !== null && depNextMinutes !== null) {
+                        turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
+                        if (turnaroundMinutes < 0) turnaroundMinutes += 1440;
+                    }
+                }
+            }
+
+            trains.push({
+                index: i,
+                number: train.number,
+                title: train.title,
+                departure,
+                arrival,
+                departureDate: resolveStopEventDate(selectedDate, departure, arrival, departure),
+                arrivalDate: resolveStopEventDate(selectedDate, departure, arrival, arrival),
+                turnaroundMinutes
+            });
+        }
+
+        return trains;
+    }
+
+    function buildScheduleNotificationTargets(displayStops, warningsByStation, selectedDate, trainDeparture, trainArrival) {
+        if (!Array.isArray(displayStops) || !selectedDate) return [];
+
+        const targets = [];
+        let firstBoardingIndex = -1;
+        let lastBoardingIndex = -1;
+
+        displayStops.forEach((item, index) => {
+            if (!item.passThrough) {
+                if (firstBoardingIndex === -1) firstBoardingIndex = index;
+                lastBoardingIndex = index;
+            }
+        });
+
+        displayStops.forEach((item, index) => {
+            if (item.passThrough || !item.threadStop) return;
+
+            const stop = item.threadStop;
+            const stationTitleRaw = item.referenceTitle || stop.station?.title || 'Станция';
+            const arrivalTime = getTime(stop.arrival);
+            const departureTime = getTime(stop.departure);
+            const isFirst = index === firstBoardingIndex;
+            const isLast = index === lastBoardingIndex;
+            const approachTime = isFirst ? departureTime : arrivalTime;
+            const approachMinutes = parseTimeToMinutes(approachTime);
+            if (approachMinutes === null) return;
+
+            const approachDate = resolveStopEventDate(selectedDate, trainDeparture, trainArrival, approachTime);
+
+            (warningsByStation[index] || []).forEach((text, warnIndex) => {
+                if (!/скорост/i.test(text)) return;
+                targets.push({
+                    key: `sched_speed_1m_${index}_${warnIndex}`,
+                    tone: 'speed',
+                    leadMinutes: 1,
+                    triggerMinutes: approachMinutes,
+                    triggerDate: approachDate,
+                    kicker: 'Временное ограничение',
+                    title: 'Будьте внимательны, впереди временное ограничение скорости',
+                    body: text,
+                    stationTitle: stationTitleRaw
+                });
+            });
+
+            if (isLast && sprDataCache) {
+                const deadEndMatch = findDeadEndBrake(stationTitleRaw);
+                if (deadEndMatch) {
+                    const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
+                    const detail = `Тупик ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}`;
+                    targets.push({
+                        key: `sched_deadend_10m_${index}`,
+                        tone: 'deadend',
+                        leadMinutes: 10,
+                        triggerMinutes: approachMinutes,
+                        triggerDate: approachDate,
+                        kicker: 'Проба перед тупиком',
+                        title: 'Впереди тупик, не забудьте опробовать тормоза',
+                        body: detail,
+                        stationTitle: stationTitleRaw
+                    });
+                }
+            }
+        });
+
+        return targets;
+    }
+
+    function dismissSchedulePushNotification(node) {
+        if (!node) return;
+        const timer = schedulePushAutoHideTimers.get(node);
+        if (timer) {
+            clearTimeout(timer);
+            schedulePushAutoHideTimers.delete(node);
+        }
+        node.classList.remove('is-visible');
+        node.classList.add('is-hiding');
+        window.setTimeout(() => node.remove(), 280);
+    }
+
+    function showSchedulePushNotification(payload = {}) {
+        const stack = document.getElementById('schedulePushStack');
+        if (!stack) return;
+
+        const node = document.createElement('div');
+        node.className = `schedule-push schedule-push--${payload.tone || 'default'}`;
+        node.innerHTML = `
+            <div class="schedule-push-main">
+                <p class="schedule-push-kicker">${escapeHtml(payload.kicker || 'Уведомление')}</p>
+                <p class="schedule-push-title">${escapeHtml(payload.title || '')}</p>
+                ${payload.body ? `<p class="schedule-push-body">${escapeHtml(payload.body)}</p>` : ''}
+            </div>
+            <button type="button" class="schedule-push-close" aria-label="Закрыть уведомление">✕</button>
+        `;
+
+        node.querySelector('.schedule-push-close')?.addEventListener('click', () => {
+            dismissSchedulePushNotification(node);
+        });
+
+        stack.prepend(node);
+        while (stack.children.length > SCHEDULE_PUSH_MAX_VISIBLE) {
+            dismissSchedulePushNotification(stack.lastElementChild);
+        }
+
+        requestAnimationFrame(() => node.classList.add('is-visible'));
+
+        const hideTimer = window.setTimeout(() => {
+            dismissSchedulePushNotification(node);
+        }, SCHEDULE_PUSH_AUTO_HIDE_MS);
+        schedulePushAutoHideTimers.set(node, hideTimer);
+    }
+
+    function tryFireSchedulePushNotification(key, triggerDate, triggerMinutes, leadMinutes, payload, nowDate) {
+        if (!key || !triggerDate || triggerMinutes === null || leadMinutes === null) return;
+        if (!liveDateMatchesShift(nowDate, triggerDate)) return;
+        if (schedulePushFiredKeys.has(key)) return;
+
+        const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
+        if (triggerMinutes - nowMinutes !== leadMinutes) return;
+
+        schedulePushFiredKeys.add(key);
+        showSchedulePushNotification(payload);
+    }
+
+    function checkSchedulePushNotifications() {
+        const nowDate = getScheduleLiveDate();
+        if (!nowDate) return;
+
+        if (Array.isArray(routeNotificationTrains) && routeNotificationTrains.length) {
+            routeNotificationTrains.forEach(train => {
+                const depMinutes = parseTimeToMinutes(train.departure);
+                const arrMinutes = parseTimeToMinutes(train.arrival);
+                const trainLabel = train.number ? `Поезд ${train.number}` : (train.title || '');
+
+                if (depMinutes !== null) {
+                    tryFireSchedulePushNotification(
+                        `route_brake10_${train.index}`,
+                        train.departureDate,
+                        depMinutes,
+                        10,
+                        {
+                            tone: 'brake',
+                            kicker: 'Проба тормозов',
+                            title: 'Сокращенная проба тормозов',
+                            body: trainLabel
+                        },
+                        nowDate
+                    );
+
+                    tryFireSchedulePushNotification(
+                        `route_ready3_${train.index}`,
+                        train.departureDate,
+                        depMinutes,
+                        3,
+                        {
+                            tone: 'ready',
+                            kicker: 'Минутная готовность',
+                            title: 'Минутная готовность',
+                            body: trainLabel
+                        },
+                        nowDate
+                    );
+                }
+
+                if (arrMinutes !== null && train.turnaroundMinutes !== null && train.turnaroundMinutes > 30) {
+                    tryFireSchedulePushNotification(
+                        `route_to1_${train.index}`,
+                        train.arrivalDate,
+                        arrMinutes,
+                        0,
+                        {
+                            tone: 'to1',
+                            kicker: 'ТО-1',
+                            title: 'Провести ТО-1, если позволяют условия',
+                            body: `Оборот: ${formatMinutesToHoursAndMinutes(train.turnaroundMinutes)}`
+                        },
+                        nowDate
+                    );
+                }
+            });
+        }
+
+        if (Array.isArray(scheduleNotificationTargets) && scheduleNotificationTargets.length) {
+            scheduleNotificationTargets.forEach(target => {
+                tryFireSchedulePushNotification(
+                    target.key,
+                    target.triggerDate,
+                    target.triggerMinutes,
+                    target.leadMinutes,
+                    {
+                        tone: target.tone,
+                        kicker: target.kicker,
+                        title: target.title,
+                        body: target.body
+                    },
+                    nowDate
+                );
+            });
+        }
     }
 
     function updateScheduleEmptyState() {}
@@ -1703,6 +1992,7 @@
         updateDateDisplayText(iso);
         updateScheduleDateHint();
         userStorageSet('selectedDate', iso);
+        clearSchedulePushFiredKeys();
     }
 
     function renderRoutesFromCacheIfVisible() {
@@ -1713,11 +2003,13 @@
     }
 
     function renderScheduleFromCacheIfVisible() {
-        const results = document.getElementById('scheduleResults');
-        const header = document.getElementById('scheduleHeader');
         const trainNumber = userStorageGet('lastSingleTrain')?.trim();
         if (!trainNumber) return;
-        if (results?.style.display !== 'none' && header?.style.display !== 'none') {
+        const header = document.getElementById('scheduleHeader');
+        const hasHeader = header && header.innerHTML.trim().length > 0;
+        const results = document.getElementById('scheduleResults');
+        const resultsVisible = results?.style.display !== 'none';
+        if (hasHeader || resultsVisible) {
             getScheduleData(trainNumber, { fromCacheOnly: true });
         }
     }
@@ -1748,6 +2040,8 @@
         scheduleDisplayStops = null;
         scheduleActiveDate = null;
         scheduleCurrentTrain = null;
+        scheduleNotificationTargets = null;
+        clearSchedulePushFiredKeys();
         if (results) results.style.display = 'none';
         if (header) {
             header.style.display = 'none';
@@ -3167,6 +3461,10 @@
 
         if (requestId !== routeDataRequestId) return;
 
+            routeNotificationTrains = buildRouteNotificationTrains(allTrainsData, getSelectedDate());
+            clearSchedulePushFiredKeys();
+            checkSchedulePushNotifications();
+
             grid.innerHTML = cards.join('');
             grid.style.display = 'flex';
             setRouteToolbarVisible(true);
@@ -3328,6 +3626,16 @@
             departure: null
         });
         const warningsByStation = buildWarningsByStationIndex(stopsForWarnings, trainDir);
+        const trainDeparture = getTime(first.departure);
+        const trainArrival = getTime(last.arrival);
+        scheduleNotificationTargets = buildScheduleNotificationTargets(
+            displayStops,
+            warningsByStation,
+            selectedDate,
+            trainDeparture,
+            trainArrival
+        );
+        clearSchedulePushFiredKeys();
 
         const firstTitle = firstStationTitle.toLowerCase();
         let currentDirection = 'to_moscow';
@@ -3491,7 +3799,9 @@
         results.style.animation = 'none';
         void results.offsetHeight;
         results.style.animation = '';
+        syncScheduleLiveClock();
         updateScheduleLiveClockDisplay();
+        checkSchedulePushNotifications();
         updateScheduleEmptyState();
         requestAnimationFrame(applyScheduleTextFit);
     }
@@ -3726,18 +4036,18 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Мобильная вёрстка на всю ширину экрана с аккуратными отступами',
-            'Новая двухстрочная шапка: бренд + «Поддержать» и glass-плашка раздела',
-            'Кнопка «Поддержать» без иконки, компактная в правом углу',
-            'Стрелки календаря удержаны внутри карточки месяца',
-            'Скругления углов уменьшены для более строгого вида'
+            'Унифицированный дизайн: скругления, glass-шапка, карточки и отступы',
+            'Селектор месяца в профиле — финансы и часы за прошлые периоды',
+            'Пуш-уведомления: проба тормозов за 10 мин до отправления',
+            'Пуш-уведомления: ТО-1 при обороте более 30 минут',
+            'Пуш-уведомления: минутная готовность, ограничения скорости и тупик'
         ],
         highlights: [
-            'Контент на телефоне занимает почти всю ширину экрана — без лишнего сжатия по бокам.',
-            'Шапка разделена на верхнюю строку (логотип и донат) и стеклянную плашку с названием раздела.',
-            'Кнопка «Поддержать» всегда справа в одной линии с логотипом и скроллится вместе со страницей.',
-            'Навигация по месяцам в календаре больше не выходит за границы карточки.',
-            'Интерфейс стал компактнее: меньше скругления, плотнее шапка и отступы.'
+            'Интерфейс приведён к единым токенам: скругления 16px у карточек, компактная glass-шапка, исправлена обрезка hero-карточки профиля.',
+            'В личном кабинете можно листать месяцы назад и смотреть заработок, часы и баланс времени за выбранный период.',
+            'За 10 минут до отправления поезда приходит сигнал о сокращённой пробе тормозов.',
+            'При обороте дольше 30 минут — напоминание о ТО-1; за 3 минуты до отправления — минутная готовность.',
+            'На расписании: за 1 минуту до ограничения скорости и за 10 минут до тупика на конечной — пуш-уведомления.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -3785,14 +4095,14 @@
     }
 
     function renderAppCommunityFooterHtml(notes) {
-        const tags = (notes.tags || []).slice(0, 8);
-        const tagsHtml = tags.map(tag => `<span class="app-release-tag">${escapeHtml(tag)}</span>`).join('');
+        const items = (notes.tags || notes.highlights || []).slice(0, 8);
+        const listHtml = items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
         const tgUrl = notes.telegramUrl || APP_TELEGRAM_URL;
         const tgHint = notes.telegramHint || RELEASE_NOTES_FALLBACK.telegramHint;
 
         return `
             <section class="app-community-block">
-                <div class="app-community-tags" aria-label="Что нового в последней версии">${tagsHtml}</div>
+                <ul class="app-release-list" aria-label="Что нового в последней версии">${listHtml}</ul>
                 <p class="app-community-text">
                     ${escapeHtml(tgHint)} —
                     <a class="app-community-link" href="${escapeAttr(tgUrl)}" target="_blank" rel="noopener noreferrer">@pomoshnikcppk</a>
@@ -5730,6 +6040,7 @@
     let depotVersionCheckPromise = null;
     let depotVersionMonitorTimer = null;
     let calendarCurrentDate = new Date();
+    let profileSelectedMonth = new Date();
     const CALENDAR_MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const CALENDAR_MACHINIST_RATE = 1000;
     const CALENDAR_ASSISTANT_RATE = 700;
@@ -7747,9 +8058,52 @@
         updateProfileScreen();
     }
 
+    function isProfileMonthAtCurrent(date = profileSelectedMonth) {
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    }
+
+    function profileChangeMonth(direction) {
+        if (direction > 0 && isProfileMonthAtCurrent()) return;
+        profileSelectedMonth = new Date(
+            profileSelectedMonth.getFullYear(),
+            profileSelectedMonth.getMonth() + direction,
+            1
+        );
+        updateProfileScreen();
+    }
+
+    function updateProfileMonthSelectorUi() {
+        const label = document.getElementById('profileMonthLabel');
+        const nextBtn = document.getElementById('profileMonthNext');
+        const year = profileSelectedMonth.getFullYear();
+        const month = profileSelectedMonth.getMonth();
+        if (label) label.textContent = `${CALENDAR_MONTHS_RU[month]} ${year}`;
+        if (nextBtn) {
+            const atCurrent = isProfileMonthAtCurrent();
+            nextBtn.disabled = atCurrent;
+            nextBtn.classList.toggle('is-disabled', atCurrent);
+            nextBtn.setAttribute('aria-disabled', atCurrent ? 'true' : 'false');
+        }
+    }
+
+    function initProfileMonthSelector() {
+        const prevBtn = document.getElementById('profileMonthPrev');
+        const nextBtn = document.getElementById('profileMonthNext');
+        prevBtn?.addEventListener('click', () => profileChangeMonth(-1));
+        nextBtn?.addEventListener('click', () => {
+            if (!isProfileMonthAtCurrent()) profileChangeMonth(1);
+        });
+        updateProfileMonthSelectorUi();
+    }
+
     function getProfileMonthBreakdown(year, month) {
         const realToday = new Date();
         const todayDateOnly = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
+        const isPastMonth = year < realToday.getFullYear()
+            || (year === realToday.getFullYear() && month < realToday.getMonth());
+        const isFutureMonth = year > realToday.getFullYear()
+            || (year === realToday.getFullYear() && month > realToday.getMonth());
         let factHours = 0;
         let planHours = 0;
         let factPay = 0;
@@ -7770,7 +8124,13 @@
                 const shiftPay = getCalendarShiftPayment(shift, dateKey);
                 const shiftDateOnly = new Date(year, month, d);
 
-                if (shiftDateOnly <= todayDateOnly) {
+                if (isPastMonth) {
+                    factHours += shiftHours;
+                    factPay += shiftPay;
+                } else if (isFutureMonth) {
+                    planHours += shiftHours;
+                    planPay += shiftPay;
+                } else if (shiftDateOnly <= todayDateOnly) {
                     factHours += shiftHours;
                     factPay += shiftPay;
                 } else {
@@ -7820,9 +8180,11 @@
 
         const activeTab = getActiveScheduleTab();
         const hasContent = header && header.innerHTML.trim().length > 0;
-        const showRouteCard = hasContent && activeTab === 'tab-schedule';
+        const showRouteCard = hasContent;
+        const isRouteTab = activeTab === 'tab-route';
 
         stack.classList.toggle('has-route-card', showRouteCard);
+        stack.classList.toggle('schedule-glass-stack--route-tab', showRouteCard && isRouteTab);
 
         if (header && hasContent) {
             header.style.display = showRouteCard ? 'block' : 'none';
@@ -8272,10 +8634,10 @@
 
         const fio = localStorage.getItem(DEPOT_FIO_KEY) || 'Сотрудник';
 
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
+        const year = profileSelectedMonth.getFullYear();
+        const month = profileSelectedMonth.getMonth();
         const { factHours, totalHours, factPay, totalPay, normHours } = getProfileMonthBreakdown(year, month);
+        updateProfileMonthSelectorUi();
 
         const nameEl = document.getElementById('profileUserName');
         const tabEl = document.getElementById('profileUserTab');

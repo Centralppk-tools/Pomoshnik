@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.3.17 STABLE)
-const CACHE_VERSION = 'da_v2_3_17';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.1 STABLE)
+const CACHE_VERSION = 'da_v2_4_1';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [

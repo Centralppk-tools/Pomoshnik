@@ -19,9 +19,9 @@
 
 /* ===== МАРШРУТЫ: Сама карточка маршрута ===== */
 .route-card {
-    background: #141b27; /* Глубокий тёмно-синий фон карточки */
-    border: 1px solid rgba(255, 255, 255, 0.05); /* Тончайшая белая обводка */
-    border-radius: 6px; /* Мягкие скругленные углы */
+    background: #141b27;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
     padding: 0; /* Отступы внутри задаются через .route-card-section */
     display: flex; /* Флекс-контейнер для секций */
     flex-direction: column; /* Три секции (top/middle/bottom) идут вниз */
@@ -65,9 +65,9 @@
 
 /* Название маршрута (например "Москва — Ярославль") */
 .route-card-title {
-    font-size: 16px; /* Размер шрифта */
-    font-weight: 600; /* Полужирный */
-    color: #ffffff; /* Белый цвет */
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--app-text-bright);
     white-space: nowrap; /* Не переносит текст */
     overflow: hidden; /* Если длинный — скрывает */
     text-overflow: ellipsis; /* Добавляет многоточие в конце */
@@ -76,12 +76,12 @@
 
 /* Подстрока в верхней секции: номер поезда и количество остановок */
 .route-card-subtitle {
-    display: flex; /* Флекс для расположения по горизонтали */
-    justify-content: space-between; /* Номер слева, остановки справа */
-    gap: 12px; /* Расстояние между ними */
-    font-size: 12px; /* Маленький шрифт */
-    color: #8393af; /* Серый приглушённый цвет */
-    overflow: hidden; /* Скрывает переполнение */
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--app-muted-soft);
+    overflow: hidden;
 }
 
 /* Левая часть подстроки (номер поезда) */
@@ -117,14 +117,14 @@
 .route-time {
     font-size: 20px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--app-text-bright);
     letter-spacing: 0.5px;
     flex-shrink: 0;
 }
 
 .route-date {
     font-size: 13px;
-    color: #8393af;
+    color: var(--app-muted-soft);
     flex-shrink: 0;
     white-space: nowrap;
 }
@@ -154,10 +154,10 @@
 
 /* Одна плашка с пробой (например "ПТ — 42пк3" или "Тупик — 156пк8") */
 .route-brake-box {
-    border: 1px solid rgba(234, 179, 8, 0.2); /* Тончайшая жёлтая обводка */
-    background: rgba(234, 179, 8, 0.06); /* Полупрозрачный жёлтый фон */
-    border-radius: 3px; /* Скруглённые углы */
-    padding: 4px 8px; /* Минимальные отступы внутри */
+    border: 1px solid rgba(234, 179, 8, 0.2);
+    background: rgba(234, 179, 8, 0.06);
+    border-radius: var(--app-radius);
+    padding: 4px 8px;
     display: flex; /* Flex для вертикального содержимого */
     flex-direction: column; /* Текст идёт вниз */
     gap: 2px; /* Нет промежутков (для однострочных текстов) */
@@ -201,8 +201,8 @@
 /* ===== МАРШРУТЫ: Сводка по маршруту ===== */
 .route-summary {
     background: #141b27;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 6px;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
     padding: 16px 14px;
     display: flex;
     flex-direction: column;
@@ -225,8 +225,8 @@
     align-items: center;
     gap: 12px;
     background: #1a2333;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
+    border: var(--card-border);
+    border-radius: var(--app-radius);
     padding: 10px 14px;
     font-size: 14px;
 }
@@ -273,8 +273,8 @@
     display: flex;
     flex-direction: column;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--app-radius);
+    border: var(--card-border);
+    border-radius: var(--card-radius);
     margin-top: 0;
     animation: fadeInScale 0.3s ease-out;
 }
@@ -364,7 +364,7 @@
     display: inline-flex;
     align-items: center;
     padding: 4px 9px;
-    border-radius: 4px;
+    border-radius: var(--app-radius);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.14);
     font-size: var(--font-sm);
@@ -390,7 +390,7 @@
     margin: 0;
     padding: 10px 12px;
     border: 1px solid rgba(23, 128, 56, 0.28);
-    border-radius: 6px;
+    border-radius: var(--app-radius);
     background: linear-gradient(135deg, rgba(23, 128, 56, 0.14), rgba(47, 128, 237, 0.1));
     color: var(--app-text);
     cursor: pointer;
@@ -437,16 +437,16 @@
 }
 
 .trains-chip-panel--capsule .train-num-chip {
-    padding: 2px 6px;
+    padding: 3px 7px;
     font-size: 10px;
-    border-radius: 3px;
+    border-radius: 8px;
 }
 
 .trains-chip-panel__overflow {
     display: inline-flex;
     align-items: center;
-    padding: 2px 5px;
-    border-radius: 3px;
+    padding: 3px 6px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.08);
     font-size: 10px;
     font-weight: 700;
@@ -627,8 +627,8 @@
     margin: 0;
     padding: 6px;
     list-style: none;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--app-radius);
     background: rgba(14, 20, 30, 0.98);
     backdrop-filter: blur(12px);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
@@ -640,7 +640,7 @@
 
 #screen-calendar .route-combobox-option {
     padding: 10px 12px;
-    border-radius: 4px;
+    border-radius: var(--app-radius);
     font-size: var(--font-base);
     font-weight: 500;
     color: var(--app-text);
@@ -699,8 +699,13 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    margin-top: 20px;
-    margin-bottom: 8px;
+    margin-top: 14px;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
+    background: var(--surface-card-inner);
+    box-sizing: border-box;
 }
 
 .route-refresh-btn {
@@ -712,7 +717,7 @@
     height: 44px;
     padding: 0 18px;
     border: none;
-    border-radius: 7px;
+    border-radius: var(--app-radius);
     background: linear-gradient(180deg, #1f9a4a, var(--app-green));
     color: #ffffff;
     font-size: var(--font-sm);
