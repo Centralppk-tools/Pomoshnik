@@ -342,6 +342,11 @@
                 </div>
             </div>
         </div>
+        <div class="profile-month-selector" id="profileMonthSelector">
+            <button type="button" class="profile-month-nav" id="profileMonthPrev" aria-label="Предыдущий месяц">‹</button>
+            <span class="profile-month-label" id="profileMonthLabel">Июль 2026</span>
+            <button type="button" class="profile-month-nav" id="profileMonthNext" aria-label="Следующий месяц">›</button>
+        </div>
         <div class="profile-card profile-card--split">
             <div class="profile-mini-block profile-mini-block--stats" id="profileFinanceBlock">
                 <div class="profile-mini-label">Финансы за месяц</div>
@@ -794,6 +799,7 @@
 
         initShiftWarnings();
         initProfilePositionSelect();
+        initProfileMonthSelector();
         initAspozhQrBlock();
         initStationNotesUi();
         initShiftNotesUi();
@@ -852,6 +858,9 @@
                 const hasTrains = getTrainNumbersFromDom().length > 0;
                 if (hasTrains && activeTab === 'tab-route') {
                     getRouteData();
+                    if (lastSingle) {
+                        getScheduleData(lastSingle, { fromCacheOnly: true });
+                    }
                 } else if (lastSingle && activeTab === 'tab-schedule') {
                     getScheduleData(lastSingle);
                 }
@@ -1713,11 +1722,13 @@
     }
 
     function renderScheduleFromCacheIfVisible() {
-        const results = document.getElementById('scheduleResults');
-        const header = document.getElementById('scheduleHeader');
         const trainNumber = userStorageGet('lastSingleTrain')?.trim();
         if (!trainNumber) return;
-        if (results?.style.display !== 'none' && header?.style.display !== 'none') {
+        const header = document.getElementById('scheduleHeader');
+        const hasHeader = header && header.innerHTML.trim().length > 0;
+        const results = document.getElementById('scheduleResults');
+        const resultsVisible = results?.style.display !== 'none';
+        if (hasHeader || resultsVisible) {
             getScheduleData(trainNumber, { fromCacheOnly: true });
         }
     }
@@ -3785,14 +3796,14 @@
     }
 
     function renderAppCommunityFooterHtml(notes) {
-        const tags = (notes.tags || []).slice(0, 8);
-        const tagsHtml = tags.map(tag => `<span class="app-release-tag">${escapeHtml(tag)}</span>`).join('');
+        const items = (notes.tags || notes.highlights || []).slice(0, 8);
+        const listHtml = items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
         const tgUrl = notes.telegramUrl || APP_TELEGRAM_URL;
         const tgHint = notes.telegramHint || RELEASE_NOTES_FALLBACK.telegramHint;
 
         return `
             <section class="app-community-block">
-                <div class="app-community-tags" aria-label="Что нового в последней версии">${tagsHtml}</div>
+                <ul class="app-release-list" aria-label="Что нового в последней версии">${listHtml}</ul>
                 <p class="app-community-text">
                     ${escapeHtml(tgHint)} —
                     <a class="app-community-link" href="${escapeAttr(tgUrl)}" target="_blank" rel="noopener noreferrer">@pomoshnikcppk</a>
@@ -5730,6 +5741,7 @@
     let depotVersionCheckPromise = null;
     let depotVersionMonitorTimer = null;
     let calendarCurrentDate = new Date();
+    let profileSelectedMonth = new Date();
     const CALENDAR_MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     const CALENDAR_MACHINIST_RATE = 1000;
     const CALENDAR_ASSISTANT_RATE = 700;
@@ -7747,9 +7759,52 @@
         updateProfileScreen();
     }
 
+    function isProfileMonthAtCurrent(date = profileSelectedMonth) {
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    }
+
+    function profileChangeMonth(direction) {
+        if (direction > 0 && isProfileMonthAtCurrent()) return;
+        profileSelectedMonth = new Date(
+            profileSelectedMonth.getFullYear(),
+            profileSelectedMonth.getMonth() + direction,
+            1
+        );
+        updateProfileScreen();
+    }
+
+    function updateProfileMonthSelectorUi() {
+        const label = document.getElementById('profileMonthLabel');
+        const nextBtn = document.getElementById('profileMonthNext');
+        const year = profileSelectedMonth.getFullYear();
+        const month = profileSelectedMonth.getMonth();
+        if (label) label.textContent = `${CALENDAR_MONTHS_RU[month]} ${year}`;
+        if (nextBtn) {
+            const atCurrent = isProfileMonthAtCurrent();
+            nextBtn.disabled = atCurrent;
+            nextBtn.classList.toggle('is-disabled', atCurrent);
+            nextBtn.setAttribute('aria-disabled', atCurrent ? 'true' : 'false');
+        }
+    }
+
+    function initProfileMonthSelector() {
+        const prevBtn = document.getElementById('profileMonthPrev');
+        const nextBtn = document.getElementById('profileMonthNext');
+        prevBtn?.addEventListener('click', () => profileChangeMonth(-1));
+        nextBtn?.addEventListener('click', () => {
+            if (!isProfileMonthAtCurrent()) profileChangeMonth(1);
+        });
+        updateProfileMonthSelectorUi();
+    }
+
     function getProfileMonthBreakdown(year, month) {
         const realToday = new Date();
         const todayDateOnly = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
+        const isPastMonth = year < realToday.getFullYear()
+            || (year === realToday.getFullYear() && month < realToday.getMonth());
+        const isFutureMonth = year > realToday.getFullYear()
+            || (year === realToday.getFullYear() && month > realToday.getMonth());
         let factHours = 0;
         let planHours = 0;
         let factPay = 0;
@@ -7770,7 +7825,13 @@
                 const shiftPay = getCalendarShiftPayment(shift, dateKey);
                 const shiftDateOnly = new Date(year, month, d);
 
-                if (shiftDateOnly <= todayDateOnly) {
+                if (isPastMonth) {
+                    factHours += shiftHours;
+                    factPay += shiftPay;
+                } else if (isFutureMonth) {
+                    planHours += shiftHours;
+                    planPay += shiftPay;
+                } else if (shiftDateOnly <= todayDateOnly) {
                     factHours += shiftHours;
                     factPay += shiftPay;
                 } else {
@@ -7820,9 +7881,11 @@
 
         const activeTab = getActiveScheduleTab();
         const hasContent = header && header.innerHTML.trim().length > 0;
-        const showRouteCard = hasContent && activeTab === 'tab-schedule';
+        const showRouteCard = hasContent;
+        const isRouteTab = activeTab === 'tab-route';
 
         stack.classList.toggle('has-route-card', showRouteCard);
+        stack.classList.toggle('schedule-glass-stack--route-tab', showRouteCard && isRouteTab);
 
         if (header && hasContent) {
             header.style.display = showRouteCard ? 'block' : 'none';
@@ -8272,10 +8335,10 @@
 
         const fio = localStorage.getItem(DEPOT_FIO_KEY) || 'Сотрудник';
 
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
+        const year = profileSelectedMonth.getFullYear();
+        const month = profileSelectedMonth.getMonth();
         const { factHours, totalHours, factPay, totalPay, normHours } = getProfileMonthBreakdown(year, month);
+        updateProfileMonthSelectorUi();
 
         const nameEl = document.getElementById('profileUserName');
         const tabEl = document.getElementById('profileUserTab');
