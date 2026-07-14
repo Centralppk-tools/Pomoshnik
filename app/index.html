@@ -870,6 +870,7 @@
     let scheduleActiveDate = null;
     let scheduleCurrentTrain = null;
     let routeNotificationTrains = null;
+    let routeMidnightRefreshKey = '';
     let scheduleNotificationTargets = null;
     const schedulePushFiredKeys = new Set();
     const schedulePushAutoHideTimers = new Map();
@@ -1150,12 +1151,7 @@
         const now = nowDate ?? getScheduleLiveDate();
         if (!now) return -1;
 
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const nowDateStr = `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
-
-        if (selectedDate && selectedDate !== nowDateStr) return -1;
+        if (selectedDate && !isScheduleContextActive(now, selectedDate)) return -1;
 
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const { firstBoardingIndex, lastBoardingIndex } = getBoardingStopBounds(displayStops);
@@ -1212,6 +1208,7 @@
     function tickScheduleLiveClock() {
         if (!scheduleLiveClockSynced) return;
         scheduleLiveClockTime = new Date();
+        ensureRoutesAfterNightMidnight(scheduleLiveClockTime);
         updateScheduleLiveClockDisplay();
         checkSchedulePushNotifications();
     }
@@ -1373,6 +1370,7 @@
         schedulePushFiredKeys.clear();
         userStorageRemove(SCHEDULE_PUSH_FIRED_STORAGE_KEY);
         document.getElementById('schedulePushStack')?.replaceChildren();
+        resetRouteMidnightRefreshKey();
     }
 
     function formatLiveDateIso(date) {
@@ -1385,6 +1383,24 @@
     function liveDateMatchesShift(nowDate, shiftDate) {
         if (!nowDate || !shiftDate) return false;
         return formatLiveDateIso(nowDate) === shiftDate;
+    }
+
+    function getNightShiftContinuationDate(shiftStartDate) {
+        if (!shiftStartDate) return null;
+        return addDaysToDateStr(shiftStartDate, 1);
+    }
+
+    function isScheduleContextActive(nowDate, shiftStartDate) {
+        if (!nowDate || !shiftStartDate) return false;
+        const nowIso = formatLiveDateIso(nowDate);
+        if (nowIso === shiftStartDate) return true;
+        if (isNightMode() && nowIso === getNightShiftContinuationDate(shiftStartDate)) return true;
+        return false;
+    }
+
+    function resolveScheduleActiveDate(selectedDate, departureTime) {
+        if (!selectedDate) return selectedDate;
+        return resolveEffectiveDate(selectedDate, departureTime);
     }
 
     function resolveStopEventDate(scheduleDate, trainDeparture, trainArrival, stopTime) {
@@ -1443,7 +1459,7 @@
         const grid = document.getElementById('routeGrid');
         const nowDate = getScheduleLiveDate();
         const selectedDate = getSelectedDate();
-        if (!grid || !nowDate || !selectedDate || !liveDateMatchesShift(nowDate, selectedDate)) return;
+        if (!grid || !nowDate || !selectedDate || !isScheduleContextActive(nowDate, selectedDate)) return;
         if (!Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) return;
 
         let activeTrain = null;
@@ -1475,6 +1491,30 @@
             transit: 'route-card--phase-transit'
         };
         card.classList.add(classMap[activePhase]);
+    }
+
+    function resetRouteMidnightRefreshKey() {
+        routeMidnightRefreshKey = '';
+    }
+
+    function ensureRoutesAfterNightMidnight(nowDate) {
+        if (!isNightMode()) return;
+        const shiftDate = getSelectedDate();
+        if (!shiftDate) return;
+
+        const continuation = getNightShiftContinuationDate(shiftDate);
+        const nowIso = formatLiveDateIso(nowDate);
+        if (nowIso !== continuation) return;
+
+        const refreshKey = `${shiftDate}->${continuation}`;
+        if (routeMidnightRefreshKey === refreshKey) return;
+
+        const grid = document.getElementById('routeGrid');
+        if (!grid || grid.style.display === 'none' || !grid.innerHTML.trim()) return;
+
+        routeMidnightRefreshKey = refreshKey;
+        invalidateTrainCachesForNumbers(getTrainNumbersFromDom());
+        void getRouteData({ forceRefresh: true });
     }
 
     function buildRouteNotificationTrains(allTrainsData, selectedDate) {
@@ -1830,6 +1870,29 @@
         return String(trainNumber || '').replace(/\D/g, '');
     }
 
+    function getTrainCacheKey(trainNumber, scheduleDate) {
+        const numKey = normalizeTrainCacheKey(trainNumber);
+        if (!numKey) return '';
+        return scheduleDate ? `${numKey}@${scheduleDate}` : numKey;
+    }
+
+    function getTrainCacheEntry(trainNumber, scheduleDate) {
+        const numKey = normalizeTrainCacheKey(trainNumber);
+        if (!numKey) return null;
+
+        const datedKey = getTrainCacheKey(trainNumber, scheduleDate);
+        if (datedKey && trainThreadsCache[datedKey]) {
+            return trainThreadsCache[datedKey];
+        }
+
+        const legacy = trainThreadsCache[numKey];
+        if (legacy && (!scheduleDate || legacy.scheduleDate === scheduleDate)) {
+            return legacy;
+        }
+
+        return null;
+    }
+
     function migrateTrainThreadsCache(cache) {
         const source = cache && typeof cache === 'object' ? cache : {};
         const migrated = {};
@@ -2130,16 +2193,24 @@
         };
     }
 
-    function cacheTrainThread(trainNumber, result) {
+    function cacheTrainThread(trainNumber, result, scheduleDate = null) {
         const numKey = normalizeTrainCacheKey(trainNumber);
+        const date = scheduleDate || result?.scheduleDate || null;
         if (!numKey || !result) return;
-        trainThreadsCache[numKey] = result;
+        const key = getTrainCacheKey(trainNumber, date);
+        trainThreadsCache[key] = { ...result, scheduleDate: date || result.scheduleDate };
         userStorageSet('trainThreadsCache', trainThreadsCache);
     }
 
     function invalidateTrainCachesForNumbers(trainNumbers) {
         (trainNumbers || []).forEach(trainNumber => {
-            delete trainThreadsCache[normalizeTrainCacheKey(trainNumber)];
+            const numKey = normalizeTrainCacheKey(trainNumber);
+            if (!numKey) return;
+            Object.keys(trainThreadsCache).forEach(key => {
+                if (key === numKey || key.startsWith(`${numKey}@`)) {
+                    delete trainThreadsCache[key];
+                }
+            });
         });
         stationScheduleCache = { date: null, data: null };
         Object.keys(stationScheduleByKey).forEach(key => delete stationScheduleByKey[key]);
@@ -2179,6 +2250,7 @@
         updateScheduleDateHint();
         userStorageSet('selectedDate', iso);
         loadSchedulePushFiredKeys();
+        resetRouteMidnightRefreshKey();
         applyNormativeForDateKey(getShiftContextDateKey());
     }
 
@@ -3169,19 +3241,22 @@
         try {
             const date = scheduleDate || getSelectedDate();
 
-            if (!forceRefresh && numKey && trainThreadsCache[numKey]) {
-                console.log('Достали маршрут из памяти устройства:', trainNumber);
-                const cached = decorateTrainSearchResult(
-                    { ...trainThreadsCache[numKey] },
-                    trainNumber,
-                    date,
-                    registryEntry
-                );
-                return {
-                    ...cached,
-                    scheduleDate: date,
-                    stops_text: resolveStopsText('', cached.stops)
-                };
+            if (!forceRefresh) {
+                const cachedEntry = getTrainCacheEntry(trainNumber, date);
+                if (cachedEntry) {
+                    console.log('Достали маршрут из памяти устройства:', trainNumber, date);
+                    const cached = decorateTrainSearchResult(
+                        { ...cachedEntry },
+                        trainNumber,
+                        date,
+                        registryEntry
+                    );
+                    return {
+                        ...cached,
+                        scheduleDate: date,
+                        stops_text: resolveStopsText('', cached.stops)
+                    };
+                }
             }
 
             if (fromCacheOnly) {
@@ -3273,17 +3348,25 @@
             return searchTrainByNumber(trainNumber, baseDate, options);
         }
 
-        const trainBase = await searchTrainByNumber(trainNumber, baseDate, options);
-        if (trainBase) {
-            const effectiveDate = resolveEffectiveDate(baseDate, trainBase.departure);
-            if (effectiveDate !== baseDate) {
-                const trainNext = await searchTrainByNumber(trainNumber, effectiveDate, options);
-                if (trainNext) return trainNext;
-            }
-            return trainBase;
+        const nextDate = addDaysToDateStr(baseDate, 1);
+        const nowIso = getScheduleLiveDate() ? formatLiveDateIso(getScheduleLiveDate()) : baseDate;
+
+        if (nowIso === nextDate) {
+            const morningTrain = await searchTrainByNumber(trainNumber, nextDate, options);
+            if (morningTrain) return morningTrain;
         }
 
-        const nextDate = addDaysToDateStr(baseDate, 1);
+        const eveningTrain = await searchTrainByNumber(trainNumber, baseDate, options);
+        if (eveningTrain && !isMorningNextShiftDeparture(eveningTrain.departure)) {
+            return eveningTrain;
+        }
+
+        if (eveningTrain && isMorningNextShiftDeparture(eveningTrain.departure)) {
+            const morningTrain = await searchTrainByNumber(trainNumber, nextDate, options);
+            if (morningTrain) return morningTrain;
+            return eveningTrain;
+        }
+
         return searchTrainByNumber(trainNumber, nextDate, options);
     }
 
@@ -3694,12 +3777,8 @@
     function findClosestStationIndex(displayStops, selectedDate, nowDate) {
         const now = nowDate ?? getScheduleLiveDate();
         if (!now) return -1;
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const nowDateStr = `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
 
-        if (selectedDate && selectedDate !== nowDateStr) return -1;
+        if (selectedDate && !isScheduleContextActive(now, selectedDate)) return -1;
 
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         let closestIndex = -1;
@@ -3768,7 +3847,9 @@
             }
 
             const selectedDate = getSelectedDate();
-            renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate);
+            const activeDate = trainMeta.scheduleDate
+                || resolveScheduleActiveDate(selectedDate, trainMeta.departure);
+            renderTimelineFromData(trainMeta.stops, trainMeta.number, activeDate);
             updateScheduleEmptyState();
         } catch (error) {
             console.error('[getScheduleData]', error);
@@ -6914,13 +6995,48 @@
         return diff;
     }
 
+    function getShiftSpanBoundsMinutes(startTime, endTime) {
+        const start = parseTimeToMinutes(normalizeShiftTimeToken(startTime));
+        const end = parseTimeToMinutes(normalizeShiftTimeToken(endTime));
+        if (start == null || end == null) return null;
+        const endExtended = end <= start ? end + 1440 : end;
+        return { start, end: endExtended };
+    }
+
+    function lunchBreakOverlapsShift(startTime, endTime, lunchRaw) {
+        const span = getShiftSpanBoundsMinutes(startTime, endTime);
+        if (!span) return false;
+
+        const { lunch } = parseShiftLunchField(lunchRaw);
+        if (!lunch) return false;
+
+        const times = (String(lunch).match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
+        if (times.length < 2 || times[0] === times[1]) return false;
+
+        const lunchStart = parseTimeToMinutes(times[0]);
+        const lunchEnd = parseTimeToMinutes(times[1]);
+        if (lunchStart == null || lunchEnd == null) return false;
+
+        const candidates = [
+            [lunchStart, lunchEnd <= lunchStart ? lunchEnd + 1440 : lunchEnd],
+            [lunchStart + 1440, (lunchEnd <= lunchStart ? lunchEnd + 1440 : lunchEnd) + 1440],
+            [lunchStart - 1440, (lunchEnd <= lunchStart ? lunchEnd + 1440 : lunchEnd) - 1440]
+        ];
+
+        return candidates.some(([breakStart, breakEnd]) =>
+            breakStart < span.end && breakEnd > span.start
+        );
+    }
+
     function calculateShiftWorkHoursFromTimes(shift) {
         if (!shift) return null;
         const startRaw = shift.startTime || shift.reportTime || '';
         const endRaw = shift.endTime || '';
         const spanMin = calculateShiftSpanMinutes(startRaw, endRaw);
         if (spanMin == null) return null;
-        const lunchMin = parseLunchDurationMinutes(shift.lunch);
+
+        const shouldSubtractLunch = lunchBreakOverlapsShift(startRaw, endRaw, shift.lunch);
+        const lunchMin = shouldSubtractLunch ? parseLunchDurationMinutes(shift.lunch) : 0;
         return Math.max(0, spanMin - lunchMin) / 60;
     }
 
@@ -6962,8 +7078,8 @@
         const calculated = calculateShiftWorkHoursFromTimes(enriched);
 
         if (lunchMarker === '**') {
-            if (calculated != null && calculated > 0) return calculated;
             if (normativeHours > 0) return normativeHours;
+            if (calculated != null && calculated > 0) return calculated;
         }
 
         if (calculated != null && calculated > 0) return calculated;

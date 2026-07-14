@@ -8,7 +8,7 @@
 
 
 
-Service Worker: da_v2_4_2
+Service Worker: da_v2_4_2_r2
 
 Снимок HTML: Version/snapshots/index 2.4.2.html
 
