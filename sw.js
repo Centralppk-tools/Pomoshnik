@@ -1,5 +1,5 @@
 // Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.2 STABLE)
-const CACHE_VERSION = 'da_v2_4_2';
+const CACHE_VERSION = 'da_v2_4_2_r2';
 const NOTIFICATION_ICON = './assets/brand-logo.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
