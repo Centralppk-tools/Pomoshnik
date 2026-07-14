@@ -63,9 +63,9 @@
         "endTime": 26,
         "workHours": 27,
         "nightHours": 28,
-        "endPlace": 29,
-        "lunch": 8
+        "endPlace": 29
       },
+      "note": "Обед у утренних маршрутов не экспортируется — перерыв только у ночи (cols 19–20).",
       "emitWhen": "col22 matches /^\\d+[УU]$/",
       "emitFlatRow": true
     },
