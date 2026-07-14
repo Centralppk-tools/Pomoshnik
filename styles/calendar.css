@@ -566,6 +566,17 @@
     line-height: 1.5;
 }
 
+#screen-calendar .shift-constructor-hint--normative {
+    color: #8295ff;
+    font-size: 11px;
+    margin-bottom: 8px;
+}
+
+#screen-calendar .route-combobox-option {
+    white-space: normal;
+    line-height: 1.35;
+}
+
 #screen-calendar .calendar-local-routes-label {
     margin: 0 0 6px;
     text-align: left;
@@ -715,6 +726,34 @@
     min-width: 0;
     word-break: break-word;
     text-align: left;
+}
+
+#screen-calendar .shift-summary-note-delete {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(232, 255, 240, 0.72);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+#screen-calendar .shift-summary-note-delete:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+#screen-calendar .shift-summary-note-delete:active {
+    transform: scale(0.94);
 }
 
 #screen-calendar .shift-summary-note-add {

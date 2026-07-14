@@ -91,7 +91,7 @@
         <span class="tab-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h10M4 18h6"/><circle cx="19" cy="17" r="3"/></svg>
         </span>
-        <span>Расписание</span>
+        <span>Маршрут</span>
     </button>
     <button type="button" class="bottom-tab-btn" data-screen="profile" onclick="switchMainScreenAnimated('profile')">
         <span class="tab-icon" aria-hidden="true">
@@ -284,7 +284,7 @@
         <div class="shift-constructor" id="shiftConstructor">
             <div class="shift-constructor-title" id="constructorTitle">Выберите день</div>
             <div id="constructorContent">
-                <p class="shift-constructor-hint">Выберите день, быстрый маршрут из справочника или номер из таблицы.</p>
+                <p class="shift-constructor-hint">Выберите день и маршрут из локальной базы часов смен.</p>
             </div>
         </div>
 
@@ -466,22 +466,17 @@
 
     const USERS_DB_KEY = 'rzd_users';
     const AUTH_SESSION_KEY = 'currentUserTab';
-    const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbyb9CYhosCuBgoA-Otddo31VQoL0oAICUUKAxE2J3qdtVzzjQBc2sRxpYuqjYC0ZyIP/exec';
     const DEPOT_SHIFTS_KEY = 'depotShifts';
-    const DEPOT_TEMPLATES_KEY = 'depotShiftTemplates';
     const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache';
     const REFERENCE_TRAINS_STORAGE_KEY = 'cppk_trains_local_cache';
     const CALENDAR_LOCAL_ROUTES_STORAGE_KEY = 'cppk_calendar_local_routes';
-    const DEPOT_RAW_SHIFTS_KEY = 'depotRawShifts';
-    const DEPOT_DATA_VERSION_KEY = 'depotDataVersion';
+    const LOCAL_SHIFT_TEMPLATES_URL = './data/shift-templates.json';
+    const LOCAL_SHIFT_TEMPLATES_STORAGE_KEY = 'cppk_shift_templates_bundle';
     const DEPOT_FIO_KEY = 'depotFio';
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
-    const DEPOT_DAILY_PING_INTERVAL_MS = 24 * 60 * 60 * 1000;
-    const DEPOT_GRAPH_SYNC_MONTH_SUFFIX = 'depotGraphSyncMonth';
-    const DEPOT_DAILY_CHECK_SUFFIX = 'depotDailyCheckDate';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.4.1';
+    const APP_RELEASE_VERSION = '2.4.2';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -501,77 +496,10 @@
         }
     }
 
-    function buildDepotApiUrl(params = {}) {
-        const parts = [];
-        Object.entries(params).forEach(([key, value]) => {
-            if (value != null && value !== '') {
-                parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-            }
-        });
-        parts.push(`_=${Date.now()}`);
-        const separator = DEPOT_API_URL.includes('?') ? '&' : '?';
-        return `${DEPOT_API_URL}${separator}${parts.join('&')}`;
-    }
-
-    function getStoredDepotDataVersion() {
-        return (localStorage.getItem(DEPOT_DATA_VERSION_KEY) || '').trim() || null;
-    }
-
-    function saveDepotDataVersion(version) {
-        if (version == null || version === '') return;
-        localStorage.setItem(DEPOT_DATA_VERSION_KEY, String(version));
-    }
-
-    function extractDepotDataVersion(data) {
-        if (!data || typeof data !== 'object') return null;
-        const candidates = [
-            data.version,
-            data.dataVersion,
-            data.lastUpdated,
-            data.updatedAt,
-            data.meta?.version,
-            data.meta?.lastUpdated
-        ];
-        for (const value of candidates) {
-            if (value != null && String(value).trim()) return String(value).trim();
-        }
-        return null;
-    }
-
-    function computeDepotDataFingerprint(data) {
-        if (!data || typeof data !== 'object') return null;
-        const templates = Array.isArray(data.shiftDetails) ? data.shiftDetails.length : 0;
-        const employees = Array.isArray(data.employees) ? data.employees.length : 0;
-        const stamp = extractDepotDataVersion(data) || '';
-        return `${stamp}|${templates}|${employees}`;
-    }
-
-    function resolveDepotDataVersion(data) {
-        return extractDepotDataVersion(data) || computeDepotDataFingerprint(data);
-    }
-
-    function isDepotApiErrorResponse(data) {
-        if (!data || typeof data !== 'object') return true;
-        if (String(data.status || '').toLowerCase() === 'error') return true;
-        if (data.error) return true;
-        return false;
-    }
-
-    function getDepotApiErrorMessage(data, fallback = 'Ошибка ответа сервера депо') {
-        if (!data || typeof data !== 'object') return fallback;
-        const message = String(data.error || data.message || '').trim();
-        return message || fallback;
-    }
-
-    function hasLocalDepotCache() {
-        const templates = parseJSON(localStorage.getItem(DEPOT_TEMPLATES_KEY), []) || [];
-        return Array.isArray(templates) && templates.length > 0;
-    }
-
     function hasLocalUserData(tabNumber) {
         const tab = normalizeTabNumber(tabNumber);
         if (!tab) return false;
-        if (hasLocalDepotCache()) return true;
+        if (hasLocalShiftTemplates()) return true;
         const shiftsRaw = localStorage.getItem(userShiftsStorageKey(tab));
         if (!shiftsRaw) return false;
         const shifts = parseJSON(shiftsRaw, null);
@@ -807,6 +735,9 @@
         initShiftNotesUi();
         initDonateUi();
         void loadCalendarLocalRoutes();
+        void loadLocalShiftTemplatesBundle().then(() => {
+            applyNormativeForDateKey(getShiftContextDateKey());
+        });
 
         const savedTrains = userStorageGetJson('trainNumbers', []);
         renderTrainInputs(Array.isArray(savedTrains) ? savedTrains : []);
@@ -859,12 +790,12 @@
             .finally(() => {
                 const hasTrains = getTrainNumbersFromDom().length > 0;
                 if (hasTrains && activeTab === 'tab-route') {
-                    getRouteData();
+                    getRouteData({ fromCacheOnly: true });
                     if (lastSingle) {
                         getScheduleData(lastSingle, { fromCacheOnly: true });
                     }
                 } else if (lastSingle && activeTab === 'tab-schedule') {
-                    getScheduleData(lastSingle);
+                    getScheduleData(lastSingle, { fromCacheOnly: true });
                 }
             });
     });
@@ -942,8 +873,9 @@
     let scheduleNotificationTargets = null;
     const schedulePushFiredKeys = new Set();
     const schedulePushAutoHideTimers = new Map();
-    const SCHEDULE_PUSH_MAX_VISIBLE = 4;
-    const SCHEDULE_PUSH_AUTO_HIDE_MS = 8000;
+    const SCHEDULE_NOTIFICATION_GRACE_MINUTES = 3;
+    const SCHEDULE_NOTIF_PERMISSION_ASKED_KEY = 'scheduleNotifPermissionAsked';
+    const SCHEDULE_PUSH_FIRED_STORAGE_KEY = 'schedulePushFiredKeys';
 
     const STATION_NOTES_STORAGE_KEY = 'stationNotes';
     const STATION_SELECTIONS_STORAGE_KEY = 'stationSelections';
@@ -1185,6 +1117,66 @@
         });
     }
 
+    function getBoardingStopBounds(displayStops) {
+        let firstBoardingIndex = -1;
+        let lastBoardingIndex = -1;
+
+        displayStops.forEach((item, index) => {
+            if (!item.passThrough) {
+                if (firstBoardingIndex === -1) firstBoardingIndex = index;
+                lastBoardingIndex = index;
+            }
+        });
+
+        return { firstBoardingIndex, lastBoardingIndex };
+    }
+
+    function getStopTimelineMinutes(item, index, firstBoardingIndex, lastBoardingIndex) {
+        if (item.passThrough || !item.threadStop) {
+            return null;
+        }
+
+        const stop = item.threadStop;
+        const isFirst = index === firstBoardingIndex;
+        const arrivalMinutes = parseTimeToMinutes(getTime(stop.arrival));
+        const departureMinutes = parseTimeToMinutes(getTime(stop.departure));
+
+        return isFirst
+            ? (departureMinutes ?? arrivalMinutes)
+            : arrivalMinutes;
+    }
+
+    function findNextStationIndex(displayStops, selectedDate, nowDate) {
+        const now = nowDate ?? getScheduleLiveDate();
+        if (!now) return -1;
+
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const nowDateStr = `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
+
+        if (selectedDate && selectedDate !== nowDateStr) return -1;
+
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const { firstBoardingIndex, lastBoardingIndex } = getBoardingStopBounds(displayStops);
+
+        for (let i = 0; i < displayStops.length; i++) {
+            const item = displayStops[i];
+            if (item.passThrough || !item.threadStop) continue;
+
+            const nextMinutes = getStopTimelineMinutes(
+                item,
+                i,
+                firstBoardingIndex,
+                lastBoardingIndex
+            );
+            if (nextMinutes === null) continue;
+            if (nextMinutes > currentMinutes) return i;
+        }
+
+        return -1;
+    }
+
     function updateScheduleActiveStation() {
         if (!scheduleDisplayStops) return;
         if (!scheduleLiveClockSynced) {
@@ -1192,14 +1184,14 @@
             return;
         }
 
-        const activeIndex = findClosestStationIndex(
+        const nextIndex = findNextStationIndex(
             scheduleDisplayStops,
             scheduleActiveDate,
             getScheduleLiveDate()
         );
         const nodes = document.querySelectorAll('#stationsList .station-node');
         nodes.forEach((node, index) => {
-            node.classList.toggle('active', index === activeIndex && activeIndex !== -1);
+            node.classList.toggle('active', index === nextIndex && nextIndex !== -1);
         });
     }
 
@@ -1209,10 +1201,12 @@
         if (!scheduleLiveClockSynced || !scheduleLiveClockTime) {
             el.textContent = '--:--:--';
             clearScheduleActiveStationHighlight();
+            clearRouteCardsHighlight();
             return;
         }
         el.textContent = formatLiveClockTime(scheduleLiveClockTime);
         updateScheduleActiveStation();
+        updateRouteCardsHighlight();
     }
 
     function tickScheduleLiveClock() {
@@ -1231,6 +1225,10 @@
             scheduleLiveClockTimer = null;
         }
         scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+        if (schedulePushFiredKeys.size === 0) {
+            loadSchedulePushFiredKeys();
+        }
+        ensureScheduleNotificationPermission();
         checkSchedulePushNotifications();
     }
 
@@ -1243,16 +1241,95 @@
         e?.preventDefault?.();
         e?.stopPropagation?.();
         if (!document.getElementById('scheduleLiveClock')) return;
+        ensureScheduleNotificationPermission(true);
         syncScheduleLiveClock();
     }
 
     function initScheduleLiveClockResume() {
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) resumeScheduleLiveClockIfNeeded();
+            if (document.hidden) return;
+            resumeScheduleLiveClockIfNeeded();
+            checkSchedulePushNotifications();
         });
         window.addEventListener('pageshow', () => {
             resumeScheduleLiveClockIfNeeded();
+            checkSchedulePushNotifications();
         });
+    }
+
+    function canUseSystemScheduleNotifications() {
+        return 'Notification' in window && Notification.permission === 'granted';
+    }
+
+    async function ensureScheduleNotificationPermission(force = false) {
+        if (!('Notification' in window)) return false;
+        if (Notification.permission === 'granted') return true;
+        if (Notification.permission === 'denied') return false;
+
+        const alreadyAsked = userStorageGet(SCHEDULE_NOTIF_PERMISSION_ASKED_KEY) === '1';
+        if (alreadyAsked && !force) return false;
+
+        userStorageSet(SCHEDULE_NOTIF_PERMISSION_ASKED_KEY, '1');
+        try {
+            const result = await Notification.requestPermission();
+            return result === 'granted';
+        } catch (err) {
+            console.warn('[schedule-push] permission request failed:', err);
+            return false;
+        }
+    }
+
+    async function showSystemScheduleNotification(payload = {}) {
+        if (!canUseSystemScheduleNotifications()) return;
+
+        const title = payload.title || 'Цифровой помощник';
+        const bodyParts = [payload.kicker, payload.body].filter(Boolean);
+        const body = bodyParts.join(' — ');
+        const tag = payload.key || `schedule-${Date.now()}`;
+        const notificationPayload = {
+            title,
+            kicker: payload.kicker || '',
+            body: payload.body || '',
+            key: tag,
+            tag
+        };
+
+        try {
+            const registration = navigator.serviceWorker?.controller
+                ? await navigator.serviceWorker.ready
+                : null;
+
+            if (registration?.active) {
+                registration.active.postMessage({
+                    type: 'SHOW_SCHEDULE_NOTIFICATION',
+                    payload: notificationPayload
+                });
+                return;
+            }
+
+            if (registration?.showNotification) {
+                await registration.showNotification(title, {
+                    body: body || title,
+                    tag,
+                    renotify: true,
+                    icon: 'assets/brand-logo.png',
+                    badge: 'assets/brand-logo.png',
+                    vibrate: [140, 70, 140],
+                    requireInteraction: true,
+                    silent: false,
+                    data: { key: tag, url: './', screen: 'schedule' }
+                });
+                return;
+            }
+
+            new Notification(title, {
+                body: body || title,
+                tag,
+                icon: 'assets/brand-logo.png'
+            });
+        } catch (err) {
+            console.warn('[schedule-push] system notification failed:', err);
+        }
     }
 
     function stopScheduleLiveClock() {
@@ -1266,12 +1343,36 @@
         scheduleActiveDate = null;
         scheduleNotificationTargets = null;
         routeNotificationTrains = null;
-        clearSchedulePushFiredKeys();
         clearScheduleActiveStationHighlight();
     }
 
-    function clearSchedulePushFiredKeys() {
+    function getSchedulePushSessionId() {
+        const trains = getTrainNumbersFromDom().join(',');
+        const date = getSelectedDate() || userStorageGet('selectedDate') || '';
+        const single = userStorageGet('lastSingleTrain') || '';
+        return `${date}|${trains}|${single}`;
+    }
+
+    function loadSchedulePushFiredKeys() {
+        const session = getSchedulePushSessionId();
+        const stored = userStorageGetJson(SCHEDULE_PUSH_FIRED_STORAGE_KEY, null);
         schedulePushFiredKeys.clear();
+        if (!stored || stored.session !== session) return;
+        if (!Array.isArray(stored.keys)) return;
+        stored.keys.forEach(key => schedulePushFiredKeys.add(key));
+    }
+
+    function persistSchedulePushFiredKeys() {
+        userStorageSet(SCHEDULE_PUSH_FIRED_STORAGE_KEY, {
+            session: getSchedulePushSessionId(),
+            keys: [...schedulePushFiredKeys]
+        });
+    }
+
+    function resetSchedulePushState() {
+        schedulePushFiredKeys.clear();
+        userStorageRemove(SCHEDULE_PUSH_FIRED_STORAGE_KEY);
+        document.getElementById('schedulePushStack')?.replaceChildren();
     }
 
     function formatLiveDateIso(date) {
@@ -1296,6 +1397,84 @@
             return addDaysToDateStr(baseDate, 1);
         }
         return baseDate;
+    }
+
+    const ROUTE_CARD_PHASE_CLASSES = [
+        'route-card--phase-green',
+        'route-card--phase-yellow',
+        'route-card--phase-red',
+        'route-card--phase-transit'
+    ];
+
+    function buildRouteEventDateTime(dateIso, timeString) {
+        if (!dateIso || !timeString) return null;
+        const minutes = parseTimeToMinutes(timeString);
+        if (minutes === null) return null;
+        const parts = dateIso.split(DASH_CHAR).map(Number);
+        if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+        const [year, month, day] = parts;
+        return new Date(year, month - 1, day, Math.floor(minutes / 60), minutes % 60, 0, 0);
+    }
+
+    function resolveRouteTrainPhase(nowDate, train) {
+        const depDt = buildRouteEventDateTime(train.departureDate, train.departure);
+        const arrDt = buildRouteEventDateTime(train.arrivalDate, train.arrival);
+        if (!depDt || !arrDt) return 'passed';
+
+        const nowMs = nowDate.getTime();
+        if (nowMs > arrDt.getTime()) return 'passed';
+        if (nowMs >= depDt.getTime()) return 'transit';
+
+        const diffMin = (depDt.getTime() - nowMs) / 60000;
+        if (diffMin <= 3) return 'red';
+        if (diffMin <= 10) return 'yellow';
+        return 'green';
+    }
+
+    function clearRouteCardsHighlight() {
+        document.querySelectorAll('#routeGrid .route-card').forEach(card => {
+            card.classList.remove(...ROUTE_CARD_PHASE_CLASSES);
+        });
+    }
+
+    function updateRouteCardsHighlight() {
+        clearRouteCardsHighlight();
+
+        const grid = document.getElementById('routeGrid');
+        const nowDate = getScheduleLiveDate();
+        const selectedDate = getSelectedDate();
+        if (!grid || !nowDate || !selectedDate || !liveDateMatchesShift(nowDate, selectedDate)) return;
+        if (!Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) return;
+
+        let activeTrain = null;
+        let activePhase = null;
+
+        for (const train of routeNotificationTrains) {
+            const phase = resolveRouteTrainPhase(nowDate, train);
+            if (phase === 'transit') {
+                activeTrain = train;
+                activePhase = phase;
+                break;
+            }
+            if (phase === 'green' || phase === 'yellow' || phase === 'red') {
+                activeTrain = train;
+                activePhase = phase;
+                break;
+            }
+        }
+
+        if (!activeTrain || !activePhase || activePhase === 'passed') return;
+
+        const card = grid.querySelector(`.route-card[data-train-index="${activeTrain.index}"]`);
+        if (!card) return;
+
+        const classMap = {
+            green: 'route-card--phase-green',
+            yellow: 'route-card--phase-yellow',
+            red: 'route-card--phase-red',
+            transit: 'route-card--phase-transit'
+        };
+        card.classList.add(classMap[activePhase]);
     }
 
     function buildRouteNotificationTrains(allTrainsData, selectedDate) {
@@ -1417,47 +1596,54 @@
     }
 
     function showSchedulePushNotification(payload = {}) {
+        const pushKey = payload.key || '';
         const stack = document.getElementById('schedulePushStack');
+
+        if (pushKey && stack?.querySelector(`[data-push-key="${pushKey}"]`)) return;
+
+        if (document.hidden) {
+            showSystemScheduleNotification(payload);
+            return;
+        }
+
         if (!stack) return;
 
         const node = document.createElement('div');
         node.className = `schedule-push schedule-push--${payload.tone || 'default'}`;
+        if (pushKey) node.dataset.pushKey = pushKey;
         node.innerHTML = `
             <div class="schedule-push-main">
                 <p class="schedule-push-kicker">${escapeHtml(payload.kicker || 'Уведомление')}</p>
                 <p class="schedule-push-title">${escapeHtml(payload.title || '')}</p>
                 ${payload.body ? `<p class="schedule-push-body">${escapeHtml(payload.body)}</p>` : ''}
             </div>
-            <button type="button" class="schedule-push-close" aria-label="Закрыть уведомление">✕</button>
+            <button type="button" class="schedule-push-ok" aria-label="Подтвердить уведомление">Ок</button>
         `;
 
-        node.querySelector('.schedule-push-close')?.addEventListener('click', () => {
+        node.querySelector('.schedule-push-ok')?.addEventListener('click', () => {
             dismissSchedulePushNotification(node);
         });
 
         stack.prepend(node);
-        while (stack.children.length > SCHEDULE_PUSH_MAX_VISIBLE) {
-            dismissSchedulePushNotification(stack.lastElementChild);
-        }
-
         requestAnimationFrame(() => node.classList.add('is-visible'));
+    }
 
-        const hideTimer = window.setTimeout(() => {
-            dismissSchedulePushNotification(node);
-        }, SCHEDULE_PUSH_AUTO_HIDE_MS);
-        schedulePushAutoHideTimers.set(node, hideTimer);
+    function isWithinScheduleNotificationWindow(triggerMinutes, leadMinutes, nowDate) {
+        const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
+        const fireAtMinutes = triggerMinutes - leadMinutes;
+        const graceMinutes = SCHEDULE_NOTIFICATION_GRACE_MINUTES;
+        return nowMinutes >= fireAtMinutes && nowMinutes <= fireAtMinutes + graceMinutes;
     }
 
     function tryFireSchedulePushNotification(key, triggerDate, triggerMinutes, leadMinutes, payload, nowDate) {
         if (!key || !triggerDate || triggerMinutes === null || leadMinutes === null) return;
         if (!liveDateMatchesShift(nowDate, triggerDate)) return;
         if (schedulePushFiredKeys.has(key)) return;
-
-        const nowMinutes = nowDate.getHours() * 60 + nowDate.getMinutes();
-        if (triggerMinutes - nowMinutes !== leadMinutes) return;
+        if (!isWithinScheduleNotificationWindow(triggerMinutes, leadMinutes, nowDate)) return;
 
         schedulePushFiredKeys.add(key);
-        showSchedulePushNotification(payload);
+        persistSchedulePushFiredKeys();
+        showSchedulePushNotification({ ...payload, key });
     }
 
     function checkSchedulePushNotifications() {
@@ -1992,7 +2178,8 @@
         updateDateDisplayText(iso);
         updateScheduleDateHint();
         userStorageSet('selectedDate', iso);
-        clearSchedulePushFiredKeys();
+        loadSchedulePushFiredKeys();
+        applyNormativeForDateKey(getShiftContextDateKey());
     }
 
     function renderRoutesFromCacheIfVisible() {
@@ -2041,7 +2228,6 @@
         scheduleActiveDate = null;
         scheduleCurrentTrain = null;
         scheduleNotificationTargets = null;
-        clearSchedulePushFiredKeys();
         if (results) results.style.display = 'none';
         if (header) {
             header.style.display = 'none';
@@ -2391,6 +2577,7 @@
     }
 
     function performShiftReset() {
+        resetSchedulePushState();
         SHIFT_STORAGE_KEYS.forEach(key => userStorageRemove(key));
         try {
             sessionStorage.clear();
@@ -3146,6 +3333,18 @@
         });
     }
 
+    function bootstrapScheduleAlertsIfReady() {
+        const hasAlerts = (Array.isArray(routeNotificationTrains) && routeNotificationTrains.length)
+            || (Array.isArray(scheduleNotificationTargets) && scheduleNotificationTargets.length);
+        if (!hasAlerts) return;
+
+        if (!scheduleLiveClockSynced) {
+            syncScheduleLiveClock();
+        } else {
+            checkSchedulePushNotifications();
+        }
+    }
+
     function runScreenSideEffects(screen) {
         if (screen === 'calendar') {
             loadUserShifts();
@@ -3155,6 +3354,9 @@
         } else if (screen === 'profile') {
             updateProfileScreen();
         }
+
+        resumeScheduleLiveClockIfNeeded();
+        bootstrapScheduleAlertsIfReady();
     }
 
     function cleanupSlideClasses(el) {
@@ -3295,6 +3497,13 @@
 
         const requestId = ++routeDataRequestId;
 
+        if (!fromCacheOnly || forceRefresh) {
+            resetSchedulePushState();
+        } else if (schedulePushFiredKeys.size === 0) {
+            loadSchedulePushFiredKeys();
+        }
+
+        ensureScheduleNotificationPermission();
         userStorageSet('trainNumbers', inputs);
         syncScheduleLiveClock();
 
@@ -3407,7 +3616,7 @@
                 const offDayClass = train.runsOnSelectedDate === false ? ' route-card--off-day' : '';
 
                 cards.push(`
-                    <div class="route-card clickable${offDayClass}" data-uid="${train.uid}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
+                    <div class="route-card clickable${offDayClass}" data-train-index="${i}" data-uid="${train.uid}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
                         <div class="route-card-section route-card-top">
                             <div class="route-card-title">${train.title}</div>
                             <div class="route-card-subtitle">
@@ -3462,11 +3671,11 @@
         if (requestId !== routeDataRequestId) return;
 
             routeNotificationTrains = buildRouteNotificationTrains(allTrainsData, getSelectedDate());
-            clearSchedulePushFiredKeys();
             checkSchedulePushNotifications();
 
             grid.innerHTML = cards.join('');
             grid.style.display = 'flex';
+            updateRouteCardsHighlight();
             setRouteToolbarVisible(true);
             setShiftWarningsVisible(totals.trainCount > 0);
         } catch (error) {
@@ -3635,7 +3844,9 @@
             trainDeparture,
             trainArrival
         );
-        clearSchedulePushFiredKeys();
+        if (schedulePushFiredKeys.size === 0) {
+            loadSchedulePushFiredKeys();
+        }
 
         const firstTitle = firstStationTitle.toLowerCase();
         let currentDirection = 'to_moscow';
@@ -4036,18 +4247,18 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Унифицированный дизайн: скругления, glass-шапка, карточки и отступы',
-            'Селектор месяца в профиле — финансы и часы за прошлые периоды',
-            'Пуш-уведомления: проба тормозов за 10 мин до отправления',
-            'Пуш-уведомления: ТО-1 при обороте более 30 минут',
-            'Пуш-уведомления: минутная готовность, ограничения скорости и тупик'
+            'Уведомления в приложении — проба тормозов, минутная готовность, ТО-1',
+            'Подсветка карточек маршрута: зелёная, жёлтая, красная, в пути — голубая',
+            'База часов смен обновлена с нормативом от 17.07.2026',
+            'Подсветка станций в пути: следующая — зелёная, выбор — синий',
+            'Крестик для удаления заметок к станциям и сменам'
         ],
         highlights: [
-            'Интерфейс приведён к единым токенам: скругления 16px у карточек, компактная glass-шапка, исправлена обрезка hero-карточки профиля.',
-            'В личном кабинете можно листать месяцы назад и смотреть заработок, часы и баланс времени за выбранный период.',
-            'За 10 минут до отправления поезда приходит сигнал о сокращённой пробе тормозов.',
-            'При обороте дольше 30 минут — напоминание о ТО-1; за 3 минуты до отправления — минутная готовность.',
-            'На расписании: за 1 минуту до ограничения скорости и за 10 минут до тупика на конечной — пуш-уведомления.'
+            'Уведомления появляются внутри приложения и подтверждаются кнопкой «Ок»; системные пуши — только когда вкладка свёрнута.',
+            'На вкладке «Маршрут» активная карточка подсвечивается по фазе: за час — зелёная, за 10 мин — жёлтая, за 3 мин — красная, в пути — голубое время.',
+            'Часы смен пересобраны из xlsx с 17.07: два норматива (до 16.07 и с 17.07), экспорт через npm run export:shifts.',
+            'В расписании убрана серая «пройденная» станция; следующая остановка мигает зелёным, ручной выбор — синим.',
+            'Заметки к станциям и сменам можно удалить крестиком без повторного открытия редактора.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -5170,7 +5381,7 @@
         }, true);
     }
 
-    // === User Auth & Google Sheets sync ===
+    // === User Auth (локально) ===
     let calendarSelectedDateKey = null;
 
     function getUsersDb() {
@@ -5206,14 +5417,9 @@
     }
 
     function clearDepotData() {
-        localStorage.removeItem(DEPOT_SHIFTS_KEY);
-        localStorage.removeItem(DEPOT_TEMPLATES_KEY);
-        localStorage.removeItem(DEPOT_RAW_SHIFTS_KEY);
-        localStorage.removeItem(DEPOT_DATA_VERSION_KEY);
         localStorage.removeItem(DEPOT_FIO_KEY);
         localStorage.removeItem(DEPOT_TAB_KEY);
         localStorage.removeItem(DEPOT_POSITION_KEY);
-        depotShiftTemplates = [];
     }
 
     function normalizeTabNumber(value) {
@@ -5350,7 +5556,12 @@
 
     function findShiftTemplate(templates, routeNumber, dateKey) {
         const route = String(routeNumber || '').trim();
-        if (!route || !dateKey || !Array.isArray(templates) || !templates.length) return null;
+        if (!route || !dateKey) return null;
+
+        const pool = hasLocalShiftTemplates()
+            ? getActiveShiftTemplates(dateKey)
+            : (Array.isArray(templates) && templates.length ? templates : depotShiftTemplates);
+        if (!Array.isArray(pool) || !pool.length) return null;
 
         const cleanTarget = route.toUpperCase().replace(/[НУДNU]/g, '').trim();
 
@@ -5380,21 +5591,21 @@
             return cleanTmpl === cleanTarget && cleanTarget !== '';
         };
 
-        for (let i = templates.length - 1; i >= 0; i--) {
-            const row = templates[i];
+        for (let i = pool.length - 1; i >= 0; i--) {
+            const row = pool[i];
             if (!isRouteMatch(row.route || row.Route)) continue;
             const rowIso = normalizedDateToIso(row.date);
             if (rowIso && isoDate && rowIso === isoDate) return { ...row };
         }
 
-        for (let i = templates.length - 1; i >= 0; i--) {
-            const row = templates[i];
+        for (let i = pool.length - 1; i >= 0; i--) {
+            const row = pool[i];
             if (!isRouteMatch(row.route || row.Route)) continue;
             if (shiftDateMatchesWeekday(row.date, weekdayInfo)) return { ...row };
         }
 
-        for (let i = templates.length - 1; i >= 0; i--) {
-            const row = templates[i];
+        for (let i = pool.length - 1; i >= 0; i--) {
+            const row = pool[i];
             if (isRouteMatch(row.route || row.Route)) return { ...row };
         }
 
@@ -5466,181 +5677,27 @@
         return parsed.month === targetMonth && parsed.year === targetYear;
     }
 
-    function mergeServerGraphIntoLocal(localShifts, serverShifts, targetMonth, targetYear) {
-        const merged = { ...(localShifts && typeof localShifts === 'object' ? localShifts : {}) };
-        const serverFormatted = formatEmployeeShiftsFromNormalized(serverShifts);
-        Object.entries(serverFormatted).forEach(([dateKey, record]) => {
-            if (!isCalendarDateKeyInMonth(dateKey, targetMonth, targetYear)) return;
-            if (merged[dateKey]) return;
-            merged[dateKey] = record;
-        });
-        return merged;
-    }
-
-    function getCurrentMonthSyncKey(date = new Date()) {
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    }
-
-    function getTodayDateKey(date = new Date()) {
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    }
-
     function userShiftsStorageKey(tabNumber) {
         return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_SHIFTS_KEY}`;
     }
 
-    function userGraphSyncMonthStorageKey(tabNumber) {
-        return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_GRAPH_SYNC_MONTH_SUFFIX}`;
-    }
-
-    function userDailyCheckStorageKey(tabNumber) {
-        return `u_${normalizeTabNumber(tabNumber)}_${DEPOT_DAILY_CHECK_SUFFIX}`;
+    function getTodayDateKey(date = new Date()) {
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const yyyy = date.getFullYear();
+        return `${dd}.${mm}.${yyyy}`;
     }
 
     function refreshDepotUiAfterSync(options = {}) {
         if (options.calendarChanged) {
             loadUserShifts();
         }
-        loadGlobalShiftTemplates({ forceStorage: true });
+        applyNormativeForDateKey(getShiftContextDateKey());
         calendarRenderCalendar();
         if (calendarSelectedDateKey) {
             refreshConstructorRouteSelect();
         }
         updateProfileScreen();
-    }
-
-    async function fetchDepotRemoteVersion() {
-        try {
-            const res = await fetchWithTimeout(buildDepotApiUrl({ check: 'version' }), {
-                method: 'GET',
-                redirect: 'follow',
-                cache: 'no-store',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            }, 20000);
-            if (!res.ok) return null;
-
-            const rawData = await res.json();
-            if (isDepotApiErrorResponse(rawData)) return null;
-
-            return resolveDepotDataVersion(rawData);
-        } catch (err) {
-            console.warn('Не удалось проверить версию данных депо:', err);
-            return null;
-        }
-    }
-
-    async function syncEmployeeFromApi(badgeNum, options = {}) {
-        if (!badgeNum) return false;
-
-        const silent = Boolean(options.silent);
-        const mergeGraph = Boolean(options.mergeGraph);
-        loadGlobalShiftTemplates({ forceStorage: true });
-
-        if (isAppOffline()) {
-            if (isValidGlobalTemplateCache(depotShiftTemplates)) {
-                depotTemplatesLoadState = 'ready';
-                if (!silent) notifyOfflineModeIfNeeded();
-                return true;
-            }
-            depotTemplatesLoadState = 'error';
-            if (!silent && typeof showToast === 'function') {
-                showToast('Нет интернета и нет сохранённых шаблонов смен');
-            }
-            return false;
-        }
-
-        if (!silent && typeof showGlobalLoader === 'function') showGlobalLoader();
-
-        try {
-            const res = await fetchWithTimeout(buildDepotApiUrl(), {
-                method: 'GET',
-                redirect: 'follow',
-                cache: 'no-store',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            }, 25000);
-            if (!res.ok) throw new Error(`Ошибка сети: ${res.status}`);
-
-            const rawData = await res.json();
-            if (isDepotApiErrorResponse(rawData)) {
-                throw new Error(getDepotApiErrorMessage(rawData));
-            }
-
-            const normalizedBadge = normalizeTabNumber(badgeNum);
-
-            const shiftDetails = Array.isArray(rawData?.shiftDetails) ? rawData.shiftDetails : [];
-            if (!shiftDetails.length) {
-                console.warn('Получен пустой массив шаблонов смен от API');
-            }
-
-            const freshTemplates = normalizeShiftsArray(shiftDetails);
-            if (freshTemplates.length || !isValidGlobalTemplateCache(depotShiftTemplates)) {
-                depotShiftTemplates = freshTemplates;
-                localStorage.removeItem(DEPOT_TEMPLATES_KEY);
-                localStorage.removeItem(DEPOT_RAW_SHIFTS_KEY);
-                localStorage.setItem(DEPOT_TEMPLATES_KEY, JSON.stringify(freshTemplates));
-            }
-            localStorage.setItem(DEPOT_TAB_KEY, normalizedBadge);
-
-            const dataVersion = resolveDepotDataVersion(rawData);
-            if (dataVersion) saveDepotDataVersion(dataVersion);
-
-            const employees = Array.isArray(rawData?.employees) ? rawData.employees : [];
-            const employee = employees.find(emp =>
-                normalizeTabNumber(emp?.tabNumber) === normalizedBadge
-            );
-
-            if (employee) {
-                const fio = String(employee.fio || '').trim();
-                const position = String(employee.position || '').trim();
-                if (fio) localStorage.setItem(DEPOT_FIO_KEY, fio);
-                if (position) localStorage.setItem(DEPOT_POSITION_KEY, position);
-
-                if (mergeGraph) {
-                    loadUserShifts();
-                    const normalizedEmployeeShifts = normalizeShiftsArray(employee.shifts || []);
-                    const now = new Date();
-                    calendarUserShifts = mergeServerGraphIntoLocal(
-                        calendarUserShifts,
-                        normalizedEmployeeShifts,
-                        now.getMonth(),
-                        now.getFullYear()
-                    );
-                    localStorage.setItem(
-                        userShiftsStorageKey(normalizedBadge),
-                        JSON.stringify(calendarUserShifts)
-                    );
-                }
-            } else if (mergeGraph) {
-                console.warn(`Сотрудник с табельным номером ${normalizedBadge} не найден в ответе API — локальный календарь не изменён`);
-            }
-
-            console.log(`Успешно синхронизировано шаблонов смен: ${depotShiftTemplates.length}`);
-
-            refreshDepotUiAfterSync({ calendarChanged: mergeGraph });
-
-            depotTemplatesLoadState = 'ready';
-            renderRouteComboboxListIfOpen();
-
-            if (!silent && typeof showToast === 'function') {
-                showToast(mergeGraph ? 'График подставлен в пустые дни месяца' : 'Справочник маршрутов обновлён');
-            }
-
-            return true;
-        } catch (err) {
-            console.error('Критическая ошибка синхронизации данных:', err);
-            loadGlobalShiftTemplates({ forceStorage: true });
-            const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
-            depotTemplatesLoadState = hasCache ? 'ready' : 'error';
-            renderRouteComboboxListIfOpen();
-            if (!silent && typeof showToast === 'function') {
-                showToast(hasCache
-                    ? 'Сервер недоступен — используются сохранённые шаблоны'
-                    : 'Не удалось обновить шаблоны смен с сервера');
-            }
-            return hasCache;
-        } finally {
-            if (!silent && typeof hideGlobalLoader === 'function') hideGlobalLoader();
-        }
     }
 
     function setAuthButtonsLoading(loading) {
@@ -5676,21 +5733,14 @@
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
         loadUserShifts();
-        loadGlobalShiftTemplates({ forceStorage: true });
-        if (isValidGlobalTemplateCache(depotShiftTemplates)) {
-            depotTemplatesLoadState = 'ready';
-        }
-        updateProfileScreen();
-        startDepotVersionMonitor();
-        if (!isAppOffline()) {
-            if (options.fromLogin) {
-                void runGraphSyncForCurrentMonth();
-            } else {
-                void runGraphSyncIfMonthStart();
+        void loadLocalShiftTemplatesBundle().then(() => {
+            applyNormativeForDateKey(getShiftContextDateKey());
+            if (isValidGlobalTemplateCache(depotShiftTemplates)) {
+                depotTemplatesLoadState = 'ready';
             }
-        } else {
-            notifyOfflineModeIfNeeded();
-        }
+            renderRouteComboboxListIfOpen();
+        });
+        updateProfileScreen();
         switchMainScreen('calendar', { forceSideEffects: true });
         void maybeShowReleaseNotesOverlay();
     }
@@ -5721,26 +5771,6 @@
 
         setAuthButtonsLoading(true);
         try {
-            const canOffline = hasLocalUserData(tabNumber);
-            if (isNewUser && isAppOffline()) {
-                setAuthError('authErrorLogin', 'Первый вход возможен только при наличии интернета.');
-                return;
-            }
-
-            const needsServerSync = isNewUser || (!hasLocalDepotCache() && !canOffline);
-            if (needsServerSync) {
-                const synced = await syncEmployeeFromApi(tabNumber, { mergeGraph: true });
-                if (!synced && !canOffline) {
-                    setAuthError('authErrorLogin', 'Не удалось загрузить данные с сервера. Проверьте интернет или табельный номер.');
-                    return;
-                }
-                if (!synced && canOffline) {
-                    notifyOfflineModeIfNeeded();
-                }
-            } else if (isAppOffline()) {
-                notifyOfflineModeIfNeeded();
-            }
-
             if (isNewUser) {
                 saveUserRecord(tabNumber, {
                     tabNumber,
@@ -5749,10 +5779,11 @@
             }
 
             setAuthSessionTab(tabNumber);
+            localStorage.setItem(DEPOT_TAB_KEY, tabNumber);
             unlockAppAuth({ fromLogin: true });
         } catch (err) {
             console.error('Ошибка входа:', err);
-            setAuthError('authErrorLogin', err.message || 'Ошибка загрузки данных. Проверьте интернет.');
+            setAuthError('authErrorLogin', err.message || 'Не удалось войти.');
         } finally {
             setAuthButtonsLoading(false);
         }
@@ -5787,13 +5818,9 @@
     }
 
     function handleLogout() {
-        stopDepotVersionMonitor();
         clearAuthSessionTab();
-        clearDepotData();
         calendarUserShifts = {};
-        depotShiftTemplates = [];
         depotTemplatesLoadState = 'idle';
-        depotTemplatesSyncPromise = null;
         calendarSelectedDateKey = null;
         resetAuthForms();
         lockAppAuth();
@@ -5803,9 +5830,215 @@
     let calendarUserShifts = {};
     let depotShiftTemplates = [];
     let depotTemplatesLoadState = 'idle';
-    let depotTemplatesSyncPromise = null;
     let calendarLocalRoutesData = null;
     let calendarLocalRoutesPromise = null;
+    let localShiftNormatives = [];
+    let localShiftTemplatesPromise = null;
+    let activeNormativeId = null;
+    let constructorRouteOptions = new Map();
+
+    function hasLocalShiftTemplates() {
+        return Array.isArray(localShiftNormatives) && localShiftNormatives.some(item =>
+            Array.isArray(item?.shiftDetails) && item.shiftDetails.length
+        );
+    }
+
+    function getShiftContextDateKey() {
+        if (calendarSelectedDateKey) return calendarSelectedDateKey;
+        const iso = getSelectedDate();
+        if (iso) {
+            const parts = String(iso).split('-');
+            if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return getTodayDateKey();
+    }
+
+    function resolveNormativeBundleForIso(isoDate) {
+        if (!isoDate || !hasLocalShiftTemplates()) return null;
+        for (const bundle of localShiftNormatives) {
+            const from = String(bundle.normativeFrom || '');
+            const to = bundle.normativeTo || '9999-12-31';
+            if (from && isoDate >= from && isoDate <= to) return bundle;
+        }
+        return localShiftNormatives[localShiftNormatives.length - 1] || null;
+    }
+
+    function getActiveShiftTemplates(dateKey) {
+        const isoDate = calendarKeyToIso(dateKey);
+        const bundle = resolveNormativeBundleForIso(isoDate);
+        if (bundle?.shiftDetails?.length) {
+            return normalizeShiftsArray(bundle.shiftDetails);
+        }
+        return depotShiftTemplates;
+    }
+
+    function refreshActiveShiftTemplates(dateKey) {
+        if (!hasLocalShiftTemplates()) return depotShiftTemplates;
+        depotShiftTemplates = getActiveShiftTemplates(dateKey || getShiftContextDateKey());
+        depotTemplatesLoadState = isValidGlobalTemplateCache(depotShiftTemplates) ? 'ready' : depotTemplatesLoadState;
+        return depotShiftTemplates;
+    }
+
+    function formatNormativePeriodLabel(bundle) {
+        if (!bundle) return '';
+        const fromParts = String(bundle.normativeFrom || '').split('-');
+        const fromLabel = fromParts.length === 3
+            ? `${fromParts[2]}.${fromParts[1]}.${fromParts[0]}`
+            : (bundle.normativeFrom || '');
+        if (!bundle.normativeTo) {
+            return `Норматив с ${fromLabel}`;
+        }
+        const toParts = String(bundle.normativeTo).split('-');
+        const toLabel = toParts.length === 3
+            ? `${toParts[2]}.${toParts[1]}.${toParts[0]}`
+            : bundle.normativeTo;
+        return `Норматив ${fromLabel} – ${toLabel}`;
+    }
+
+    function applyNormativeForDateKey(dateKey) {
+        const isoDate = calendarKeyToIso(dateKey || getShiftContextDateKey());
+        const bundle = resolveNormativeBundleForIso(isoDate);
+        const nextId = bundle?.id || null;
+        const changed = nextId !== activeNormativeId;
+        refreshActiveShiftTemplates(dateKey || getShiftContextDateKey());
+        if (changed) {
+            activeNormativeId = nextId;
+            constructorRouteOptions = new Map();
+            renderRouteComboboxListIfOpen();
+        }
+        return bundle;
+    }
+
+    function getTemplatesForCalendarDate(dateKey) {
+        const templates = getActiveShiftTemplates(dateKey);
+        const weekdayInfo = getWeekdayMarkerForCalendarDate(dateKey);
+        const isoDate = calendarKeyToIso(dateKey);
+        return templates.filter(row => {
+            const rowIso = normalizedDateToIso(row.date);
+            if (rowIso && isoDate && rowIso === isoDate) return true;
+            return shiftDateMatchesWeekday(row.date, weekdayInfo);
+        });
+    }
+
+    function buildRouteIdentitySignature(row) {
+        const normalized = normalizeShiftRecord(row) || row;
+        const trains = String(normalized.trainNum || row.trains || '').trim();
+        const hours = String(normalized.hours || row.workHours || '').trim();
+        return [
+            String(normalized.route || '').trim(),
+            String(normalized.startTime || '').trim(),
+            String(normalized.endTime || '').trim(),
+            trains,
+            hours
+        ].join('\u0001');
+    }
+
+    function formatRouteOptionTrainsPreview(text, maxLen = 22) {
+        const raw = String(text || '').trim();
+        if (!raw) return '—';
+        if (raw.length <= maxLen) return raw;
+        return `${raw.slice(0, maxLen - 1)}…`;
+    }
+
+    function formatConstructorRouteOptionLabel(row, dateKey) {
+        const normalized = normalizeShiftRecord(row) || row;
+        return String(normalized.route || row.route || '—').trim();
+    }
+
+    function formatShiftLunchTimeDisplay(shift, dateKey) {
+        const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
+        const { lunch } = parseShiftLunchField(enriched?.lunch);
+        if (!lunch) return '—';
+
+        const times = (String(lunch).match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
+        if (times.length >= 2 && times[0] !== times[1]) {
+            return `${times[0]} – ${times[1]}`;
+        }
+        return '—';
+    }
+
+    function getConstructorRouteOptions(dateKey) {
+        const key = dateKey || getShiftContextDateKey();
+        const templates = getTemplatesForCalendarDate(key);
+        const options = [];
+        const seen = new Set();
+
+        templates.forEach(row => {
+            const signature = buildRouteIdentitySignature(row);
+            if (seen.has(signature)) return;
+            seen.add(signature);
+            const normalized = normalizeShiftRecord(row);
+            if (!normalized) return;
+            options.push({
+                signature,
+                route: normalized.route,
+                template: { ...row, ...normalized },
+                label: formatConstructorRouteOptionLabel(row, key)
+            });
+        });
+
+        options.sort((a, b) => {
+            const kindOrder = (route) => {
+                const kind = getShiftRouteKind(route);
+                if (kind === 'day') return 0;
+                if (kind === 'night') return 1;
+                if (kind === 'morning') return 2;
+                return 3;
+            };
+            const diff = kindOrder(a.route) - kindOrder(b.route);
+            if (diff !== 0) return diff;
+            return a.label.localeCompare(b.label, 'ru');
+        });
+
+        constructorRouteOptions = new Map(options.map(option => [option.signature, option.template]));
+        return options;
+    }
+
+    function findConstructorRouteOption(dateKey, route, storedShift = null) {
+        const options = getConstructorRouteOptions(dateKey);
+        if (storedShift) {
+            const storedSig = buildRouteIdentitySignature(storedShift);
+            const exact = options.find(option => option.signature === storedSig);
+            if (exact) return exact;
+        }
+        const routeKey = normalizeCalendarRouteKey(route);
+        return options.find(option => normalizeCalendarRouteKey(option.route) === routeKey) || null;
+    }
+
+    async function loadLocalShiftTemplatesBundle() {
+        if (hasLocalShiftTemplates()) return localShiftNormatives;
+        if (localShiftTemplatesPromise) return localShiftTemplatesPromise;
+
+        localShiftTemplatesPromise = (async () => {
+            try {
+                const res = await fetch(LOCAL_SHIFT_TEMPLATES_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                localShiftNormatives = Array.isArray(data?.normatives)
+                    ? data.normatives.filter(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)
+                    : [];
+                if (!localShiftNormatives.length && Array.isArray(data?.shiftDetails) && data.shiftDetails.length) {
+                    localShiftNormatives = [{
+                        id: data.version || 'local',
+                        normativeFrom: data.source?.normativeFrom || '1970-01-01',
+                        normativeTo: null,
+                        shiftDetails: data.shiftDetails
+                    }];
+                }
+                persistReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY, {
+                    normatives: localShiftNormatives,
+                    version: data?.version || null
+                });
+            } catch (err) {
+                console.warn('[shift-templates]', err);
+                const cached = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
+                localShiftNormatives = Array.isArray(cached?.normatives) ? cached.normatives : [];
+            }
+            return localShiftNormatives;
+        })();
+
+        return localShiftTemplatesPromise;
+    }
 
     const CALENDAR_LOCAL_ROUTES_FALLBACK = {
         presets: [
@@ -5914,7 +6147,7 @@
                 </div>
                 <input type="hidden" id="constructorLocalPresetId" value="${escapeAttr(selectedPresetId)}">
             </div>
-            <p class="shift-constructor-hint calendar-local-routes-divider">или маршрут из таблицы</p>`;
+            <p class="shift-constructor-hint calendar-local-routes-divider">или маршрут из базы часов смен</p>`;
     }
 
     function syncLocalPresetUi(presetId) {
@@ -5954,10 +6187,11 @@
         document.getElementById('constructorLocalRoutes')?.removeAttribute('data-ready');
     }
 
-    function buildCalendarRoutePickerBlock(storedShifts) {
+    function buildCalendarRoutePickerBlock(storedShifts, dateKey) {
         const shifts = normalizeDayShiftsRecord(storedShifts);
         const storedShift = shifts[0] || null;
         const selectedRoute = storedShift ? String(storedShift.route || '').trim() : '';
+        const matchedOption = findConstructorRouteOption(dateKey, selectedRoute, storedShift);
         const selectedPresetId = resolveLocalPresetIdForShift(storedShift);
         const customHours = storedShift && getLocalRoutePresetByRoute(storedShift.route)?.hoursEditable
             ? String(parseShiftHours(storedShift.hours) || storedShift.hours || '')
@@ -5969,21 +6203,22 @@
                 : 'Изменить маршрут';
         return `
             ${buildLocalRoutesPickerBlock(selectedPresetId, customHours)}
-            ${buildRouteComboboxBlock(selectedRoute)}
+            ${buildRouteComboboxBlock(selectedRoute, matchedOption?.signature || '')}
             <p id="constructorError" class="shift-constructor-error" role="alert"></p>
             <button type="button" class="shift-constructor-btn" onclick="calendarAddShift()">${addLabel}</button>`;
     }
 
-    function initCalendarRoutePicker(storedShifts) {
+    function initCalendarRoutePicker(storedShifts, dateKey) {
         resetLocalRoutePresetsBinding();
         const storedShift = normalizeDayShiftsRecord(storedShifts)[0] || null;
         const selectedRoute = storedShift ? String(storedShift.route || '').trim() : '';
+        const matchedOption = findConstructorRouteOption(dateKey, selectedRoute, storedShift);
         const selectedPresetId = resolveLocalPresetIdForShift(storedShift);
         const customHours = storedShift && getLocalRoutePresetByRoute(storedShift.route)?.hoursEditable
             ? String(parseShiftHours(storedShift.hours) || storedShift.hours || '')
             : '';
         initLocalRoutePresets(selectedPresetId, customHours);
-        initRouteCombobox(selectedRoute);
+        initRouteCombobox(selectedRoute, matchedOption?.signature || '');
         syncLocalPresetUi(selectedPresetId);
     }
 
@@ -5995,50 +6230,14 @@
     }
 
     async function ensureDepotTemplatesLoaded(options = {}) {
-        const force = Boolean(options.force);
-        loadGlobalShiftTemplates({ forceStorage: true });
-
-        if (!force && isValidGlobalTemplateCache(depotShiftTemplates)) {
-            depotTemplatesLoadState = 'ready';
-            return true;
-        }
-
-        const tab = getAuthSessionTab();
-        if (!tab || document.body.classList.contains('auth-locked')) {
-            depotTemplatesLoadState = 'error';
-            return false;
-        }
-
-        if (depotTemplatesSyncPromise) {
-            await depotTemplatesSyncPromise;
-            return isValidGlobalTemplateCache(depotShiftTemplates);
-        }
-
-        depotTemplatesLoadState = 'loading';
+        await loadLocalShiftTemplatesBundle();
+        applyNormativeForDateKey(getShiftContextDateKey());
+        const ready = isValidGlobalTemplateCache(depotShiftTemplates);
+        depotTemplatesLoadState = ready ? 'ready' : 'error';
         renderRouteComboboxListIfOpen();
-
-        depotTemplatesSyncPromise = syncEmployeeFromApi(tab, { silent: true, mergeGraph: false })
-            .then((ok) => {
-                loadGlobalShiftTemplates({ forceStorage: true });
-                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
-                depotTemplatesLoadState = hasCache ? 'ready' : (ok ? 'ready' : 'error');
-                return hasCache;
-            })
-            .catch(() => {
-                loadGlobalShiftTemplates({ forceStorage: true });
-                const hasCache = isValidGlobalTemplateCache(depotShiftTemplates);
-                depotTemplatesLoadState = hasCache ? 'ready' : 'error';
-                return hasCache;
-            })
-            .finally(() => {
-                depotTemplatesSyncPromise = null;
-                renderRouteComboboxListIfOpen();
-            });
-
-        return depotTemplatesSyncPromise;
+        return ready;
     }
-    let depotVersionCheckPromise = null;
-    let depotVersionMonitorTimer = null;
+
     let calendarCurrentDate = new Date();
     let profileSelectedMonth = new Date();
     const CALENDAR_MONTHS_RU = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -6058,28 +6257,10 @@
         return Array.isArray(templates) && templates.length > 0;
     }
 
-    function loadGlobalShiftTemplates(options = {}) {
-        const forceStorage = Boolean(options.forceStorage);
-
-        if (!forceStorage && isValidGlobalTemplateCache(depotShiftTemplates)) {
-            return depotShiftTemplates;
+    function loadGlobalShiftTemplates() {
+        if (hasLocalShiftTemplates()) {
+            return refreshActiveShiftTemplates(getShiftContextDateKey());
         }
-
-        const cached = parseJSON(localStorage.getItem(DEPOT_TEMPLATES_KEY), []) || [];
-        if (!Array.isArray(cached)) {
-            depotShiftTemplates = [];
-            return depotShiftTemplates;
-        }
-
-        if (!isValidGlobalTemplateCache(cached)) {
-            if (cached.length > 0) {
-                localStorage.removeItem(DEPOT_TEMPLATES_KEY);
-            }
-            depotShiftTemplates = [];
-            return depotShiftTemplates;
-        }
-
-        depotShiftTemplates = cached;
         return depotShiftTemplates;
     }
 
@@ -6095,88 +6276,10 @@
         );
     }
 
-    async function runGraphSyncForCurrentMonth() {
-        const tab = getAuthSessionTab();
-        if (!tab || document.body.classList.contains('auth-locked')) return false;
-        if (isAppOffline()) return false;
-
-        const ok = await syncEmployeeFromApi(tab, { silent: true, mergeGraph: true });
-        if (ok) {
-            localStorage.setItem(userGraphSyncMonthStorageKey(tab), getCurrentMonthSyncKey());
-        }
-        return ok;
-    }
-
-    async function runGraphSyncIfMonthStart() {
-        const tab = getAuthSessionTab();
-        if (!tab || document.body.classList.contains('auth-locked')) return false;
-        if (isAppOffline()) return false;
-        if (new Date().getDate() !== 1) return false;
-
-        const monthKey = getCurrentMonthSyncKey();
-        if (localStorage.getItem(userGraphSyncMonthStorageKey(tab)) === monthKey) {
-            return false;
-        }
-
-        return runGraphSyncForCurrentMonth();
-    }
-
-    async function runDailyDepotPing() {
-        const tab = getAuthSessionTab();
-        if (!tab || document.body.classList.contains('auth-locked')) return false;
-        if (isAppOffline()) return false;
-
-        const todayKey = getTodayDateKey();
-        if (localStorage.getItem(userDailyCheckStorageKey(tab)) === todayKey) {
-            return false;
-        }
-
-        if (depotVersionCheckPromise) return depotVersionCheckPromise;
-
-        depotVersionCheckPromise = (async () => {
-            try {
-                const remoteVersion = await fetchDepotRemoteVersion();
-                if (remoteVersion) {
-                    localStorage.setItem(userDailyCheckStorageKey(tab), todayKey);
-                    console.info('[ЦППК] Ежедневная проверка таблицы: связь есть, версия', remoteVersion);
-                }
-                return Boolean(remoteVersion);
-            } catch (err) {
-                console.warn('[ЦППК] Ежедневная проверка таблицы не удалась:', err);
-                return false;
-            } finally {
-                depotVersionCheckPromise = null;
-            }
-        })();
-
-        return depotVersionCheckPromise;
-    }
-
-    function startDepotVersionMonitor() {
-        stopDepotVersionMonitor();
-        if (!getAuthSessionTab() || document.body.classList.contains('auth-locked')) return;
-
-        void runDailyDepotPing();
-        void runGraphSyncIfMonthStart();
-
-        depotVersionMonitorTimer = setInterval(() => {
-            void runDailyDepotPing();
-            void runGraphSyncIfMonthStart();
-        }, DEPOT_DAILY_PING_INTERVAL_MS);
-    }
-
-    function stopDepotVersionMonitor() {
-        if (depotVersionMonitorTimer) {
-            clearInterval(depotVersionMonitorTimer);
-            depotVersionMonitorTimer = null;
-        }
-    }
-
     function loadUserShifts() {
         const tab = getAuthSessionTab();
         if (!tab) {
             calendarUserShifts = {};
-            depotShiftTemplates = [];
             return;
         }
         const raw = localStorage.getItem(userShiftsStorageKey(tab));
@@ -6192,37 +6295,42 @@
 
     let routeComboboxDocHandler = null;
 
-    function getConstructorRoutesList() {
-        loadGlobalShiftTemplates();
-        return getUniqueRoutesFromTemplates(depotShiftTemplates);
+    function filterConstructorRouteOptions(query, options) {
+        const q = String(query || '').trim().toLowerCase();
+        if (!q) return options.slice(0, 80);
+        return options.filter(option =>
+            option.label.toLowerCase().includes(q)
+            || String(option.route || '').toLowerCase().includes(q)
+        ).slice(0, 80);
     }
 
-    function buildRouteComboboxBlock(selectedRoute = '') {
+    function buildRouteComboboxBlock(selectedRoute = '', selectedSignature = '') {
         const value = String(selectedRoute || '').trim();
         return `
             <div class="route-combobox" id="constructorRouteCombobox">
                 <div class="route-combobox-field">
                     <input type="text" id="constructorRouteInput" class="route-combobox-input shift-constructor-input"
-                        value="${escapeAttr(value)}" placeholder="Номер маршрута" autocomplete="off"
-                        aria-label="Номер маршрута" aria-expanded="false" aria-controls="constructorRouteList" role="combobox">
+                        value="${escapeAttr(value)}" placeholder="Маршрут из локальной базы" autocomplete="off"
+                        aria-label="Маршрут из локальной базы" aria-expanded="false" aria-controls="constructorRouteList" role="combobox">
                 </div>
                 <input type="hidden" id="constructorRouteValue" value="${escapeAttr(value)}">
+                <input type="hidden" id="constructorRouteSignature" value="${escapeAttr(selectedSignature)}">
                 <ul id="constructorRouteList" class="route-combobox-list" role="listbox" hidden></ul>
             </div>`;
     }
 
-    function filterConstructorRoutes(query, routes) {
-        const q = String(query || '').trim().toLowerCase();
-        if (!q) return routes.slice(0, 80);
-        return routes.filter(route => String(route).toLowerCase().includes(q)).slice(0, 80);
-    }
-
-    function setConstructorRouteValue(route) {
+    function setConstructorRouteValue(route, signature = '') {
         const input = document.getElementById('constructorRouteInput');
         const hidden = document.getElementById('constructorRouteValue');
+        const signatureHidden = document.getElementById('constructorRouteSignature');
         const value = String(route || '').trim();
         if (input) input.value = value;
         if (hidden) hidden.value = value;
+        if (signatureHidden) signatureHidden.value = String(signature || '').trim();
+    }
+
+    function getConstructorSelectedRouteSignature() {
+        return document.getElementById('constructorRouteSignature')?.value?.trim() || '';
     }
 
     function getConstructorSelectedRoute() {
@@ -6237,24 +6345,21 @@
         const input = document.getElementById('constructorRouteInput');
         if (!list || !input) return;
 
-        const routes = getConstructorRoutesList();
-        const filtered = filterConstructorRoutes(query || input.value, routes);
-        const selected = getConstructorSelectedRoute();
+        const dateKey = calendarSelectedDateKey || getShiftContextDateKey();
+        const options = getConstructorRouteOptions(dateKey);
+        const filtered = filterConstructorRouteOptions(query || input.value, options);
+        const selectedSignature = getConstructorSelectedRouteSignature();
 
-        if (!routes.length) {
-            if (depotTemplatesLoadState === 'loading' || depotTemplatesSyncPromise) {
-                list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
-                return;
-            }
-            if (depotTemplatesLoadState === 'idle' && getAuthSessionTab() && !document.body.classList.contains('auth-locked')) {
+        if (!options.length) {
+            if (depotTemplatesLoadState === 'loading') {
                 list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
                 return;
             }
             if (depotTemplatesLoadState === 'error') {
-                list.innerHTML = '<li class="route-combobox-empty route-combobox-empty--retry" role="presentation">Не удалось загрузить маршруты. Нажмите, чтобы повторить.</li>';
+                list.innerHTML = '<li class="route-combobox-empty route-combobox-empty--retry" role="presentation">Не удалось загрузить локальную базу. Нажмите, чтобы повторить.</li>';
                 return;
             }
-            list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены в таблице</li>';
+            list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены для выбранного дня</li>';
             return;
         }
 
@@ -6263,9 +6368,9 @@
             return;
         }
 
-        list.innerHTML = filtered.map(route => {
-            const isSelected = route === selected ? ' is-selected' : '';
-            return `<li class="route-combobox-option${isSelected}" role="option" data-route="${escapeAttr(route)}">${escapeHtml(route)}</li>`;
+        list.innerHTML = filtered.map(option => {
+            const isSelected = option.signature === selectedSignature ? ' is-selected' : '';
+            return `<li class="route-combobox-option${isSelected}" role="option" data-route="${escapeAttr(option.route)}" data-signature="${escapeAttr(option.signature)}">${escapeHtml(option.label)}</li>`;
         }).join('');
     }
 
@@ -6273,9 +6378,9 @@
         const list = document.getElementById('constructorRouteList');
         const input = document.getElementById('constructorRouteInput');
         if (!list || !input) return;
-        loadGlobalShiftTemplates({ forceStorage: true });
-        if (!isValidGlobalTemplateCache(depotShiftTemplates) && getAuthSessionTab() && !document.body.classList.contains('auth-locked')) {
-            if (depotTemplatesLoadState !== 'error') depotTemplatesLoadState = 'loading';
+        applyNormativeForDateKey(calendarSelectedDateKey || getShiftContextDateKey());
+        if (!isValidGlobalTemplateCache(depotShiftTemplates)) {
+            depotTemplatesLoadState = 'loading';
         }
         renderRouteComboboxList(input.value);
         list.hidden = false;
@@ -6291,13 +6396,13 @@
         input.setAttribute('aria-expanded', 'false');
     }
 
-    function initRouteCombobox(selectedRoute = '') {
+    function initRouteCombobox(selectedRoute = '', selectedSignature = '') {
         const combobox = document.getElementById('constructorRouteCombobox');
         const input = document.getElementById('constructorRouteInput');
         const list = document.getElementById('constructorRouteList');
         if (!combobox || !input || !list) return;
 
-        setConstructorRouteValue(selectedRoute);
+        setConstructorRouteValue(selectedRoute, selectedSignature);
         closeRouteCombobox();
 
         if (combobox.dataset.ready === '1') return;
@@ -6310,7 +6415,7 @@
 
         input.addEventListener('focus', () => openRouteCombobox());
         input.addEventListener('input', () => {
-            setConstructorRouteValue(input.value);
+            setConstructorRouteValue(input.value, '');
             const presetHidden = document.getElementById('constructorLocalPresetId');
             const activePresetId = presetHidden?.value?.trim() || '';
             if (activePresetId) {
@@ -6340,7 +6445,8 @@
             const option = e.target.closest('.route-combobox-option');
             if (!option) return;
             const route = option.getAttribute('data-route') || '';
-            setConstructorRouteValue(route);
+            const signature = option.getAttribute('data-signature') || '';
+            setConstructorRouteValue(route, signature);
             const matchingPreset = getLocalRoutePresetByRoute(route);
             syncLocalPresetUi(matchingPreset ? matchingPreset.id : '');
             closeRouteCombobox();
@@ -6761,12 +6867,20 @@
         return formatShiftHoursDisplay(parseShiftHours(raw));
     }
 
+    function getLunchExclusionMarker(lunchRaw) {
+        const raw = String(lunchRaw || '');
+        if (raw.includes('***')) return '***';
+        if (raw.includes('**')) return '**';
+        if (raw.includes('*')) return '*';
+        return '';
+    }
+
     function parseLunchDurationMinutes(lunchRaw) {
         const { lunch } = parseShiftLunchField(lunchRaw);
         if (!lunch) return 0;
 
         const cleaned = lunch.replace(/ИП/gi, ' ').trim();
-        if (!cleaned || cleaned === '*' || cleaned === '**') return 0;
+        if (!cleaned) return 0;
 
         const times = (cleaned.match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
         if (times.length >= 2) {
@@ -6778,6 +6892,10 @@
                 return diff;
             }
         }
+
+        const bareMarker = getLunchExclusionMarker(cleaned);
+        if (bareMarker && times.length === 0) return 0;
+
         if (times.length === 1) {
             const parts = times[0].split(':');
             const h = parseInt(parts[0], 10);
@@ -6821,6 +6939,8 @@
         if (!merged.endTime) merged.endTime = tmpl.endTime || '';
         if (merged.lunch == null || String(merged.lunch).trim() === '') {
             merged.lunch = tmpl.lunch || '';
+        } else if (tmpl.lunch && /^\*{1,3}\s*$/.test(String(merged.lunch).trim())) {
+            merged.lunch = tmpl.lunch;
         }
         if (!merged.trainNum) merged.trainNum = tmpl.trainNum || tmpl.trains || '';
         if (!merged.nightHours) merged.nightHours = tmpl.nightHours || '';
@@ -6837,21 +6957,23 @@
         if (!shift) return 0;
 
         const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
-
+        const normativeHours = parseShiftHours(enriched.hours || enriched.workHours);
+        const lunchMarker = getLunchExclusionMarker(enriched.lunch);
         const calculated = calculateShiftWorkHoursFromTimes(enriched);
+
+        if (lunchMarker === '**') {
+            if (calculated != null && calculated > 0) return calculated;
+            if (normativeHours > 0) return normativeHours;
+        }
+
         if (calculated != null && calculated > 0) return calculated;
 
-        const hoursVal = parseShiftHours(enriched.hours);
-        const hasClockTimes = Boolean((enriched.startTime || enriched.reportTime) && enriched.endTime);
-
-        if (hoursVal > 0 && (!hasClockTimes || hoursVal >= 4)) {
-            return hoursVal;
-        }
+        if (normativeHours > 0) return normativeHours;
 
         const nightVal = parseShiftHours(enriched.nightHours);
         if (nightVal > 0) return nightVal;
 
-        return hoursVal > 0 ? hoursVal : 0;
+        return 0;
     }
 
     function enrichShiftWithCalculatedHours(shift, dateKey) {
@@ -7247,6 +7369,7 @@
             return `<div class="shift-summary-note" ${attrs} role="button" tabindex="0" aria-label="Редактировать заметку к смене">
                 <span class="shift-summary-note-icon" aria-hidden="true">📝</span>
                 <span class="shift-summary-note-text">${escapeHtml(noteText)}</span>
+                <button type="button" class="shift-summary-note-delete" data-shift-note-delete data-date-key="${escapeAttr(dateKey)}" data-shift-index="${shiftIndex}" aria-label="Удалить заметку">✕</button>
             </div>`;
         }
 
@@ -7325,6 +7448,17 @@
         refreshShiftNoteUi(dateKey);
     }
 
+    function deleteShiftNote(dateKey, shiftIndex) {
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return;
+
+        delete shift.note;
+        setStoredDayShifts(dateKey, shifts);
+        persistUserShifts();
+        refreshShiftNoteUi(dateKey);
+    }
+
     function bindShiftSummaryNoteActions(container) {
         if (!container) return;
 
@@ -7333,6 +7467,7 @@
             el.dataset.noteBound = '1';
 
             el.addEventListener('click', (e) => {
+                if (e.target instanceof Element && e.target.closest('[data-shift-note-delete]')) return;
                 e.preventDefault();
                 e.stopPropagation();
                 openShiftNoteSheet(el.dataset.dateKey, Number(el.dataset.shiftIndex));
@@ -7342,6 +7477,17 @@
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
                 openShiftNoteSheet(el.dataset.dateKey, Number(el.dataset.shiftIndex));
+            });
+        });
+
+        container.querySelectorAll('[data-shift-note-delete]').forEach(btn => {
+            if (btn.dataset.deleteBound === '1') return;
+            btn.dataset.deleteBound = '1';
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteShiftNote(btn.dataset.dateKey, Number(btn.dataset.shiftIndex));
             });
         });
     }
@@ -7389,6 +7535,7 @@
         const route = String(enriched.route || enriched.name || '—');
         rows += calendarSummaryRow('Маршрут', escapeHtml(route));
         rows += calendarSummaryRow('Время работы', escapeHtml(getShiftWorkTimeLine(enriched, dateKey)));
+        rows += calendarSummaryRow('Обеденное время', escapeHtml(formatShiftLunchTimeDisplay(enriched, dateKey)));
 
         const payload = buildTrainsNavigationPayload(enriched, dateKey, context);
         const trainsDisplay = payload.trainsText || getShiftTrainsText(enriched);
@@ -7412,16 +7559,19 @@
     }
 
     function buildCalendarShiftFromTemplate(template) {
+        const hours = template.hours || template.workHours || '';
+        const trainNum = template.trainNum || template.trains || '';
         return {
             route: template.route || '',
-            hours: template.hours || '',
+            hours: hours !== '' && hours != null ? String(hours) : '',
             startTime: template.startTime || '',
             endTime: template.endTime || '',
             lunch: template.lunch || '',
-            trainNum: template.trainNum || '',
+            trainNum: trainNum !== '' && trainNum != null ? String(trainNum) : '',
             nightHours: template.nightHours || '',
             morningRoute: template.morningRoute || '',
-            reportTime: template.startTime || ''
+            reportTime: template.startTime || '',
+            templateSignature: buildRouteIdentitySignature(template)
         };
     }
 
@@ -7666,6 +7816,7 @@
         document.querySelectorAll('#screen-calendar .day').forEach(d => d.classList.remove('selected'));
         if (target) target.classList.add('selected');
         calendarSelectedDateKey = dateKey;
+        applyNormativeForDateKey(dateKey);
         renderShiftConstructor(dateKey, day, month, year);
     }
 
@@ -7682,6 +7833,8 @@
             }
             return;
         }
+
+        resetSchedulePushState();
 
         switchMainScreen('schedule');
 
@@ -7876,15 +8029,18 @@
         }
 
         loadGlobalShiftTemplates();
+        applyNormativeForDateKey(dateKey);
+        const normativeHint = formatNormativePeriodLabel(resolveNormativeBundleForIso(calendarKeyToIso(dateKey)));
 
-        const routeSelectBlock = buildCalendarRoutePickerBlock(storedShifts);
+        const routeSelectBlock = buildCalendarRoutePickerBlock(storedShifts, dateKey);
 
         if (!effectiveShifts.length) {
             content.innerHTML = `
-                <p class="shift-constructor-hint" style="margin-bottom:10px;">Выберите день, быстрый маршрут или номер из таблицы и нажмите «Добавить».</p>
+                ${normativeHint ? `<p class="shift-constructor-hint shift-constructor-hint--normative">${escapeHtml(normativeHint)}</p>` : ''}
+                <p class="shift-constructor-hint" style="margin-bottom:10px;">Выберите маршрут из локальной базы и нажмите «Добавить».</p>
                 ${routeSelectBlock}
             `;
-            initCalendarRoutePicker(storedShifts);
+            initCalendarRoutePicker(storedShifts, dateKey);
             return;
         }
 
@@ -7920,6 +8076,7 @@
                 ? '<p class="shift-constructor-hint" style="margin-bottom:8px;">На дату с утренней сменой (У) можно добавить ночь (Н).</p>'
                 : '';
             footerHtml = `
+                ${normativeHint ? `<p class="shift-constructor-hint shift-constructor-hint--normative">${escapeHtml(normativeHint)}</p>` : ''}
                 ${linkedNightHint}
                 ${dualHint}
                 <p class="shift-constructor-hint" style="margin:10px 0 8px;">${storedShifts.length >= 2 ? 'Заменить утро (У) или ночь (Н):' : 'Сменить маршрут на выбранный день:'}</p>
@@ -7934,7 +8091,7 @@
         bindTrainsChipLinks(content);
         bindShiftSummaryNoteActions(content);
         if (!isVirtualMorning) {
-            initCalendarRoutePicker(storedShifts);
+            initCalendarRoutePicker(storedShifts, dateKey);
         }
     }
 
@@ -7955,11 +8112,11 @@
             }
 
             Object.assign(shift, {
-                hours: shift.hours || fullNightTemplate.hours || '',
+                hours: shift.hours || fullNightTemplate.hours || fullNightTemplate.workHours || '',
                 startTime: shift.startTime || fullNightTemplate.startTime || '',
                 endTime: shift.endTime || fullNightTemplate.endTime || '',
                 lunch: shift.lunch || fullNightTemplate.lunch || '',
-                trainNum: shift.trainNum || fullNightTemplate.trainNum || '',
+                trainNum: shift.trainNum || fullNightTemplate.trainNum || fullNightTemplate.trains || '',
                 nightHours: shift.nightHours || fullNightTemplate.nightHours || ''
             });
         }
@@ -8022,9 +8179,13 @@
 
         loadGlobalShiftTemplates();
 
-        const template = findShiftTemplate(depotShiftTemplates, routeNumber, dateKey);
+        const signature = getConstructorSelectedRouteSignature();
+        let template = signature ? constructorRouteOptions.get(signature) : null;
         if (!template) {
-            if (errorEl) errorEl.textContent = 'Шаблон смены для этого маршрута и даты не найден в таблице.';
+            template = findShiftTemplate(depotShiftTemplates, routeNumber, dateKey);
+        }
+        if (!template) {
+            if (errorEl) errorEl.textContent = 'Маршрут для выбранного дня не найден в локальной базе.';
             return;
         }
 

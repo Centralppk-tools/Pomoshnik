@@ -26,6 +26,8 @@
         "endTime": 5,
         "workHours": 6,
         "lunch": 8,
+        "breakStart": 7,
+        "breakEnd": 8,
         "nightHours": 9,
         "endPlace": 10
       },

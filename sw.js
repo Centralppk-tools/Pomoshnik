@@ -1,5 +1,6 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.1 STABLE)
-const CACHE_VERSION = 'da_v2_4_1';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.2 STABLE)
+const CACHE_VERSION = 'da_v2_4_2';
+const NOTIFICATION_ICON = './assets/brand-logo.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
@@ -138,10 +139,65 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+async function showScheduleSystemNotification(payload = {}) {
+    const title = String(payload.title || 'Цифровой помощник').trim();
+    const kicker = String(payload.kicker || '').trim();
+    const bodyText = String(payload.body || '').trim();
+    const body = [kicker, bodyText].filter(Boolean).join(' — ') || title;
+    const tag = String(payload.tag || payload.key || 'schedule-alert').trim();
+
+    await self.registration.showNotification(title, {
+        body,
+        tag,
+        renotify: true,
+        icon: NOTIFICATION_ICON,
+        badge: NOTIFICATION_ICON,
+        vibrate: [140, 70, 140],
+        requireInteraction: true,
+        silent: false,
+        data: {
+            key: tag,
+            url: './',
+            screen: 'schedule'
+        }
+    });
+}
+
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
+    const data = event.data;
+    if (!data || !data.type) return;
+
+    if (data.type === 'SKIP_WAITING') {
         self.skipWaiting();
+        return;
     }
+
+    if (data.type === 'SHOW_SCHEDULE_NOTIFICATION') {
+        event.waitUntil(
+            showScheduleSystemNotification(data.payload || {})
+                .catch((err) => console.warn('[sw] schedule notification failed:', err))
+        );
+    }
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = event.notification.data?.url || './';
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clientList) => {
+                for (const client of clientList) {
+                    if ('focus' in client) {
+                        return client.focus();
+                    }
+                }
+                if (self.clients.openWindow) {
+                    return self.clients.openWindow(targetUrl);
+                }
+                return null;
+            })
+    );
 });
 
 self.addEventListener('fetch', (event) => {
