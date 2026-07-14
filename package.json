@@ -1,6 +1,7 @@
 {
   "scripts": {
     "serve": "python -m http.server 8765 --directory app",
+    "export:shifts": "python tools/export-shifts.py",
     "snapshot": "node tools/snapshot.mjs",
     "clasp:push": "clasp push --force",
     "clasp:deploy": "clasp create-deployment --deploymentId AKfycbyb9CYhosCuBgoA-Otddo31VQoL0oAICUUKAxE2J3qdtVzzjQBc2sRxpYuqjYC0ZyIP --description \"Depot API\"",

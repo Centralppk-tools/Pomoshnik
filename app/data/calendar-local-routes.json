@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Локальные маршруты календаря (не из Google). Обычные маршруты — depotShiftTemplates.",
+  "description": "Быстрые локальные маршруты календаря (ТО, И). Основные маршруты — из app/data/shift-templates.json.",
   "presets": [
     {
       "id": "d99",

@@ -2,20 +2,20 @@
   "version": "1.0.0",
   "scope": "shift-hours-only",
   "description": "Правила слияния локальных часов смен с Google API. Графики работы (employees) не затрагиваются.",
-  "defaultSource": "google-api",
-  "notMergedYet": true,
+  "defaultSource": "local-xlsx",
+  "notMergedYet": false,
   "modes": {
     "google-only": {
-      "description": "Текущее поведение: depotShiftTemplates только из syncEmployeeFromApi → shiftDetails",
-      "active": true
+      "description": "Только Google API для shiftDetails",
+      "active": false
     },
     "local-fallback": {
       "description": "Если API недоступен — загрузить app/data/shift-templates.json",
       "active": false
     },
     "local-override": {
-      "description": "merge: локальная строка перекрывает API при совпадении (date, route)",
-      "active": false
+      "description": "Локальная база из Часы смен/*.xlsx — основной источник shiftDetails",
+      "active": true
     }
   },
   "matchKey": ["date", "route"],
