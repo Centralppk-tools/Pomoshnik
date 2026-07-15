@@ -1,6 +1,6 @@
 {
   "version": "2026-07-17",
-  "generatedAt": "2026-07-14T14:03:07Z",
+  "generatedAt": "2026-07-14T15:18:59Z",
   "source": {
     "type": "local-xlsx",
     "folder": "Часы смен/",
@@ -761,8 +761,7 @@
           "trains": "Резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пн-чт",
@@ -772,8 +771,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "пн-чт",
@@ -783,8 +781,7 @@
           "trains": "6613",
           "endTime": "8:20",
           "workHours": "5:20",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -794,8 +791,7 @@
           "trains": "7843 - 6600 - 6611",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "пн-чт",
@@ -805,8 +801,7 @@
           "trains": "6002 - 6007",
           "endTime": "7:45",
           "workHours": "5:15",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
@@ -824,15 +819,13 @@
           "trains": "резерв",
           "endTime": "4:40",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пн-чт",
@@ -842,8 +835,7 @@
           "trains": "6015",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -853,8 +845,7 @@
           "trains": "6604 - 6621",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "14:00-15:30 **"
+          "nightHours": "5:30"
         },
         {
           "date": "пн-чт",
@@ -864,8 +855,7 @@
           "trains": "резерв",
           "endTime": "4:30",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
@@ -875,8 +865,7 @@
           "trains": "6605",
           "endTime": "7:30",
           "workHours": "3:30",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -886,8 +875,7 @@
           "trains": "6806 - 6811",
           "endTime": "8:50",
           "workHours": "5:50",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -897,8 +885,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -908,8 +895,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -919,8 +905,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -930,8 +915,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "14:15-16:15 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -941,8 +925,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "12:30-13:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -952,8 +935,7 @@
           "trains": "6902 - 6901",
           "endTime": "7:40",
           "workHours": "4:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -963,8 +945,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:00-15:00 **"
+          "nightHours": "2:20"
         },
         {
           "date": "пн-чт",
@@ -974,8 +955,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "16:30-17:45 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -985,8 +965,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "11:30-12:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -996,8 +975,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:20",
           "workHours": "6:20",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -1007,8 +985,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -1016,8 +993,7 @@
           "startTime": "23:00",
           "endTime": "23:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "15:10-16:10 **"
+          "nightHours": "0:00"
         },
         {
           "date": "пн-чт",
@@ -1027,8 +1003,7 @@
           "trains": "6013",
           "endTime": "8:55",
           "workHours": "3:25",
-          "nightHours": "0:30",
-          "lunch": "15:00-17:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "пн-чт",
@@ -1038,8 +1013,7 @@
           "trains": "6617",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -1049,8 +1023,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "12:20-13:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -1060,8 +1033,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пн-чт",
@@ -1071,8 +1043,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -1081,8 +1052,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -1091,8 +1061,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "пт",
@@ -1832,8 +1801,7 @@
           "trains": "Резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пт",
@@ -1843,8 +1811,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:10",
           "workHours": "8:10",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "пт",
@@ -1854,8 +1821,7 @@
           "trains": "6621",
           "endTime": "10:40",
           "workHours": "6:40",
-          "nightHours": "2:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -1865,8 +1831,7 @@
           "trains": "7843 - 6102 - 6103",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "пт",
@@ -1876,8 +1841,7 @@
           "trains": "6804 - 6809",
           "endTime": "8:40",
           "workHours": "6:10",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
@@ -1885,8 +1849,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -1896,15 +1859,13 @@
           "trains": "резерв",
           "endTime": "4:40",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -1914,8 +1875,7 @@
           "trains": "6011",
           "endTime": "8:45",
           "workHours": "5:45",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -1925,8 +1885,7 @@
           "trains": "6608 - 6617",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "14:00-15:30 **"
+          "nightHours": "5:30"
         },
         {
           "date": "пт",
@@ -1936,8 +1895,7 @@
           "trains": "резерв",
           "endTime": "4:30",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
@@ -1947,8 +1905,7 @@
           "trains": "6605",
           "endTime": "7:30",
           "workHours": "3:30",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -1958,8 +1915,7 @@
           "trains": "6812 - 6817",
           "endTime": "9:50",
           "workHours": "6:50",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -1969,8 +1925,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пт",
@@ -1980,8 +1935,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -1991,8 +1945,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пт",
@@ -2002,8 +1955,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "14:15-16:15 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2013,8 +1965,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "12:30-13:30 **"
+          "nightHours": "4:00"
         },
         {
           "date": "пт",
@@ -2024,8 +1975,7 @@
           "trains": "6806 - 6811",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2035,8 +1985,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:00-15:00 **"
+          "nightHours": "2:20"
         },
         {
           "date": "пт",
@@ -2046,8 +1995,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "16:30-17:45 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -2057,8 +2005,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "11:30-12:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2068,8 +2015,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:20",
           "workHours": "6:20",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2079,8 +2025,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2088,8 +2033,7 @@
           "startTime": "23:00",
           "endTime": "23:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "15:10-16:10 **"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -2099,8 +2043,7 @@
           "trains": "готовит состав под п. 6025, пасс. до МЯ",
           "endTime": "9:25",
           "workHours": "3:55",
-          "nightHours": "0:30",
-          "lunch": "15:00-17:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "пт",
@@ -2110,8 +2053,7 @@
           "trains": "6609",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2121,8 +2063,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "12:20-13:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -2132,8 +2073,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пт",
@@ -2143,8 +2083,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -2153,8 +2092,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -2163,8 +2101,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -2898,8 +2835,7 @@
           "trains": "Резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "сб",
@@ -2909,8 +2845,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:10",
           "workHours": "8:10",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -2920,8 +2855,7 @@
           "trains": "6621",
           "endTime": "10:40",
           "workHours": "6:40",
-          "nightHours": "2:00",
-          "lunch": "12:25-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -2931,8 +2865,7 @@
           "trains": "7843 - 6102 - 6103",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "сб",
@@ -2942,8 +2875,7 @@
           "trains": "6804 - 6809",
           "endTime": "8:40",
           "workHours": "6:10",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "сб",
@@ -2951,8 +2883,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -2962,15 +2893,13 @@
           "trains": "резерв",
           "endTime": "4:00",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "сб",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -2980,8 +2909,7 @@
           "trains": "6011",
           "endTime": "8:45",
           "workHours": "5:45",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -2991,8 +2919,7 @@
           "trains": "резерв",
           "endTime": "3:50",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "сб",
@@ -3002,8 +2929,7 @@
           "trains": "6608 - 6617",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "*"
+          "nightHours": "5:30"
         },
         {
           "date": "сб",
@@ -3013,8 +2939,7 @@
           "trains": "6605",
           "endTime": "7:25",
           "workHours": "3:25",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -3024,8 +2949,7 @@
           "trains": "6812 - 6817",
           "endTime": "9:50",
           "workHours": "6:50",
-          "nightHours": "3:00",
-          "lunch": "16:30-18:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3035,8 +2959,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -3046,8 +2969,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:20-16:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3057,8 +2979,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -3068,8 +2989,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3079,8 +2999,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -3090,8 +3009,7 @@
           "trains": "6806 - 6811",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3101,8 +3019,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:10-15:20 **"
+          "nightHours": "2:20"
         },
         {
           "date": "сб",
@@ -3112,8 +3029,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -3123,8 +3039,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3134,8 +3049,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:20",
           "workHours": "5:50",
-          "nightHours": "2:30",
-          "lunch": "11:40-13:20 **"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -3145,8 +3059,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3154,8 +3067,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -3165,8 +3077,7 @@
           "trains": "готовит состав под п. 6025, пасс. до МЯ",
           "endTime": "9:30",
           "workHours": "4:00",
-          "nightHours": "0:30",
-          "lunch": "12:00-13:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "сб",
@@ -3176,8 +3087,7 @@
           "trains": "6609",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3187,8 +3097,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -3198,8 +3107,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "сб",
@@ -3209,8 +3117,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -3219,8 +3126,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -3229,8 +3135,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "вс",
@@ -3964,8 +3869,7 @@
           "trains": "Резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "вс",
@@ -3975,8 +3879,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "вс",
@@ -3986,8 +3889,7 @@
           "trains": "6613",
           "endTime": "8:20",
           "workHours": "5:20",
-          "nightHours": "3:00",
-          "lunch": "12:25-14:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -3997,8 +3899,7 @@
           "trains": "7843 - 6600 - 6611",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "вс",
@@ -4008,8 +3909,7 @@
           "trains": "6002 - 6007",
           "endTime": "7:45",
           "workHours": "5:15",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "вс",
@@ -4017,8 +3917,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -4028,15 +3927,13 @@
           "trains": "резерв",
           "endTime": "4:00",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "вс",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -4046,8 +3943,7 @@
           "trains": "6015",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4057,8 +3953,7 @@
           "trains": "резерв",
           "endTime": "3:50",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "вс",
@@ -4068,8 +3963,7 @@
           "trains": "6604 - 6621",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "*"
+          "nightHours": "5:30"
         },
         {
           "date": "вс",
@@ -4079,8 +3973,7 @@
           "trains": "6605",
           "endTime": "7:25",
           "workHours": "3:25",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -4090,8 +3983,7 @@
           "trains": "6806 - 6811",
           "endTime": "8:50",
           "workHours": "5:50",
-          "nightHours": "3:00",
-          "lunch": "16:30-18:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4101,8 +3993,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -4112,8 +4003,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:20-16:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4123,8 +4013,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -4134,8 +4023,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4145,8 +4033,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4156,8 +4043,7 @@
           "trains": "6902 - 6901",
           "endTime": "7:40",
           "workHours": "4:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4167,8 +4053,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:10-15:20 **"
+          "nightHours": "2:20"
         },
         {
           "date": "вс",
@@ -4178,8 +4063,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -4189,8 +4073,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4200,8 +4083,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:20",
           "workHours": "5:50",
-          "nightHours": "2:30",
-          "lunch": "11:40-13:20 **"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -4211,15 +4093,13 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
           "route": "92У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -4229,8 +4109,7 @@
           "trains": "6013",
           "endTime": "9:00",
           "workHours": "3:30",
-          "nightHours": "0:30",
-          "lunch": "12:00-13:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "вс",
@@ -4240,8 +4119,7 @@
           "trains": "6617",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4251,8 +4129,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -4262,8 +4139,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "вс",
@@ -4273,8 +4149,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -4283,8 +4158,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -4293,8 +4167,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         }
       ]
     },
@@ -5098,8 +4971,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "пн-чт",
@@ -5109,8 +4981,7 @@
           "trains": "6613",
           "endTime": "8:20",
           "workHours": "5:20",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5120,8 +4991,7 @@
           "trains": "7843 - 6600 - 6611",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "пн-чт",
@@ -5131,8 +5001,7 @@
           "trains": "6002 - 6007",
           "endTime": "7:45",
           "workHours": "5:15",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
@@ -5142,8 +5011,7 @@
           "trains": "6551",
           "endTime": "7:40",
           "workHours": "4:10",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -5153,8 +5021,7 @@
           "trains": "6603 - 6610 - 6623",
           "endTime": "9:50",
           "workHours": "6:10",
-          "nightHours": "2:20",
-          "lunch": "*"
+          "nightHours": "2:20"
         },
         {
           "date": "пн-чт",
@@ -5164,8 +5031,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:15",
           "workHours": "5:45",
-          "nightHours": "2:30",
-          "lunch": "13:00-14:10 **"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -5183,15 +5049,13 @@
           "trains": "резерв",
           "endTime": "4:40",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пн-чт",
@@ -5201,8 +5065,7 @@
           "trains": "6015",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5212,8 +5075,7 @@
           "trains": "6604 - 6621",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "14:00-15:30 **"
+          "nightHours": "5:30"
         },
         {
           "date": "пн-чт",
@@ -5223,8 +5085,7 @@
           "trains": "резерв",
           "endTime": "4:30",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пн-чт",
@@ -5234,8 +5095,7 @@
           "trains": "6605",
           "endTime": "7:30",
           "workHours": "3:30",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -5245,8 +5105,7 @@
           "trains": "6806 - 6811",
           "endTime": "8:50",
           "workHours": "5:50",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5256,8 +5115,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "10:30-12:30 **"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -5267,8 +5125,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5278,8 +5135,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пн-чт",
@@ -5289,8 +5145,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "14:15-16:15 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5300,8 +5155,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "12:30-13:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5311,8 +5165,7 @@
           "trains": "6902 - 6901",
           "endTime": "7:40",
           "workHours": "4:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5322,8 +5175,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:00-15:00 **"
+          "nightHours": "2:20"
         },
         {
           "date": "пн-чт",
@@ -5333,8 +5185,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "16:30-17:45 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -5344,8 +5195,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "11:30-12:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5355,8 +5205,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:20",
           "workHours": "6:20",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5366,8 +5215,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5375,8 +5223,7 @@
           "startTime": "23:00",
           "endTime": "23:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "15:10-16:10 **"
+          "nightHours": "0:00"
         },
         {
           "date": "пн-чт",
@@ -5386,8 +5233,7 @@
           "trains": "6013",
           "endTime": "8:55",
           "workHours": "3:25",
-          "nightHours": "0:30",
-          "lunch": "15:00-17:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "пн-чт",
@@ -5397,8 +5243,7 @@
           "trains": "6617",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5408,8 +5253,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "12:20-13:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пн-чт",
@@ -5419,8 +5263,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пн-чт",
@@ -5430,8 +5273,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -5440,8 +5282,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пн-чт",
@@ -5450,8 +5291,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "пт",
@@ -6237,8 +6077,7 @@
           "trains": "7632 - 6205",
           "endTime": "7:20",
           "workHours": "6:10",
-          "nightHours": "4:50",
-          "lunch": "*"
+          "nightHours": "4:50"
         },
         {
           "date": "пт",
@@ -6248,8 +6087,7 @@
           "trains": "6621",
           "endTime": "10:40",
           "workHours": "6:40",
-          "nightHours": "2:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -6259,8 +6097,7 @@
           "trains": "7843 - 6102 - 6103",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "пт",
@@ -6270,8 +6107,7 @@
           "trains": "6804 - 6809",
           "endTime": "8:40",
           "workHours": "6:10",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
@@ -6281,8 +6117,7 @@
           "trains": "6551",
           "endTime": "7:40",
           "workHours": "4:10",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пт",
@@ -6292,8 +6127,7 @@
           "trains": "6603 - 6610 - 6623",
           "endTime": "9:50",
           "workHours": "6:10",
-          "nightHours": "2:20",
-          "lunch": "*"
+          "nightHours": "2:20"
         },
         {
           "date": "пт",
@@ -6303,8 +6137,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:35",
           "workHours": "5:45",
-          "nightHours": "2:10",
-          "lunch": "13:00-14:10 **"
+          "nightHours": "2:10"
         },
         {
           "date": "пт",
@@ -6312,8 +6145,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -6323,15 +6155,13 @@
           "trains": "резерв",
           "endTime": "4:40",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -6341,8 +6171,7 @@
           "trains": "6011",
           "endTime": "8:45",
           "workHours": "5:45",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6352,8 +6181,7 @@
           "trains": "6608 - 6617",
           "endTime": "9:40",
           "workHours": "9:10",
-          "nightHours": "5:30",
-          "lunch": "14:00-15:30 **"
+          "nightHours": "5:30"
         },
         {
           "date": "пт",
@@ -6363,8 +6191,7 @@
           "trains": "резерв",
           "endTime": "4:30",
           "workHours": "3:30",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "пт",
@@ -6374,8 +6201,7 @@
           "trains": "6605",
           "endTime": "7:30",
           "workHours": "3:30",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -6385,8 +6211,7 @@
           "trains": "6812 - 6817",
           "endTime": "9:50",
           "workHours": "6:50",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6396,8 +6221,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "10:30-12:30 **"
+          "nightHours": "2:30"
         },
         {
           "date": "пт",
@@ -6407,8 +6231,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6418,8 +6241,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "пт",
@@ -6429,8 +6251,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "14:15-16:15 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6440,8 +6261,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "12:30-13:30 **"
+          "nightHours": "4:00"
         },
         {
           "date": "пт",
@@ -6451,8 +6271,7 @@
           "trains": "6806 - 6811",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6462,8 +6281,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:00-15:00 **"
+          "nightHours": "2:20"
         },
         {
           "date": "пт",
@@ -6473,8 +6291,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "16:30-17:45 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -6484,8 +6301,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "11:30-12:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6495,8 +6311,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:20",
           "workHours": "6:20",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6506,8 +6321,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6515,8 +6329,7 @@
           "startTime": "23:00",
           "endTime": "23:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "15:10-16:10 **"
+          "nightHours": "0:00"
         },
         {
           "date": "пт",
@@ -6526,8 +6339,7 @@
           "trains": "готовит состав под п. 6025, пасс. до МЯ",
           "endTime": "9:25",
           "workHours": "3:55",
-          "nightHours": "0:30",
-          "lunch": "15:00-17:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "пт",
@@ -6537,8 +6349,7 @@
           "trains": "6609",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6548,8 +6359,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "12:20-13:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -6559,8 +6369,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "пт",
@@ -6570,8 +6379,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -6580,8 +6388,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "пт",
@@ -6590,8 +6397,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -7375,8 +7181,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:10",
           "workHours": "8:10",
-          "nightHours": "4:00",
-          "lunch": "11:55-13:25 **"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -7386,8 +7191,7 @@
           "trains": "6621",
           "endTime": "10:40",
           "workHours": "6:40",
-          "nightHours": "2:00",
-          "lunch": "12:25-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -7397,8 +7201,7 @@
           "trains": "7843 - 6102 - 6103",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "сб",
@@ -7408,8 +7211,7 @@
           "trains": "6804 - 6809",
           "endTime": "8:40",
           "workHours": "6:10",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "сб",
@@ -7419,8 +7221,7 @@
           "trains": "6551",
           "endTime": "7:40",
           "workHours": "4:10",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -7430,8 +7231,7 @@
           "trains": "6603 - 6610 - 6623",
           "endTime": "9:50",
           "workHours": "6:10",
-          "nightHours": "2:20",
-          "lunch": "*"
+          "nightHours": "2:20"
         },
         {
           "date": "сб",
@@ -7441,8 +7241,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:35",
           "workHours": "5:45",
-          "nightHours": "2:10",
-          "lunch": "*"
+          "nightHours": "2:10"
         },
         {
           "date": "сб",
@@ -7450,8 +7249,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -7461,15 +7259,13 @@
           "trains": "резерв",
           "endTime": "4:00",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "сб",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -7479,8 +7275,7 @@
           "trains": "6011",
           "endTime": "8:45",
           "workHours": "5:45",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7490,8 +7285,7 @@
           "trains": "резерв",
           "endTime": "3:50",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "сб",
@@ -7501,8 +7295,7 @@
           "trains": "6608 - 6617",
           "endTime": "9:40",
           "workHours": "6:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7512,8 +7305,7 @@
           "trains": "6605",
           "endTime": "7:25",
           "workHours": "3:25",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -7523,8 +7315,7 @@
           "trains": "6812 - 6817",
           "endTime": "9:50",
           "workHours": "6:50",
-          "nightHours": "3:00",
-          "lunch": "16:30-18:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7534,8 +7325,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "12:40-13:50 **"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -7545,8 +7335,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:20-16:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7556,8 +7345,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -7567,8 +7355,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7578,8 +7365,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "4:00"
         },
         {
           "date": "сб",
@@ -7589,8 +7375,7 @@
           "trains": "6806 - 6811",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7600,8 +7385,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:10-15:20 **"
+          "nightHours": "2:20"
         },
         {
           "date": "сб",
@@ -7611,8 +7395,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -7622,8 +7405,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7633,8 +7415,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:20",
           "workHours": "5:50",
-          "nightHours": "2:30",
-          "lunch": "11:40-13:20 **"
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -7644,8 +7425,7 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7653,8 +7433,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "сб",
@@ -7664,8 +7443,7 @@
           "trains": "готовит состав под п. 6025, пасс. до МЯ",
           "endTime": "9:30",
           "workHours": "4:00",
-          "nightHours": "0:30",
-          "lunch": "12:00-13:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "сб",
@@ -7675,8 +7453,7 @@
           "trains": "6609",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7686,8 +7463,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "сб",
@@ -7697,8 +7473,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "сб",
@@ -7708,8 +7483,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -7718,8 +7492,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "сб",
@@ -7728,8 +7501,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "вс",
@@ -8513,8 +8285,7 @@
           "trains": "6009",
           "endTime": "8:20",
           "workHours": "6:20",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         },
         {
           "date": "вс",
@@ -8524,8 +8295,7 @@
           "trains": "6613",
           "endTime": "8:20",
           "workHours": "5:20",
-          "nightHours": "3:00",
-          "lunch": "12:25-14:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8535,8 +8305,7 @@
           "trains": "7843 - 6600 - 6611",
           "endTime": "8:30",
           "workHours": "5:50",
-          "nightHours": "3:20",
-          "lunch": "*"
+          "nightHours": "3:20"
         },
         {
           "date": "вс",
@@ -8546,8 +8315,7 @@
           "trains": "6002 - 6007",
           "endTime": "7:45",
           "workHours": "5:15",
-          "nightHours": "3:30",
-          "lunch": "*"
+          "nightHours": "3:30"
         },
         {
           "date": "вс",
@@ -8557,8 +8325,7 @@
           "trains": "6551",
           "endTime": "7:40",
           "workHours": "4:10",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -8568,8 +8335,7 @@
           "trains": "6603 - 6610 - 6623",
           "endTime": "9:50",
           "workHours": "6:10",
-          "nightHours": "2:20",
-          "lunch": "*"
+          "nightHours": "2:20"
         },
         {
           "date": "вс",
@@ -8579,8 +8345,7 @@
           "trains": "6808 - 6813",
           "endTime": "9:15",
           "workHours": "5:45",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -8588,8 +8353,7 @@
           "startTime": "0:00",
           "endTime": "0:00",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -8599,15 +8363,13 @@
           "trains": "резерв",
           "endTime": "4:00",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "вс",
           "route": "75У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -8617,8 +8379,7 @@
           "trains": "6015",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8628,8 +8389,7 @@
           "trains": "резерв",
           "endTime": "3:50",
           "workHours": "2:50",
-          "nightHours": "2:50",
-          "lunch": "*"
+          "nightHours": "2:50"
         },
         {
           "date": "вс",
@@ -8639,8 +8399,7 @@
           "trains": "6604 - 6621",
           "endTime": "9:40",
           "workHours": "6:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8650,8 +8409,7 @@
           "trains": "6605",
           "endTime": "7:25",
           "workHours": "3:25",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -8661,8 +8419,7 @@
           "trains": "6806 - 6811",
           "endTime": "8:50",
           "workHours": "5:50",
-          "nightHours": "3:00",
-          "lunch": "16:30-18:20 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8672,8 +8429,7 @@
           "trains": "6803 - 6106 - 6107",
           "endTime": "10:30",
           "workHours": "7:00",
-          "nightHours": "2:30",
-          "lunch": "12:40-13:50 **"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -8683,8 +8439,7 @@
           "trains": "6606 - 6619",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:20-16:30 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8694,8 +8449,7 @@
           "trains": "7702 - 6703",
           "endTime": "7:50",
           "workHours": "4:20",
-          "nightHours": "2:30",
-          "lunch": "*"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -8705,8 +8459,7 @@
           "trains": "6601 - 6504 - 6503",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "15:00-16:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8716,8 +8469,7 @@
           "trains": "7632 - 6205 - 6556 - 6555",
           "endTime": "10:00",
           "workHours": "7:00",
-          "nightHours": "3:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8727,8 +8479,7 @@
           "trains": "6902 - 6901",
           "endTime": "7:40",
           "workHours": "4:40",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8738,8 +8489,7 @@
           "trains": "состав 88 мар. 6501",
           "endTime": "7:10",
           "workHours": "3:30",
-          "nightHours": "2:20",
-          "lunch": "14:10-15:20 **"
+          "nightHours": "2:20"
         },
         {
           "date": "вс",
@@ -8749,8 +8499,7 @@
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -8760,8 +8509,7 @@
           "trains": "7736 - 6453",
           "endTime": "8:55",
           "workHours": "5:55",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8771,8 +8519,7 @@
           "trains": "6702 - 6705",
           "endTime": "9:20",
           "workHours": "5:50",
-          "nightHours": "2:30",
-          "lunch": "11:40-13:20 **"
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -8782,15 +8529,13 @@
           "trains": "состав 92 мар. 6005",
           "endTime": "7:30",
           "workHours": "4:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
           "route": "92У",
           "workHours": "0:00",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "nightHours": "0:00"
         },
         {
           "date": "вс",
@@ -8800,8 +8545,7 @@
           "trains": "6013",
           "endTime": "9:00",
           "workHours": "3:30",
-          "nightHours": "0:30",
-          "lunch": "12:00-13:00 **"
+          "nightHours": "0:30"
         },
         {
           "date": "вс",
@@ -8811,8 +8555,7 @@
           "trains": "6617",
           "endTime": "9:00",
           "workHours": "6:00",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8822,8 +8565,7 @@
           "trains": "6801 - 6810 - 6815",
           "endTime": "9:30",
           "workHours": "6:30",
-          "nightHours": "3:00",
-          "lunch": "*"
+          "nightHours": "3:00"
         },
         {
           "date": "вс",
@@ -8833,8 +8575,7 @@
           "trains": "Горячий резерв",
           "endTime": "8:20",
           "workHours": "4:25",
-          "nightHours": "2:05",
-          "lunch": "9:00-11:00 **"
+          "nightHours": "2:05"
         },
         {
           "date": "вс",
@@ -8844,8 +8585,7 @@
           "trains": "Горячий резерв",
           "endTime": "9:00",
           "workHours": "5:00",
-          "nightHours": "2:00",
-          "lunch": "12:00-14:00 **"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -8854,8 +8594,7 @@
           "startTime": "2:00",
           "endTime": "4:00",
           "workHours": "2:00",
-          "nightHours": "2:00",
-          "lunch": "*"
+          "nightHours": "2:00"
         },
         {
           "date": "вс",
@@ -8864,8 +8603,7 @@
           "startTime": "2:00",
           "endTime": "6:00",
           "workHours": "4:00",
-          "nightHours": "4:00",
-          "lunch": "*"
+          "nightHours": "4:00"
         }
       ]
     }
@@ -9673,8 +9411,7 @@
       "trains": "Резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "пн-чт",
@@ -9684,8 +9421,7 @@
       "trains": "6009",
       "endTime": "8:20",
       "workHours": "6:20",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     },
     {
       "date": "пн-чт",
@@ -9695,8 +9431,7 @@
       "trains": "6613",
       "endTime": "8:20",
       "workHours": "5:20",
-      "nightHours": "3:00",
-      "lunch": "15:00-16:00 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9706,8 +9441,7 @@
       "trains": "7843 - 6600 - 6611",
       "endTime": "8:30",
       "workHours": "5:50",
-      "nightHours": "3:20",
-      "lunch": "*"
+      "nightHours": "3:20"
     },
     {
       "date": "пн-чт",
@@ -9717,8 +9451,7 @@
       "trains": "6002 - 6007",
       "endTime": "7:45",
       "workHours": "5:15",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пн-чт",
@@ -9728,8 +9461,7 @@
       "trains": "6551",
       "endTime": "7:40",
       "workHours": "4:10",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "пн-чт",
@@ -9739,8 +9471,7 @@
       "trains": "6603 - 6610 - 6623",
       "endTime": "9:50",
       "workHours": "6:10",
-      "nightHours": "2:20",
-      "lunch": "*"
+      "nightHours": "2:20"
     },
     {
       "date": "пн-чт",
@@ -9750,8 +9481,7 @@
       "trains": "6808 - 6813",
       "endTime": "9:15",
       "workHours": "5:45",
-      "nightHours": "2:30",
-      "lunch": "13:00-14:10 **"
+      "nightHours": "2:30"
     },
     {
       "date": "пн-чт",
@@ -9769,15 +9499,13 @@
       "trains": "резерв",
       "endTime": "4:40",
       "workHours": "3:30",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пн-чт",
       "route": "75У",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "пн-чт",
@@ -9787,8 +9515,7 @@
       "trains": "6015",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9798,8 +9525,7 @@
       "trains": "6604 - 6621",
       "endTime": "9:40",
       "workHours": "9:10",
-      "nightHours": "5:30",
-      "lunch": "14:00-15:30 **"
+      "nightHours": "5:30"
     },
     {
       "date": "пн-чт",
@@ -9809,8 +9535,7 @@
       "trains": "резерв",
       "endTime": "4:30",
       "workHours": "3:30",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пн-чт",
@@ -9820,8 +9545,7 @@
       "trains": "6605",
       "endTime": "7:30",
       "workHours": "3:30",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "пн-чт",
@@ -9831,8 +9555,7 @@
       "trains": "6806 - 6811",
       "endTime": "8:50",
       "workHours": "5:50",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9842,8 +9565,7 @@
       "trains": "6803 - 6106 - 6107",
       "endTime": "10:30",
       "workHours": "7:00",
-      "nightHours": "2:30",
-      "lunch": "10:30-12:30 **"
+      "nightHours": "2:30"
     },
     {
       "date": "пн-чт",
@@ -9853,8 +9575,7 @@
       "trains": "6606 - 6619",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9864,8 +9585,7 @@
       "trains": "7702 - 6703",
       "endTime": "7:50",
       "workHours": "4:20",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "пн-чт",
@@ -9875,8 +9595,7 @@
       "trains": "6601 - 6504 - 6503",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "14:15-16:15 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9886,8 +9605,7 @@
       "trains": "7632 - 6205 - 6556 - 6555",
       "endTime": "10:00",
       "workHours": "7:00",
-      "nightHours": "3:00",
-      "lunch": "12:30-13:30 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9897,8 +9615,7 @@
       "trains": "6902 - 6901",
       "endTime": "7:40",
       "workHours": "4:40",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9908,8 +9625,7 @@
       "trains": "состав 88 мар. 6501",
       "endTime": "7:10",
       "workHours": "3:30",
-      "nightHours": "2:20",
-      "lunch": "14:00-15:00 **"
+      "nightHours": "2:20"
     },
     {
       "date": "пн-чт",
@@ -9919,8 +9635,7 @@
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "16:30-17:45 **"
+      "nightHours": "2:00"
     },
     {
       "date": "пн-чт",
@@ -9930,8 +9645,7 @@
       "trains": "7736 - 6453",
       "endTime": "8:55",
       "workHours": "5:55",
-      "nightHours": "3:00",
-      "lunch": "11:30-12:30 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9941,8 +9655,7 @@
       "trains": "6702 - 6705",
       "endTime": "9:20",
       "workHours": "6:20",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9952,8 +9665,7 @@
       "trains": "состав 92 мар. 6005",
       "endTime": "7:30",
       "workHours": "4:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9961,8 +9673,7 @@
       "startTime": "23:00",
       "endTime": "23:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "15:10-16:10 **"
+      "nightHours": "0:00"
     },
     {
       "date": "пн-чт",
@@ -9972,8 +9683,7 @@
       "trains": "6013",
       "endTime": "8:55",
       "workHours": "3:25",
-      "nightHours": "0:30",
-      "lunch": "15:00-17:00 **"
+      "nightHours": "0:30"
     },
     {
       "date": "пн-чт",
@@ -9983,8 +9693,7 @@
       "trains": "6617",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -9994,8 +9703,7 @@
       "trains": "6801 - 6810 - 6815",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "12:20-13:20 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пн-чт",
@@ -10005,8 +9713,7 @@
       "trains": "Горячий резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "9:00-11:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "пн-чт",
@@ -10016,8 +9723,7 @@
       "trains": "Горячий резерв",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "пн-чт",
@@ -10026,8 +9732,7 @@
       "startTime": "2:00",
       "endTime": "4:00",
       "workHours": "2:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "пн-чт",
@@ -10036,8 +9741,7 @@
       "startTime": "2:00",
       "endTime": "6:00",
       "workHours": "4:00",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     },
     {
       "date": "пт",
@@ -10846,8 +10550,7 @@
       "trains": "Резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "пт",
@@ -10857,8 +10560,7 @@
       "trains": "7632 - 6205",
       "endTime": "7:20",
       "workHours": "6:10",
-      "nightHours": "4:50",
-      "lunch": "*"
+      "nightHours": "4:50"
     },
     {
       "date": "пт",
@@ -10868,8 +10570,7 @@
       "trains": "6621",
       "endTime": "10:40",
       "workHours": "6:40",
-      "nightHours": "2:00",
-      "lunch": "15:00-16:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "пт",
@@ -10879,8 +10580,7 @@
       "trains": "7843 - 6102 - 6103",
       "endTime": "8:30",
       "workHours": "5:50",
-      "nightHours": "3:20",
-      "lunch": "*"
+      "nightHours": "3:20"
     },
     {
       "date": "пт",
@@ -10890,8 +10590,7 @@
       "trains": "6804 - 6809",
       "endTime": "8:40",
       "workHours": "6:10",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пт",
@@ -10901,8 +10600,7 @@
       "trains": "6551",
       "endTime": "7:40",
       "workHours": "4:10",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "пт",
@@ -10912,8 +10610,7 @@
       "trains": "6603 - 6610 - 6623",
       "endTime": "9:50",
       "workHours": "6:10",
-      "nightHours": "2:20",
-      "lunch": "*"
+      "nightHours": "2:20"
     },
     {
       "date": "пт",
@@ -10923,8 +10620,7 @@
       "trains": "6702 - 6705",
       "endTime": "9:35",
       "workHours": "5:45",
-      "nightHours": "2:10",
-      "lunch": "13:00-14:10 **"
+      "nightHours": "2:10"
     },
     {
       "date": "пт",
@@ -10932,8 +10628,7 @@
       "startTime": "0:00",
       "endTime": "0:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "пт",
@@ -10943,15 +10638,13 @@
       "trains": "резерв",
       "endTime": "4:40",
       "workHours": "3:30",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пт",
       "route": "75У",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "пт",
@@ -10961,8 +10654,7 @@
       "trains": "6011",
       "endTime": "8:45",
       "workHours": "5:45",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -10972,8 +10664,7 @@
       "trains": "6608 - 6617",
       "endTime": "9:40",
       "workHours": "9:10",
-      "nightHours": "5:30",
-      "lunch": "14:00-15:30 **"
+      "nightHours": "5:30"
     },
     {
       "date": "пт",
@@ -10983,8 +10674,7 @@
       "trains": "резерв",
       "endTime": "4:30",
       "workHours": "3:30",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "пт",
@@ -10994,8 +10684,7 @@
       "trains": "6605",
       "endTime": "7:30",
       "workHours": "3:30",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "пт",
@@ -11005,8 +10694,7 @@
       "trains": "6812 - 6817",
       "endTime": "9:50",
       "workHours": "6:50",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11016,8 +10704,7 @@
       "trains": "6803 - 6106 - 6107",
       "endTime": "10:30",
       "workHours": "7:00",
-      "nightHours": "2:30",
-      "lunch": "10:30-12:30 **"
+      "nightHours": "2:30"
     },
     {
       "date": "пт",
@@ -11027,8 +10714,7 @@
       "trains": "6606 - 6619",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11038,8 +10724,7 @@
       "trains": "7702 - 6703",
       "endTime": "7:50",
       "workHours": "4:20",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "пт",
@@ -11049,8 +10734,7 @@
       "trains": "6601 - 6504 - 6503",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "14:15-16:15 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11060,8 +10744,7 @@
       "trains": "6009",
       "endTime": "8:20",
       "workHours": "6:20",
-      "nightHours": "4:00",
-      "lunch": "12:30-13:30 **"
+      "nightHours": "4:00"
     },
     {
       "date": "пт",
@@ -11071,8 +10754,7 @@
       "trains": "6806 - 6811",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11082,8 +10764,7 @@
       "trains": "состав 88 мар. 6501",
       "endTime": "7:10",
       "workHours": "3:30",
-      "nightHours": "2:20",
-      "lunch": "14:00-15:00 **"
+      "nightHours": "2:20"
     },
     {
       "date": "пт",
@@ -11093,8 +10774,7 @@
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "16:30-17:45 **"
+      "nightHours": "2:00"
     },
     {
       "date": "пт",
@@ -11104,8 +10784,7 @@
       "trains": "7736 - 6453",
       "endTime": "8:55",
       "workHours": "5:55",
-      "nightHours": "3:00",
-      "lunch": "11:30-12:30 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11115,8 +10794,7 @@
       "trains": "6808 - 6813",
       "endTime": "9:20",
       "workHours": "6:20",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11126,8 +10804,7 @@
       "trains": "состав 92 мар. 6005",
       "endTime": "7:30",
       "workHours": "4:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11135,8 +10812,7 @@
       "startTime": "23:00",
       "endTime": "23:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "15:10-16:10 **"
+      "nightHours": "0:00"
     },
     {
       "date": "пт",
@@ -11146,8 +10822,7 @@
       "trains": "готовит состав под п. 6025, пасс. до МЯ",
       "endTime": "9:25",
       "workHours": "3:55",
-      "nightHours": "0:30",
-      "lunch": "15:00-17:00 **"
+      "nightHours": "0:30"
     },
     {
       "date": "пт",
@@ -11157,8 +10832,7 @@
       "trains": "6609",
       "endTime": "10:00",
       "workHours": "7:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11168,8 +10842,7 @@
       "trains": "6801 - 6810 - 6815",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "12:20-13:20 **"
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -11179,8 +10852,7 @@
       "trains": "Горячий резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "9:00-11:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "пт",
@@ -11190,8 +10862,7 @@
       "trains": "Горячий резерв",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "пт",
@@ -11200,8 +10871,7 @@
       "startTime": "2:00",
       "endTime": "4:00",
       "workHours": "2:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "пт",
@@ -11210,8 +10880,7 @@
       "startTime": "2:00",
       "endTime": "6:00",
       "workHours": "4:00",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     },
     {
       "date": "сб",
@@ -12018,8 +11687,7 @@
       "trains": "Резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "сб",
@@ -12029,8 +11697,7 @@
       "trains": "7632 - 6205 - 6556 - 6555",
       "endTime": "10:10",
       "workHours": "8:10",
-      "nightHours": "4:00",
-      "lunch": "11:55-13:25 **"
+      "nightHours": "4:00"
     },
     {
       "date": "сб",
@@ -12040,8 +11707,7 @@
       "trains": "6621",
       "endTime": "10:40",
       "workHours": "6:40",
-      "nightHours": "2:00",
-      "lunch": "12:25-14:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "сб",
@@ -12051,8 +11717,7 @@
       "trains": "7843 - 6102 - 6103",
       "endTime": "8:30",
       "workHours": "5:50",
-      "nightHours": "3:20",
-      "lunch": "*"
+      "nightHours": "3:20"
     },
     {
       "date": "сб",
@@ -12062,8 +11727,7 @@
       "trains": "6804 - 6809",
       "endTime": "8:40",
       "workHours": "6:10",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "сб",
@@ -12073,8 +11737,7 @@
       "trains": "6551",
       "endTime": "7:40",
       "workHours": "4:10",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "сб",
@@ -12084,8 +11747,7 @@
       "trains": "6603 - 6610 - 6623",
       "endTime": "9:50",
       "workHours": "6:10",
-      "nightHours": "2:20",
-      "lunch": "*"
+      "nightHours": "2:20"
     },
     {
       "date": "сб",
@@ -12095,8 +11757,7 @@
       "trains": "6702 - 6705",
       "endTime": "9:35",
       "workHours": "5:45",
-      "nightHours": "2:10",
-      "lunch": "*"
+      "nightHours": "2:10"
     },
     {
       "date": "сб",
@@ -12104,8 +11765,7 @@
       "startTime": "0:00",
       "endTime": "0:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "сб",
@@ -12115,15 +11775,13 @@
       "trains": "резерв",
       "endTime": "4:00",
       "workHours": "2:50",
-      "nightHours": "2:50",
-      "lunch": "*"
+      "nightHours": "2:50"
     },
     {
       "date": "сб",
       "route": "75У",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "сб",
@@ -12133,8 +11791,7 @@
       "trains": "6011",
       "endTime": "8:45",
       "workHours": "5:45",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12144,8 +11801,7 @@
       "trains": "резерв",
       "endTime": "3:50",
       "workHours": "2:50",
-      "nightHours": "2:50",
-      "lunch": "*"
+      "nightHours": "2:50"
     },
     {
       "date": "сб",
@@ -12155,8 +11811,7 @@
       "trains": "6608 - 6617",
       "endTime": "9:40",
       "workHours": "6:40",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12166,8 +11821,7 @@
       "trains": "6605",
       "endTime": "7:25",
       "workHours": "3:25",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "сб",
@@ -12177,8 +11831,7 @@
       "trains": "6812 - 6817",
       "endTime": "9:50",
       "workHours": "6:50",
-      "nightHours": "3:00",
-      "lunch": "16:30-18:20 **"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12188,8 +11841,7 @@
       "trains": "6803 - 6106 - 6107",
       "endTime": "10:30",
       "workHours": "7:00",
-      "nightHours": "2:30",
-      "lunch": "12:40-13:50 **"
+      "nightHours": "2:30"
     },
     {
       "date": "сб",
@@ -12199,8 +11851,7 @@
       "trains": "6606 - 6619",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "15:20-16:30 **"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12210,8 +11861,7 @@
       "trains": "7702 - 6703",
       "endTime": "7:50",
       "workHours": "4:20",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "сб",
@@ -12221,8 +11871,7 @@
       "trains": "6601 - 6504 - 6503",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "15:00-16:00 **"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12232,8 +11881,7 @@
       "trains": "6009",
       "endTime": "8:20",
       "workHours": "6:20",
-      "nightHours": "4:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "4:00"
     },
     {
       "date": "сб",
@@ -12243,8 +11891,7 @@
       "trains": "6806 - 6811",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12254,8 +11901,7 @@
       "trains": "состав 88 мар. 6501",
       "endTime": "7:10",
       "workHours": "3:30",
-      "nightHours": "2:20",
-      "lunch": "14:10-15:20 **"
+      "nightHours": "2:20"
     },
     {
       "date": "сб",
@@ -12265,8 +11911,7 @@
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "сб",
@@ -12276,8 +11921,7 @@
       "trains": "7736 - 6453",
       "endTime": "8:55",
       "workHours": "5:55",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12287,8 +11931,7 @@
       "trains": "6808 - 6813",
       "endTime": "9:20",
       "workHours": "5:50",
-      "nightHours": "2:30",
-      "lunch": "11:40-13:20 **"
+      "nightHours": "2:30"
     },
     {
       "date": "сб",
@@ -12298,8 +11941,7 @@
       "trains": "состав 92 мар. 6005",
       "endTime": "7:30",
       "workHours": "4:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12307,8 +11949,7 @@
       "startTime": "0:00",
       "endTime": "0:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "сб",
@@ -12318,8 +11959,7 @@
       "trains": "готовит состав под п. 6025, пасс. до МЯ",
       "endTime": "9:30",
       "workHours": "4:00",
-      "nightHours": "0:30",
-      "lunch": "12:00-13:00 **"
+      "nightHours": "0:30"
     },
     {
       "date": "сб",
@@ -12329,8 +11969,7 @@
       "trains": "6609",
       "endTime": "10:00",
       "workHours": "7:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12340,8 +11979,7 @@
       "trains": "6801 - 6810 - 6815",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "сб",
@@ -12351,8 +11989,7 @@
       "trains": "Горячий резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "9:00-11:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "сб",
@@ -12362,8 +11999,7 @@
       "trains": "Горячий резерв",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "сб",
@@ -12372,8 +12008,7 @@
       "startTime": "2:00",
       "endTime": "4:00",
       "workHours": "2:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "сб",
@@ -12382,8 +12017,7 @@
       "startTime": "2:00",
       "endTime": "6:00",
       "workHours": "4:00",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     },
     {
       "date": "вс",
@@ -13190,8 +12824,7 @@
       "trains": "Резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "вс",
@@ -13201,8 +12834,7 @@
       "trains": "6009",
       "endTime": "8:20",
       "workHours": "6:20",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     },
     {
       "date": "вс",
@@ -13212,8 +12844,7 @@
       "trains": "6613",
       "endTime": "8:20",
       "workHours": "5:20",
-      "nightHours": "3:00",
-      "lunch": "12:25-14:00 **"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13223,8 +12854,7 @@
       "trains": "7843 - 6600 - 6611",
       "endTime": "8:30",
       "workHours": "5:50",
-      "nightHours": "3:20",
-      "lunch": "*"
+      "nightHours": "3:20"
     },
     {
       "date": "вс",
@@ -13234,8 +12864,7 @@
       "trains": "6002 - 6007",
       "endTime": "7:45",
       "workHours": "5:15",
-      "nightHours": "3:30",
-      "lunch": "*"
+      "nightHours": "3:30"
     },
     {
       "date": "вс",
@@ -13245,8 +12874,7 @@
       "trains": "6551",
       "endTime": "7:40",
       "workHours": "4:10",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "вс",
@@ -13256,8 +12884,7 @@
       "trains": "6603 - 6610 - 6623",
       "endTime": "9:50",
       "workHours": "6:10",
-      "nightHours": "2:20",
-      "lunch": "*"
+      "nightHours": "2:20"
     },
     {
       "date": "вс",
@@ -13267,8 +12894,7 @@
       "trains": "6808 - 6813",
       "endTime": "9:15",
       "workHours": "5:45",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "вс",
@@ -13276,8 +12902,7 @@
       "startTime": "0:00",
       "endTime": "0:00",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "вс",
@@ -13287,15 +12912,13 @@
       "trains": "резерв",
       "endTime": "4:00",
       "workHours": "2:50",
-      "nightHours": "2:50",
-      "lunch": "*"
+      "nightHours": "2:50"
     },
     {
       "date": "вс",
       "route": "75У",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "вс",
@@ -13305,8 +12928,7 @@
       "trains": "6015",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13316,8 +12938,7 @@
       "trains": "резерв",
       "endTime": "3:50",
       "workHours": "2:50",
-      "nightHours": "2:50",
-      "lunch": "*"
+      "nightHours": "2:50"
     },
     {
       "date": "вс",
@@ -13327,8 +12948,7 @@
       "trains": "6604 - 6621",
       "endTime": "9:40",
       "workHours": "6:40",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13338,8 +12958,7 @@
       "trains": "6605",
       "endTime": "7:25",
       "workHours": "3:25",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "вс",
@@ -13349,8 +12968,7 @@
       "trains": "6806 - 6811",
       "endTime": "8:50",
       "workHours": "5:50",
-      "nightHours": "3:00",
-      "lunch": "16:30-18:20 **"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13360,8 +12978,7 @@
       "trains": "6803 - 6106 - 6107",
       "endTime": "10:30",
       "workHours": "7:00",
-      "nightHours": "2:30",
-      "lunch": "12:40-13:50 **"
+      "nightHours": "2:30"
     },
     {
       "date": "вс",
@@ -13371,8 +12988,7 @@
       "trains": "6606 - 6619",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "15:20-16:30 **"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13382,8 +12998,7 @@
       "trains": "7702 - 6703",
       "endTime": "7:50",
       "workHours": "4:20",
-      "nightHours": "2:30",
-      "lunch": "*"
+      "nightHours": "2:30"
     },
     {
       "date": "вс",
@@ -13393,8 +13008,7 @@
       "trains": "6601 - 6504 - 6503",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "15:00-16:00 **"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13404,8 +13018,7 @@
       "trains": "7632 - 6205 - 6556 - 6555",
       "endTime": "10:00",
       "workHours": "7:00",
-      "nightHours": "3:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13415,8 +13028,7 @@
       "trains": "6902 - 6901",
       "endTime": "7:40",
       "workHours": "4:40",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13426,8 +13038,7 @@
       "trains": "состав 88 мар. 6501",
       "endTime": "7:10",
       "workHours": "3:30",
-      "nightHours": "2:20",
-      "lunch": "14:10-15:20 **"
+      "nightHours": "2:20"
     },
     {
       "date": "вс",
@@ -13437,8 +13048,7 @@
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "вс",
@@ -13448,8 +13058,7 @@
       "trains": "7736 - 6453",
       "endTime": "8:55",
       "workHours": "5:55",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13459,8 +13068,7 @@
       "trains": "6702 - 6705",
       "endTime": "9:20",
       "workHours": "5:50",
-      "nightHours": "2:30",
-      "lunch": "11:40-13:20 **"
+      "nightHours": "2:30"
     },
     {
       "date": "вс",
@@ -13470,15 +13078,13 @@
       "trains": "состав 92 мар. 6005",
       "endTime": "7:30",
       "workHours": "4:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
       "route": "92У",
       "workHours": "0:00",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "nightHours": "0:00"
     },
     {
       "date": "вс",
@@ -13488,8 +13094,7 @@
       "trains": "6013",
       "endTime": "9:00",
       "workHours": "3:30",
-      "nightHours": "0:30",
-      "lunch": "12:00-13:00 **"
+      "nightHours": "0:30"
     },
     {
       "date": "вс",
@@ -13499,8 +13104,7 @@
       "trains": "6617",
       "endTime": "9:00",
       "workHours": "6:00",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13510,8 +13114,7 @@
       "trains": "6801 - 6810 - 6815",
       "endTime": "9:30",
       "workHours": "6:30",
-      "nightHours": "3:00",
-      "lunch": "*"
+      "nightHours": "3:00"
     },
     {
       "date": "вс",
@@ -13521,8 +13124,7 @@
       "trains": "Горячий резерв",
       "endTime": "8:20",
       "workHours": "4:25",
-      "nightHours": "2:05",
-      "lunch": "9:00-11:00 **"
+      "nightHours": "2:05"
     },
     {
       "date": "вс",
@@ -13532,8 +13134,7 @@
       "trains": "Горячий резерв",
       "endTime": "9:00",
       "workHours": "5:00",
-      "nightHours": "2:00",
-      "lunch": "12:00-14:00 **"
+      "nightHours": "2:00"
     },
     {
       "date": "вс",
@@ -13542,8 +13143,7 @@
       "startTime": "2:00",
       "endTime": "4:00",
       "workHours": "2:00",
-      "nightHours": "2:00",
-      "lunch": "*"
+      "nightHours": "2:00"
     },
     {
       "date": "вс",
@@ -13552,8 +13152,7 @@
       "startTime": "2:00",
       "endTime": "6:00",
       "workHours": "4:00",
-      "nightHours": "4:00",
-      "lunch": "*"
+      "nightHours": "4:00"
     }
   ],
   "stats": {

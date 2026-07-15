@@ -222,10 +222,7 @@ def parse_workbook(path: Path) -> list[dict[str, str]]:
                 "nightHours": 28,
             },
         )
-        morning_fields["lunch"] = format_break_lunch(
-            ws.cell(target_row, 7).value,
-            ws.cell(target_row, 8).value,
-        )
+        # Утренние маршруты (84У, 61У…): обед только у ночи (cols 19–20), утром перерыва нет.
         flat_rows.append(flat_row(marker, morning_route, morning_fields))
 
     wb.close()

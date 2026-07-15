@@ -1,0 +1,30 @@
+---
+description: Лимит API поездов (500/сутки) — обязательно при правках trains/route/schedule
+globs: app/index.html,app/trains-local.json,app/data/trains-uids.json,app/data/trains-api/**,tools/enrich-train-uids.py
+alwaysApply: false
+---
+
+# Поезда и квота API
+
+**Перед любыми правками прочитай:** `app/data/trains-api/README.md`
+
+## Жёсткие правила
+
+1. **Три триггера API:** «Показать маршруты», «Маршрут» из календаря, «Обновить» (threadsOnly).
+2. **Cache-first:** `trainThreadsCache[номер@дата]` → uid из local/uids → табло (если нет на дату) → thread.
+3. **Табло Ярославского** — один fetch на `станция+дата`, dedupe через `stationScheduleLoaders`.
+4. **Не сбрасывать** `stationScheduleCache.boards` при коротком «Обновить» — только при long-press full refresh.
+5. **Long-press «Обновить»** (~0,6 с) → `forceBoardRefresh` + перекачка табло на D / D+1.
+6. **Никакого fetch** из `setInterval`, полночи, visibility, автозагрузки вкладок.
+7. **Ночь после 00:00** — только смена рабочей даты в секундомере, данные из кэша.
+
+## Антипаттерны (запрещено)
+
+- `findTrainInSchedules` по 2 станциям на каждый поезд без общего кэша
+- `invalidateTrainCachesForNumbers` с очисткой табло при коротком refresh
+- `getRouteData({ forceRefresh })` из таймера
+- schedule API перед проверкой uid в `trains-uids.json`
+
+## Новые поезда
+
+Добавить `threadUid` в `trains-local.json` или прогнать `npm run enrich:train-uids` (1–3 schedule, не N thread).

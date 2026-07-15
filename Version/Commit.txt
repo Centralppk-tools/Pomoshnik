@@ -579,3 +579,24 @@ feat: крестик удаления заметок к станциям и см
 - Service Worker: da_v2_4_2.
 - Снимок HTML: Version/snapshots/index 2.4.2.html.
 - Снимок стилей: Version/snapshots/styles 2.4.2/.
+
+2.4.3 ?
+Коммиты: (локальная выкладка)
+
+Основное:
+tech: Технические доработки обновлений маршрутов и расписаний
+
+? ПОД ВОПРОСОМ — не STABLE, проверить на хостинге.
+
+Описание (что внутри):
+- train API: cache-first по номер@дата, один табло Ярославский на дату, dedupe loaders.
+- trainPlan: N+U — общий список (ночь D + утро D+1), без повторов номеров в UI.
+- секундомер: рабочая дата ночной смены (D / D+1), без API в полночь.
+- «Обновить»: короткое — threadsOnly, удержание ~0,6 с — full board refresh.
+- getRouteData: изоляция ошибок, partial results, preload boards.
+- API_KEY Яндекс.Расписаний: 64eba113-a83b-421c-baa8-d51f432cb3f3.
+- app/data/trains-api/README.md + .cursor/rules/train-api-quota.mdc.
+- tools/enrich-train-uids.py — генерация trains-uids.json.
+- Service Worker: da_v2_4_3_r1.
+- Снимок HTML: Version/snapshots/index 2.4.3.html.
+- Снимок стилей: Version/snapshots/styles 2.4.3/.
