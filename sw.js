@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.2 STABLE)
-const CACHE_VERSION = 'da_v2_4_2_r3';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.3 ?)
+const CACHE_VERSION = 'da_v2_4_3_r1';
 const NOTIFICATION_ICON = './assets/brand-logo.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -18,6 +18,7 @@ const PRECACHE_ASSETS = [
     './styles/community.css',
     './spr.json',
     './trains-local.json',
+    './data/trains-uids.json',
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
     './data/release-notes.json',

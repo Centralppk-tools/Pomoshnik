@@ -178,7 +178,7 @@
         <div id="routeSummary" class="route-summary-wrap" style="display: none;"></div>
 
         <div id="routeToolbarWrap" class="route-toolbar-wrap">
-            <button type="button" id="routeRefreshBtn" class="route-refresh-btn" aria-label="Обновить данные поездов" onclick="refreshRouteData(event)">
+            <button type="button" id="routeRefreshBtn" class="route-refresh-btn" aria-label="Обновить данные поездов. Удержание — полное обновление табло." title="Короткое нажатие — нитки поездов. Удержание ~0,6 с — табло Ярославского заново.">
                 <span class="route-refresh-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
                 </span>
@@ -452,15 +452,23 @@
 
 <script>
     const DASH_CHAR = String.fromCharCode(45);
-    const API_KEY = '905d4044' + DASH_CHAR + '2b7e' + DASH_CHAR + '45ca' + DASH_CHAR + 'b10c' + DASH_CHAR + 'f0e907c15f00';
+    const API_KEY = '64eba113' + DASH_CHAR + 'a83b' + DASH_CHAR + '421c' + DASH_CHAR + 'baa8' + DASH_CHAR + 'd51f432cb3f3';
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
     const MY_CLOUDFLARE_PROXY = 'https://late-shape-356d.maksbarybin9458.workers.dev/';
     const ANCHOR_STATION = 's2000002';
     const EXTRA_SCHEDULE_STATIONS = ['s9600701'];
+    // Логика запросов поездов: app/data/trains-api/README.md (лимит ~500/сутки)
     const stationScheduleByKey = {};
+    const stationUidIndexByDate = {};
+    const stationScheduleLoaders = {};
 
-    let stationScheduleCache = { date: null, data: null };
+    const STATION_BOARD_CACHE_VERSION = 2;
+    const STATION_BOARD_CACHE_MAX_DATES = 4;
+    const ROUTE_REFRESH_LONG_PRESS_MS = 580;
+
+    let stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
     let trainThreadsCache = {};
+    let trainUidStaticIndex = null;
     let sprDataCache = null;
     let localTrainsCache = null;
 
@@ -476,7 +484,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.4.2';
+    const APP_RELEASE_VERSION = '2.4.3';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -734,6 +742,7 @@
         initStationNotesUi();
         initShiftNotesUi();
         initDonateUi();
+        initRouteRefreshButton();
         void loadCalendarLocalRoutes();
         void loadLocalShiftTemplatesBundle().then(() => {
             applyNormativeForDateKey(getShiftContextDateKey());
@@ -746,7 +755,8 @@
 
         const localStationCache = userStorageGet('stationScheduleCache');
         if (localStationCache) {
-            stationScheduleCache = parseJSON(localStationCache, stationScheduleCache);
+            stationScheduleCache = migrateStationScheduleCache(parseJSON(localStationCache, null));
+            restoreStationBoardsFromCache();
         }
 
         const localThreadsCache = userStorageGet('trainThreadsCache');
@@ -1200,15 +1210,43 @@
             clearRouteCardsHighlight();
             return;
         }
-        el.textContent = formatLiveClockTime(scheduleLiveClockTime);
+        el.textContent = formatScheduleLiveClockLabel(scheduleLiveClockTime);
+        const shiftDate = getSelectedDate();
+        if (shiftDate && scheduleLiveClockTime && isScheduleContextActive(scheduleLiveClockTime, shiftDate) && isNightMode()) {
+            const effectiveIso = getEffectiveShiftLiveDateIso(scheduleLiveClockTime);
+            el.title = effectiveIso ? `Рабочая дата: ${formatShortDateLabel(effectiveIso)}` : '';
+        } else {
+            el.title = '';
+        }
         updateScheduleActiveStation();
         updateRouteCardsHighlight();
+    }
+
+    function formatShortDateLabel(iso) {
+        if (!iso) return '';
+        const parts = iso.split(DASH_CHAR).map(Number);
+        if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
+        const [year, month, day] = parts;
+        return `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+    }
+
+    function formatScheduleLiveClockLabel(nowDate) {
+        const time = formatLiveClockTime(nowDate);
+        const shiftDate = getSelectedDate();
+        if (!shiftDate || !nowDate) return time;
+        if (!isScheduleContextActive(nowDate, shiftDate)) return time;
+        if (isNightMode()) {
+            const effectiveIso = getEffectiveShiftLiveDateIso(nowDate);
+            if (effectiveIso) {
+                return `${time} · ${formatShortDateLabel(effectiveIso)}`;
+            }
+        }
+        return time;
     }
 
     function tickScheduleLiveClock() {
         if (!scheduleLiveClockSynced) return;
         scheduleLiveClockTime = new Date();
-        ensureRoutesAfterNightMidnight(scheduleLiveClockTime);
         updateScheduleLiveClockDisplay();
         checkSchedulePushNotifications();
     }
@@ -1380,14 +1418,38 @@
         return `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
     }
 
-    function liveDateMatchesShift(nowDate, shiftDate) {
-        if (!nowDate || !shiftDate) return false;
-        return formatLiveDateIso(nowDate) === shiftDate;
-    }
-
     function getNightShiftContinuationDate(shiftStartDate) {
         if (!shiftStartDate) return null;
         return addDaysToDateStr(shiftStartDate, 1);
+    }
+
+    /** Рабочая дата смены для секундомера и push без запросов к API. */
+    function getEffectiveShiftLiveDateIso(nowDate) {
+        const shiftDate = getSelectedDate();
+        if (!shiftDate || !nowDate) {
+            return shiftDate || (nowDate ? formatLiveDateIso(nowDate) : '');
+        }
+        if (!isScheduleContextActive(nowDate, shiftDate)) {
+            return formatLiveDateIso(nowDate);
+        }
+        if (!isNightMode()) {
+            return shiftDate;
+        }
+        const nowIso = formatLiveDateIso(nowDate);
+        const continuation = getNightShiftContinuationDate(shiftDate);
+        if (nowIso === continuation) {
+            return continuation;
+        }
+        return shiftDate;
+    }
+
+    function liveDateMatchesShift(nowDate, eventDateIso) {
+        if (!nowDate || !eventDateIso) return false;
+        const shiftDate = getSelectedDate();
+        if (shiftDate && isScheduleContextActive(nowDate, shiftDate)) {
+            return getEffectiveShiftLiveDateIso(nowDate) === eventDateIso;
+        }
+        return formatLiveDateIso(nowDate) === eventDateIso;
     }
 
     function isScheduleContextActive(nowDate, shiftStartDate) {
@@ -1497,25 +1559,8 @@
         routeMidnightRefreshKey = '';
     }
 
-    function ensureRoutesAfterNightMidnight(nowDate) {
-        if (!isNightMode()) return;
-        const shiftDate = getSelectedDate();
-        if (!shiftDate) return;
-
-        const continuation = getNightShiftContinuationDate(shiftDate);
-        const nowIso = formatLiveDateIso(nowDate);
-        if (nowIso !== continuation) return;
-
-        const refreshKey = `${shiftDate}->${continuation}`;
-        if (routeMidnightRefreshKey === refreshKey) return;
-
-        const grid = document.getElementById('routeGrid');
-        if (!grid || grid.style.display === 'none' || !grid.innerHTML.trim()) return;
-
-        routeMidnightRefreshKey = refreshKey;
-        invalidateTrainCachesForNumbers(getTrainNumbersFromDom());
-        void getRouteData({ forceRefresh: true });
-    }
+    // После 00:00 для ночной смены переключается только «рабочая дата» в секундомере и подсветке.
+    // Запросы к API в полночь запрещены — см. app/data/trains-api/README.md
 
     function buildRouteNotificationTrains(allTrainsData, selectedDate) {
         if (!Array.isArray(allTrainsData) || !selectedDate) return [];
@@ -1527,6 +1572,7 @@
 
             const departure = train.departure;
             const arrival = train.arrival;
+            const scheduleDate = train.scheduleDate || selectedDate;
             let turnaroundMinutes = null;
 
             if (i < allTrainsData.length - 1) {
@@ -1547,8 +1593,8 @@
                 title: train.title,
                 departure,
                 arrival,
-                departureDate: resolveStopEventDate(selectedDate, departure, arrival, departure),
-                arrivalDate: resolveStopEventDate(selectedDate, departure, arrival, arrival),
+                departureDate: resolveStopEventDate(scheduleDate, departure, arrival, departure),
+                arrivalDate: resolveStopEventDate(scheduleDate, departure, arrival, arrival),
                 turnaroundMinutes
             });
         }
@@ -1973,6 +2019,17 @@
                 localTrainsCache = null;
             }
         }
+
+        const uidPaths = ['./data/trains-uids.json', 'data/trains-uids.json', 'app/data/trains-uids.json'];
+        try {
+            const uidBundle = await fetchJsonAsset(uidPaths, 'cppk_trains_uids_cache');
+            trainUidStaticIndex = uidBundle?.uids && typeof uidBundle.uids === 'object' ? uidBundle.uids : null;
+            if (trainUidStaticIndex) {
+                console.log('[trains] uid index:', Object.keys(trainUidStaticIndex).length);
+            }
+        } catch (err) {
+            trainUidStaticIndex = loadReferenceJsonCache('cppk_trains_uids_cache')?.uids || null;
+        }
     }
 
     function getWeekdayInfoForIsoDate(isoDate) {
@@ -2005,8 +2062,23 @@
         return entry;
     }
 
-    function resolveThreadUidForTrain(trainNumber) {
-        return String(findLocalTrainRegistryEntry(trainNumber)?.threadUid || '').trim() || null;
+    function resolveThreadUidForTrain(trainNumber, scheduleDate = null) {
+        const registryUid = String(findLocalTrainRegistryEntry(trainNumber)?.threadUid || '').trim();
+        if (registryUid) return registryUid;
+
+        const numKey = normalizeTrainCacheKey(trainNumber);
+        if (numKey && trainUidStaticIndex?.[numKey]) {
+            return String(trainUidStaticIndex[numKey]).trim();
+        }
+
+        if (scheduleDate) {
+            const boardHit = lookupTrainOnStationBoard(trainNumber, scheduleDate);
+            const boardUid = String(boardHit?.thread?.uid || '').trim();
+            if (boardUid) return boardUid;
+        }
+
+        const cached = scheduleDate ? getTrainCacheEntry(trainNumber, scheduleDate) : null;
+        return String(cached?.uid || '').trim() || null;
     }
 
     function parseTrainServiceDaysMarker(daysStr) {
@@ -2086,6 +2158,70 @@
         };
     }
 
+    function buildStationUidIndex(schedule) {
+        const index = new Map();
+        (schedule || []).forEach(item => {
+            const numKey = normalizeTrainCacheKey(item?.thread?.number);
+            const uid = String(item?.thread?.uid || '').trim();
+            if (numKey && uid && !index.has(numKey)) {
+                index.set(numKey, item);
+            }
+        });
+        return index;
+    }
+
+    function syncStationUidIndexForBoard(stationCode, date, schedule) {
+        if (stationCode !== ANCHOR_STATION || !date) return;
+        stationUidIndexByDate[date] = buildStationUidIndex(schedule);
+    }
+
+    function migrateStationScheduleCache(raw) {
+        if (!raw || typeof raw !== 'object') {
+            return { version: STATION_BOARD_CACHE_VERSION, boards: {} };
+        }
+        if (raw.boards && typeof raw.boards === 'object' && !Array.isArray(raw.boards)) {
+            return { version: STATION_BOARD_CACHE_VERSION, boards: { ...raw.boards } };
+        }
+        if (raw.date && Array.isArray(raw.data)) {
+            return { version: STATION_BOARD_CACHE_VERSION, boards: { [raw.date]: raw.data } };
+        }
+        return { version: STATION_BOARD_CACHE_VERSION, boards: {} };
+    }
+
+    function trimStationBoardCacheStorage() {
+        if (!stationScheduleCache.boards) {
+            stationScheduleCache.boards = {};
+        }
+        const keys = Object.keys(stationScheduleCache.boards).sort();
+        while (keys.length > STATION_BOARD_CACHE_MAX_DATES) {
+            const oldest = keys.shift();
+            delete stationScheduleCache.boards[oldest];
+        }
+    }
+
+    function persistStationBoardToCache(date, schedule) {
+        if (!date || !Array.isArray(schedule)) return;
+        if (!stationScheduleCache.boards) {
+            stationScheduleCache.boards = {};
+        }
+        stationScheduleCache.version = STATION_BOARD_CACHE_VERSION;
+        stationScheduleCache.boards[date] = schedule;
+        trimStationBoardCacheStorage();
+        userStorageSet('stationScheduleCache', stationScheduleCache);
+    }
+
+    function restoreStationBoardsFromCache() {
+        const boards = stationScheduleCache?.boards;
+        if (!boards || typeof boards !== 'object') return;
+
+        Object.entries(boards).forEach(([date, schedule]) => {
+            if (!date || !Array.isArray(schedule)) return;
+            const cacheKey = `${ANCHOR_STATION}_${date}`;
+            stationScheduleByKey[cacheKey] = schedule;
+            syncStationUidIndexForBoard(ANCHOR_STATION, date, schedule);
+        });
+    }
+
     async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION) {
         const all = [];
         const limit = 1000;
@@ -2117,25 +2253,97 @@
             return stationScheduleByKey[cacheKey];
         }
 
-        const schedule = await fetchStationScheduleForDate(date, stationCode);
-        stationScheduleByKey[cacheKey] = schedule;
-
-        if (stationCode === ANCHOR_STATION) {
-            stationScheduleCache.date = date;
-            stationScheduleCache.data = schedule;
-            userStorageSet('stationScheduleCache', stationScheduleCache);
+        if (!forceRefresh && stationScheduleLoaders[cacheKey]) {
+            return stationScheduleLoaders[cacheKey];
         }
 
-        return schedule;
+        const loader = (async () => {
+            try {
+                const schedule = await fetchStationScheduleForDate(date, stationCode);
+                stationScheduleByKey[cacheKey] = schedule;
+                syncStationUidIndexForBoard(stationCode, date, schedule);
+
+                if (stationCode === ANCHOR_STATION) {
+                    persistStationBoardToCache(date, schedule);
+                }
+
+                return schedule;
+            } finally {
+                delete stationScheduleLoaders[cacheKey];
+            }
+        })();
+
+        stationScheduleLoaders[cacheKey] = loader;
+        return loader;
     }
 
-    async function findTrainInSchedules(trainNumber, date, forceRefresh = false) {
-        const stations = [ANCHOR_STATION, ...EXTRA_SCHEDULE_STATIONS];
-        for (const stationCode of stations) {
+    function lookupTrainOnStationBoard(trainNumber, date) {
+        const numKey = normalizeTrainCacheKey(trainNumber);
+        if (!numKey || !date) return null;
+
+        let index = stationUidIndexByDate[date];
+        if (!index) {
+            const schedule = stationScheduleByKey[`${ANCHOR_STATION}_${date}`];
+            if (schedule) {
+                index = buildStationUidIndex(schedule);
+                stationUidIndexByDate[date] = index;
+            }
+        }
+
+        if (index?.has(numKey)) {
+            return index.get(numKey);
+        }
+
+        const schedule = stationScheduleByKey[`${ANCHOR_STATION}_${date}`];
+        if (!schedule) return null;
+        return schedule.find(item => matchTrainNumberInSchedule(item, trainNumber)) || null;
+    }
+
+    async function ensureStationBoardLoaded(date, options = {}) {
+        if (!date) return;
+        const forceRefresh = options.forceRefresh === true;
+        await getStationSchedule(ANCHOR_STATION, date, forceRefresh);
+    }
+
+    async function ensureStationBoardsForDates(dates, options = {}) {
+        const unique = [...new Set((dates || []).filter(Boolean))];
+        return Promise.all(unique.map(async date => {
+            try {
+                await ensureStationBoardLoaded(date, options);
+                return { date, ok: true };
+            } catch (err) {
+                console.warn('[trains] board failed:', date, err);
+                return { date, ok: false, error: err };
+            }
+        }));
+    }
+
+    function resolveTrainSearchDatesForShift() {
+        const baseDate = getSelectedDate();
+        if (!baseDate) return [];
+        if (!isNightMode()) return [baseDate];
+        return [baseDate, addDaysToDateStr(baseDate, 1)];
+    }
+
+    async function findTrainOnStationBoards(trainNumber, date, options = {}) {
+        const forceRefresh = options.forceRefresh === true;
+        const threadsOnly = options.threadsOnly === true;
+
+        if (!threadsOnly) {
+            await ensureStationBoardLoaded(date, { forceRefresh });
+        }
+
+        const primaryHit = lookupTrainOnStationBoard(trainNumber, date);
+        if (primaryHit) return primaryHit;
+
+        if (threadsOnly) return null;
+
+        for (const stationCode of EXTRA_SCHEDULE_STATIONS) {
             const schedule = await getStationSchedule(stationCode, date, forceRefresh);
             const hit = schedule.find(item => matchTrainNumberInSchedule(item, trainNumber));
             if (hit) return hit;
         }
+
         return null;
     }
 
@@ -2202,7 +2410,7 @@
         userStorageSet('trainThreadsCache', trainThreadsCache);
     }
 
-    function invalidateTrainCachesForNumbers(trainNumbers) {
+    function invalidateTrainThreadCacheForNumbers(trainNumbers) {
         (trainNumbers || []).forEach(trainNumber => {
             const numKey = normalizeTrainCacheKey(trainNumber);
             if (!numKey) return;
@@ -2212,10 +2420,49 @@
                 }
             });
         });
-        stationScheduleCache = { date: null, data: null };
-        Object.keys(stationScheduleByKey).forEach(key => delete stationScheduleByKey[key]);
         userStorageSet('trainThreadsCache', trainThreadsCache);
+    }
+
+    function invalidateStationBoardCachesForDates(dates) {
+        const targets = [...new Set((dates || []).filter(Boolean))];
+        if (!targets.length) {
+            invalidateStationBoardCaches();
+            return;
+        }
+
+        if (!stationScheduleCache.boards) {
+            stationScheduleCache.boards = {};
+        }
+
+        targets.forEach(date => {
+            delete stationScheduleCache.boards[date];
+            delete stationScheduleByKey[`${ANCHOR_STATION}_${date}`];
+            delete stationUidIndexByDate[date];
+            EXTRA_SCHEDULE_STATIONS.forEach(stationCode => {
+                delete stationScheduleByKey[`${stationCode}_${date}`];
+            });
+            delete stationScheduleLoaders[`${ANCHOR_STATION}_${date}`];
+            EXTRA_SCHEDULE_STATIONS.forEach(stationCode => {
+                delete stationScheduleLoaders[`${stationCode}_${date}`];
+            });
+        });
+
         userStorageSet('stationScheduleCache', stationScheduleCache);
+    }
+
+    function invalidateStationBoardCaches() {
+        stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
+        Object.keys(stationScheduleByKey).forEach(key => delete stationScheduleByKey[key]);
+        Object.keys(stationUidIndexByDate).forEach(key => delete stationUidIndexByDate[key]);
+        Object.keys(stationScheduleLoaders).forEach(key => delete stationScheduleLoaders[key]);
+        userStorageSet('stationScheduleCache', stationScheduleCache);
+    }
+
+    function invalidateTrainCachesForNumbers(trainNumbers, options = {}) {
+        invalidateTrainThreadCacheForNumbers(trainNumbers);
+        if (options.includeStationBoards === true) {
+            invalidateStationBoardCaches();
+        }
     }
 
     function decorateTrainSearchResult(result, trainNumber, scheduleDate, registryEntry) {
@@ -2273,7 +2520,7 @@
         }
     }
 
-    function refreshRouteData(e) {
+    function refreshRouteData(e, options = {}) {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -2285,8 +2532,64 @@
             return;
         }
 
-        invalidateTrainCachesForNumbers(inputs);
-        getRouteData({ forceRefresh: true });
+        const fullBoard = options.fullBoard === true;
+
+        if (fullBoard) {
+            invalidateTrainThreadCacheForNumbers(inputs);
+            invalidateStationBoardCachesForDates(resolveTrainSearchDatesForShift());
+            getRouteData({ forceRefresh: true, forceBoardRefresh: true });
+            return;
+        }
+
+        invalidateTrainThreadCacheForNumbers(inputs);
+        getRouteData({ forceRefresh: true, threadsOnly: true });
+    }
+
+    function initRouteRefreshButton() {
+        const btn = document.getElementById('routeRefreshBtn');
+        if (!btn || btn.dataset.refreshBound === '1') return;
+        btn.dataset.refreshBound = '1';
+
+        let pressTimer = null;
+        let longPressHandled = false;
+
+        const clearPressTimer = () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        };
+
+        btn.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            longPressHandled = false;
+            clearPressTimer();
+            pressTimer = setTimeout(() => {
+                longPressHandled = true;
+                btn.classList.add('is-full-refresh');
+                refreshRouteData(e, { fullBoard: true });
+            }, ROUTE_REFRESH_LONG_PRESS_MS);
+        });
+
+        btn.addEventListener('pointerup', () => {
+            clearPressTimer();
+            btn.classList.remove('is-full-refresh');
+        });
+
+        btn.addEventListener('pointercancel', () => {
+            clearPressTimer();
+            btn.classList.remove('is-full-refresh');
+        });
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (longPressHandled) {
+                longPressHandled = false;
+                return;
+            }
+            refreshRouteData(e);
+        });
     }
 
     window.refreshRouteData = refreshRouteData;
@@ -2657,9 +2960,11 @@
             /* sessionStorage может быть недоступен */
         }
 
-        stationScheduleCache = { date: null, data: null };
+        stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
         trainThreadsCache = {};
         Object.keys(stationScheduleByKey).forEach(key => delete stationScheduleByKey[key]);
+        Object.keys(stationUidIndexByDate).forEach(key => delete stationUidIndexByDate[key]);
+        Object.keys(stationScheduleLoaders).forEach(key => delete stationScheduleLoaders[key]);
         userStorageSet('stationScheduleCache', stationScheduleCache);
         userStorageSet('trainThreadsCache', trainThreadsCache);
 
@@ -2709,17 +3014,21 @@
         return document.getElementById('nightMode')?.checked === true;
     }
 
-    function setNightModeEnabled(enabled) {
+    function setNightModeEnabled(enabled, options = {}) {
         const nightModeInput = document.getElementById('nightMode');
         if (!nightModeInput) return;
         const value = Boolean(enabled);
-        if (nightModeInput.checked === value) {
-            userStorageSet('nightMode', value ? '1' : '0');
-            updateScheduleDateHint();
-            return;
-        }
+        const silent = options.silent === true;
+
+        userStorageSet('nightMode', value ? '1' : '0');
+        updateScheduleDateHint();
+
+        if (nightModeInput.checked === value) return;
+
         nightModeInput.checked = value;
-        nightModeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        if (!silent) {
+            nightModeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     }
 
     function addDaysToDateStr(dateStr, days) {
@@ -3235,7 +3544,7 @@
     async function searchTrainByNumber(trainNumber, scheduleDate, options = {}) {
         const forceRefresh = options.forceRefresh === true;
         const fromCacheOnly = options.fromCacheOnly === true;
-        const numKey = normalizeTrainCacheKey(trainNumber);
+        const threadsOnly = options.threadsOnly === true;
         const registryEntry = findLocalTrainRegistryEntry(trainNumber);
 
         try {
@@ -3244,7 +3553,7 @@
             if (!forceRefresh) {
                 const cachedEntry = getTrainCacheEntry(trainNumber, date);
                 if (cachedEntry) {
-                    console.log('Достали маршрут из памяти устройства:', trainNumber, date);
+                    console.log('[trains] cache hit:', trainNumber, date);
                     const cached = decorateTrainSearchResult(
                         { ...cachedEntry },
                         trainNumber,
@@ -3263,27 +3572,26 @@
                 return null;
             }
 
-            let trainData = await findTrainInSchedules(trainNumber, date, forceRefresh);
-
-            if (!trainData) {
-                const threadUid = resolveThreadUidForTrain(trainNumber);
-                if (threadUid) {
-                    console.log('Берём нитку по UID из локальной базы:', trainNumber, threadUid);
-                    const threadResult = await fetchTrainByThreadUid(threadUid, trainNumber, date);
-                    if (threadResult) {
-                        const result = decorateTrainSearchResult(threadResult, trainNumber, date, registryEntry);
-                        cacheTrainThread(trainNumber, result);
-                        return result;
-                    }
+            const threadUid = resolveThreadUidForTrain(trainNumber, date);
+            if (threadUid) {
+                console.log('[trains] thread by uid:', trainNumber, threadUid);
+                const threadResult = await fetchTrainByThreadUid(threadUid, trainNumber, date);
+                if (threadResult) {
+                    const result = decorateTrainSearchResult(threadResult, trainNumber, date, registryEntry);
+                    cacheTrainThread(trainNumber, result, date);
+                    return result;
                 }
             }
 
-            if (trainData) {
-                const result = await fetchThreadDetails(trainData, date);
-                if (result) {
-                    const decorated = decorateTrainSearchResult(result, trainNumber, date, registryEntry);
-                    cacheTrainThread(trainNumber, decorated);
-                    return decorated;
+            if (!threadsOnly) {
+                const trainData = await findTrainOnStationBoards(trainNumber, date, options);
+                if (trainData) {
+                    const result = await fetchThreadDetails(trainData, date);
+                    if (result) {
+                        const decorated = decorateTrainSearchResult(result, trainNumber, date, registryEntry);
+                        cacheTrainThread(trainNumber, decorated, date);
+                        return decorated;
+                    }
                 }
             }
 
@@ -3291,27 +3599,25 @@
             if (localEntry) {
                 const localResult = buildTrainResultFromLocalEntry(localEntry, date);
                 const decorated = decorateTrainSearchResult(localResult, trainNumber, date, localEntry);
-                cacheTrainThread(trainNumber, decorated);
-                console.log('Поезд взят из локальной базы:', trainNumber);
+                cacheTrainThread(trainNumber, decorated, date);
+                console.log('[trains] local fallback:', trainNumber);
                 return decorated;
             }
 
             if (registryEntry) {
                 const localResult = buildTrainResultFromLocalEntry(registryEntry, date);
                 const decorated = decorateTrainSearchResult(localResult, trainNumber, date, registryEntry);
-                if (decorated.runsOnSelectedDate === false) {
-                    cacheTrainThread(trainNumber, decorated);
-                    return decorated;
-                }
+                cacheTrainThread(trainNumber, decorated, date);
+                return decorated;
             }
 
-            console.warn(`Поезд ${trainNumber} не найден на ${date}`);
+            console.warn(`[trains] not found: ${trainNumber} @ ${date}`);
             return null;
         } catch (error) {
-            console.error(error);
+            console.error('[trains]', error);
             if (!fromCacheOnly) {
                 const fallbackDate = scheduleDate || getSelectedDate();
-                const threadUid = resolveThreadUidForTrain(trainNumber);
+                const threadUid = resolveThreadUidForTrain(trainNumber, fallbackDate);
                 if (threadUid) {
                     try {
                         const threadResult = await fetchTrainByThreadUid(threadUid, trainNumber, fallbackDate);
@@ -3322,11 +3628,11 @@
                                 fallbackDate,
                                 registryEntry
                             );
-                            cacheTrainThread(trainNumber, result);
+                            cacheTrainThread(trainNumber, result, fallbackDate);
                             return result;
                         }
                     } catch (threadErr) {
-                        console.warn('Не удалось загрузить нитку по UID:', threadErr);
+                        console.warn('[trains] uid fallback failed:', threadErr);
                     }
                 }
 
@@ -3334,7 +3640,7 @@
                 if (localEntry) {
                     const localResult = buildTrainResultFromLocalEntry(localEntry, fallbackDate);
                     const decorated = decorateTrainSearchResult(localResult, trainNumber, fallbackDate, localEntry);
-                    cacheTrainThread(trainNumber, decorated);
+                    cacheTrainThread(trainNumber, decorated, fallbackDate);
                     return decorated;
                 }
             }
@@ -3342,32 +3648,70 @@
         }
     }
 
+    function resolveShiftTrainPlanForInputs(inputs) {
+        const stored = userStorageGetJson('shiftTrainPlan', null);
+        if (!stored || !Array.isArray(stored.items) || !Array.isArray(inputs)) return null;
+
+        const inputKeys = inputs.map(normalizeTrainCacheKey);
+        const storedKeys = stored.items.map(item => normalizeTrainCacheKey(item.number));
+        if (inputKeys.length !== storedKeys.length) return null;
+
+        for (let i = 0; i < inputKeys.length; i++) {
+            if (inputKeys[i] !== storedKeys[i]) return null;
+        }
+        return stored.items;
+    }
+
+    function collectBoardDatesForShift(trainPlan, baseDate) {
+        const dates = new Set();
+        if (baseDate) dates.add(baseDate);
+        if (Array.isArray(trainPlan)) {
+            trainPlan.forEach(item => {
+                if (item?.scheduleDate) dates.add(item.scheduleDate);
+                if (item?.morningScheduleDate) dates.add(item.morningScheduleDate);
+            });
+        } else if (isNightMode() && baseDate) {
+            dates.add(addDaysToDateStr(baseDate, 1));
+        }
+        return [...dates];
+    }
+
     async function searchTrainByNumberSmart(trainNumber, options = {}) {
+        const planEntry = Array.isArray(options.trainPlan)
+            ? options.trainPlan.find(item => normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber))
+            : null;
+
+        if (planEntry?.scheduleDate) {
+            if (planEntry.morningScheduleDate && planEntry.segment === 'both') {
+                const eveningTrain = await searchTrainByNumber(trainNumber, planEntry.scheduleDate, options);
+                const morningTrain = await searchTrainByNumber(trainNumber, planEntry.morningScheduleDate, options);
+                if (morningTrain && isMorningNextShiftDeparture(morningTrain.departure)) {
+                    return morningTrain;
+                }
+                if (eveningTrain && !isMorningNextShiftDeparture(eveningTrain.departure)) {
+                    return eveningTrain;
+                }
+                return morningTrain || eveningTrain;
+            }
+            return searchTrainByNumber(trainNumber, planEntry.scheduleDate, options);
+        }
+
         const baseDate = getSelectedDate();
         if (!isNightMode()) {
             return searchTrainByNumber(trainNumber, baseDate, options);
         }
 
-        const nextDate = addDaysToDateStr(baseDate, 1);
-        const nowIso = getScheduleLiveDate() ? formatLiveDateIso(getScheduleLiveDate()) : baseDate;
-
-        if (nowIso === nextDate) {
-            const morningTrain = await searchTrainByNumber(trainNumber, nextDate, options);
-            if (morningTrain) return morningTrain;
+        const trainBase = await searchTrainByNumber(trainNumber, baseDate, options);
+        if (trainBase) {
+            const effectiveDate = resolveEffectiveDate(baseDate, trainBase.departure);
+            if (effectiveDate !== baseDate) {
+                const trainNext = await searchTrainByNumber(trainNumber, effectiveDate, options);
+                if (trainNext) return trainNext;
+            }
+            return trainBase;
         }
 
-        const eveningTrain = await searchTrainByNumber(trainNumber, baseDate, options);
-        if (eveningTrain && !isMorningNextShiftDeparture(eveningTrain.departure)) {
-            return eveningTrain;
-        }
-
-        if (eveningTrain && isMorningNextShiftDeparture(eveningTrain.departure)) {
-            const morningTrain = await searchTrainByNumber(trainNumber, nextDate, options);
-            if (morningTrain) return morningTrain;
-            return eveningTrain;
-        }
-
-        return searchTrainByNumber(trainNumber, nextDate, options);
+        return searchTrainByNumber(trainNumber, addDaysToDateStr(baseDate, 1), options);
     }
 
     const SCREEN_ORDER = { calendar: 0, schedule: 1, profile: 2 };
@@ -3561,7 +3905,11 @@
         const inputs = getTrainNumbersFromDom();
         const forceRefresh = options.forceRefresh === true;
         const fromCacheOnly = options.fromCacheOnly === true;
-        const searchOptions = { forceRefresh, fromCacheOnly };
+        const threadsOnly = options.threadsOnly === true;
+        const forceBoardRefresh = options.forceBoardRefresh === true;
+        const trainPlan = resolveShiftTrainPlanForInputs(inputs);
+        const searchOptions = { forceRefresh, fromCacheOnly, threadsOnly, forceBoardRefresh, trainPlan };
+        const baseDate = getSelectedDate();
 
         if (inputs.length === 0) {
             alert('Введите хотя бы один номер поезда.');
@@ -3599,7 +3947,31 @@
         setRouteSummaryVisible(false);
 
         try {
-            const trainPromises = inputs.map(trainNumber => searchTrainByNumberSmart(trainNumber, searchOptions));
+            let boardWarningHtml = '';
+
+            if (!fromCacheOnly && !threadsOnly) {
+                const boardDates = collectBoardDatesForShift(trainPlan, baseDate);
+                const boardResults = await ensureStationBoardsForDates(boardDates, {
+                    forceRefresh: forceRefresh || forceBoardRefresh
+                });
+                if (requestId !== routeDataRequestId) return;
+
+                const failedBoards = boardResults.filter(item => !item.ok);
+                if (failedBoards.length && failedBoards.length === boardResults.length) {
+                    boardWarningHtml = '<div class="route-api-warning" style="width:100%;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:rgba(255,107,107,0.12);color:#ffb4b4;font-size:13px;">Не удалось загрузить расписание с вокзала. Показаны кэш и локальные данные.</div>';
+                } else if (failedBoards.length) {
+                    boardWarningHtml = '<div class="route-api-warning" style="width:100%;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:rgba(255,193,7,0.12);color:#ffe08a;font-size:13px;">Часть данных с вокзала недоступна. Показаны кэш и локальные данные.</div>';
+                }
+            }
+
+            const trainPromises = inputs.map(async trainNumber => {
+                try {
+                    return await searchTrainByNumberSmart(trainNumber, searchOptions);
+                } catch (err) {
+                    console.error('[getRouteData] train failed:', trainNumber, err);
+                    return null;
+                }
+            });
             const allTrainsData = await Promise.all(trainPromises);
 
             if (requestId !== routeDataRequestId) return;
@@ -3756,7 +4128,7 @@
             routeNotificationTrains = buildRouteNotificationTrains(allTrainsData, getSelectedDate());
             checkSchedulePushNotifications();
 
-            grid.innerHTML = cards.join('');
+            grid.innerHTML = boardWarningHtml + cards.join('');
             grid.style.display = 'flex';
             updateRouteCardsHighlight();
             setRouteToolbarVisible(true);
@@ -4328,18 +4700,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Уведомления в приложении — проба тормозов, минутная готовность, ТО-1',
-            'Подсветка карточек маршрута: зелёная, жёлтая, красная, в пути — голубая',
-            'База часов смен обновлена с нормативом от 17.07.2026',
-            'Подсветка станций в пути: следующая — зелёная, выбор — синий',
-            'Крестик для удаления заметок к станциям и сменам'
+            'Технические доработки обновлений маршрутов и расписаний'
         ],
         highlights: [
-            'Уведомления появляются внутри приложения и подтверждаются кнопкой «Ок»; системные пуши — только когда вкладка свёрнута.',
-            'На вкладке «Маршрут» активная карточка подсвечивается по фазе: за час — зелёная, за 10 мин — жёлтая, за 3 мин — красная, в пути — голубое время.',
-            'Часы смен пересобраны из xlsx с 17.07: два норматива (до 16.07 и с 17.07), экспорт через npm run export:shifts.',
-            'В расписании убрана серая «пройденная» станция; следующая остановка мигает зелёным, ручной выбор — синим.',
-            'Заметки к станциям и сменам можно удалить крестиком без повторного открытия редактора.'
+            'Улучшена экономия запросов к расписанию, ночные смены N+U и секундомер с рабочей датой.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -6585,6 +6949,7 @@
         const dataAttrs = interactive
             ? ` data-trains="${escapeAttr(payload.trainsText || displayTrains)}"
                 data-train-numbers="${escapeAttr(JSON.stringify(numbers))}"
+                data-train-plan="${escapeAttr(JSON.stringify(payload.trainPlan || []))}"
                 data-date-key="${escapeAttr(payload.dateKey || '')}"
                 data-is-night="${payload.isNight ? '1' : '0'}"`
             : '';
@@ -6854,6 +7219,90 @@
         return getShiftTrainsText(template);
     }
 
+    function resolveLinkedNightShift(part) {
+        const linkedNightRoute = part?.linkedFromNightRoute;
+        const linkedNightDateKey = part?.linkedFromNightDateKey;
+        if (!linkedNightRoute || !linkedNightDateKey) return null;
+
+        const nightShifts = getStoredDayShifts(linkedNightDateKey);
+        const stored = nightShifts.find(shift =>
+            normalizeCalendarRouteKey(shift.route) === normalizeCalendarRouteKey(linkedNightRoute)
+        );
+        if (stored) return stored;
+
+        loadGlobalShiftTemplates();
+        const nightTemplate = findShiftTemplate(depotShiftTemplates, linkedNightRoute, linkedNightDateKey);
+        return nightTemplate || null;
+    }
+
+    function resolveNightMorningTrainNumberSets(part, dateKey, context = {}) {
+        if (context.isVirtualMorning && context.prevShift) {
+            return {
+                nightNumbers: extractTrainNumbers(getShiftTrainsText(context.prevShift)),
+                morningNumbers: extractTrainNumbers(getShiftTrainsText(part))
+            };
+        }
+
+        if (isNightShiftRoute(part?.route || part?.name)) {
+            return {
+                nightNumbers: extractTrainNumbers(getShiftTrainsText(part)),
+                morningNumbers: extractTrainNumbers(getMorningTrainsTextForNightShift(part, dateKey))
+            };
+        }
+
+        const linkedNightShift = resolveLinkedNightShift(part);
+        if (linkedNightShift) {
+            const nightDateKey = part.linkedFromNightDateKey;
+            return {
+                nightNumbers: extractTrainNumbers(getShiftTrainsText(linkedNightShift)),
+                morningNumbers: extractTrainNumbers(
+                    getMorningTrainsTextForNightShift(linkedNightShift, nightDateKey)
+                )
+            };
+        }
+
+        const numbers = extractTrainNumbers(getShiftTrainsText(part));
+        return { nightNumbers: numbers, morningNumbers: [] };
+    }
+
+    function buildTrainPlanFromNightMorningSets(nightNumbers, morningNumbers, baseIso, nextIso) {
+        const nightSet = new Set(nightNumbers);
+        const morningSet = new Set(morningNumbers);
+        const ordered = mergeTrainNumbersUnique(
+            nightNumbers.join(' - '),
+            morningNumbers.join(' - ')
+        );
+        const plan = [];
+
+        ordered.forEach(number => {
+            const inNight = nightSet.has(number);
+            const inMorning = morningSet.has(number);
+            if (!baseIso) return;
+
+            if (inNight && inMorning) {
+                plan.push({
+                    number,
+                    scheduleDate: baseIso,
+                    morningScheduleDate: nextIso || null,
+                    segment: 'both'
+                });
+            } else if (inNight) {
+                plan.push({ number, scheduleDate: baseIso, segment: 'night' });
+            } else if (inMorning && nextIso) {
+                plan.push({ number, scheduleDate: nextIso, segment: 'morning' });
+            }
+        });
+
+        return plan;
+    }
+
+    function isNightMorningTrainContext(part, context = {}) {
+        if (context.isVirtualMorning && context.prevShift) return true;
+        if (isNightShiftRoute(part?.route || part?.name)) return true;
+        if (isMorningRoute(part?.route) && part?.linkedFromNightDateKey) return true;
+        return false;
+    }
+
     function shouldEnableNightModeForShift(part, context = {}) {
         if (context.isVirtualMorning) return true;
         if (part?.isVirtualMorning || part?.linkedFromNightDateKey) return true;
@@ -6864,34 +7313,41 @@
         if (context.isVirtualMorning && context.prevDateKey) {
             return context.prevDateKey;
         }
+        if (part?.linkedFromNightDateKey && isMorningRoute(part?.route)) {
+            return part.linkedFromNightDateKey;
+        }
         return dateKey;
     }
 
     function buildTrainsNavigationPayload(part, dateKey, context = {}) {
-        const texts = [];
-        const isNightPart = isNightShiftRoute(part?.route || part?.name);
+        const navDateKey = resolveRouteNavigationDateKey(part, dateKey, context);
+        const baseIso = calendarKeyToIso(navDateKey);
+        const nextIso = baseIso ? addDaysToDateStr(baseIso, 1) : null;
+        const nightMorningContext = isNightMorningTrainContext(part, context);
 
-        if (context.isVirtualMorning && context.prevShift) {
-            const nightText = getShiftTrainsText(context.prevShift);
-            const morningText = getShiftTrainsText(part);
-            if (nightText) texts.push(nightText);
-            if (morningText) texts.push(morningText);
-        } else if (isNightPart) {
-            const nightText = getShiftTrainsText(part);
-            if (nightText) texts.push(nightText);
-            const morningText = getMorningTrainsTextForNightShift(part, dateKey);
-            if (morningText) texts.push(morningText);
+        let trainNumbers;
+        let trainPlan = [];
+
+        if (nightMorningContext) {
+            const { nightNumbers, morningNumbers } = resolveNightMorningTrainNumberSets(part, dateKey, context);
+            trainNumbers = mergeTrainNumbersUnique(
+                nightNumbers.join(' - '),
+                morningNumbers.join(' - ')
+            );
+            trainPlan = buildTrainPlanFromNightMorningSets(nightNumbers, morningNumbers, baseIso, nextIso);
         } else {
-            const mainText = getShiftTrainsText(part);
-            if (mainText) texts.push(mainText);
+            trainNumbers = extractTrainNumbers(getShiftTrainsText(part));
+            trainNumbers.forEach(number => {
+                if (baseIso) trainPlan.push({ number, scheduleDate: baseIso, segment: 'day' });
+            });
         }
 
-        const trainNumbers = mergeTrainNumbersUnique(...texts);
         return {
             trainsText: trainNumbers.join(' - '),
             trainNumbers,
+            trainPlan,
             isNight: shouldEnableNightModeForShift(part, context),
-            dateKey: resolveRouteNavigationDateKey(part, dateKey, context)
+            dateKey: navDateKey
         };
     }
 
@@ -7169,6 +7625,17 @@
         if (!morningRoute) return null;
 
         const localMorningPreset = getLocalRoutePresetByRoute(morningRoute);
+        loadGlobalShiftTemplates();
+        const morningTemplate = findShiftTemplate(depotShiftTemplates, morningRoute, prevDateKey);
+        const nightTemplate = findShiftTemplate(depotShiftTemplates, prevShift.route, prevDateKey);
+        const morningTrainsText = localMorningPreset
+            ? getShiftTrainsText(localMorningPreset)
+            : getShiftTrainsText(morningTemplate);
+        const mergedTrainText = mergeTrainNumbersUnique(
+            getShiftTrainsText(prevShift),
+            morningTrainsText
+        ).join(' - ');
+
         if (localMorningPreset) {
             return {
                 route: morningRoute,
@@ -7176,7 +7643,7 @@
                 startTime: localMorningPreset.startTime || '',
                 endTime: localMorningPreset.endTime || '',
                 lunch: localMorningPreset.lunch || '',
-                trainNum: localMorningPreset.trainNum || '',
+                trainNum: mergedTrainText || getShiftTrainsText(prevShift) || localMorningPreset.trainNum || '',
                 nightHours: '',
                 isVirtualMorning: true,
                 localPresetId: localMorningPreset.id,
@@ -7185,9 +7652,6 @@
             };
         }
 
-        loadGlobalShiftTemplates();
-        const morningTemplate = findShiftTemplate(depotShiftTemplates, morningRoute, prevDateKey);
-        const nightTemplate = findShiftTemplate(depotShiftTemplates, prevShift.route, prevDateKey);
         const source = morningTemplate || nightTemplate || {};
 
         return {
@@ -7196,7 +7660,7 @@
             startTime: source.startTime || '',
             endTime: source.endTime || '',
             lunch: source.lunch || '',
-            trainNum: source.trainNum || source.trains || '',
+            trainNum: mergedTrainText || getShiftTrainsText(prevShift) || getShiftTrainsText(source) || '',
             nightHours: source.nightHours || '',
             isVirtualMorning: true,
             linkedFromNightDateKey: prevDateKey,
@@ -7948,7 +8412,7 @@
         renderShiftConstructor(dateKey, day, month, year);
     }
 
-    function navigateToRouteWithTrains(trainsText, dateKey, isNight = false, presetTrainNumbers = null) {
+    function navigateToRouteWithTrains(trainsText, dateKey, isNight = false, presetTrainNumbers = null, trainPlan = null) {
         let trainNumbers = Array.isArray(presetTrainNumbers) && presetTrainNumbers.length
             ? presetTrainNumbers.slice()
             : extractTrainNumbers(trainsText);
@@ -7978,7 +8442,21 @@
 
         renderTrainInputs(trainNumbers);
         userStorageSet('trainNumbers', trainNumbers);
-        setNightModeEnabled(isNight);
+
+        if (Array.isArray(trainPlan) && trainPlan.length) {
+            userStorageSet('shiftTrainPlan', { items: trainPlan, dateKey });
+        } else if (iso) {
+            const fallbackPlan = isNight
+                ? null
+                : trainNumbers.map(number => ({ number, scheduleDate: iso, segment: 'day' }));
+            if (fallbackPlan) {
+                userStorageSet('shiftTrainPlan', { items: fallbackPlan, dateKey });
+            } else {
+                userStorageRemove('shiftTrainPlan');
+            }
+        }
+
+        setNightModeEnabled(isNight, { silent: true });
 
         void getRouteData();
     }
@@ -7998,17 +8476,25 @@
     function navigateFromTrainsChip(btn) {
         if (!btn) return;
         let presetTrainNumbers = null;
+        let trainPlan = null;
         try {
             const parsed = JSON.parse(btn.getAttribute('data-train-numbers') || 'null');
             if (Array.isArray(parsed) && parsed.length) presetTrainNumbers = parsed;
         } catch (err) {
             presetTrainNumbers = null;
         }
+        try {
+            const parsedPlan = JSON.parse(btn.getAttribute('data-train-plan') || 'null');
+            if (Array.isArray(parsedPlan) && parsedPlan.length) trainPlan = parsedPlan;
+        } catch (err) {
+            trainPlan = null;
+        }
         navigateToRouteWithTrains(
             btn.getAttribute('data-trains') || '',
             btn.getAttribute('data-date-key') || '',
             btn.getAttribute('data-is-night') === '1',
-            presetTrainNumbers
+            presetTrainNumbers,
+            trainPlan
         );
     }
 
