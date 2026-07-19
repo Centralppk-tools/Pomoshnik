@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Цифровой помощник</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="assets/brand-logo.png" type="image/png">
-    <link rel="apple-touch-icon" href="assets/brand-logo.png">
+    <link rel="icon" href="assets/app-icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/app-icon.png">
     <meta name="theme-color" content="#0a1018">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -57,6 +57,19 @@
         <p class="donate-sheet-note">Оплата через CloudTips: СБП или карта. Страница откроется в браузере, приложение останется здесь.</p>
         <p id="donateSheetHint" class="donate-sheet-hint" aria-live="polite"></p>
         <button type="button" id="donateSendBtn" class="donate-send-btn" disabled>Перевести</button>
+    </div>
+</div>
+
+<div id="feedbackSheet" class="donate-sheet-overlay feedback-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="feedbackSheetTitle">
+    <div class="donate-sheet feedback-sheet">
+        <div class="donate-sheet-header">
+            <h2 id="feedbackSheetTitle" class="donate-sheet-title">Сообщить о проблеме</h2>
+            <button type="button" id="feedbackSheetClose" class="donate-sheet-close" aria-label="Закрыть">✕</button>
+        </div>
+        <p class="donate-sheet-intro">Опишите баг или идею доработки. Сообщение уйдёт автору в Telegram через @bag_rep_bot.</p>
+        <textarea id="feedbackMessageInput" class="feedback-message-input" rows="5" maxlength="2000" placeholder="Что случилось или что улучшить?"></textarea>
+        <p id="feedbackSheetHint" class="donate-sheet-hint" aria-live="polite"></p>
+        <button type="button" id="feedbackSendBtn" class="donate-send-btn feedback-send-btn" disabled>Отправить</button>
     </div>
 </div>
 
@@ -344,48 +357,59 @@
                 </div>
             </div>
         </div>
-        <div class="profile-month-selector" id="profileMonthSelector">
-            <button type="button" class="profile-month-nav" id="profileMonthPrev" aria-label="Предыдущий месяц">‹</button>
-            <span class="profile-month-label" id="profileMonthLabel">Июль 2026</span>
-            <button type="button" class="profile-month-nav" id="profileMonthNext" aria-label="Следующий месяц">›</button>
+        <div class="profile-card profile-card--nearest">
+            <div class="profile-mini-block profile-mini-block--nearest" id="nearestShiftBlock">
+                <div class="profile-mini-label">Ближайшая смена</div>
+                <p class="nearest-shift-empty">Нет смен</p>
+            </div>
         </div>
         <div class="profile-card profile-card--split">
-            <div class="profile-mini-block profile-mini-block--stats" id="profileFinanceBlock">
-                <div class="profile-mini-label">Финансы за месяц</div>
-                <div class="profile-stat-hero">
-                    <span id="profileEarnedSalary" class="profile-stat-hero-value">≈ 0 ₽</span>
+            <div class="profile-stats-unified" id="profileStatsBlock">
+                <div class="profile-month-selector profile-month-selector--embedded" id="profileMonthSelector">
+                    <button type="button" class="profile-month-nav" id="profileMonthPrev" aria-label="Предыдущий месяц">‹</button>
+                    <span class="profile-month-label" id="profileMonthLabel">Июль 2026</span>
+                    <button type="button" class="profile-month-nav" id="profileMonthNext" aria-label="Следующий месяц">›</button>
                 </div>
-                <dl class="profile-stat-details">
-                    <div class="profile-stat-row">
-                        <dt>Заработано:</dt>
-                        <dd id="profileEarnedFact">≈ 0 ₽</dd>
+                <div class="profile-subtle-divider" aria-hidden="true"></div>
+                <div class="profile-stats-unified__body">
+                <div class="profile-stats-unified__money">
+                    <div class="profile-stats-fact">
+                        <span class="profile-stats-fact__label">Заработано</span>
+                        <span id="profileEarnedFact" class="profile-stats-fact__value">≈ 0 ₽</span>
                     </div>
-                </dl>
-            </div>
-            <div class="profile-mini-block profile-mini-block--stats" id="profileHoursBlock">
-                <div class="profile-mini-label">Баланс времени</div>
-                <div class="profile-stat-hero">
-                    <div class="profile-hours-ring profile-hours-ring--compact">
-                        <svg viewBox="0 0 120 120" aria-hidden="true">
-                            <defs>
-                                <linearGradient id="profileRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#007a4a"/>
-                                    <stop offset="100%" stop-color="#004a99"/>
-                                </linearGradient>
-                            </defs>
-                            <circle class="ring-bg" cx="60" cy="60" r="50"/>
-                            <circle class="ring-fill" id="profileHoursRing" cx="60" cy="60" r="50"
-                                stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
-                        </svg>
-                        <div class="ring-center">
-                            <span id="profileHoursValue">0</span>
-                            <span id="profileHoursNorm">из 0</span>
+                    <div class="profile-subtle-divider" aria-hidden="true"></div>
+                    <dl class="profile-stats-compare">
+                        <div class="profile-stats-compare__row">
+                            <dt>По графику:</dt>
+                            <dd id="profileSchedulePay">≈ 0 ₽</dd>
+                        </div>
+                    </dl>
+                </div>
+                <div class="profile-stats-unified__hours">
+                    <div class="profile-stats-unified__hours-ring-wrap">
+                        <div class="profile-hours-ring profile-hours-ring--compact profile-hours-ring--stats">
+                            <svg viewBox="0 0 120 120" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="profileRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#007a4a"/>
+                                        <stop offset="100%" stop-color="#004a99"/>
+                                    </linearGradient>
+                                </defs>
+                                <circle class="ring-bg" cx="60" cy="60" r="50"/>
+                                <circle class="ring-fill" id="profileHoursRing" cx="60" cy="60" r="50"
+                                    stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
+                            </svg>
+                            <div class="ring-center">
+                                <span id="profileHoursValue">0</span>
+                                <span id="profileHoursNorm">из 0 ч</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="profile-stats-hours-meta">
+                        <p class="profile-stats-hours-meta__norm" id="profileNormHoursLabel">Норма: 0 ч</p>
+                    </div>
                 </div>
-                <dl class="profile-stat-details">
-                    <p class="profile-scheduled-line" id="profileScheduledHours">заложено 0 часов</p>
-                </dl>
+                </div>
             </div>
             <div class="profile-mini-block profile-mini-block--qr" id="profileAspozhQrBlock">
                 <div class="profile-qr-head">
@@ -418,13 +442,6 @@
                     </div>
                 </div>
                 <input type="file" id="profileAspozhQrInput" class="profile-qr-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" hidden>
-            </div>
-        </div>
-
-        <div class="profile-card profile-card--nearest">
-            <div class="profile-mini-block profile-mini-block--nearest" id="nearestShiftBlock">
-                <div class="profile-mini-label">Ближайшая смена</div>
-                <p class="nearest-shift-empty">Нет смен</p>
             </div>
         </div>
 
@@ -484,7 +501,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.4.3';
+    const APP_RELEASE_VERSION = '2.4.4';
+    const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbypL5B9IEH3t_H9VAKll9_wS2MXvN0Yv_hMoZK_GY9j_QYPCr9gjmvqdUHGkKo0WlBunQ/exec';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
@@ -742,6 +760,7 @@
         initStationNotesUi();
         initShiftNotesUi();
         initDonateUi();
+        initFeedbackUi();
         initRouteRefreshButton();
         void loadCalendarLocalRoutes();
         void loadLocalShiftTemplatesBundle().then(() => {
@@ -759,10 +778,7 @@
             restoreStationBoardsFromCache();
         }
 
-        const localThreadsCache = userStorageGet('trainThreadsCache');
-        if (localThreadsCache) {
-            trainThreadsCache = migrateTrainThreadsCache(parseJSON(localThreadsCache, trainThreadsCache));
-        }
+        loadTrainThreadsCacheFromStorage();
 
         initUserAuth();
         initSwipeNavigation();
@@ -862,15 +878,31 @@
         if (!el) return;
 
         const hasSchedule = header && header.style.display !== 'none' && header.innerHTML.trim();
-        const label = formatShiftDateDisplay(getSelectedDate());
-        if (!label || !hasSchedule) {
+        if (!hasSchedule) {
+            el.textContent = '';
+            el.style.display = 'none';
+            return;
+        }
+
+        const shiftIso = getSelectedDate();
+        const nowDate = getScheduleLiveDate();
+        let displayIso = shiftIso;
+
+        if (nowDate && shiftIso && isScheduleContextActive(nowDate, shiftIso)) {
+            displayIso = getEffectiveShiftLiveDateIso(nowDate);
+        } else if (nowDate) {
+            displayIso = formatLiveDateIso(nowDate);
+        }
+
+        const label = formatShiftDateDisplay(displayIso);
+        if (!label) {
             el.textContent = '';
             el.style.display = 'none';
             return;
         }
 
         el.style.display = '';
-        el.textContent = isNightMode() ? `Дата смены: ${label} · ночная смена` : `Дата смены: ${label}`;
+        el.textContent = label;
     }
 
     let scheduleLiveClockTimer = null;
@@ -1210,16 +1242,15 @@
             clearRouteCardsHighlight();
             return;
         }
-        el.textContent = formatScheduleLiveClockLabel(scheduleLiveClockTime);
-        const shiftDate = getSelectedDate();
-        if (shiftDate && scheduleLiveClockTime && isScheduleContextActive(scheduleLiveClockTime, shiftDate) && isNightMode()) {
-            const effectiveIso = getEffectiveShiftLiveDateIso(scheduleLiveClockTime);
-            el.title = effectiveIso ? `Рабочая дата: ${formatShortDateLabel(effectiveIso)}` : '';
-        } else {
-            el.title = '';
-        }
+        el.textContent = formatLiveClockTime(scheduleLiveClockTime);
+        el.title = '';
+        updateScheduleDateHint();
         updateScheduleActiveStation();
         updateRouteCardsHighlight();
+        const profileEl = document.getElementById('screen-profile');
+        if (profileEl && !profileEl.classList.contains('hidden')) {
+            updateNearestShiftHighlight(scheduleLiveClockTime || new Date());
+        }
     }
 
     function formatShortDateLabel(iso) {
@@ -1231,17 +1262,7 @@
     }
 
     function formatScheduleLiveClockLabel(nowDate) {
-        const time = formatLiveClockTime(nowDate);
-        const shiftDate = getSelectedDate();
-        if (!shiftDate || !nowDate) return time;
-        if (!isScheduleContextActive(nowDate, shiftDate)) return time;
-        if (isNightMode()) {
-            const effectiveIso = getEffectiveShiftLiveDateIso(nowDate);
-            if (effectiveIso) {
-                return `${time} · ${formatShortDateLabel(effectiveIso)}`;
-            }
-        }
-        return time;
+        return formatLiveClockTime(nowDate);
     }
 
     function tickScheduleLiveClock() {
@@ -1347,8 +1368,8 @@
                     body: body || title,
                     tag,
                     renotify: true,
-                    icon: 'assets/brand-logo.png',
-                    badge: 'assets/brand-logo.png',
+                    icon: 'assets/app-icon.png',
+                    badge: 'assets/app-icon.png',
                     vibrate: [140, 70, 140],
                     requireInteraction: true,
                     silent: false,
@@ -1360,7 +1381,7 @@
             new Notification(title, {
                 body: body || title,
                 tag,
-                icon: 'assets/brand-logo.png'
+                icon: 'assets/app-icon.png'
             });
         } catch (err) {
             console.warn('[schedule-push] system notification failed:', err);
@@ -1842,6 +1863,14 @@
         return `заложено ${display} ${word}`;
     }
 
+    function formatProfileScheduledHoursLine(hours) {
+        const value = parseFloat(Number(hours).toFixed(1));
+        const display = Number.isInteger(value)
+            ? String(Math.round(value))
+            : String(value).replace('.', ',');
+        return `заложено ${display} ч`;
+    }
+
     function renderMoneyBlockHtml(amount) {
         return `<div class="money-block money-block--end">
             <span class="money-amount">${escapeHtml(formatApproxMoney(amount))}</span>
@@ -1923,6 +1952,10 @@
     }
 
     function getTrainCacheEntry(trainNumber, scheduleDate) {
+        return findCachedTrainResult(trainNumber, scheduleDate);
+    }
+
+    function findCachedTrainResult(trainNumber, scheduleDate) {
         const numKey = normalizeTrainCacheKey(trainNumber);
         if (!numKey) return null;
 
@@ -1931,9 +1964,26 @@
             return trainThreadsCache[datedKey];
         }
 
+        if (scheduleDate) {
+            const altDates = [
+                addDaysToDateStr(scheduleDate, 1),
+                addDaysToDateStr(scheduleDate, -1)
+            ];
+            for (const altDate of altDates) {
+                const altKey = getTrainCacheKey(trainNumber, altDate);
+                if (altKey && trainThreadsCache[altKey]) {
+                    return trainThreadsCache[altKey];
+                }
+            }
+        }
+
         const legacy = trainThreadsCache[numKey];
-        if (legacy && (!scheduleDate || legacy.scheduleDate === scheduleDate)) {
-            return legacy;
+        if (legacy) return legacy;
+
+        for (const [key, value] of Object.entries(trainThreadsCache)) {
+            if (key.startsWith(`${numKey}@`) && value) {
+                return value;
+            }
         }
 
         return null;
@@ -1942,11 +1992,67 @@
     function migrateTrainThreadsCache(cache) {
         const source = cache && typeof cache === 'object' ? cache : {};
         const migrated = {};
+
         Object.entries(source).forEach(([key, value]) => {
-            const numKey = key.includes('_') ? normalizeTrainCacheKey(key.split('_').pop()) : normalizeTrainCacheKey(key);
-            if (numKey && value) migrated[numKey] = value;
+            if (!value || typeof value !== 'object') return;
+
+            if (key.includes('@')) {
+                const atIdx = key.indexOf('@');
+                const numPart = normalizeTrainCacheKey(key.slice(0, atIdx));
+                const datePart = String(key.slice(atIdx + 1) || '').trim();
+                if (numPart && datePart) {
+                    migrated[`${numPart}@${datePart}`] = {
+                        ...value,
+                        scheduleDate: value.scheduleDate || datePart
+                    };
+                }
+                return;
+            }
+
+            const numKey = normalizeTrainCacheKey(key);
+            if (!numKey) return;
+
+            const date = value.scheduleDate || null;
+            if (date) {
+                migrated[`${numKey}@${date}`] = { ...value, scheduleDate: date };
+            } else {
+                migrated[numKey] = value;
+            }
         });
+
         return migrated;
+    }
+
+    function loadTrainThreadsCacheFromStorage() {
+        const raw = userStorageGet('trainThreadsCache');
+        if (!raw) {
+            trainThreadsCache = {};
+            return;
+        }
+
+        const parsed = typeof raw === 'string' ? parseJSON(raw, {}) : raw;
+        trainThreadsCache = migrateTrainThreadsCache(parsed);
+        userStorageSet('trainThreadsCache', trainThreadsCache);
+    }
+
+    function serializeTrainCacheEntry(result, scheduleDate) {
+        if (!result) return null;
+        const date = scheduleDate || result.scheduleDate || null;
+        return {
+            uid: result.uid || '',
+            number: result.number || '',
+            title: result.title || '',
+            departure: result.departure || '',
+            arrival: result.arrival || '',
+            duration: result.duration ?? null,
+            stops: Array.isArray(result.stops) ? result.stops : [],
+            stops_text: result.stops_text || resolveStopsText('', result.stops),
+            scheduleDate: date,
+            serviceDays: result.serviceDays || null,
+            source: result.source || 'cache',
+            runsOnSelectedDate: result.runsOnSelectedDate,
+            scheduleDayWarning: result.scheduleDayWarning || ''
+        };
     }
 
     async function fetchJsonAsset(paths, storageKey = null) {
@@ -2253,6 +2359,13 @@
             return stationScheduleByKey[cacheKey];
         }
 
+        if (!forceRefresh && stationCode === ANCHOR_STATION && stationScheduleCache.boards?.[date]) {
+            const cachedBoard = stationScheduleCache.boards[date];
+            stationScheduleByKey[cacheKey] = cachedBoard;
+            syncStationUidIndexForBoard(stationCode, date, cachedBoard);
+            return cachedBoard;
+        }
+
         if (!forceRefresh && stationScheduleLoaders[cacheKey]) {
             return stationScheduleLoaders[cacheKey];
         }
@@ -2406,8 +2519,14 @@
         const date = scheduleDate || result?.scheduleDate || null;
         if (!numKey || !result) return;
         const key = getTrainCacheKey(trainNumber, date);
-        trainThreadsCache[key] = { ...result, scheduleDate: date || result.scheduleDate };
-        userStorageSet('trainThreadsCache', trainThreadsCache);
+        if (!key) return;
+
+        trainThreadsCache[key] = serializeTrainCacheEntry(result, date);
+        try {
+            userStorageSet('trainThreadsCache', trainThreadsCache);
+        } catch (err) {
+            console.warn('[trains] cache save failed:', err);
+        }
     }
 
     function invalidateTrainThreadCacheForNumbers(trainNumbers) {
@@ -3551,7 +3670,7 @@
             const date = scheduleDate || getSelectedDate();
 
             if (!forceRefresh) {
-                const cachedEntry = getTrainCacheEntry(trainNumber, date);
+                const cachedEntry = findCachedTrainResult(trainNumber, date);
                 if (cachedEntry) {
                     console.log('[trains] cache hit:', trainNumber, date);
                     const cached = decorateTrainSearchResult(
@@ -3569,6 +3688,14 @@
             }
 
             if (fromCacheOnly) {
+                const localEntry = findLocalTrainEntry(trainNumber, date) || registryEntry;
+                if (localEntry) {
+                    const localResult = buildTrainResultFromLocalEntry(localEntry, date);
+                    const decorated = decorateTrainSearchResult(localResult, trainNumber, date, localEntry);
+                    cacheTrainThread(trainNumber, decorated, date);
+                    console.log('[trains] local cache fill:', trainNumber, date);
+                    return decorated;
+                }
                 return null;
             }
 
@@ -4700,10 +4827,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Технические доработки обновлений маршрутов и расписаний'
+            'Доработка дизайна и карточек личного кабинета',
+            'Экономия запросов к расписанию — кэш и обновление поездов',
+            'Новые иконки и логотип приложения',
+            'Баг-репорт — сообщить об ошибке прямо из приложения'
         ],
         highlights: [
-            'Улучшена экономия запросов к расписанию, ночные смены N+U и секундомер с рабочей датой.'
+            'Личный кабинет: обновлённые карточки, статистика месяца и ближайшая смена.',
+            'Меньше обращений к API расписания — умный кэш и короткое обновление поездов.',
+            'Новая иконка PWA и обновлённый логотип в интерфейсе.',
+            'Кнопка «Сообщить о проблеме» — отзыв уходит в Telegram для доработки.'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -4758,6 +4891,9 @@
 
         return `
             <section class="app-community-block">
+                <div class="app-feedback-wrap">
+                    <button type="button" class="app-donate-trigger app-feedback-trigger" data-feedback-open aria-label="Сообщить о проблеме или доработке">Сообщить о проблеме</button>
+                </div>
                 <ul class="app-release-list" aria-label="Что нового в последней версии">${listHtml}</ul>
                 <p class="app-community-text">
                     ${escapeHtml(tgHint)} —
@@ -4771,6 +4907,7 @@
         document.querySelectorAll('[data-app-footer]').forEach(node => {
             node.innerHTML = renderAppCommunityFooterHtml(notes);
         });
+        bindFeedbackOpenButtons();
     }
 
     function markAppVersionSeen(version = APP_RELEASE_VERSION) {
@@ -5061,6 +5198,139 @@
         document.getElementById('donateSendBtn')?.addEventListener('click', handleDonateSend);
     }
 
+    let feedbackUiBound = false;
+    let feedbackSendInFlight = false;
+    let feedbackSendCooldownUntil = 0;
+
+    function getFeedbackMessageValue() {
+        const input = document.getElementById('feedbackMessageInput');
+        return String(input?.value || '').trim();
+    }
+
+    function updateFeedbackSendButtonState() {
+        const sendBtn = document.getElementById('feedbackSendBtn');
+        if (!sendBtn) return;
+        sendBtn.disabled = getFeedbackMessageValue().length < 3;
+    }
+
+    function setFeedbackHint(text) {
+        const hint = document.getElementById('feedbackSheetHint');
+        if (hint) hint.textContent = text || '';
+    }
+
+    function openFeedbackSheet() {
+        const overlay = document.getElementById('feedbackSheet');
+        const input = document.getElementById('feedbackMessageInput');
+        if (!overlay) return;
+        setFeedbackHint('');
+        if (input) {
+            input.value = '';
+            updateFeedbackSendButtonState();
+        }
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('feedback-sheet-open');
+        requestAnimationFrame(() => input?.focus());
+    }
+
+    function closeFeedbackSheet() {
+        const overlay = document.getElementById('feedbackSheet');
+        if (!overlay) return;
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('feedback-sheet-open');
+    }
+
+    function buildFeedbackPayload(message) {
+        return {
+            action: 'feedback',
+            message,
+            version: APP_RELEASE_VERSION,
+            user: (localStorage.getItem(DEPOT_FIO_KEY) || '').trim(),
+            tab: (localStorage.getItem(DEPOT_TAB_KEY) || getCurrentUserTab() || '').trim(),
+            screen: getActiveMainScreen()
+        };
+    }
+
+    function buildFeedbackApiUrl(payload) {
+        const qs = new URLSearchParams();
+        Object.entries(payload).forEach(([key, value]) => {
+            if (value != null && value !== '') qs.set(key, String(value));
+        });
+        return `${DEPOT_API_URL}?${qs.toString()}`;
+    }
+
+    async function submitFeedbackMessage(message) {
+        const payload = buildFeedbackPayload(message);
+        const res = await fetchWithTimeout(buildFeedbackApiUrl(payload), {}, 25000);
+        const raw = await res.text();
+        try {
+            return JSON.parse(raw);
+        } catch {
+            if (res.ok) return { ok: true };
+            throw new Error(`HTTP ${res.status}`);
+        }
+    }
+
+    async function handleFeedbackSend() {
+        const message = getFeedbackMessageValue();
+        if (message.length < 3) return;
+        if (feedbackSendInFlight) return;
+
+        const now = Date.now();
+        if (now < feedbackSendCooldownUntil) {
+            const sec = Math.ceil((feedbackSendCooldownUntil - now) / 1000);
+            setFeedbackHint(`Сообщение уже отправлено. Повтор через ${sec} сек.`);
+            return;
+        }
+
+        const sendBtn = document.getElementById('feedbackSendBtn');
+        feedbackSendInFlight = true;
+        if (sendBtn) sendBtn.disabled = true;
+        setFeedbackHint('Отправка...');
+
+        try {
+            const result = await submitFeedbackMessage(message);
+            if (!result?.ok) throw new Error(result?.error || 'send_failed');
+            feedbackSendCooldownUntil = Date.now() + 10000;
+            setFeedbackHint('Спасибо, отправлено!');
+            setTimeout(closeFeedbackSheet, 600);
+        } catch (err) {
+            console.warn('[feedback]', err);
+            setFeedbackHint('Не удалось отправить. Попробуйте ещё раз.');
+            updateFeedbackSendButtonState();
+        } finally {
+            feedbackSendInFlight = false;
+        }
+    }
+
+    function bindFeedbackOpenButtons() {
+        document.querySelectorAll('[data-feedback-open]').forEach(btn => {
+            if (btn.dataset.feedbackBound === '1') return;
+            btn.dataset.feedbackBound = '1';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                openFeedbackSheet();
+            });
+        });
+    }
+
+    function initFeedbackUi() {
+        if (feedbackUiBound) return;
+        feedbackUiBound = true;
+
+        bindFeedbackOpenButtons();
+
+        document.getElementById('feedbackSheetClose')?.addEventListener('click', closeFeedbackSheet);
+        document.getElementById('feedbackSheet')?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeFeedbackSheet();
+        });
+        document.getElementById('feedbackMessageInput')?.addEventListener('input', updateFeedbackSendButtonState);
+        document.getElementById('feedbackSendBtn')?.addEventListener('click', () => {
+            void handleFeedbackSend();
+        });
+    }
+
     async function initReleaseNotesUi() {
         bindReleaseNotesUi();
         mountAppCommunityFooters(RELEASE_NOTES_FALLBACK);
@@ -5173,6 +5443,7 @@
         if (document.getElementById('stationNoteSheet')?.classList.contains('is-open')) return true;
         if (document.getElementById('shiftNoteSheet')?.classList.contains('is-open')) return true;
         if (document.getElementById('donateSheet')?.classList.contains('is-open')) return true;
+        if (document.getElementById('feedbackSheet')?.classList.contains('is-open')) return true;
         if (screenTransitionLock) return true;
         return false;
     }
@@ -5188,6 +5459,7 @@
             '#stationNoteSheet, .station-note-sheet, .station-note-input, ' +
             '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, ' +
             '#donateSheet, .donate-sheet, .donate-amount-input, .donate-quick-btn, .donate-send-btn, ' +
+            '#feedbackSheet, .feedback-sheet, .feedback-message-input, .app-feedback-trigger, ' +
             '.app-donate-trigger, ' +
             '.shift-warnings-grid, .shift-warnings-table, .shift-warnings-input, ' +
             '.warn-dir-control, .warn-dir-switch, ' +
@@ -6932,15 +7204,17 @@
         const overflowHtml = overflowCount > 0
             ? `<span class="trains-chip-panel__overflow">+${overflowCount}</span>`
             : '';
+        const hideCta = options.hideCta === true;
         const panelClass = [
             'trains-chip-panel',
             compact ? 'trains-chip-panel--compact' : '',
             capsule ? 'trains-chip-panel--capsule' : '',
+            options.panelVariant ? `trains-chip-panel--${options.panelVariant}` : '',
             interactive && capsule ? 'trains-chip-panel--peek' : '',
             interactive ? '' : 'trains-chip-panel--static'
         ].filter(Boolean).join(' ');
 
-        const ctaHtml = interactive ? `
+        const ctaHtml = interactive && !hideCta ? `
             <span class="trains-chip-panel__cta">
                 <span class="trains-chip-panel__label">Маршрут</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -6957,7 +7231,7 @@
         const tag = interactive ? 'button' : 'div';
         const typeAttr = interactive ? ' type="button"' : '';
         const ariaLabel = interactive && numbers.length
-            ? ` aria-label="Поезда ${numbers.join(', ')}. Удержите для просмотра, нажмите стрелку для маршрута"`
+            ? ` aria-label="${hideCta ? `Поезда ${numbers.join(', ')}. Нажмите для маршрута` : `Поезда ${numbers.join(', ')}. Удержите для просмотра, нажмите стрелку для маршрута`}"`
             : '';
 
         const panelInner = `<${tag}${typeAttr} class="${panelClass}"${dataAttrs}${ariaLabel}>
@@ -7069,6 +7343,87 @@
 
     function getShiftEndMinutes(shift) {
         return parseTimeToMinutes(shift?.endTime || '');
+    }
+
+    const NEAREST_SHIFT_PHASE_CLASSES = [
+        'profile-card--nearest-phase-green',
+        'profile-card--nearest-phase-orange',
+        'profile-card--nearest-phase-red',
+        'profile-card--nearest-phase-active'
+    ];
+
+    function buildShiftReportDateTime(dateKey, shift) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return null;
+
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        const minutes = getShiftReportMinutes(shift);
+        if (minutes === null || [day, month, year].some(n => !Number.isFinite(n))) return null;
+
+        return new Date(year, month, day, Math.floor(minutes / 60), minutes % 60, 0, 0);
+    }
+
+    function buildShiftEndDateTime(dateKey, shift) {
+        const startDt = buildShiftReportDateTime(dateKey, shift);
+        const startMin = getShiftReportMinutes(shift);
+        const endMin = getShiftEndMinutes(shift);
+        if (!startDt || startMin === null || endMin === null) return null;
+
+        const endDt = new Date(startDt);
+        if (endMin <= startMin) {
+            endDt.setDate(endDt.getDate() + 1);
+        }
+        endDt.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+        return endDt;
+    }
+
+    function isNearestShiftInProgress(nowDate, dateKey, shift) {
+        const startDt = buildShiftReportDateTime(dateKey, shift);
+        if (!startDt) return false;
+
+        const nowMs = nowDate.getTime();
+        if (nowMs < startDt.getTime()) return false;
+
+        const endDt = buildShiftEndDateTime(dateKey, shift);
+        if (endDt) return nowMs <= endDt.getTime();
+
+        return (nowMs - startDt.getTime()) <= 12 * 60 * 60 * 1000;
+    }
+
+    function resolveNearestShiftPhase(nowDate, nearest) {
+        if (!nearest?.shift || !nearest?.dateKey) return null;
+
+        const { dateKey, shift } = nearest;
+        if (isNearestShiftInProgress(nowDate, dateKey, shift)) {
+            return 'active';
+        }
+
+        const startDt = buildShiftReportDateTime(dateKey, shift);
+        if (!startDt) return 'green';
+
+        const diffMs = startDt.getTime() - nowDate.getTime();
+        if (diffMs <= 0) return 'active';
+
+        const diffHours = diffMs / 3600000;
+        if (diffHours <= 3) return 'red';
+        if (diffHours < 24) return 'orange';
+        return 'green';
+    }
+
+    function applyNearestShiftPhase(card, nearest, nowDate = new Date()) {
+        if (!card) return;
+        card.classList.remove(...NEAREST_SHIFT_PHASE_CLASSES);
+        const phase = resolveNearestShiftPhase(nowDate, nearest);
+        if (!phase) return;
+        card.classList.add(`profile-card--nearest-phase-${phase}`);
+    }
+
+    function updateNearestShiftHighlight(nowDate = new Date()) {
+        const card = document.querySelector('#screen-profile .profile-card--nearest');
+        if (!card) return;
+        applyNearestShiftPhase(card, findNearestShiftCandidate(), nowDate);
     }
 
     function isShiftStillRelevantToday(shift, nowMinutes) {
@@ -8885,6 +9240,7 @@
         let planPay = 0;
 
         loadGlobalShiftTemplates();
+        loadUserShifts();
         const totalDays = new Date(year, month + 1, 0).getDate();
 
         for (let d = 1; d <= totalDays; d++) {
@@ -8918,12 +9274,30 @@
         const normHours = calendarGetWorkHoursNorm(year, month);
 
         return {
+            isPastMonth,
+            isFutureMonth,
+            isCurrentMonth: !isPastMonth && !isFutureMonth,
             factHours,
+            planHours,
             totalHours: factHours + planHours,
             factPay,
+            planPay,
             totalPay: factPay + planPay,
             normHours
         };
+    }
+
+    function formatProfileHoursAmount(hours) {
+        const value = parseFloat(Number(hours).toFixed(1));
+        return Number.isInteger(value) ? String(Math.round(value)) : String(value).replace('.', ',');
+    }
+
+    function formatProfileRingScheduleLabel(hours) {
+        return `из ${formatProfileHoursAmount(hours)} ч`;
+    }
+
+    function formatProfileNormHoursLabel(hours) {
+        return `Норма: ${formatProfileHoursAmount(hours)} ч`;
     }
 
     function fitTextToSingleLine(el, minPx, maxPx) {
@@ -8939,13 +9313,38 @@
         }
     }
 
+    function syncProfileHoursValueFit(hoursText) {
+        const hoursValue = document.getElementById('profileHoursValue');
+        const hoursNorm = document.getElementById('profileHoursNorm');
+        if (!hoursValue) return;
+
+        const text = String(hoursText ?? hoursValue.textContent ?? '').trim();
+        const isTime = text.includes(':');
+        const isCompact = /^\d{3,}$/.test(text);
+
+        hoursValue.classList.remove('is-compact', 'is-tight');
+        if (isTime) {
+            hoursValue.classList.add('is-tight');
+        } else if (isCompact) {
+            hoursValue.classList.add('is-compact');
+        }
+
+        if (hoursNorm) {
+            hoursNorm.style.fontSize = '';
+            hoursNorm.style.marginTop = '';
+            hoursNorm.classList.remove('is-compact');
+            const normText = String(hoursNorm.textContent ?? '').trim();
+            if (normText.length >= 10) {
+                hoursNorm.classList.add('is-compact');
+            }
+        }
+        hoursValue.style.fontSize = '';
+    }
+
     function applyProfileTextFit() {
         fitTextToSingleLine(document.getElementById('profileUserName'), 11, 17);
         fitTextToSingleLine(document.getElementById('profileUserTab'), 9, 12);
-        fitTextToSingleLine(document.getElementById('profileEarnedSalary'), 10, 16);
-        fitTextToSingleLine(document.getElementById('profileEarnedFact'), 9, 12);
-        const hoursValue = document.getElementById('profileHoursValue');
-        if (hoursValue) fitTextToSingleLine(hoursValue, 9, 14);
+        syncProfileHoursValueFit();
     }
 
     function syncScheduleGlassStack() {
@@ -9411,7 +9810,14 @@
 
         const year = profileSelectedMonth.getFullYear();
         const month = profileSelectedMonth.getMonth();
-        const { factHours, totalHours, factPay, totalPay, normHours } = getProfileMonthBreakdown(year, month);
+        const breakdown = getProfileMonthBreakdown(year, month);
+        const {
+            factHours,
+            totalHours,
+            factPay,
+            totalPay,
+            normHours
+        } = breakdown;
         updateProfileMonthSelectorUi();
 
         const nameEl = document.getElementById('profileUserName');
@@ -9420,25 +9826,28 @@
         syncProfilePositionUi();
         if (tabEl) tabEl.textContent = `Таб. № ${tab}`;
 
-        const salaryEl = document.getElementById('profileEarnedSalary');
         const earnedFactEl = document.getElementById('profileEarnedFact');
-        if (salaryEl) salaryEl.textContent = formatApproxMoney(totalPay);
+        const schedulePayEl = document.getElementById('profileSchedulePay');
         if (earnedFactEl) earnedFactEl.textContent = formatApproxMoney(factPay);
+        if (schedulePayEl) schedulePayEl.textContent = formatApproxMoney(totalPay);
 
         const hoursValue = document.getElementById('profileHoursValue');
         const hoursNorm = document.getElementById('profileHoursNorm');
         const ring = document.getElementById('profileHoursRing');
-        if (hoursValue) hoursValue.textContent = formatShiftHoursCompact(factHours);
-        if (hoursNorm) hoursNorm.textContent = `из ${normHours}`;
+        const hoursLabel = formatShiftHoursCompact(factHours);
+        const scheduleLabel = formatProfileRingScheduleLabel(totalHours);
+        if (hoursValue) hoursValue.textContent = hoursLabel;
+        if (hoursNorm) hoursNorm.textContent = scheduleLabel;
+        syncProfileHoursValueFit(hoursLabel);
         if (ring) {
             const circumference = 2 * Math.PI * 50;
-            const pct = normHours > 0 ? Math.min(factHours / normHours, 1) : 0;
+            const pct = totalHours > 0 ? Math.min(factHours / totalHours, 1) : 0;
             ring.setAttribute('stroke-dasharray', String(circumference));
             ring.setAttribute('stroke-dashoffset', String(circumference * (1 - pct)));
         }
 
-        const scheduledHoursEl = document.getElementById('profileScheduledHours');
-        if (scheduledHoursEl) scheduledHoursEl.textContent = formatScheduledHoursLine(totalHours);
+        const normHoursLabelEl = document.getElementById('profileNormHoursLabel');
+        if (normHoursLabelEl) normHoursLabelEl.textContent = formatProfileNormHoursLabel(normHours);
 
         renderNearestShift();
         initAspozhQrBlock();
@@ -9452,27 +9861,65 @@
         const nearest = findNearestShiftCandidate();
 
         if (!nearest) {
+            applyNearestShiftPhase(block.closest('.profile-card--nearest'), null);
             block.innerHTML = `
-                <div class="profile-mini-label">Ближайшая смена</div>
-                <p class="nearest-shift-empty">Нет смен</p>
+                <div class="nearest-shift-head nearest-shift-head--empty">
+                    <div class="profile-mini-label nearest-shift-section-label">Ближайшая смена</div>
+                </div>
+                <p class="nearest-shift-empty">Нет запланированных смен</p>
             `;
             return;
         }
 
-        const trains = getShiftTrainsText(nearest.shift) || '—';
-        const reportTime = nearest.shift.startTime || nearest.shift.reportTime || '—';
-        const todayPrefix = nearest.isToday ? 'Сегодня · ' : '';
+        const shift = nearest.shift;
+        const route = shift.name || shift.route || '—';
+        const reportTime = shift.startTime || shift.reportTime || '—';
+        const workLine = getShiftWorkTimeLine(shift, nearest.dateKey);
+        const shiftHours = getCalendarShiftHours(shift, nearest.dateKey);
+        const hoursLabel = shiftHours > 0 ? formatShiftHoursDisplay(shiftHours) : '—';
+        const dateLabel = nearest.isToday
+            ? 'Сегодня'
+            : `${nearest.day} ${calendarFormatMonthGenitive(nearest.month)}`;
+        const trains = getShiftTrainsText(shift) || '';
         let trainsHtml = '';
-        if (trains && trains !== '—') {
-            const payload = buildTrainsNavigationPayload(nearest.shift, nearest.dateKey, {});
-            trainsHtml = renderTrainsChipPanel(payload, trains, { compact: true, capsule: true });
+        if (trains) {
+            const payload = buildTrainsNavigationPayload(shift, nearest.dateKey, {});
+            trainsHtml = renderTrainsChipPanel(payload, trains, {
+                compact: false,
+                capsule: false,
+                interactive: true,
+                hideCta: true,
+                panelVariant: 'profile-glass'
+            });
         }
+
         block.innerHTML = `
-            <div class="profile-mini-label">Ближайшая смена</div>
-            <div class="nearest-shift-route">${escapeHtml(nearest.shift.name || nearest.shift.route || '—')}</div>
-            <div class="nearest-shift-date">${todayPrefix}${nearest.day} ${calendarFormatMonthGenitive(nearest.month)} · ${escapeHtml(reportTime)}</div>
-            ${trainsHtml ? `<div class="nearest-shift-trains">${trainsHtml}</div>` : ''}
+            <div class="nearest-shift-head">
+                <div class="nearest-shift-route">${escapeHtml(route)}</div>
+                <span class="nearest-shift-badge${nearest.isToday ? ' nearest-shift-badge--today' : ''}">${escapeHtml(dateLabel)}</span>
+            </div>
+            <div class="profile-subtle-divider" aria-hidden="true"></div>
+            <dl class="nearest-shift-meta">
+                <div class="nearest-shift-meta-row nearest-shift-meta-row--report">
+                    <dt>Явка</dt>
+                    <dd>${escapeHtml(reportTime)}</dd>
+                </div>
+                <div class="nearest-shift-meta-row">
+                    <dt>Работа</dt>
+                    <dd>${escapeHtml(workLine)}</dd>
+                </div>
+                <div class="nearest-shift-meta-row">
+                    <dt>Часы</dt>
+                    <dd>${escapeHtml(hoursLabel)}</dd>
+                </div>
+            </dl>
+            ${trainsHtml ? `<div class="profile-subtle-divider" aria-hidden="true"></div>
+            <div class="nearest-shift-trains-block">
+                <div class="nearest-shift-trains-label">Поезда</div>
+                <div class="nearest-shift-trains">${trainsHtml}</div>
+            </div>` : ''}
         `;
+        applyNearestShiftPhase(block.closest('.profile-card--nearest'), nearest);
         bindTrainsChipLinks(block);
         requestAnimationFrame(applyProfileTextFit);
     }

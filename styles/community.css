@@ -19,12 +19,12 @@
 }
 
 .app-community-block .app-release-list {
-    margin: 0;
+    margin: 0 0 16px;
     padding: 12px 14px 12px 12px;
     list-style: none;
-    border: 1px solid rgba(255, 214, 66, 0.42);
+    border: none;
     border-radius: var(--card-radius);
-    background: rgba(255, 214, 66, 0.14);
+    background: #1c1c1e;
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -36,9 +36,9 @@
     margin: 0;
     padding: 0 0 0 14px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.45;
-    color: #fff0b3;
+    color: rgba(255, 255, 255, 0.88);
     letter-spacing: 0.01em;
 }
 
@@ -47,11 +47,11 @@
     position: absolute;
     left: 0;
     top: 0.58em;
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: #ffd84d;
-    box-shadow: 0 0 0 2px rgba(255, 214, 66, 0.22);
+    box-shadow: none;
 }
 
 .app-community-text {
@@ -185,6 +185,54 @@ body.release-overlay-open {
         font-size: 11px;
         padding-left: 13px;
     }
+}
+
+/* === Баг-репортер === */
+.app-feedback-wrap {
+    width: 100%;
+    margin: 0 0 10px;
+}
+
+.app-feedback-trigger {
+    width: 100%;
+}
+
+body.feedback-sheet-open {
+    overflow: hidden;
+}
+
+.feedback-message-input {
+    width: 100%;
+    min-height: 120px;
+    margin: 0 0 12px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--app-radius);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--app-text);
+    font: inherit;
+    font-size: var(--font-sm);
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.feedback-message-input::placeholder {
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.feedback-message-input:focus {
+    outline: none;
+    border-color: rgba(142, 197, 255, 0.55);
+    box-shadow: 0 0 0 2px rgba(142, 197, 255, 0.12);
+}
+
+.feedback-send-btn {
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+}
+
+.feedback-send-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4f8ff7, #2f6feb);
 }
 
 /* === Поддержать автора === */

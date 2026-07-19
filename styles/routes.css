@@ -640,10 +640,84 @@
 
 #screen-profile .nearest-shift-trains {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 6px;
+    justify-content: stretch;
+    margin-top: 0;
     position: relative;
     z-index: 1;
+    width: 100%;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(142, 197, 255, 0.24);
+    background:
+        linear-gradient(135deg, rgba(120, 188, 255, 0.16) 0%, rgba(70, 130, 210, 0.1) 100%),
+        rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 4px 16px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass:hover {
+    border-color: rgba(160, 210, 255, 0.42);
+    background:
+        linear-gradient(135deg, rgba(140, 200, 255, 0.22) 0%, rgba(90, 150, 230, 0.14) 100%),
+        rgba(255, 255, 255, 0.06);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        0 6px 20px rgba(80, 140, 220, 0.16);
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass:active {
+    transform: scale(0.99);
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass .trains-chip-panel__list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass .train-num-chip {
+    margin: 0;
+    padding: 0;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    color: #e8f4ff;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass .trains-chip-panel__overflow {
+    margin: 0;
+    padding: 2px 8px;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.14);
+    border: none;
+    border-radius: 6px;
+    color: #ffffff;
+}
+
+#screen-profile .nearest-shift-trains .trains-chip-panel__cta {
+    display: none;
 }
 
 #screen-profile .nearest-shift-trains:has(.trains-chip-wrap.is-peek-open) {

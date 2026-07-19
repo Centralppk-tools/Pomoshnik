@@ -434,61 +434,64 @@
         padding: 12px 14px;
     }
 
-    #screen-profile .profile-month-selector {
-        width: calc(100% - 24px);
-        margin: 0 12px;
-        padding: 8px 10px;
+    #screen-profile .profile-month-selector--embedded {
+        width: 100%;
+        margin: 0;
+        padding: 0;
     }
 
     #screen-profile .profile-card--split {
-        gap: 8px;
-        padding: 10px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 0;
     }
 
-    #screen-profile .profile-mini-block--qr {
-        grid-column: 1 / -1;
-        padding: 8px 10px 10px;
+    #screen-profile .profile-stats-unified {
+        padding: 12px 14px;
     }
 
-    #screen-profile .profile-mini-block--stats {
-        min-height: 118px;
-        padding: 8px 6px;
+    #screen-profile .profile-stats-unified__body {
+        gap: 14px;
     }
 
-    #screen-profile .profile-stat-hero {
-        min-height: 56px;
+    #screen-profile .profile-stats-fact__value {
+        font-size: 20px;
     }
 
-    #screen-profile .profile-stat-hero-value,
-    #screen-profile #profileEarnedSalary {
-        font-size: clamp(10px, 3.2vw, 15px);
+    #screen-profile .profile-stats-compare__row dt,
+    #screen-profile .profile-stats-compare__row dd {
+        font-size: 11px;
     }
 
-    #screen-profile .profile-hours-ring--compact {
-        width: 58px;
-        height: 58px;
+    #screen-profile .profile-stats-unified__hours {
+        flex: 0 0 86px;
+        width: 86px;
+        min-width: 86px;
     }
 
-    #screen-profile .profile-hours-ring--compact #profileHoursValue {
-        font-size: clamp(10px, 3vw, 14px);
+    #screen-profile .profile-stats-unified__hours-ring-wrap,
+    #screen-profile .profile-stats-unified__hours-ring-wrap .profile-hours-ring--compact {
+        width: 70px;
+        height: 70px;
     }
 
-    #screen-profile .profile-hours-ring--compact #profileHoursNorm {
-        font-size: 8px;
+    #screen-profile .profile-stats-hours-meta__norm {
+        font-size: 10px;
     }
 
-    #screen-profile .profile-stat-row {
-        font-size: clamp(8px, 2.4vw, 11px);
-        gap: 3px;
+    #screen-profile .profile-stats-hours-meta__status {
+        font-size: 11px;
     }
 
-    #screen-profile .profile-stat-row dd {
-        font-size: inherit;
+    #screen-profile .nearest-shift-route {
+        font-size: 22px;
     }
 
-    #screen-profile .profile-scheduled-line {
-        font-size: clamp(8px, 2.3vw, 11px);
+    #screen-profile .nearest-shift-meta-row dd {
+        font-size: 15px;
+    }
+
+    #screen-profile .nearest-shift-meta-row dt {
+        font-size: 12px;
     }
 
     #screen-profile .profile-qr-upload--empty {
@@ -511,23 +514,9 @@
         font-size: clamp(9px, 2.4vw, 11px);
     }
 
-    #screen-profile .profile-mini-block {
-        padding: 12px 10px;
-        min-height: 0;
-    }
-
-    #screen-profile .nearest-shift-route {
-        font-size: var(--font-sm);
-    }
-
-    #screen-profile .nearest-shift-date {
-        font-size: 10px;
-        font-weight: 400;
-    }
-
-    #screen-profile .trains-chip-panel--capsule .train-num-chip {
-        padding: 3px 6px;
-        font-size: 9px;
+    #screen-profile .profile-mini-block--qr {
+        grid-column: 1 / -1;
+        padding: 8px 10px 10px;
     }
 
     /* Расписание */
