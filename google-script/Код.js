@@ -9,6 +9,11 @@ const SHEET_GRAPH = 'График работы_Прил';
 const SHEET_SHIFTS = 'Часы_смен_прил';
 const SHEET_IMPORT = 'Импорт';
 const SHEET_BASE = 'Часы_смен_База';
+const SHEET_SETTINGS = 'Настройки';
+const SHEET_FEEDBACK = 'Обратная_связь';
+
+/** Токен @bag_rep_bot — дублируется на листе «Настройки» для правки без redeploy кода */
+const FEEDBACK_TELEGRAM_BOT_TOKEN_DEFAULT = '8849278670:AAFsjKwoDYqgQFs_TfYzXxnnsCEsSJWvICc';
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
@@ -16,12 +21,24 @@ function onOpen() {
     .addItem('Принять в работу', 'acceptImportToBase')
     .addItem('Проверить сборку графиков', 'checkJsonOutput')
     .addItem('Проверить сборку часов смен', 'checkShiftsOutput')
+    .addSeparator()
+    .addItem('Настроить баг-репортер', 'setupFeedbackReporter')
     .addToUi();
 }
 
 function doGet(e) {
   try {
     const params = (e && e.parameter) ? e.parameter : {};
+
+    if (params.action === 'feedback') {
+      const result = handleFeedbackPayload(params);
+      const callback = String(params.callback || '').trim();
+      if (callback && /^[a-zA-Z_$][\w$]*$/.test(callback)) {
+        return ContentService.createTextOutput(`${callback}(${JSON.stringify(result)})`)
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return jsonResponse(result);
+    }
 
     if (params.check === 'version') {
       return jsonResponse(getVersionPayload());
@@ -43,6 +60,44 @@ function doGet(e) {
       status: 'error',
       message: error.toString(),
       stack: error.stack
+    });
+  }
+}
+
+function doPost(e) {
+  try {
+    let payload = {};
+    if (e && e.parameter) {
+      payload = Object.assign({}, e.parameter);
+    }
+    if (e && e.postData && e.postData.contents) {
+      const type = String(e.postData.type || '').toLowerCase();
+      if (type.indexOf('application/json') !== -1) {
+        try {
+          payload = Object.assign(payload, JSON.parse(e.postData.contents));
+        } catch (parseErr) {
+          // keep form payload
+        }
+      } else if (type.indexOf('application/x-www-form-urlencoded') !== -1) {
+        String(e.postData.contents).split('&').forEach(pair => {
+          const idx = pair.indexOf('=');
+          if (idx === -1) return;
+          const key = decodeURIComponent(pair.slice(0, idx).replace(/\+/g, ' '));
+          const value = decodeURIComponent(pair.slice(idx + 1).replace(/\+/g, ' '));
+          payload[key] = value;
+        });
+      }
+    }
+
+    if (String(payload.action || '').trim() === 'feedback') {
+      return jsonResponse(handleFeedbackPayload(payload));
+    }
+
+    return jsonResponse({ ok: false, error: 'unknown_action' });
+  } catch (error) {
+    return jsonResponse({
+      ok: false,
+      error: error.toString()
     });
   }
 }
@@ -282,4 +337,193 @@ function getShiftDetailsData() {
   }
 
   return result;
+}
+
+function setupFeedbackReporter() {
+  ensureFeedbackSheets();
+  const settings = getFeedbackSettings();
+  const ui = SpreadsheetApp.getUi();
+  let msg = 'Листы «Настройки» и «Обратная_связь» готовы.\n\n';
+  msg += `Токен бота: ${settings.token ? 'задан' : 'не задан'}\n`;
+  msg += `Chat ID: ${settings.chatId || 'не задан — напишите /start боту @bag_rep_bot'}\n\n`;
+  msg += 'Chat ID подставится автоматически после первого сообщения боту.';
+  ui.alert('Баг-репортер', msg, ui.ButtonSet.OK);
+}
+
+function ensureFeedbackSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let settingsSheet = ss.getSheetByName(SHEET_SETTINGS);
+  if (!settingsSheet) {
+    settingsSheet = ss.insertSheet(SHEET_SETTINGS);
+    settingsSheet.getRange(1, 1, 1, 2).setValues([['Ключ', 'Значение']]);
+    settingsSheet.getRange(2, 1, 3, 2).setValues([
+      ['TELEGRAM_BOT_TOKEN', FEEDBACK_TELEGRAM_BOT_TOKEN_DEFAULT],
+      ['TELEGRAM_CHAT_ID', '']
+    ]);
+    settingsSheet.setFrozenRows(1);
+  }
+
+  let feedbackSheet = ss.getSheetByName(SHEET_FEEDBACK);
+  if (!feedbackSheet) {
+    feedbackSheet = ss.insertSheet(SHEET_FEEDBACK);
+    feedbackSheet.getRange(1, 1, 1, 7).setValues([[
+      'Дата', 'Версия', 'Таб №', 'ФИО', 'Экран', 'Сообщение', 'Telegram'
+    ]]);
+    feedbackSheet.setFrozenRows(1);
+  }
+}
+
+function getFeedbackSettings() {
+  ensureFeedbackSheets();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETTINGS);
+  const lastRow = Math.max(sheet.getLastRow(), 2);
+  const rows = sheet.getRange(2, 1, lastRow, 2).getValues();
+  const map = {};
+  rows.forEach(row => {
+    const key = String(row[0] || '').trim();
+    if (key) map[key] = String(row[1] || '').trim();
+  });
+
+  return {
+    token: map.TELEGRAM_BOT_TOKEN || FEEDBACK_TELEGRAM_BOT_TOKEN_DEFAULT,
+    chatId: map.TELEGRAM_CHAT_ID || ''
+  };
+}
+
+function setFeedbackSetting(key, value) {
+  ensureFeedbackSheets();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETTINGS);
+  const lastRow = Math.max(sheet.getLastRow(), 2);
+  const rows = sheet.getRange(2, 1, lastRow, 2).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim() === key) {
+      sheet.getRange(i + 2, 2).setValue(value);
+      return;
+    }
+  }
+  sheet.appendRow([key, value]);
+}
+
+function resolveTelegramChatId(token, currentChatId) {
+  if (currentChatId) return currentChatId;
+
+  try {
+    const resp = UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=20`, {
+      muteHttpExceptions: true
+    });
+    const data = JSON.parse(resp.getContentText() || '{}');
+    const updates = Array.isArray(data.result) ? data.result : [];
+
+    for (let i = updates.length - 1; i >= 0; i--) {
+      const update = updates[i];
+      const chat = (update.message && update.message.chat)
+        || (update.callback_query && update.callback_query.message && update.callback_query.message.chat);
+      if (chat && chat.id) {
+        const chatId = String(chat.id);
+        setFeedbackSetting('TELEGRAM_CHAT_ID', chatId);
+        return chatId;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return '';
+}
+
+function appendFeedbackLogRow(entry, telegramStatus) {
+  ensureFeedbackSheets();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_FEEDBACK);
+  const tz = Session.getScriptTimeZone();
+  const now = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+  sheet.appendRow([
+    now,
+    entry.version || '',
+    entry.tab || '',
+    entry.user || '',
+    entry.screen || '',
+    entry.message || '',
+    telegramStatus || ''
+  ]);
+}
+
+function sendFeedbackTelegram(token, chatId, text) {
+  const resp = UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      disable_web_page_preview: true
+    }),
+    muteHttpExceptions: true
+  });
+
+  const data = JSON.parse(resp.getContentText() || '{}');
+  if (!data.ok) {
+    throw new Error(data.description || `Telegram HTTP ${resp.getResponseCode()}`);
+  }
+  return data;
+}
+
+function handleFeedbackPayload(payload) {
+  const message = String(payload.message || '').trim().slice(0, 2000);
+  if (!message) {
+    return { ok: false, error: 'empty_message' };
+  }
+
+  const entry = {
+    version: String(payload.version || '').trim().slice(0, 32),
+    tab: String(payload.tab || '').trim().slice(0, 32),
+    user: String(payload.user || '').trim().slice(0, 120),
+    screen: String(payload.screen || '').trim().slice(0, 32),
+    message: message
+  };
+
+  const settings = getFeedbackSettings();
+  const chatId = resolveTelegramChatId(settings.token, settings.chatId);
+  let telegramStatus = 'skipped';
+
+  const lines = [
+    '📝 Обратная связь · Цифровой помощник',
+    '',
+    entry.message,
+    '',
+    '---',
+    `Версия: ${entry.version || '—'}`,
+    `ФИО: ${entry.user || '—'}`,
+    `Таб. №: ${entry.tab || '—'}`,
+    `Экран: ${entry.screen || '—'}`
+  ];
+
+  if (chatId) {
+    try {
+      sendFeedbackTelegram(settings.token, chatId, lines.join('\n'));
+      telegramStatus = 'sent';
+    } catch (err) {
+      telegramStatus = `error: ${err}`;
+    }
+  } else {
+    telegramStatus = 'no_chat_id';
+  }
+
+  appendFeedbackLogRow(entry, telegramStatus);
+
+  if (telegramStatus === 'sent') {
+    return { ok: true };
+  }
+
+  if (telegramStatus === 'no_chat_id') {
+    return {
+      ok: true,
+      warning: 'saved_to_sheet',
+      message: 'Сохранено в таблицу. Напишите /start боту @bag_rep_bot — следующие сообщения уйдут в Telegram.'
+    };
+  }
+
+  return {
+    ok: true,
+    warning: 'telegram_failed',
+    message: 'Сохранено в таблицу, но Telegram временно недоступен.'
+  };
 }

@@ -1,27 +1,29 @@
-2.4.3 ?
+2.4.4 STABLE ★
 
 
 
-Дата: 2026-07-15
+Дата: 2026-07-20
 
-Статус: под вопросом — не помечать STABLE до проверки на хостинге.
+Статус: стабильная версия, рекомендуется к выкладке на хостинг и в PWA.
 
 
 
-Service Worker: da_v2_4_3_r1
+Service Worker: da_v2_4_4
 
-Снимок HTML: Version/snapshots/index 2.4.3.html
+Сборка: Release/2.4.4/
 
-Снимок стилей: Version/snapshots/styles 2.4.3/
+Снимок HTML: Version/snapshots/index 2.4.4.html
+
+Снимок стилей: Version/snapshots/styles 2.4.4/
 
 
 
 Ключевые изменения:
 
-- tech: Технические доработки обновлений маршрутов и расписаний
+- ui: доработка дизайна и карточек личного кабинета
 
-- feat: cache-first API поездов, trainPlan N+U, секундомер с рабочей датой
+- tech: кэш и обновление поездов — экономия лимитов API
 
-- fix: общий список поездов ночь+утро без дублей в UI
+- brand: новые иконки и логотип (app-icon.png, brand-logo.png)
 
-- chore: новый API-ключ Яндекс.Расписаний
+- feat: баг-репорт — «Сообщить о проблеме» → Telegram + Google Sheet

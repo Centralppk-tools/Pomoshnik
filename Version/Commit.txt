@@ -600,3 +600,29 @@ tech: Технические доработки обновлений маршр�
 - Service Worker: da_v2_4_3_r1.
 - Снимок HTML: Version/snapshots/index 2.4.3.html.
 - Снимок стилей: Version/snapshots/styles 2.4.3/.
+
+2.4.4 STABLE ★
+Коммиты: (локальная выкладка)
+
+Основное:
+ui: доработка дизайна и карточек личного кабинета — статистика месяца, ближайшая смена, порядок блоков
+tech: кэш и обновление поездов — cache-first, threadsOnly, dedupe табло, экономия лимитов API
+brand: новые иконки и логотип — app-icon.png (PWA/favicon), brand-logo.png (интерфейс)
+feat: баг-репорт — «Сообщить о проблеме» в футере, Telegram @bag_rep_bot + лист «Обратная_связь»
+
+Приятные доработки (Плюшки):
+4. ui: подсветка ближайшей смены по фазам (зелёный / оранжевый / красный / голубой)
+5. fix: баг-репорт — одна отправка без дублей в Telegram, cooldown 10 с
+6. chore: npm run build → Release/X.Y.Z/, npm run release → build + snapshot
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- profile.css / responsive.css: merged month+stats, nearest shift card, subtle dividers.
+- index.html: resolveNearestShiftPhase, feedbackSheet, findStationBrakes fallback.
+- sw.js: da_v2_4_4, precache app-icon.png + brand-logo.png.
+- google-script/Код.js: doPost/doGet feedback, sendFeedbackTelegram, лист Обратная_связь.
+- Release/2.4.4/ — готовая папка для залива на хостинг.
+- Service Worker: da_v2_4_4.
+- Снимок HTML: Version/snapshots/index 2.4.4.html.
+- Снимок стилей: Version/snapshots/styles 2.4.4/.
