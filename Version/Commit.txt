@@ -651,7 +651,7 @@ ui: единые серые подложки на всех экранах
 - Снимок стилей: Version/snapshots/styles 2.4.5/.
 
 2.4.6 STABLE ★
-Коммиты: (release v2.4.6)
+Коммиты: 83b9a82 (release v2.4.6)
 
 Основное:
 feat: экспорт смен месяца в .ics — без Google OAuth
