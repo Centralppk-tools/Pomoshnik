@@ -626,3 +626,26 @@ feat: баг-репорт — «Сообщить о проблеме» в фут
 - Service Worker: da_v2_4_4.
 - Снимок HTML: Version/snapshots/index 2.4.4.html.
 - Снимок стилей: Version/snapshots/styles 2.4.4/.
+
+2.4.5 STABLE ★
+Коммиты: 9e8da2b (release v2.4.5)
+
+Основное:
+feat: синхронизация смен с Google Calendar
+feat: до 10 поездов в маршруте вместо 6
+fix: различные баги со временем и уведомлениями
+fix: «Сообщить о проблеме» — восстановлена отправка через GAS
+ui: единые серые подложки на всех экранах
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- Google Calendar: OAuth popup (GSI), экспорт месяца, colorId по типу смены, delete+recreate.
+- app/data/google-calendar-config.json, google-oauth-callback.html.
+- MAX_TRAIN_SLOTS = 10, подсветка фаз маршрута (ночные смены через полночь).
+- feedback: новый deployment ID GAS, устойчивость API.
+- ui: --surface-card сплошной серый, calendar-top-block, app-feedback-wrap как route-toolbar.
+- Service Worker: da_v2_4_5, precache google-calendar-config.json.
+- Release/2.4.5/ — готовая папка для залива на хостинг.
+- Снимок HTML: Version/snapshots/index 2.4.5.html.
+- Снимок стилей: Version/snapshots/styles 2.4.5/.

@@ -7,8 +7,9 @@
     "snapshot": "node tools/snapshot.mjs",
     "release": "node tools/build.mjs && node tools/snapshot.mjs",
     "clasp:push": "clasp push --force",
-    "clasp:deploy": "clasp create-deployment --deploymentId AKfycbypL5B9IEH3t_H9VAKll9_wS2MXvN0Yv_hMoZK_GY9j_QYPCr9gjmvqdUHGkKo0WlBunQ --description \"Depot API\"",
-    "clasp:release": "npm run clasp:push && npm run clasp:deploy"
+    "clasp:deploy": "node -e \"console.error('Use manual Web App deploy in script.google.com — clasp deploy breaks /exec. See google-script/README-DEPLOY.txt'); process.exit(1)\"",
+    "clasp:cleanup-deployments": "node tools/clasp-cleanup-deployments.mjs",
+    "clasp:release": "npm run clasp:push"
   },
   "devDependencies": {
     "@google/clasp": "^3.3.0"
