@@ -1006,12 +1006,12 @@ body.app-offline::after {
 }
 
 .schedule-push--brake {
-    border-color: rgba(255, 214, 66, 0.34);
-    background: linear-gradient(135deg, rgba(48, 41, 22, 0.97), rgba(24, 28, 36, 0.97));
+    border-color: rgba(160, 168, 180, 0.28);
+    background: linear-gradient(135deg, rgba(36, 38, 42, 0.97), rgba(24, 28, 36, 0.97));
 }
 
 .schedule-push--brake .schedule-push-kicker {
-    color: #ffd84d;
+    color: rgba(180, 188, 200, 0.92);
 }
 
 .schedule-push--ready {

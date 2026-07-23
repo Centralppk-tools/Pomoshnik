@@ -1,6 +1,6 @@
 /* === Profile screen === */
 #screen-profile {
-    --profile-surface: #1c1c1e;
+    --profile-surface: var(--surface-card-inner);
     --profile-surface-border: rgba(255, 255, 255, 0.05);
 }
 

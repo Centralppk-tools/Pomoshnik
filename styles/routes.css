@@ -86,11 +86,24 @@
     text-shadow: 0 0 10px rgba(59, 130, 246, 0.28);
 }
 
-.route-card.route-card--phase-green.clickable:hover,
-.route-card.route-card--phase-yellow.clickable:hover,
-.route-card.route-card--phase-red.clickable:hover,
+.route-card.route-card--phase-green.clickable:hover {
+    background: #141b27;
+    border-color: rgba(34, 197, 94, 0.78);
+}
+
+.route-card.route-card--phase-yellow.clickable:hover {
+    background: #141b27;
+    border-color: rgba(234, 179, 8, 0.86);
+}
+
+.route-card.route-card--phase-red.clickable:hover {
+    background: #141b27;
+    border-color: rgba(248, 113, 113, 0.88);
+}
+
 .route-card.route-card--phase-transit.clickable:hover {
     background: #141b27;
+    border-color: rgba(96, 165, 250, 0.88);
 }
 
 /* Синий вертикальный полоска слева — визуальный маркер маршрута */

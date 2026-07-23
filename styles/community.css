@@ -22,9 +22,9 @@
     margin: 0 0 16px;
     padding: 12px 14px 12px 12px;
     list-style: none;
-    border: none;
+    border: var(--card-border);
     border-radius: var(--card-radius);
-    background: #1c1c1e;
+    background: var(--surface-card-inner);
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -50,7 +50,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #ffd84d;
+    background: rgba(140, 148, 160, 0.88);
     box-shadow: none;
 }
 
@@ -141,7 +141,7 @@ body.release-overlay-open {
 }
 
 .app-release-box .app-release-list li::marker {
-    color: rgba(255, 214, 66, 0.85);
+    color: rgba(160, 168, 180, 0.85);
 }
 
 .app-release-telegram {
@@ -169,10 +169,20 @@ body.release-overlay-open {
 }
 
 @media (max-width: 480px) {
-    .app-community-footer {
+    #screen-calendar .app-community-footer,
+    #screen-profile .app-community-footer {
         width: calc(100% - (var(--mobile-edge) * 2));
         margin-left: var(--mobile-edge);
         margin-right: var(--mobile-edge);
+        margin-top: 12px;
+        padding: 0 12px;
+        box-sizing: border-box;
+    }
+
+    #screen-schedule .screen-card--schedule .app-community-footer {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
         margin-top: 12px;
     }
 
@@ -191,10 +201,30 @@ body.release-overlay-open {
 .app-feedback-wrap {
     width: 100%;
     margin: 0 0 10px;
+    padding: 12px 14px;
+    border: var(--card-border);
+    border-radius: var(--card-radius);
+    background: var(--surface-card-inner);
+    box-sizing: border-box;
 }
 
-.app-feedback-trigger {
+.app-feedback-wrap .app-feedback-trigger {
     width: 100%;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 18px;
+    font-size: var(--font-sm);
+}
+
+.app-feedback-trigger[data-api-down="1"] {
+    opacity: 0.72;
+    border-color: rgba(248, 113, 113, 0.45);
+}
+
+.app-feedback-trigger[data-api-down="1"]::after {
+    content: ' · сервис недоступен';
+    font-size: 11px;
+    color: rgba(248, 113, 113, 0.85);
 }
 
 body.feedback-sheet-open {

@@ -68,10 +68,8 @@
         top: calc(6px + env(safe-area-inset-top, 0px));
         z-index: 120;
         padding: 0;
-        background: rgba(28, 39, 42, 0.94);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: var(--surface-card);
+        border: var(--card-border);
         border-radius: var(--card-radius);
         overflow: hidden;
     }
@@ -83,10 +81,19 @@
         gap: 8px;
     }
 
-    .app-community-footer {
+    #screen-calendar .app-community-footer,
+    #screen-profile .app-community-footer {
         width: calc(100% - (var(--mobile-edge) * 2));
         margin-left: var(--mobile-edge);
         margin-right: var(--mobile-edge);
+        padding: 0 12px;
+        box-sizing: border-box;
+    }
+
+    #screen-schedule .screen-card--schedule .app-community-footer {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
     }
 
     .screen-card,
@@ -229,10 +236,27 @@
         padding: 0;
     }
 
+    #screen-calendar .calendar-top-block {
+        margin-bottom: 6px;
+    }
+
     #screen-calendar .calendar-header {
-        margin-top: 4px;
-        margin-bottom: 4px;
-        padding-top: 2px;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding: 8px 8px 6px;
+    }
+
+    #screen-calendar .calendar-sync-panel {
+        padding: 7px 10px 9px;
+    }
+
+    #screen-calendar .calendar-sync-btn {
+        min-height: 34px;
+        font-size: 11px;
+    }
+
+    #screen-calendar .calendar-sync-hint {
+        font-size: 9px;
     }
 
     #screen-calendar .calendar-nav-btn {

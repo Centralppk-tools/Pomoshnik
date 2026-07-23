@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.4 STABLE)
-const CACHE_VERSION = 'da_v2_4_4';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.5 STABLE)
+const CACHE_VERSION = 'da_v2_4_5';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -22,9 +22,15 @@ const PRECACHE_ASSETS = [
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
     './data/release-notes.json',
+    './data/google-calendar-config.json',
+    './google-oauth-callback.html',
     './assets/brand-logo.png',
     './assets/app-icon.png'
 ];
+
+function isOAuthCallbackPath(pathname) {
+    return pathname.endsWith('/google-oauth-callback.html') || pathname.endsWith('google-oauth-callback.html');
+}
 
 function isPrecachePath(pathname) {
     return PRECACHE_ASSETS.some((asset) => {
@@ -64,6 +70,9 @@ async function matchCachedRequest(cache, request) {
     }
 
     if (request.mode === 'navigate' || path.endsWith('/')) {
+        if (isOAuthCallbackPath(path)) {
+            return null;
+        }
         return matchNavigationFallback(cache);
     }
 
@@ -208,6 +217,11 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
+
+    if (isOAuthCallbackPath(url.pathname)) {
+        event.respondWith(fetch(request));
+        return;
+    }
 
     if (isReleaseNotesRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
