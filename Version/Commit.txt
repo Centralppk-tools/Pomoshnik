@@ -688,7 +688,7 @@ workflow: деплой только из app/, без Release/
 - Снимок стилей: Version/snapshots/styles 2.4.6.1/
 
 2.4.6.2 STABLE ★
-Коммиты: (release v2.4.6.2)
+Коммиты: 1216024 (release v2.4.6.2)
 
 Основное:
 deploy-ready: app/ как единственный источник для GitHub
