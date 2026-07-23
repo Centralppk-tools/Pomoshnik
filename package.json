@@ -1,11 +1,10 @@
 {
   "scripts": {
     "serve": "python -m http.server 8765 --directory app",
-    "build": "node tools/build.mjs",
     "export:shifts": "python tools/export-shifts.py",
     "enrich:train-uids": "python tools/enrich-train-uids.py",
     "snapshot": "node tools/snapshot.mjs",
-    "release": "node tools/build.mjs && node tools/snapshot.mjs",
+    "prepare-deploy": "node tools/snapshot.mjs",
     "clasp:push": "clasp push --force",
     "clasp:deploy": "node -e \"console.error('Use manual Web App deploy in script.google.com — clasp deploy breaks /exec. See google-script/README-DEPLOY.txt'); process.exit(1)\"",
     "clasp:cleanup-deployments": "node tools/clasp-cleanup-deployments.mjs",

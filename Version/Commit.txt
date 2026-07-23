@@ -670,3 +670,19 @@ ui: кнопка «Добавить в календарь» в шапке кал
 - Release/2.4.6/ — готовая папка для залива на хостинг.
 - Снимок HTML: Version/snapshots/index 2.4.6.html.
 - Снимок стилей: Version/snapshots/styles 2.4.6/.
+
+2.4.6.1 STABLE ★
+Коммиты: 5e42319 (fix app-config)
+
+Основное:
+fix: убран da-secrets — plain app-config.js
+workflow: деплой только из app/, без Release/
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app/js/app-config.js вместо da-secrets.js
+- Service Worker: da_v2_4_6_1
+- Деплой: залить app/ на GitHub
+- Снимок HTML: Version/snapshots/index 2.4.6.1.html
+- Снимок стилей: Version/snapshots/styles 2.4.6.1/

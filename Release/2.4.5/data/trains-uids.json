@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "sourceDate": null,
-  "station": "s2000002",
-  "description": "Индекс номер→threadUid. Заполнить: npm run enrich:train-uids (1–3 запроса schedule, не thread).",
-  "uids": {}
-}

@@ -1,4 +1,4 @@
-2.4.6 STABLE ★
+2.4.6.1 STABLE ★
 
 
 
@@ -8,26 +8,24 @@
 
 
 
-Service Worker: da_v2_4_6
+Service Worker: da_v2_4_6_1
 
-Сборка: Release/2.4.6/
+Деплой: содержимое папки app/ (залить на GitHub как корень сайта)
 
-Снимок HTML: Version/snapshots/index 2.4.6.html
+Снимок HTML: Version/snapshots/index 2.4.6.1.html
 
-Снимок стилей: Version/snapshots/styles 2.4.6/
+Снимок стилей: Version/snapshots/styles 2.4.6.1/
 
 
 
 Ключевые изменения:
 
-- feat: экспорт смен месяца в .ics (Google, Apple, Яндекс) — без OAuth
+- fix: убран da-secrets — ключи в app/js/app-config.js, деплой без сборки
+
+- feat: экспорт смен месяца в .ics (Google, Apple, Яндекс)
 
 - feat: до 10 поездов в маршруте, поезда в описании .ics
 
 - fix: экспорт на iPhone (Share API + fallback)
 
-- fix: баг-репорт «Сообщить о проблеме» — рабочий GAS deployment
-
 - ui: кнопка «Добавить в календарь» в шапке календаря
-
-- remove: Google Calendar OAuth/API (заменён автономным .ics)

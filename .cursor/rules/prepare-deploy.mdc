@@ -1,0 +1,31 @@
+---
+description: Подготовка к деплою — «подготовь к деплою», prepare deploy
+alwaysApply: false
+---
+
+# Подготовка к деплою
+
+**См. обязательное правило:** `.cursor/rules/workflow-app-only.mdc` — **без `Release/`**.
+
+При запросах **«подготовь к деплою»**, **«prepare deploy»**, **«выложи версию»**:
+
+1. **Прочитай полностью:** `Version/PREPARE-DEPLOY.md` — выполни чеклист без пропусков.
+2. **Не спрашивай** «делать ли коммит» — при деплое коммит **включён**, если пользователь не написал «без коммита».
+3. **Версия:** patch +1 от `Version/STABLE.txt` / `app/sw.js`, если пользователь не указал номер.
+
+## Обязательные шаги (кратко)
+
+- Проверить `app/` (файлы, SW precache, убрать debug).
+- Bump `app/sw.js` → `da_vX_Y_Z`, обновить `app/data/release-notes.json`.
+- `npm run snapshot` — снимок в `Version/snapshots/`.
+- Обновить `Version/STABLE.txt` и `Version/Commit.txt`.
+- Git: stage `app/`, `Version/`, при необходимости `google-script/`; commit.
+- Отчёт: версия, SW, путь снимка, hash коммита. Деплой = залить **`app/`** на GitHub.
+
+## Не делать
+
+- `Release/`, `npm run build`, `tools/build.mjs`, obfuscate-release.
+
+## Push
+
+Только по явной просьбе пользователя.
