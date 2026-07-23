@@ -1,0 +1,47 @@
+:root {
+    --app-bg: #0a1018;
+    --app-surface: rgba(255, 255, 255, 0.055);
+    --app-border: rgba(255, 255, 255, 0.1);
+    --brand-green: #1a6f52;
+    --brand-teal: #4a95a4;
+    --cppk-green: var(--brand-green);
+    --cppk-blue: #004a99;
+    --app-green: #178038;
+    --app-green-glow: rgba(26, 111, 82, 0.38);
+    --app-blue: #2f80ed;
+    --app-text: #f8faff;
+    --app-text-bright: #ffffff;
+    --app-muted: #8b97ab;
+    --app-muted-soft: rgba(139, 151, 171, 0.45);
+    --app-caption: rgba(139, 151, 171, 0.52);
+    --app-radius: 10px;
+    --card-radius: 16px;
+    --tabbar-radius: 24px;
+    --tabbar-active-radius: 12px;
+    --card-border: 1px solid rgba(255, 255, 255, 0.05);
+    --card-padding: 24px;
+    --surface-card: #1c1c1e;
+    --surface-card-inner: #252528;
+    --app-gap: 12px;
+    --app-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-xs: 12px;
+    --font-sm: 13px;
+    --font-base: 15px;
+    --font-md: 16px;
+    --font-lg: 17px;
+    --font-xl: 19px;
+    --font-2xl: 22px;
+
+    /* Панели — сплошная серая подложка */
+    --glass-bg: #232326;
+    --glass-bg-strong: #2a2a2e;
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-soft: rgba(255, 255, 255, 0.05);
+    --glass-blur: none;
+    --glass-shadow: none;
+    --glass-radius: 16px;
+    --glass-tabbar-width: min(52vw, 420px);
+    --glass-tabbar-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    --schedule-glass-width: min(590px, calc(100% - 24px));
+}
