@@ -479,19 +479,14 @@
 
 </div>
 
-<script src="js/da-secrets.js"></script>
+<script src="js/app-config.js"></script>
 <script>
-    if (!window.__DA) {
-        console.error('[app] Не загружен js/da-secrets.js — выполните: npm run secrets:encode');
-    }
-    function daSecret(name) {
-        return (window.__DA && typeof window.__DA.g === 'function') ? (window.__DA.g(name) || '') : '';
-    }
+    const APP_CFG = window.APP_CONFIG || {};
 
     const DASH_CHAR = String.fromCharCode(45);
-    const API_KEY = daSecret('yandexApiKey');
+    const API_KEY = APP_CFG.yandexApiKey || '';
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
-    const MY_CLOUDFLARE_PROXY = daSecret('yandexProxy');
+    const MY_CLOUDFLARE_PROXY = APP_CFG.yandexProxy || '';
     const ANCHOR_STATION = 's2000002';
     const EXTRA_SCHEDULE_STATIONS = ['s9600701'];
     // Логика запросов поездов: app/data/trains-api/README.md (лимит ~500/сутки)
@@ -522,16 +517,17 @@
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '2.4.6';
-    const DEPOT_API_URL = daSecret('depotApiUrl');
+    const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     let calendarIcsExportInProgress = false;
 
     function getDonateConfig() {
-        if (window.__DA && typeof window.__DA.donate === 'function') {
-            return window.__DA.donate();
-        }
-        return { layoutId: '', paymentPageUrl: '', feeApiUrl: 'https://api.cloudtips.ru/api/payment/fee' };
+        return {
+            layoutId: APP_CFG.cloudtipsLayoutId || '',
+            paymentPageUrl: APP_CFG.cloudtipsPaymentUrl || '',
+            feeApiUrl: APP_CFG.cloudtipsFeeApiUrl || 'https://api.cloudtips.ru/api/payment/fee'
+        };
     }
 
     const ROUTE_FETCH_TIMEOUT_MS = 22000;

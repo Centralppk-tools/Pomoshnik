@@ -1,7 +1,6 @@
 {
   "scripts": {
-    "serve": "node tools/encode-secrets.mjs && python -m http.server 8765 --directory app",
-    "secrets:encode": "node tools/encode-secrets.mjs",
+    "serve": "python -m http.server 8765 --directory app",
     "build": "node tools/build.mjs",
     "export:shifts": "python tools/export-shifts.py",
     "enrich:train-uids": "python tools/enrich-train-uids.py",

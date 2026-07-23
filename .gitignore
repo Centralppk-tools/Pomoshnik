@@ -3,9 +3,7 @@ node_modules/
 Thumbs.db
 *.log
 
-# Секреты и сгенерированный модуль (npm run secrets:encode)
 secrets.local.json
-app/js/da-secrets.js
 
 # Временные дампы парсера xlsx (исходники .xlsx хранятся локально)
 Часы смен/_*.json
