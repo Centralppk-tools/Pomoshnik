@@ -24,10 +24,6 @@
         error_description: hash.get('error_description') || query.get('error_description') || ''
     };
 
-    // #region agent log
-    fetch('http://127.0.0.1:7810/ingest/0e50a777-b2a2-4270-9384-866f0a46e1cb', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e505a5' }, body: JSON.stringify({ sessionId: 'e505a5', location: 'google-oauth-callback.html:boot', message: 'callback page executed', data: { pathname: window.location.pathname, hasAccessToken: Boolean(payload.access_token), hasError: Boolean(payload.error), errorCode: payload.error || '' }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(function () {});
-    // #endregion
-
     try {
         sessionStorage.setItem(PENDING_KEY, JSON.stringify(payload));
     } catch (err) {

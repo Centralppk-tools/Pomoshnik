@@ -37,15 +37,6 @@
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             } catch (_err) {}
         }
-        try {
-            var _dbgKey = 'daOAuthDebugLog';
-            var _dbgArr = JSON.parse(sessionStorage.getItem(_dbgKey) || '[]');
-            _dbgArr.push({ sessionId: 'e505a5', location: 'index.html:boot', message: 'index boot hash probe', data: { pathname: window.location.pathname, hasAccessToken: _hasToken, hasError: _hasError, errorCode: _hash.get('error') || '', capturedFromHash: _hasToken || _hasError }, timestamp: Date.now(), hypothesisId: 'H1-H3' });
-            sessionStorage.setItem(_dbgKey, JSON.stringify(_dbgArr));
-        } catch (_logErr) {}
-        // #region agent log
-        fetch('http://127.0.0.1:7810/ingest/0e50a777-b2a2-4270-9384-866f0a46e1cb', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e505a5' }, body: JSON.stringify({ sessionId: 'e505a5', location: 'index.html:boot', message: 'index boot hash probe', data: { pathname: window.location.pathname, hasAccessToken: _hasToken, hasError: _hasError, errorCode: _hash.get('error') || '', capturedFromHash: _hasToken || _hasError }, timestamp: Date.now(), hypothesisId: 'H1-H3' }) }).catch(function () {});
-        // #endregion
     })();
     </script>
 </head>
@@ -506,11 +497,15 @@
 
 </div>
 
+<script src="js/da-secrets.js"></script>
 <script>
-    const DASH_CHAR = String.fromCharCode(45);
-    const API_KEY = '64eba113' + DASH_CHAR + 'a83b' + DASH_CHAR + '421c' + DASH_CHAR + 'baa8' + DASH_CHAR + 'd51f432cb3f3';
+    function daSecret(name) {
+        return (window.__DA && typeof window.__DA.g === 'function') ? (window.__DA.g(name) || '') : '';
+    }
+
+    const API_KEY = daSecret('yandexApiKey');
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
-    const MY_CLOUDFLARE_PROXY = 'https://late-shape-356d.maksbarybin9458.workers.dev/';
+    const MY_CLOUDFLARE_PROXY = daSecret('yandexProxy');
     const ANCHOR_STATION = 's2000002';
     const EXTRA_SCHEDULE_STATIONS = ['s9600701'];
     // Логика запросов поездов: app/data/trains-api/README.md (лимит ~500/сутки)
@@ -540,12 +535,10 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '2.4.4';
-    const DEPOT_API_DEPLOYMENT_ID = 'AKfycbyXZtOedTna78AwC4bvdGnMqXxqZ1cflSwODYXYIjm7zWA2BfYqpBJlhDZ0JzqozW4RkA';
-    const DEPOT_API_URL = 'https://script.google.com/macros/s/AKfycbyXZtOedTna78AwC4bvdGnMqXxqZ1cflSwODYXYIjm7zWA2BfYqpBJlhDZ0JzqozW4RkA/exec';
+    const APP_RELEASE_VERSION = '2.4.5';
+    const DEPOT_API_URL = daSecret('depotApiUrl');
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
-    const GOOGLE_CALENDAR_CONFIG_URL = './data/google-calendar-config.json';
     const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
     const GOOGLE_CALENDAR_EVENT_MAP_KEY = 'googleCalendarEventMap';
     const GOOGLE_CALENDAR_APP_SOURCE = 'digital-assistant';
@@ -558,27 +551,11 @@
     let googleCalendarTokenExpiresAt = 0;
     let googleCalendarSyncInProgress = false;
 
-    function daOAuthDebugLog(location, message, data, hypothesisId) {
-        const entry = { sessionId: 'e505a5', location, message, data: data || {}, timestamp: Date.now(), hypothesisId: hypothesisId || '' };
-        try {
-            const key = 'daOAuthDebugLog';
-            const arr = JSON.parse(sessionStorage.getItem(key) || '[]');
-            arr.push(entry);
-            if (arr.length > 40) arr.splice(0, arr.length - 40);
-            sessionStorage.setItem(key, JSON.stringify(arr));
-        } catch (_) {}
-        // #region agent log
-        fetch('http://127.0.0.1:7810/ingest/0e50a777-b2a2-4270-9384-866f0a46e1cb', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e505a5' }, body: JSON.stringify(entry) }).catch(function () {});
-        // #endregion
-    }
-
-    function flushDaOAuthDebugLog() {
-        try {
-            const arr = JSON.parse(sessionStorage.getItem('daOAuthDebugLog') || '[]');
-            arr.forEach(function (entry) {
-                fetch('http://127.0.0.1:7810/ingest/0e50a777-b2a2-4270-9384-866f0a46e1cb', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e505a5' }, body: JSON.stringify(entry) }).catch(function () {});
-            });
-        } catch (_) {}
+    function getDonateConfig() {
+        if (window.__DA && typeof window.__DA.donate === 'function') {
+            return window.__DA.donate();
+        }
+        return { layoutId: '', paymentPageUrl: '', feeApiUrl: 'https://api.cloudtips.ru/api/payment/fee' };
     }
 
     async function ensureServiceWorkerFreshForOAuth() {
@@ -590,7 +567,7 @@
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
         } catch (err) {
-            daOAuthDebugLog('index.html:ensureServiceWorkerFreshForOAuth', 'sw update failed', { error: String(err?.message || err) }, 'H1');
+            console.warn('[sw] oauth refresh failed', err);
         }
     }
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
@@ -849,7 +826,6 @@
         initStationNotesUi();
         initShiftNotesUi();
         initGoogleCalendarSyncUi();
-        flushDaOAuthDebugLog();
         initDonateUi();
         initFeedbackUi();
         initRouteRefreshButton();
@@ -5078,11 +5054,7 @@
         });
     }
 
-    const DONATE_CONFIG = {
-        layoutId: '0c990fdb',
-        paymentPageUrl: 'https://pay.cloudtips.ru/p/0c990fdb',
-        feeApiUrl: 'https://api.cloudtips.ru/api/payment/fee'
-    };
+    const DONATE_CONFIG = getDonateConfig();
 
     let donateUiBound = false;
     let donateFeeRequestId = 0;
@@ -8615,18 +8587,8 @@
 
     async function loadGoogleCalendarConfig(force = false) {
         if (googleCalendarConfigLoaded && !force) return googleCalendarConfig;
-        try {
-            const resp = await fetch(GOOGLE_CALENDAR_CONFIG_URL, { cache: 'no-store' });
-            if (resp.ok) {
-                const data = await resp.json();
-                googleCalendarConfig = {
-                    apiKey: String(data?.apiKey || '').trim(),
-                    clientId: String(data?.clientId || '').trim(),
-                    redirectUri: String(data?.redirectUri || '').trim()
-                };
-            }
-        } catch (err) {
-            console.warn('[google-calendar] config load failed', err);
+        if (window.__DA && typeof window.__DA.gcal === 'function') {
+            googleCalendarConfig = window.__DA.gcal();
         }
         googleCalendarConfigLoaded = true;
         return googleCalendarConfig;
@@ -8822,7 +8784,7 @@
     async function requestGoogleCalendarAccessToken(promptMode = '') {
         const config = await loadGoogleCalendarConfig();
         if (!config.clientId) {
-            throw new Error('Укажите OAuth Client ID в data/google-calendar-config.json');
+            throw new Error('Укажите OAuth Client ID в secrets.local.json');
         }
 
         const oauth2 = await waitForGoogleIdentityServices();
@@ -8889,9 +8851,6 @@
             sessionStorage.removeItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY);
             const parsed = JSON.parse(raw);
             if (!parsed || typeof parsed !== 'object') return null;
-            // #region agent log
-            daOAuthDebugLog('index.html:consumeGoogleCalendarOAuthPending', 'pending oauth consumed', { hasAccessToken: Boolean(parsed.access_token), hasError: Boolean(parsed.error), errorCode: parsed.error || '' }, 'H3-H4');
-            // #endregion
             return parsed;
         } catch (_) {
             sessionStorage.removeItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY);
@@ -8918,19 +8877,13 @@
     function beginGoogleCalendarOAuthRedirect(promptMode = 'consent') {
         sessionStorage.setItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY, '1');
         const redirectUri = getGoogleCalendarRedirectUri();
-        // #region agent log
-        daOAuthDebugLog('index.html:beginGoogleCalendarOAuthRedirect', 'oauth redirect start', { redirectUri: redirectUri, promptMode: promptMode, pageOrigin: window.location.origin, flow: 'direct' }, 'H2-H5');
-        // #endregion
         void ensureServiceWorkerFreshForOAuth()
             .finally(() => loadGoogleCalendarConfig()
                 .then((config) => {
                     if (!config.clientId) {
-                        throw new Error('Укажите OAuth Client ID в data/google-calendar-config.json');
+                        throw new Error('Укажите OAuth Client ID в secrets.local.json');
                     }
                     const authorizeUrl = buildGoogleCalendarAuthorizeUrl(config.clientId, promptMode);
-                    // #region agent log
-                    daOAuthDebugLog('index.html:beginGoogleCalendarOAuthRedirect', 'navigating to google oauth', { redirectUri: redirectUri, hasClientId: Boolean(config.clientId) }, 'H5');
-                    // #endregion
                     window.location.assign(authorizeUrl);
                 })
                 .catch((err) => {
@@ -8943,9 +8896,6 @@
 
     function resumeGoogleCalendarSyncIfNeeded() {
         const shouldResume = sessionStorage.getItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY) === '1';
-        // #region agent log
-        daOAuthDebugLog('index.html:resumeGoogleCalendarSyncIfNeeded', 'resume check', { shouldResume: shouldResume, pendingRawExists: Boolean(sessionStorage.getItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY)) }, 'H4');
-        // #endregion
         if (!shouldResume) return;
         sessionStorage.removeItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY);
         void syncVisibleMonthToGoogleCalendar({ resume: true });
@@ -9056,10 +9006,10 @@
         try {
             await loadGoogleCalendarConfig();
             if (!googleCalendarConfig.clientId) {
-                throw new Error('Добавьте OAuth Client ID в data/google-calendar-config.json (Google Cloud Console → Credentials → OAuth client, тип Web).');
+                throw new Error('Добавьте OAuth Client ID в secrets.local.json и выполните npm run secrets:encode.');
             }
             if (!googleCalendarConfig.apiKey) {
-                throw new Error('Добавьте API key в data/google-calendar-config.json.');
+                throw new Error('Добавьте Google API key в secrets.local.json.');
             }
 
             loadGlobalShiftTemplates();
@@ -9093,7 +9043,7 @@
                 try {
                     response = await requestGoogleCalendarAccessToken('');
                 } catch (silentErr) {
-                    daOAuthDebugLog('index.html:syncVisibleMonthToGoogleCalendar', 'popup oauth silent failed', { message: String(silentErr?.message || silentErr) }, 'H5');
+                    console.warn('[google-calendar] silent oauth failed', silentErr);
                 }
                 if (!response?.access_token) {
                     response = await requestGoogleCalendarAccessToken('consent');
@@ -9104,7 +9054,6 @@
                 googleCalendarAccessToken = response.access_token;
                 googleCalendarTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
                 accessToken = googleCalendarAccessToken;
-                daOAuthDebugLog('index.html:syncVisibleMonthToGoogleCalendar', 'popup oauth token acquired', { hasToken: true }, 'H5');
             }
 
             const eventMap = loadGoogleCalendarEventMap();
@@ -9133,15 +9082,9 @@
 
             const skippedPart = skipped ? `, пропущено ${skipped}` : '';
             setGoogleCalendarSyncHint(`Готово: ${synced} смен за ${monthLabel} в Google Calendar${skippedPart}.`, 'success');
-            // #region agent log
-            daOAuthDebugLog('index.html:syncVisibleMonthToGoogleCalendar', 'sync complete', { synced: synced, skipped: skipped, monthLabel: monthLabel }, 'H4');
-            // #endregion
         } catch (err) {
             console.warn('[google-calendar] sync failed', err);
             const message = formatGoogleCalendarOAuthError(err);
-            // #region agent log
-            daOAuthDebugLog('index.html:syncVisibleMonthToGoogleCalendar', 'sync failed', { message: message, status: err?.status || 0 }, 'H2-H4');
-            // #endregion
             setGoogleCalendarSyncHint(message, 'error');
         } finally {
             googleCalendarSyncInProgress = false;
@@ -9165,7 +9108,7 @@
 
         void loadGoogleCalendarConfig().then((config) => {
             if (!config.clientId) {
-                setGoogleCalendarSyncHint('Для синхронизации укажите OAuth Client ID в data/google-calendar-config.json.', 'muted');
+                setGoogleCalendarSyncHint('Для синхронизации заполните secrets.local.json и выполните npm run secrets:encode.', 'muted');
             }
         });
     }

@@ -22,7 +22,7 @@ const PRECACHE_ASSETS = [
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
     './data/release-notes.json',
-    './data/google-calendar-config.json',
+    './js/da-secrets.js',
     './google-oauth-callback.html',
     './assets/brand-logo.png',
     './assets/app-icon.png'
