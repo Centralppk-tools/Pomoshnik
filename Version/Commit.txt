@@ -628,7 +628,7 @@ feat: баг-репорт — «Сообщить о проблеме» в фут
 - Снимок стилей: Version/snapshots/styles 2.4.4/.
 
 2.4.5 STABLE ★
-Коммиты: 9e8da2b (release v2.4.5)
+Коммиты: 47c465e (release v2.4.5)
 
 Основное:
 feat: синхронизация смен с Google Calendar
