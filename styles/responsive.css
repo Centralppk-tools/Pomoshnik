@@ -241,27 +241,22 @@
     }
 
     #screen-calendar .calendar-header {
-        margin-top: 0;
-        margin-bottom: 0;
-        padding: 8px 8px 6px;
+        padding: 10px 8px 8px;
     }
 
-    #screen-calendar .calendar-sync-panel {
-        padding: 7px 10px 9px;
+    #screen-calendar .calendar-export-row {
+        padding: 0 8px 8px;
     }
 
-    #screen-calendar .calendar-sync-btn {
-        min-height: 34px;
+    #screen-calendar .calendar-export-btn {
+        min-height: 36px;
         font-size: 11px;
-    }
-
-    #screen-calendar .calendar-sync-hint {
-        font-size: 9px;
+        gap: 6px;
     }
 
     #screen-calendar .calendar-nav-btn {
-        width: 32px;
-        height: 32px;
+        width: 34px;
+        height: 34px;
         margin-top: 1px;
         border-radius: var(--app-radius);
     }

@@ -19,26 +19,6 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="styles/auth.css">
     <link rel="stylesheet" href="styles/community.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script>
-    (function () {
-        var _hash = new URLSearchParams(String(window.location.hash || '').replace(/^#/, ''));
-        var _hasToken = Boolean(_hash.get('access_token'));
-        var _hasError = Boolean(_hash.get('error'));
-        if (_hasToken || _hasError) {
-            try {
-                sessionStorage.setItem('daGoogleCalendarOAuthPending', JSON.stringify({
-                    access_token: _hash.get('access_token') || '',
-                    expires_in: _hash.get('expires_in') || '',
-                    error: _hash.get('error') || '',
-                    error_description: _hash.get('error_description') || ''
-                }));
-                sessionStorage.setItem('daGoogleCalendarSyncResume', '1');
-                history.replaceState(null, '', window.location.pathname + window.location.search);
-            } catch (_err) {}
-        }
-    })();
-    </script>
 </head>
 <body class="auth-locked">
 
@@ -305,12 +285,14 @@
                 <p id="monthTitle" class="calendar-month-title">Май 2026</p>
                 <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(1)" aria-label="Следующий месяц">▶</button>
             </div>
-            <div class="calendar-top-divider" aria-hidden="true"></div>
-            <div class="calendar-sync-panel">
-                <button type="button" id="googleCalendarSyncBtn" class="calendar-sync-btn" aria-describedby="googleCalendarSyncHint">
-                    <span class="calendar-sync-btn-label">Синхронизировать с Google</span>
+            <div class="calendar-export-row">
+                <button type="button" id="calendarIcsExportBtn" class="calendar-export-btn">
+                    <svg class="calendar-export-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
+                        <path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                    </svg>
+                    <span class="calendar-sync-btn-label">Добавить в календарь</span>
                 </button>
-                <p id="googleCalendarSyncHint" class="calendar-sync-hint" aria-live="polite"></p>
             </div>
         </div>
         <div class="calendar-legend" aria-hidden="true">
@@ -499,10 +481,14 @@
 
 <script src="js/da-secrets.js"></script>
 <script>
+    if (!window.__DA) {
+        console.error('[app] Не загружен js/da-secrets.js — выполните: npm run secrets:encode');
+    }
     function daSecret(name) {
         return (window.__DA && typeof window.__DA.g === 'function') ? (window.__DA.g(name) || '') : '';
     }
 
+    const DASH_CHAR = String.fromCharCode(45);
     const API_KEY = daSecret('yandexApiKey');
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
     const MY_CLOUDFLARE_PROXY = daSecret('yandexProxy');
@@ -539,17 +525,7 @@
     const DEPOT_API_URL = daSecret('depotApiUrl');
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
-    const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
-    const GOOGLE_CALENDAR_EVENT_MAP_KEY = 'googleCalendarEventMap';
-    const GOOGLE_CALENDAR_APP_SOURCE = 'digital-assistant';
-    const GOOGLE_CALENDAR_OAUTH_PENDING_KEY = 'daGoogleCalendarOAuthPending';
-    const GOOGLE_CALENDAR_SYNC_RESUME_KEY = 'daGoogleCalendarSyncResume';
-    const GOOGLE_CALENDAR_OAUTH_CALLBACK_PATH = './google-oauth-callback.html';
-    let googleCalendarConfig = { apiKey: '', clientId: '', redirectUri: '' };
-    let googleCalendarConfigLoaded = false;
-    let googleCalendarAccessToken = null;
-    let googleCalendarTokenExpiresAt = 0;
-    let googleCalendarSyncInProgress = false;
+    let calendarIcsExportInProgress = false;
 
     function getDonateConfig() {
         if (window.__DA && typeof window.__DA.donate === 'function') {
@@ -558,18 +534,6 @@
         return { layoutId: '', paymentPageUrl: '', feeApiUrl: 'https://api.cloudtips.ru/api/payment/fee' };
     }
 
-    async function ensureServiceWorkerFreshForOAuth() {
-        if (!('serviceWorker' in navigator)) return;
-        try {
-            const registration = await navigator.serviceWorker.register('./sw.js');
-            await registration.update();
-            if (registration.waiting) {
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-        } catch (err) {
-            console.warn('[sw] oauth refresh failed', err);
-        }
-    }
     const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
 
@@ -825,7 +789,7 @@
         initAspozhQrBlock();
         initStationNotesUi();
         initShiftNotesUi();
-        initGoogleCalendarSyncUi();
+        initCalendarIcsExportUi();
         initDonateUi();
         initFeedbackUi();
         initRouteRefreshButton();
@@ -8585,148 +8549,6 @@
         });
     }
 
-    async function loadGoogleCalendarConfig(force = false) {
-        if (googleCalendarConfigLoaded && !force) return googleCalendarConfig;
-        if (window.__DA && typeof window.__DA.gcal === 'function') {
-            googleCalendarConfig = window.__DA.gcal();
-        }
-        googleCalendarConfigLoaded = true;
-        return googleCalendarConfig;
-    }
-
-    function googleCalendarEventMapStorageKey(tabNumber) {
-        return `u_${normalizeTabNumber(tabNumber)}_${GOOGLE_CALENDAR_EVENT_MAP_KEY}`;
-    }
-
-    function loadGoogleCalendarEventMap() {
-        const tab = getAuthSessionTab();
-        if (!tab) return {};
-        const raw = localStorage.getItem(googleCalendarEventMapStorageKey(tab));
-        const parsed = parseJSON(raw, {}) || {};
-        return typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    }
-
-    function saveGoogleCalendarEventMap(map) {
-        const tab = getAuthSessionTab();
-        if (!tab) return;
-        localStorage.setItem(googleCalendarEventMapStorageKey(tab), JSON.stringify(map));
-    }
-
-    function buildGoogleCalendarSyncKey(dateKey, shiftIndex, shift) {
-        const route = String(shift?.route || shift?.name || '').trim();
-        const virtualTag = shift?.isVirtualMorning ? 'vm' : 'st';
-        return `${dateKey}|${shiftIndex}|${virtualTag}|${route}`;
-    }
-
-    function buildGoogleCalendarEventSummary(shift, dateKey) {
-        const label = formatCalendarShiftLabel(shift?.route || shift?.name || '');
-        if (!label) return 'Смена';
-
-        const hoursDisplay = getShiftWorkTimeDisplay(shift, dateKey);
-        const workLine = getShiftWorkTimeLine(shift, dateKey);
-        if (hoursDisplay && hoursDisplay !== '—' && hoursDisplay !== workLine) {
-            return `${label} · ${hoursDisplay}`;
-        }
-        return label;
-    }
-
-    function buildPlainTextShiftSummary(shift, dateKey, context = {}) {
-        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
-        const lines = [
-            'Сводка по смене',
-            '',
-            `Маршрут: ${String(enriched.route || enriched.name || '—').trim()}`,
-            `Время работы: ${getShiftWorkTimeLine(enriched, dateKey)}`,
-            `Обеденное время: ${formatShiftLunchTimeDisplay(enriched, dateKey)}`
-        ];
-
-        const payload = buildTrainsNavigationPayload(enriched, dateKey, context);
-        const trainsDisplay = payload.trainsText || getShiftTrainsText(enriched);
-        lines.push(`Поезда: ${trainsDisplay || '—'}`);
-
-        const totalHours = getCalendarShiftHours(enriched, dateKey);
-        lines.push(`Часов в смене: ${formatShiftHoursDisplay(totalHours)}`);
-
-        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
-        if (shiftPayment > 0) {
-            lines.push(`Оплата за смену: ${formatApproxMoney(shiftPayment)}`);
-            lines.push('Ориентировочный расчёт');
-        } else {
-            lines.push('Оплата за смену: —');
-        }
-
-        const note = getShiftNoteText(shift);
-        if (note) {
-            lines.push('');
-            lines.push(`Заметка: ${note}`);
-        }
-
-        lines.push('');
-        lines.push('Цифровой помощник');
-        return lines.join('\n');
-    }
-
-    function resolveGoogleCalendarColorId(shift) {
-        const route = String(shift?.route || shift?.name || '').trim();
-        const routeLower = route.toLowerCase();
-
-        if (routeLower === 'отпуск' || routeLower === 'о') return '5';
-        if (routeLower === 'и' || routeLower.includes('то')) return '3';
-
-        if (isRoute99Variant(route)) {
-            const kind = getRoute99Kind(route);
-            if (kind === 'night') return '9';
-            if (kind === 'morning') return '7';
-            return '2';
-        }
-
-        if (isNightRoute(route) || isNightShiftRoute(route)) return '9';
-        if (isMorningRoute(route)) return '7';
-        if (/^[дd]/i.test(route) || (routeLower.includes('д') && !routeLower.includes('отпуск'))) return '10';
-
-        const colorClass = getShiftColorClass(shift);
-        if (colorClass.includes('night')) return '9';
-        if (colorClass.includes('tech')) return '3';
-        if (colorClass.includes('study') || colorClass.includes('morning')) return '7';
-        if (colorClass.includes('vacation')) return '5';
-        return '10';
-    }
-
-    function buildGoogleCalendarWritableEventBody(eventBody) {
-        return {
-            summary: eventBody.summary,
-            description: eventBody.description,
-            start: eventBody.start,
-            end: eventBody.end,
-            colorId: String(eventBody.colorId || '10'),
-            extendedProperties: eventBody.extendedProperties
-        };
-    }
-
-    function buildGoogleCalendarEventPayload(shift, dateKey, context, syncKey) {
-        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
-        const startDt = buildShiftReportDateTime(dateKey, enriched);
-        const endDt = buildShiftEndDateTime(dateKey, enriched);
-        if (!startDt || !endDt) return null;
-
-        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow';
-        const colorId = resolveGoogleCalendarColorId(enriched);
-        return buildGoogleCalendarWritableEventBody({
-            summary: buildGoogleCalendarEventSummary(enriched, dateKey),
-            description: buildPlainTextShiftSummary(enriched, dateKey, context),
-            colorId,
-            start: { dateTime: startDt.toISOString(), timeZone },
-            end: { dateTime: endDt.toISOString(), timeZone },
-            extendedProperties: {
-                private: {
-                    daApp: GOOGLE_CALENDAR_APP_SOURCE,
-                    daSyncKey: syncKey,
-                    daColorId: colorId
-                }
-            }
-        });
-    }
-
     function collectCalendarShiftsForMonth(year, month) {
         const items = [];
         const totalDays = new Date(year, month + 1, 0).getDate();
@@ -8759,357 +8581,368 @@
         return items;
     }
 
-    function waitForGoogleIdentityServices(timeoutMs = 8000) {
-        return new Promise((resolve, reject) => {
-            if (window.google?.accounts?.oauth2) {
-                resolve(window.google.accounts.oauth2);
-                return;
-            }
-
-            const started = Date.now();
-            const timer = window.setInterval(() => {
-                if (window.google?.accounts?.oauth2) {
-                    window.clearInterval(timer);
-                    resolve(window.google.accounts.oauth2);
-                    return;
-                }
-                if (Date.now() - started >= timeoutMs) {
-                    window.clearInterval(timer);
-                    reject(new Error('Google Identity Services не загрузился'));
-                }
-            }, 120);
-        });
+    function resolveIcsShiftCategory(shift) {
+        const typeLabel = getShiftTypeInfo(shift).label || 'День';
+        if (typeLabel === 'Ночь') return 'Ночная';
+        if (typeLabel === 'Утро') return 'Утренняя';
+        if (typeLabel === 'Тех. обучение') return 'ТО';
+        return 'Дневная';
     }
 
-    async function requestGoogleCalendarAccessToken(promptMode = '') {
-        const config = await loadGoogleCalendarConfig();
-        if (!config.clientId) {
-            throw new Error('Укажите OAuth Client ID в secrets.local.json');
+    function buildIcsEventSummary(shift) {
+        const routeLabel = formatCalendarShiftLabel(shift?.route || shift?.name || '');
+        const category = resolveIcsShiftCategory(shift);
+        if (!routeLabel) return category;
+        return `${routeLabel} | ${category}`;
+    }
+
+    function resolveIcsTrainsDisplay(shift, dateKey, context = {}) {
+        loadGlobalShiftTemplates();
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const payload = buildTrainsNavigationPayload(enriched, dateKey, context);
+        let trainsDisplay = payload.trainsText || getShiftTrainsText(enriched);
+
+        if (!trainsDisplay && context.prevShift && context.prevDateKey) {
+            const prevEnriched = enrichShiftFromDepotTemplate(context.prevShift, context.prevDateKey);
+            trainsDisplay = mergeTrainNumbersUnique(
+                getShiftTrainsText(prevEnriched),
+                getShiftTrainsText(enriched)
+            ).join(' - ');
         }
 
-        const oauth2 = await waitForGoogleIdentityServices();
-        return new Promise((resolve, reject) => {
-            const client = oauth2.initTokenClient({
-                client_id: config.clientId,
-                scope: GOOGLE_CALENDAR_SCOPE,
-                callback: (response) => {
-                    if (response.error) {
-                        reject(new Error(response.error_description || response.error));
-                        return;
-                    }
-                    resolve(response);
-                },
-                error_callback: (err) => {
-                    reject(new Error(err?.message || err?.type || 'Не удалось авторизоваться в Google'));
-                }
+        if (!trainsDisplay) {
+            const tmpl = findShiftTemplate(depotShiftTemplates, enriched.route || enriched.name, dateKey);
+            trainsDisplay = getShiftTrainsText(tmpl);
+        }
+
+        return String(trainsDisplay || '').trim();
+    }
+
+    function buildPlainTextShiftSummary(shift, dateKey, context = {}) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const lines = [
+            'Сводка по смене',
+            '',
+            `Маршрут: ${String(enriched.route || enriched.name || '—').trim()}`,
+            `Время работы: ${getShiftWorkTimeLine(enriched, dateKey)}`,
+            `Обеденное время: ${formatShiftLunchTimeDisplay(enriched, dateKey)}`,
+            `Поезда: ${resolveIcsTrainsDisplay(shift, dateKey, context) || '—'}`
+        ];
+
+        const totalHours = getCalendarShiftHours(enriched, dateKey);
+        lines.push(`Часов в смене: ${formatShiftHoursDisplay(totalHours)}`);
+
+        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+        if (shiftPayment > 0) {
+            lines.push(`Оплата за смену: ${formatApproxMoney(shiftPayment)}`);
+            lines.push('Ориентировочный расчёт');
+        } else {
+            lines.push('Оплата за смену: —');
+        }
+
+        const note = getShiftNoteText(shift);
+        if (note) {
+            lines.push('');
+            lines.push(`Заметка: ${note}`);
+        }
+
+        return lines.join('\n');
+    }
+
+    function buildIcsShiftDescription(shift, dateKey, context = {}) {
+        return buildPlainTextShiftSummary(shift, dateKey, context);
+    }
+
+    function formatIcsLocalDateTime(date) {
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+        const pad = (value) => String(value).padStart(2, '0');
+        return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+    }
+
+    function formatIcsUtcStamp(date = new Date()) {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    }
+
+    function escapeIcsText(value) {
+        return String(value || '')
+            .replace(/\\/g, '\\\\')
+            .replace(/;/g, '\\;')
+            .replace(/,/g, '\\,')
+            .replace(/\r?\n/g, '\\n');
+    }
+
+    function foldIcsLine(line) {
+        const chunks = [];
+        let rest = String(line);
+        while (rest.length > 73) {
+            chunks.push(`${rest.slice(0, 73)}\r\n `);
+            rest = rest.slice(73);
+        }
+        chunks.push(rest);
+        return chunks.join('');
+    }
+
+    function buildIcsEventUid(dateKey, shiftIndex, shift) {
+        const route = String(shift?.route || shift?.name || '').trim();
+        return `da-${dateKey}-${shiftIndex}-${route}@digital-assistant`;
+    }
+
+    function parseCalendarDateKeyParts(dateKey) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null;
+        return { day, month, year };
+    }
+
+    function formatIcsDateValue(dateKey) {
+        const parsed = parseCalendarDateKeyParts(dateKey);
+        if (!parsed) return '';
+        const pad = (value) => String(value).padStart(2, '0');
+        return `${parsed.year}${pad(parsed.month)}${pad(parsed.day)}`;
+    }
+
+    function addDaysToDateKey(dateKey, days) {
+        const nextKey = calendarKeyAddDays(dateKey, days);
+        return nextKey ? formatIcsDateValue(nextKey) : '';
+    }
+
+    function buildIcsTimedEventLines(enriched, item) {
+        const startDt = buildShiftReportDateTime(item.dateKey, enriched);
+        const endDt = buildShiftEndDateTime(item.dateKey, enriched);
+        if (!startDt || !endDt) return null;
+
+        return [
+            `DTSTART:${formatIcsLocalDateTime(startDt)}`,
+            `DTEND:${formatIcsLocalDateTime(endDt)}`
+        ];
+    }
+
+    function buildIcsAllDayEventLines(dateKey) {
+        const startDate = formatIcsDateValue(dateKey);
+        const endDate = addDaysToDateKey(dateKey, 1);
+        if (!startDate || !endDate) return null;
+
+        return [
+            `DTSTART;VALUE=DATE:${startDate}`,
+            `DTEND;VALUE=DATE:${endDate}`
+        ];
+    }
+
+    function buildIcsEventBlock(item) {
+        const enriched = enrichShiftFromDepotTemplate(item.shift, item.dateKey);
+        const dateLines = buildIcsTimedEventLines(enriched, item) || buildIcsAllDayEventLines(item.dateKey);
+        if (!dateLines) return '';
+
+        const description = buildIcsShiftDescription(item.shift, item.dateKey, item.context);
+
+        const lines = [
+            'BEGIN:VEVENT',
+            `UID:${escapeIcsText(buildIcsEventUid(item.dateKey, item.shiftIndex, enriched))}`,
+            `DTSTAMP:${formatIcsUtcStamp()}`,
+            ...dateLines,
+            `SUMMARY:${escapeIcsText(buildIcsEventSummary(enriched))}`,
+            `DESCRIPTION:${escapeIcsText(description)}`,
+            `COMMENT:${escapeIcsText(description)}`,
+            `CATEGORIES:${escapeIcsText(resolveIcsShiftCategory(enriched))}`,
+            'END:VEVENT'
+        ];
+
+        return lines.map(foldIcsLine).join('\r\n');
+    }
+
+    function buildIcsCalendarDocument(shifts) {
+        const events = shifts
+            .map((item) => buildIcsEventBlock(item))
+            .filter(Boolean);
+
+        const header = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Digital Assistant//ICS Export 2.4.5.8//RU',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH'
+        ];
+
+        const footer = ['END:VCALENDAR'];
+        return [...header, ...events, ...footer].join('\r\n') + '\r\n';
+    }
+
+    function buildIcsExportFilename(year, month) {
+        const monthName = CALENDAR_MONTHS_RU[month] || 'Месяц';
+        return `График_${monthName}_${year}.ics`;
+    }
+
+    function buildIcsExportBlob(content) {
+        return new Blob(['\uFEFF', content], { type: 'text/calendar;charset=utf-8' });
+    }
+
+    function closeIcsExportSheet() {
+        const sheet = document.getElementById('icsExportSheet');
+        if (!sheet) return;
+        sheet.hidden = true;
+        sheet.setAttribute('aria-hidden', 'true');
+        const link = document.getElementById('icsExportSheetLink');
+        if (link?.href && link.href.startsWith('blob:')) {
+            URL.revokeObjectURL(link.href);
+            link.removeAttribute('href');
+        }
+    }
+
+    function showIcsExportSheet(blobUrl, filename) {
+        let sheet = document.getElementById('icsExportSheet');
+        if (!sheet) {
+            sheet = document.createElement('div');
+            sheet.id = 'icsExportSheet';
+            sheet.className = 'ics-export-sheet-overlay';
+            sheet.innerHTML = `
+                <div class="ics-export-sheet" role="dialog" aria-modal="true" aria-labelledby="icsExportSheetTitle">
+                    <h3 id="icsExportSheetTitle" class="ics-export-sheet-title">Файл календаря готов</h3>
+                    <p class="ics-export-sheet-text">Нажмите кнопку ниже, чтобы сохранить график и добавить его в календарь телефона.</p>
+                    <a id="icsExportSheetLink" class="ics-export-sheet-link" href="#" download="">Сохранить ${filename}</a>
+                    <button type="button" id="icsExportSheetClose" class="ics-export-sheet-close">Закрыть</button>
+                </div>`;
+            document.body.appendChild(sheet);
+            sheet.addEventListener('click', (event) => {
+                if (event.target === sheet) closeIcsExportSheet();
             });
-            client.requestAccessToken({ prompt: promptMode });
-        });
-    }
-
-    function getGoogleCalendarRedirectUri() {
-        if (googleCalendarConfig.redirectUri) {
-            return googleCalendarConfig.redirectUri;
-        }
-        return `${window.location.origin}/`;
-    }
-
-    function getGoogleCalendarOriginHint() {
-        return window.location.origin || 'http://127.0.0.1:8765';
-    }
-
-    function formatGoogleCalendarOAuthError(errOrPayload) {
-        const raw = typeof errOrPayload === 'string'
-            ? errOrPayload
-            : String(errOrPayload?.error_description || errOrPayload?.message || errOrPayload?.error || '');
-        const code = typeof errOrPayload === 'object' && errOrPayload
-            ? String(errOrPayload.error || '')
-            : '';
-        const origin = getGoogleCalendarOriginHint();
-        const redirectUri = getGoogleCalendarRedirectUri();
-
-        if (code === 'redirect_uri_mismatch' || /redirect_uri_mismatch/i.test(raw)) {
-            return `redirect_uri_mismatch: для входа через popup добавьте JavaScript origin ${origin} (redirect URI не нужен). Если используете redirect — добавьте ${redirectUri}`;
-        }
-        if (/popup|blocked|closed|access_denied/i.test(raw)) {
-            return `${raw || 'Окно входа Google закрыто или заблокировано'}. Разрешите всплывающие окна для ${origin}.`;
-        }
-        if (/Google Identity Services|gsi/i.test(raw)) {
-            return `${raw}. Проверьте Authorized JavaScript origins: ${origin}`;
-        }
-        return raw || 'Не удалось авторизоваться в Google Calendar.';
-    }
-
-    function preloadGoogleIdentityServices() {
-        void waitForGoogleIdentityServices(20000).catch(() => {});
-    }
-
-    function consumeGoogleCalendarOAuthPending() {
-        try {
-            const raw = sessionStorage.getItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY);
-            if (!raw) return null;
-            sessionStorage.removeItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY);
-            const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return null;
-            return parsed;
-        } catch (_) {
-            sessionStorage.removeItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY);
-            return null;
-        }
-    }
-
-    function buildGoogleCalendarAuthorizeUrl(clientId, promptMode = 'consent') {
-        const redirectUri = getGoogleCalendarRedirectUri();
-        const params = new URLSearchParams({
-            client_id: clientId,
-            redirect_uri: redirectUri,
-            response_type: 'token',
-            scope: GOOGLE_CALENDAR_SCOPE,
-            include_granted_scopes: 'true',
-            state: 'da_calendar_sync'
-        });
-        if (promptMode) {
-            params.set('prompt', promptMode);
-        }
-        return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    }
-
-    function beginGoogleCalendarOAuthRedirect(promptMode = 'consent') {
-        sessionStorage.setItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY, '1');
-        const redirectUri = getGoogleCalendarRedirectUri();
-        void ensureServiceWorkerFreshForOAuth()
-            .finally(() => loadGoogleCalendarConfig()
-                .then((config) => {
-                    if (!config.clientId) {
-                        throw new Error('Укажите OAuth Client ID в secrets.local.json');
-                    }
-                    const authorizeUrl = buildGoogleCalendarAuthorizeUrl(config.clientId, promptMode);
-                    window.location.assign(authorizeUrl);
-                })
-                .catch((err) => {
-                    sessionStorage.removeItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY);
-                    setGoogleCalendarSyncHint(err?.message || 'Не удалось открыть авторизацию Google.', 'error');
-                    setGoogleCalendarSyncButtonState(false);
-                    googleCalendarSyncInProgress = false;
-                }));
-    }
-
-    function resumeGoogleCalendarSyncIfNeeded() {
-        const shouldResume = sessionStorage.getItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY) === '1';
-        if (!shouldResume) return;
-        sessionStorage.removeItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY);
-        void syncVisibleMonthToGoogleCalendar({ resume: true });
-    }
-
-    async function ensureGoogleCalendarAccessToken(forceNew = false) {
-        if (!forceNew && googleCalendarAccessToken && Date.now() < googleCalendarTokenExpiresAt - 60000) {
-            return googleCalendarAccessToken;
+            document.getElementById('icsExportSheetClose')?.addEventListener('click', closeIcsExportSheet);
         }
 
-        const response = await requestGoogleCalendarAccessToken(forceNew ? 'consent' : '');
-        googleCalendarAccessToken = response.access_token;
-        googleCalendarTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
-        return googleCalendarAccessToken;
-    }
-
-    async function googleCalendarApiRequest(accessToken, method, path, body) {
-        const config = await loadGoogleCalendarConfig();
-        const query = config.apiKey ? `?key=${encodeURIComponent(config.apiKey)}` : '';
-        const url = `https://www.googleapis.com/calendar/v3${path}${query}`;
-        const resp = await fetch(url, {
-            method,
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: body == null ? undefined : JSON.stringify(body)
-        });
-
-        const text = await resp.text();
-        let data = null;
-        if (text) {
-            try {
-                data = JSON.parse(text);
-            } catch (_) {
-                data = { raw: text };
+        const link = document.getElementById('icsExportSheetLink');
+        if (link) {
+            if (link.href && link.href.startsWith('blob:')) {
+                URL.revokeObjectURL(link.href);
             }
+            link.href = blobUrl;
+            link.download = filename;
+            link.textContent = `Сохранить ${filename}`;
         }
 
-        if (!resp.ok) {
-            const message = data?.error?.message || `Google Calendar API: ${resp.status}`;
-            const err = new Error(message);
-            err.status = resp.status;
-            err.payload = data;
-            throw err;
-        }
-
-        return data;
+        sheet.hidden = false;
+        sheet.setAttribute('aria-hidden', 'false');
     }
 
-    async function upsertGoogleCalendarEvent(accessToken, syncKey, eventBody, eventMap) {
-        const existingId = eventMap[syncKey];
-        if (existingId) {
+    async function shareOrDownloadIcsFile(content, filename) {
+        const blob = buildIcsExportBlob(content);
+
+        if (typeof navigator.share === 'function') {
             try {
-                await googleCalendarApiRequest(
-                    accessToken,
-                    'DELETE',
-                    `/calendars/primary/events/${encodeURIComponent(existingId)}`
-                );
+                const file = new File([blob], filename, { type: 'text/calendar' });
+                const shareData = {
+                    files: [file],
+                    title: filename.replace(/\.ics$/i, '')
+                };
+                if (!navigator.canShare || navigator.canShare(shareData)) {
+                    await navigator.share(shareData);
+                    return true;
+                }
             } catch (err) {
-                if (err.status !== 404 && err.status !== 410) throw err;
+                if (err?.name === 'AbortError') return false;
+                console.warn('[calendar-ics] share failed', err);
             }
         }
 
-        const created = await googleCalendarApiRequest(
-            accessToken,
-            'POST',
-            '/calendars/primary/events',
-            eventBody
-        );
-        return created?.id || null;
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.setTimeout(() => {
+            if (!document.getElementById('icsExportSheet') || document.getElementById('icsExportSheet')?.hidden) {
+                URL.revokeObjectURL(url);
+            }
+        }, 120000);
+
+        const opened = window.open(url, '_blank');
+        if (opened) {
+            return true;
+        }
+
+        showIcsExportSheet(url, filename);
+        return true;
     }
 
-    function setGoogleCalendarSyncHint(message, tone = '') {
-        const hint = document.getElementById('googleCalendarSyncHint');
-        if (!hint) return;
-        hint.textContent = message || '';
-        hint.dataset.tone = tone;
+    function flashCalendarIcsExportLabel(message) {
+        const label = document.querySelector('#calendarIcsExportBtn .calendar-sync-btn-label');
+        if (!label) return;
+        const fallback = 'Добавить в календарь';
+        const restore = label.dataset.prevText || fallback;
+        label.textContent = message;
+        window.setTimeout(() => {
+            if (!calendarIcsExportInProgress) {
+                label.textContent = restore;
+            }
+        }, 2400);
     }
 
-    function setGoogleCalendarSyncButtonState(loading) {
-        const btn = document.getElementById('googleCalendarSyncBtn');
+    function setCalendarIcsExportButtonState(loading) {
+        const btn = document.getElementById('calendarIcsExportBtn');
         const label = btn?.querySelector('.calendar-sync-btn-label');
         if (!btn || !label) return;
         btn.disabled = loading;
         btn.classList.toggle('is-loading', loading);
         if (loading) {
             label.dataset.prevText = label.textContent;
-            label.textContent = 'Синхронизация…';
+            label.textContent = 'Формирование…';
         } else if (label.dataset.prevText) {
             label.textContent = label.dataset.prevText;
             delete label.dataset.prevText;
         }
     }
 
-    async function syncVisibleMonthToGoogleCalendar(options = {}) {
-        const resuming = options.resume === true;
-        if (googleCalendarSyncInProgress && !resuming) return;
+    async function exportVisibleMonthToIcs() {
+        if (calendarIcsExportInProgress) return;
         if (!getAuthSessionTab()) {
-            setGoogleCalendarSyncHint('Войдите в приложение, чтобы синхронизировать смены.', 'error');
+            flashCalendarIcsExportLabel('Сначала войдите');
             return;
         }
 
-        googleCalendarSyncInProgress = true;
-        setGoogleCalendarSyncButtonState(true);
-        setGoogleCalendarSyncHint(resuming ? 'Продолжаем синхронизацию…' : 'Подключение к Google…');
+        calendarIcsExportInProgress = true;
+        setCalendarIcsExportButtonState(true);
 
         try {
-            await loadGoogleCalendarConfig();
-            if (!googleCalendarConfig.clientId) {
-                throw new Error('Добавьте OAuth Client ID в secrets.local.json и выполните npm run secrets:encode.');
-            }
-            if (!googleCalendarConfig.apiKey) {
-                throw new Error('Добавьте Google API key в secrets.local.json.');
-            }
-
             loadGlobalShiftTemplates();
             const year = calendarCurrentDate.getFullYear();
             const month = calendarCurrentDate.getMonth();
-            const monthLabel = `${CALENDAR_MONTHS_RU[month]} ${year}`;
             const shifts = collectCalendarShiftsForMonth(year, month);
-
             if (!shifts.length) {
-                setGoogleCalendarSyncHint(`В ${monthLabel} нет смен для экспорта.`, 'muted');
+                flashCalendarIcsExportLabel('Нет смен в месяце');
                 return;
             }
 
-            let accessToken = null;
-            if (googleCalendarAccessToken && Date.now() < googleCalendarTokenExpiresAt - 60000) {
-                accessToken = googleCalendarAccessToken;
+            const icsContent = buildIcsCalendarDocument(shifts);
+            if (!icsContent.includes('BEGIN:VEVENT')) {
+                flashCalendarIcsExportLabel('Нет данных для экспорта');
+                return;
             }
 
-            const pending = consumeGoogleCalendarOAuthPending();
-            if (pending?.access_token) {
-                googleCalendarAccessToken = pending.access_token;
-                googleCalendarTokenExpiresAt = Date.now() + (Number(pending.expires_in) || 3600) * 1000;
-                accessToken = googleCalendarAccessToken;
-            } else if (pending?.error) {
-                throw new Error(formatGoogleCalendarOAuthError(pending));
+            const saved = await shareOrDownloadIcsFile(icsContent, buildIcsExportFilename(year, month));
+            if (saved) {
+                flashCalendarIcsExportLabel('Файл готов');
             }
-
-            if (!accessToken) {
-                setGoogleCalendarSyncHint('Откройте всплывающее окно Google и разрешите доступ…');
-                let response = null;
-                try {
-                    response = await requestGoogleCalendarAccessToken('');
-                } catch (silentErr) {
-                    console.warn('[google-calendar] silent oauth failed', silentErr);
-                }
-                if (!response?.access_token) {
-                    response = await requestGoogleCalendarAccessToken('consent');
-                }
-                if (!response?.access_token) {
-                    throw new Error('Google не выдал токен доступа.');
-                }
-                googleCalendarAccessToken = response.access_token;
-                googleCalendarTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
-                accessToken = googleCalendarAccessToken;
-            }
-
-            const eventMap = loadGoogleCalendarEventMap();
-            let synced = 0;
-            let skipped = 0;
-
-            for (const item of shifts) {
-                const syncKey = buildGoogleCalendarSyncKey(item.dateKey, item.shiftIndex, item.shift);
-                const payload = buildGoogleCalendarEventPayload(item.shift, item.dateKey, item.context, syncKey);
-                if (!payload) {
-                    skipped += 1;
-                    continue;
-                }
-
-                setGoogleCalendarSyncHint(`Экспорт ${synced + 1} из ${shifts.length}…`);
-                const eventId = await upsertGoogleCalendarEvent(accessToken, syncKey, payload, eventMap);
-                if (eventId) {
-                    eventMap[syncKey] = eventId;
-                    synced += 1;
-                } else {
-                    skipped += 1;
-                }
-            }
-
-            saveGoogleCalendarEventMap(eventMap);
-
-            const skippedPart = skipped ? `, пропущено ${skipped}` : '';
-            setGoogleCalendarSyncHint(`Готово: ${synced} смен за ${monthLabel} в Google Calendar${skippedPart}.`, 'success');
         } catch (err) {
-            console.warn('[google-calendar] sync failed', err);
-            const message = formatGoogleCalendarOAuthError(err);
-            setGoogleCalendarSyncHint(message, 'error');
+            console.warn('[calendar-ics] export failed', err);
+            flashCalendarIcsExportLabel('Не удалось экспортировать');
         } finally {
-            googleCalendarSyncInProgress = false;
-            setGoogleCalendarSyncButtonState(false);
+            calendarIcsExportInProgress = false;
+            setCalendarIcsExportButtonState(false);
         }
     }
 
-    function initGoogleCalendarSyncUi() {
-        if (document.body.dataset.googleCalendarBound === '1') return;
-        document.body.dataset.googleCalendarBound = '1';
+    function initCalendarIcsExportUi() {
+        if (document.body.dataset.calendarIcsBound === '1') return;
+        document.body.dataset.calendarIcsBound = '1';
 
-        document.getElementById('googleCalendarSyncBtn')?.addEventListener('click', () => {
-            void syncVisibleMonthToGoogleCalendar();
-        });
-
-        preloadGoogleIdentityServices();
-        if (!sessionStorage.getItem(GOOGLE_CALENDAR_OAUTH_PENDING_KEY)) {
-            sessionStorage.removeItem(GOOGLE_CALENDAR_SYNC_RESUME_KEY);
-        }
-        resumeGoogleCalendarSyncIfNeeded();
-
-        void loadGoogleCalendarConfig().then((config) => {
-            if (!config.clientId) {
-                setGoogleCalendarSyncHint('Для синхронизации заполните secrets.local.json и выполните npm run secrets:encode.', 'muted');
-            }
+        document.getElementById('calendarIcsExportBtn')?.addEventListener('click', () => {
+            void exportVisibleMonthToIcs();
         });
     }
 

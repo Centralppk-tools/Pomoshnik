@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.5 STABLE)
-const CACHE_VERSION = 'da_v2_4_5';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.5 STABLE, ICS export)
+const CACHE_VERSION = 'da_v2_4_5_9';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -23,14 +23,9 @@ const PRECACHE_ASSETS = [
     './data/calendar-local-routes.json',
     './data/release-notes.json',
     './js/da-secrets.js',
-    './google-oauth-callback.html',
     './assets/brand-logo.png',
     './assets/app-icon.png'
 ];
-
-function isOAuthCallbackPath(pathname) {
-    return pathname.endsWith('/google-oauth-callback.html') || pathname.endsWith('google-oauth-callback.html');
-}
 
 function isPrecachePath(pathname) {
     return PRECACHE_ASSETS.some((asset) => {
@@ -70,9 +65,6 @@ async function matchCachedRequest(cache, request) {
     }
 
     if (request.mode === 'navigate' || path.endsWith('/')) {
-        if (isOAuthCallbackPath(path)) {
-            return null;
-        }
         return matchNavigationFallback(cache);
     }
 
@@ -87,6 +79,11 @@ function revalidateInBackground(cache, request) {
             }
         })
         .catch(() => {});
+}
+
+function isAppShellRequest(pathname, mode) {
+    if (mode === 'navigate') return true;
+    return pathname.endsWith('/index.html') || pathname.endsWith('index.html');
 }
 
 function isReleaseNotesRequest(pathname) {
@@ -218,17 +215,17 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
 
-    if (isOAuthCallbackPath(url.pathname)) {
-        event.respondWith(fetch(request));
-        return;
-    }
-
     if (isReleaseNotesRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }
 
-    if (request.mode === 'navigate' || isPrecachePath(url.pathname)) {
+    if (isAppShellRequest(url.pathname, request.mode)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    if (isPrecachePath(url.pathname)) {
         event.respondWith(cacheFirst(request));
     }
 });
