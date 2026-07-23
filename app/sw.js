@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.6 STABLE, plain config)
-const CACHE_VERSION = 'da_v2_4_6_1';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.6.2 STABLE, deploy-ready)
+const CACHE_VERSION = 'da_v2_4_6_2';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -24,7 +24,8 @@ const PRECACHE_ASSETS = [
     './data/release-notes.json',
     './js/app-config.js',
     './assets/brand-logo.png',
-    './assets/app-icon.png'
+    './assets/app-icon.png',
+    './.nojekyll'
 ];
 
 function isPrecachePath(pathname) {

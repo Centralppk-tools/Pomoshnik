@@ -686,3 +686,20 @@ workflow: деплой только из app/, без Release/
 - Деплой: залить app/ на GitHub
 - Снимок HTML: Version/snapshots/index 2.4.6.1.html
 - Снимок стилей: Version/snapshots/styles 2.4.6.1/
+
+2.4.6.2 STABLE ★
+Коммиты: (release v2.4.6.2)
+
+Основное:
+deploy-ready: app/ как единственный источник для GitHub
+fix: версии синхронизированы, SW da_v2_4_6_2
+docs: Version/DEPLOY-GITHUB.md
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app/js/app-config.js — ключи API в plain JS
+- Service Worker: da_v2_4_6_2
+- Деплой: залить app/ на GitHub
+- Снимок HTML: Version/snapshots/index 2.4.6.2.html
+- Снимок стилей: Version/snapshots/styles 2.4.6.2/

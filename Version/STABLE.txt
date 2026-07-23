@@ -1,31 +1,31 @@
-2.4.6.1 STABLE ★
+2.4.6.2 STABLE ★
 
 
 
 Дата: 2026-07-24
 
-Статус: стабильная версия, рекомендуется к выкладке на хостинг и в PWA.
+Статус: готово к выкладке на GitHub Pages и PWA.
 
 
 
-Service Worker: da_v2_4_6_1
+Service Worker: da_v2_4_6_2
 
-Деплой: содержимое папки app/ (залить на GitHub как корень сайта)
+Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
 
-Снимок HTML: Version/snapshots/index 2.4.6.1.html
+Снимок HTML: Version/snapshots/index 2.4.6.2.html
 
-Снимок стилей: Version/snapshots/styles 2.4.6.1/
+Снимок стилей: Version/snapshots/styles 2.4.6.2/
 
 
 
 Ключевые изменения:
 
-- fix: убран da-secrets — ключи в app/js/app-config.js, деплой без сборки
+- fix: da-secrets убран — app/js/app-config.js, деплой без сборки
 
-- feat: экспорт смен месяца в .ics (Google, Apple, Яндекс)
+- feat: экспорт смен в .ics (Google, Apple, Яндекс)
 
-- feat: до 10 поездов в маршруте, поезда в описании .ics
+- feat: до 10 поездов, поезда в описании .ics
 
-- fix: экспорт на iPhone (Share API + fallback)
+- fix: экспорт .ics на iPhone (Share API)
 
-- ui: кнопка «Добавить в календарь» в шапке календаря
+- workflow: только app/ + снимки Version/, без Release/
