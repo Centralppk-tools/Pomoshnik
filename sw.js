@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.5 STABLE, ICS export)
-const CACHE_VERSION = 'da_v2_4_5_9';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.6 STABLE, ICS export)
+const CACHE_VERSION = 'da_v2_4_6';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
