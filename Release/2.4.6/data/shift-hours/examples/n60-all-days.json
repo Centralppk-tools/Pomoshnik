@@ -1,0 +1,115 @@
+{
+  "description": "Эталон Н60: временная цепочка и поезда для навигации по дням недели",
+  "scope": "shift-hours-route-building",
+  "days": [
+    {
+      "date": "пн-чт",
+      "night": {
+        "route": "Н60",
+        "startPlace": "МЯ",
+        "startTime": "18:15",
+        "trains": "6856 - 6859",
+        "endTime": "1:00",
+        "endPlace": "МЯ",
+        "workHours": "6:45",
+        "nightHours": "3:00",
+        "morningRoute": "61У",
+        "break": { "start": "1:00 МЯ", "end": "2:30 **" },
+        "afterBreakNormative": {
+          "route": "60У",
+          "startPlace": "ЛО",
+          "startTime": "2:40",
+          "trains": "7843 - 6600 - 6611",
+          "endTime": "8:30",
+          "endPlace": "МЯ",
+          "note": "Не используется для train navigation"
+        }
+      },
+      "morningCatalog": {
+        "route": "61У",
+        "startPlace": "МЯ",
+        "startTime": "2:30",
+        "trains": "6002 - 6007",
+        "endTime": "7:45",
+        "workHours": "5:15"
+      },
+      "navigationTrains": "6856 - 6859 - 6002 - 6007"
+    },
+    {
+      "date": "пт",
+      "night": {
+        "route": "Н60",
+        "startPlace": "МЯ",
+        "startTime": "21:25",
+        "trains": "приёмка состава от п.6859",
+        "endTime": "2:30",
+        "morningRoute": "61У"
+      },
+      "morningCatalog": {
+        "route": "61У",
+        "trains": "6804 - 6809",
+        "startTime": "2:30",
+        "endTime": "7:45"
+      },
+      "navigationTrains": "6804 - 6809",
+      "navigationNote": "Из текста приёмки regex может вытащить 6859 — учитывать при валидации"
+    },
+    {
+      "date": "сб",
+      "night": {
+        "route": "Н60",
+        "startPlace": "МЯ",
+        "startTime": "21:30",
+        "trains": "6090 - 6077",
+        "endTime": "2:30",
+        "morningRoute": "61У"
+      },
+      "morningCatalog": {
+        "route": "61У",
+        "trains": "6804 - 6809"
+      },
+      "navigationTrains": "6090 - 6077 - 6804 - 6809"
+    },
+    {
+      "date": "вс",
+      "night": {
+        "route": "Н60",
+        "startPlace": "МЯ",
+        "startTime": "21:30",
+        "trains": "6090 - 6077",
+        "endTime": "2:30",
+        "morningRoute": "61У"
+      },
+      "morningCatalog": {
+        "route": "61У",
+        "trains": "6002 - 6007"
+      },
+      "navigationTrains": "6090 - 6077 - 6002 - 6007"
+    }
+  ],
+  "flatExportExample": [
+    {
+      "date": "пн-чт",
+      "route": "Н60",
+      "startPlace": "МЯ",
+      "startTime": "18:15",
+      "trains": "6856 - 6859",
+      "endTime": "1:00",
+      "workHours": "6:45",
+      "nightHours": "3:00",
+      "morningRoute": "61У",
+      "lunch": "**"
+    },
+    {
+      "date": "пн-чт",
+      "route": "61У",
+      "startPlace": "МЯ",
+      "startTime": "2:30",
+      "trains": "6002 - 6007",
+      "endTime": "7:45",
+      "workHours": "5:15",
+      "nightHours": "3:30",
+      "lunch": "*"
+    }
+  ]
+}

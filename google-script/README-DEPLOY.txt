@@ -27,6 +27,10 @@ URL (прописан в app/index.html → DEPOT_API_DEPLOYMENT_ID):
   .../exec?action=feedback&message=test
 Должен быть {"ok":true}
 
+  .../exec?action=gcalToken&code=test&redirect_uri=http://127.0.0.1:8765/google-oauth-callback.html&code_verifier=test
+Должен быть JSON с ok:false (не employees!) — значит gcalToken подключён.
+После npm run clasp:push обязательно переразвернуть Web App (шаги выше).
+
 ## Очистка старых деплоев
 
 npm run clasp:cleanup-deployments

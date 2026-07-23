@@ -649,3 +649,24 @@ ui: единые серые подложки на всех экранах
 - Release/2.4.5/ — готовая папка для залива на хостинг.
 - Снимок HTML: Version/snapshots/index 2.4.5.html.
 - Снимок стилей: Version/snapshots/styles 2.4.5/.
+
+2.4.6 STABLE ★
+Коммиты: (release v2.4.6)
+
+Основное:
+feat: экспорт смен месяца в .ics — без Google OAuth
+feat: поезда в описании .ics, до 10 поездов в маршруте
+fix: экспорт на iPhone (Share API + fallback)
+remove: Google Calendar OAuth/API
+ui: кнопка «Добавить в календарь» в шапке календаря
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- exportVisibleMonthToIcs, shareOrDownloadIcsFile, mobile icsExportSheet.
+- Удалены google-oauth-callback.html, google-calendar-config.json.
+- secrets: encode-secrets.mjs → da-secrets.js в Release (обфускация).
+- Service Worker: da_v2_4_6.
+- Release/2.4.6/ — готовая папка для залива на хостинг.
+- Снимок HTML: Version/snapshots/index 2.4.6.html.
+- Снимок стилей: Version/snapshots/styles 2.4.6/.

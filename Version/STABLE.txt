@@ -1,4 +1,4 @@
-2.4.5 STABLE ★
+2.4.6 STABLE ★
 
 
 
@@ -8,24 +8,26 @@
 
 
 
-Service Worker: da_v2_4_5
+Service Worker: da_v2_4_6
 
-Сборка: Release/2.4.5/
+Сборка: Release/2.4.6/
 
-Снимок HTML: Version/snapshots/index 2.4.5.html
+Снимок HTML: Version/snapshots/index 2.4.6.html
 
-Снимок стилей: Version/snapshots/styles 2.4.5/
+Снимок стилей: Version/snapshots/styles 2.4.6/
 
 
 
 Ключевые изменения:
 
-- feat: синхронизация смен с Google Calendar (OAuth popup, цвета событий)
+- feat: экспорт смен месяца в .ics (Google, Apple, Яндекс) — без OAuth
 
-- feat: до 10 поездов в маршруте вместо 6
+- feat: до 10 поездов в маршруте, поезда в описании .ics
 
-- fix: время, фазы маршрута, push-уведомления
+- fix: экспорт на iPhone (Share API + fallback)
 
 - fix: баг-репорт «Сообщить о проблеме» — рабочий GAS deployment
 
-- ui: единые серые подложки, блок синхронизации в шапке календаря
+- ui: кнопка «Добавить в календарь» в шапке календаря
+
+- remove: Google Calendar OAuth/API (заменён автономным .ics)

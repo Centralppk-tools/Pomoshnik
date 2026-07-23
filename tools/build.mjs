@@ -1,6 +1,7 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const swPath = join(root, 'app', 'sw.js');
@@ -12,6 +13,15 @@ if (!match) {
     process.exit(1);
 }
 
+const secretsLocal = join(root, 'secrets.local.json');
+if (!existsSync(secretsLocal)) {
+    console.error('Перед сборкой создайте secrets.local.json (см. secrets.example.json).');
+    process.exit(1);
+}
+
+const encode = spawnSync(process.execPath, [join(root, 'tools', 'encode-secrets.mjs')], { stdio: 'inherit' });
+if (encode.status !== 0) process.exit(encode.status || 1);
+
 const version = match[1].replace(/_/g, '.');
 const appSource = join(root, 'app');
 const releaseDir = join(root, 'Release', version);
@@ -19,6 +29,14 @@ const releaseDir = join(root, 'Release', version);
 rmSync(releaseDir, { recursive: true, force: true });
 mkdirSync(releaseDir, { recursive: true });
 cpSync(appSource, releaseDir, { recursive: true });
+
+const gcalConfigRelease = join(releaseDir, 'data', 'google-calendar-config.json');
+if (existsSync(gcalConfigRelease)) {
+    unlinkSync(gcalConfigRelease);
+}
+
+const obfuscate = spawnSync(process.execPath, [join(root, 'tools', 'obfuscate-release.mjs'), releaseDir], { stdio: 'inherit' });
+if (obfuscate.status !== 0) process.exit(obfuscate.status || 1);
 
 const readme = `# Цифровой помощник v${version}
 
@@ -34,4 +52,4 @@ Service Worker: da_v${match[1]}
 `;
 
 writeFileSync(join(releaseDir, 'README-DEPLOY.txt'), readme, 'utf8');
-console.log(`Сборка: Release/${version}/`);
+console.log(`Сборка: Release/${version}/ (секреты в da-secrets.js, код обфусцирован)`);

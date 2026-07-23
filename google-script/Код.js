@@ -40,6 +40,10 @@ function doGet(e) {
       return jsonResponse(result);
     }
 
+    if (params.action === 'gcalToken') {
+      return jsonResponse(handleGoogleCalendarTokenExchange(params));
+    }
+
     if (params.check === 'version') {
       return jsonResponse(getVersionPayload());
     }
@@ -93,6 +97,10 @@ function doPost(e) {
       return jsonResponse(handleFeedbackPayload(payload));
     }
 
+    if (String(payload.action || '').trim() === 'gcalToken') {
+      return jsonResponse(handleGoogleCalendarTokenExchange(payload));
+    }
+
     return jsonResponse({ ok: false, error: 'unknown_action' });
   } catch (error) {
     return jsonResponse({
@@ -100,6 +108,73 @@ function doPost(e) {
       error: error.toString()
     });
   }
+}
+
+/** OAuth Google Calendar — client id по умолчанию; secret — в листе «Настройки» ключ GCAL_CLIENT_SECRET */
+const GCAL_CLIENT_ID_DEFAULT = '1039992706846-9f1jh5polagou6eebec3tpcs52idvphg.apps.googleusercontent.com';
+
+function getGoogleCalendarSettings() {
+  ensureFeedbackSheets();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETTINGS);
+  const lastRow = Math.max(sheet.getLastRow(), 2);
+  const rows = sheet.getRange(2, 1, lastRow, 2).getValues();
+  const map = {};
+  rows.forEach(row => {
+    const key = String(row[0] || '').trim();
+    if (key) map[key] = String(row[1] || '').trim();
+  });
+  return {
+    clientId: map.GCAL_CLIENT_ID || GCAL_CLIENT_ID_DEFAULT,
+    clientSecret: map.GCAL_CLIENT_SECRET || ''
+  };
+}
+
+function handleGoogleCalendarTokenExchange(params) {
+  const code = String(params.code || '').trim();
+  const redirectUri = String(params.redirect_uri || '').trim();
+  const codeVerifier = String(params.code_verifier || '').trim();
+
+  if (!code || !redirectUri || !codeVerifier) {
+    return { ok: false, error: 'missing_params', error_description: 'code, redirect_uri, code_verifier обязательны' };
+  }
+
+  const settings = getGoogleCalendarSettings();
+  const payload = {
+    code: code,
+    client_id: settings.clientId,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code',
+    code_verifier: codeVerifier
+  };
+  if (settings.clientSecret) {
+    payload.client_secret = settings.clientSecret;
+  }
+
+  const resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method: 'post',
+    contentType: 'application/x-www-form-urlencoded',
+    payload: payload,
+    muteHttpExceptions: true
+  });
+
+  const text = resp.getContentText() || '{}';
+  let data = {};
+  try {
+    data = JSON.parse(text);
+  } catch (parseErr) {
+    return { ok: false, error: 'parse_error', error_description: text.slice(0, 500) };
+  }
+
+  if (data.error) {
+    return { ok: false, error: data.error, error_description: data.error_description || data.error };
+  }
+
+  return {
+    ok: true,
+    access_token: data.access_token || '',
+    expires_in: data.expires_in || 3600,
+    token_type: data.token_type || 'Bearer'
+  };
 }
 
 function jsonResponse(payload) {
@@ -356,11 +431,22 @@ function ensureFeedbackSheets() {
   if (!settingsSheet) {
     settingsSheet = ss.insertSheet(SHEET_SETTINGS);
     settingsSheet.getRange(1, 1, 1, 2).setValues([['Ключ', 'Значение']]);
-    settingsSheet.getRange(2, 1, 3, 2).setValues([
+    settingsSheet.getRange(2, 1, 4, 2).setValues([
       ['TELEGRAM_BOT_TOKEN', FEEDBACK_TELEGRAM_BOT_TOKEN_DEFAULT],
-      ['TELEGRAM_CHAT_ID', '']
+      ['TELEGRAM_CHAT_ID', ''],
+      ['GCAL_CLIENT_ID', GCAL_CLIENT_ID_DEFAULT],
+      ['GCAL_CLIENT_SECRET', '']
     ]);
     settingsSheet.setFrozenRows(1);
+  } else {
+    const rows = settingsSheet.getRange(2, 1, Math.max(settingsSheet.getLastRow(), 2), 1).getValues();
+    const keys = rows.map(r => String(r[0] || '').trim());
+    if (!keys.includes('GCAL_CLIENT_ID')) {
+      settingsSheet.appendRow(['GCAL_CLIENT_ID', GCAL_CLIENT_ID_DEFAULT]);
+    }
+    if (!keys.includes('GCAL_CLIENT_SECRET')) {
+      settingsSheet.appendRow(['GCAL_CLIENT_SECRET', '']);
+    }
   }
 
   let feedbackSheet = ss.getSheetByName(SHEET_FEEDBACK);
