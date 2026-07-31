@@ -705,7 +705,7 @@ docs: Version/DEPLOY-GITHUB.md
 - Снимок стилей: Version/snapshots/styles 2.4.6.2/
 
 3.1 STABLE ★
-Коммиты: (release v3.1)
+Коммиты: 552d5e7 (release v3.1)
 
 Основное:
 ui: переработан дизайн сводки смен и вывода поездов в маршруте
