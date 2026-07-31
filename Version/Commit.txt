@@ -703,3 +703,32 @@ docs: Version/DEPLOY-GITHUB.md
 - Деплой: залить app/ на GitHub
 - Снимок HTML: Version/snapshots/index 2.4.6.2.html
 - Снимок стилей: Version/snapshots/styles 2.4.6.2/
+
+3.1 STABLE ★
+Коммиты: (release v3.1)
+
+Основное:
+ui: переработан дизайн сводки смен и вывода поездов в маршруте
+feat: изменение времени смены и корректировка обеда в сводке (+ / ×, сброс к шаблону)
+feat: обновлено окно ввода предупреждений — удобные участки перегона (line-sections)
+feat: выбор месяца в личном кабинете — финансы и баланс часов за любой месяц
+fix: доработан экспорт календаря в .ics — Share API, iOS fallback, bottom sheet
+
+Приятные доработки (Плюшки):
+4. fix: порядок поездов при переходе календарь → маршрут совпадает с графиком смены
+5. ui: карточки маршрута сортируются по времени отправления (только отображение)
+6. ui: серая панель смены на вкладке «Маршрут» (route-shift-panel)
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- shift-day-panel: сводка смены с редактируемым временем, обедом, поездами, сбросом к шаблону.
+- route-shift-compact: компактная панель D87 / поезда / явка–сдача на вкладке «Маршрут».
+- applyRouteTrainNumbersState: порядок поездов сохраняется при навигации из календаря.
+- shiftWarnings: выбор участка из line-sections.json, spr.json обновлён (Абрамцево и др.).
+- profile-month-selector: просмотр зарплаты и часов за прошлые/будущие месяцы.
+- deliverIcsFile / icsExportSheet: мобильный экспорт .ics без blob-only download.
+- Service Worker: da_v3_1, precache line-sections.json.
+- Деплой: залить app/ на GitHub.
+- Снимок HTML: Version/snapshots/index 3.1.html
+- Снимок стилей: Version/snapshots/styles 3.1/

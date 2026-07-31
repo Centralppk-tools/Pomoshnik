@@ -64,45 +64,55 @@ def collect_wanted_numbers() -> set[str]:
     return {n for n in re.findall(r"\b(\d{4})\b", text) if n != "2026"}
 
 
+def default_schedule_dates() -> list[str]:
+    """Будний и ближайшая суббота — чтобы попали и сб/вс поезда (6024 и др.)."""
+    today = date.today()
+    weekday = today
+    while weekday.weekday() >= 5:
+        weekday += timedelta(days=1)
+    saturday = today
+    while saturday.weekday() != 5:
+        saturday += timedelta(days=1)
+    return list(dict.fromkeys([weekday.isoformat(), saturday.isoformat()]))
+
+
 def default_weekday() -> str:
-    d = date.today()
-    while d.weekday() >= 5:
-        d += timedelta(days=1)
-    return d.isoformat()
+    return default_schedule_dates()[0]
 
 
 def main() -> int:
-    schedule_date = default_weekday()
     if "--date" in sys.argv:
         i = sys.argv.index("--date")
-        schedule_date = sys.argv[i + 1]
+        schedule_dates = [sys.argv[i + 1]]
+    else:
+        schedule_dates = default_schedule_dates()
 
     wanted = collect_wanted_numbers()
     print(f"Wanted train numbers from shift-templates: {len(wanted)}")
-    print(f"Fetching Yaroslavsky board for {schedule_date}…")
-
-    board = fetch_board(schedule_date)
-    print(f"Board rows: {len(board)}")
 
     uid_map: dict[str, str] = {}
-    for row in board:
-        thread = row.get("thread") or {}
-        num = norm_num(thread.get("number"))
-        uid = str(thread.get("uid") or "").strip()
-        if num and uid and num not in uid_map:
-            uid_map[num] = uid
+    for schedule_date in schedule_dates:
+        print(f"Fetching Yaroslavsky board for {schedule_date}…")
+        board = fetch_board(schedule_date)
+        print(f"  Board rows: {len(board)}")
+        for row in board:
+            thread = row.get("thread") or {}
+            num = norm_num(thread.get("number"))
+            uid = str(thread.get("uid") or "").strip()
+            if num and uid and num not in uid_map:
+                uid_map[num] = uid
 
     matched = {n: uid_map[n] for n in wanted if n in uid_map}
-    print(f"UIDs matched for depot numbers: {len(matched)} / {len(wanted)}")
+    print(f"UIDs matched for depot numbers: {len(matched)} / {len(wanted)} (dates: {', '.join(schedule_dates)})")
 
     UIDS_OUT.parent.mkdir(parents=True, exist_ok=True)
     UIDS_OUT.write_text(
         json.dumps(
             {
                 "version": 1,
-                "sourceDate": schedule_date,
+                "sourceDate": schedule_dates[0] if len(schedule_dates) == 1 else schedule_dates,
                 "station": ANCHOR_STATION,
-                "description": "Индекс номер→threadUid с табло Ярославского. Обновлять: python tools/enrich-train-uids.py",
+                "description": "Индекс номер→threadUid с табло Ярославского. Обновлять: npm run enrich:train-uids",
                 "uids": matched,
             },
             ensure_ascii=False,
@@ -124,7 +134,7 @@ def main() -> int:
                     by_num[num]["threadUid"] = uid
                     added += 1
             else:
-                trains.append({"number": num, "threadUid": uid, "days": "пн-чт"})
+                trains.append({"number": num, "threadUid": uid})
                 by_num[num] = trains[-1]
                 added += 1
         local["trains"] = trains

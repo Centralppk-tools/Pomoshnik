@@ -1,31 +1,24 @@
-2.4.6.2 STABLE ★
+3.1 STABLE ★
 
-
-
-Дата: 2026-07-24
+Дата: 2026-08-01
 
 Статус: готово к выкладке на GitHub Pages и PWA.
 
-
-
-Service Worker: da_v2_4_6_2
+Service Worker: da_v3_1
 
 Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
 
-Снимок HTML: Version/snapshots/index 2.4.6.2.html
+Снимок HTML: Version/snapshots/index 3.1.html
 
-Снимок стилей: Version/snapshots/styles 2.4.6.2/
-
-
+Снимок стилей: Version/snapshots/styles 3.1/
 
 Ключевые изменения:
 
-- fix: da-secrets убран — app/js/app-config.js, деплой без сборки
-
-- feat: экспорт смен в .ics (Google, Apple, Яндекс)
-
-- feat: до 10 поездов, поезда в описании .ics
-
-- fix: экспорт .ics на iPhone (Share API)
-
-- workflow: только app/ + снимки Version/, без Release/
+- ui: переработана сводка смен и панель поездов на маршруте (route-shift-compact)
+- feat: редактирование времени смены и обеда в сводке (+ / ×), сброс к шаблону
+- feat: окно предупреждений ДУ-61 — выбор участков перегона (line-sections)
+- feat: выбор месяца в личном кабинете — финансы и баланс часов
+- fix: экспорт календаря .ics — Share API, iOS fallback, bottom sheet
+- fix: порядок поездов при переходе календарь → маршрут совпадает с графиком смены
+- ui: карточки маршрута сортируются по времени отправления (отображение)
+- data: shift-templates, spr.json, trains-uids, line-sections.json

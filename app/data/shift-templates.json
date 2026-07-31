@@ -1,6 +1,6 @@
 {
   "version": "2026-07-17",
-  "generatedAt": "2026-07-14T15:18:59Z",
+  "generatedAt": "2026-07-31T20:42:03Z",
   "source": {
     "type": "local-xlsx",
     "folder": "Часы смен/",
@@ -4182,8 +4182,8 @@
         "Часы смен/c 17_07/4_МЯЭД_часы_смен_с_17_07_2026_норматив_ВС_1.xlsx"
       ],
       "stats": {
-        "rows": 408,
-        "routes": 102,
+        "rows": 420,
+        "routes": 105,
         "markers": [
           "вс",
           "пн-чт",
@@ -4192,6 +4192,17 @@
         ]
       },
       "shiftDetails": [
+        {
+          "date": "пн-чт",
+          "route": "Д1",
+          "startPlace": "МЯ",
+          "startTime": "6:20",
+          "trains": "Резерв",
+          "endTime": "20:20",
+          "workHours": "12:00",
+          "nightHours": "0:00",
+          "lunch": "12:00-14:00 **"
+        },
         {
           "date": "пн-чт",
           "route": "Д58",
@@ -4558,6 +4569,18 @@
           "workHours": "11:00",
           "nightHours": "0:00",
           "lunch": "*"
+        },
+        {
+          "date": "пн-чт",
+          "route": "Н1",
+          "startPlace": "МЯ",
+          "startTime": "18:20",
+          "trains": "Резерв",
+          "endTime": "1:55",
+          "workHours": "7:35",
+          "nightHours": "3:55",
+          "morningRoute": "1У",
+          "lunch": "1:55-3:55 **"
         },
         {
           "date": "пн-чт",
@@ -4965,6 +4988,16 @@
         },
         {
           "date": "пн-чт",
+          "route": "1У",
+          "startPlace": "МЯ",
+          "startTime": "3:55",
+          "trains": "Резерв",
+          "endTime": "8:20",
+          "workHours": "4:25",
+          "nightHours": "2:05"
+        },
+        {
+          "date": "пн-чт",
           "route": "58У",
           "startPlace": "ПУ",
           "startTime": "2:00",
@@ -5292,6 +5325,17 @@
           "endTime": "6:00",
           "workHours": "4:00",
           "nightHours": "4:00"
+        },
+        {
+          "date": "пт",
+          "route": "Д1",
+          "startPlace": "МЯ",
+          "startTime": "6:20",
+          "trains": "Резерв",
+          "endTime": "20:20",
+          "workHours": "12:00",
+          "nightHours": "0:00",
+          "lunch": "12:00-14:00 **"
         },
         {
           "date": "пт",
@@ -5664,6 +5708,18 @@
           "workHours": "11:00",
           "nightHours": "0:00",
           "lunch": "*"
+        },
+        {
+          "date": "пт",
+          "route": "Н1",
+          "startPlace": "МЯ",
+          "startTime": "18:20",
+          "trains": "Резерв",
+          "endTime": "1:55",
+          "workHours": "7:35",
+          "nightHours": "3:55",
+          "morningRoute": "1У",
+          "lunch": "1:55-3:55 **"
         },
         {
           "date": "пт",
@@ -6071,6 +6127,16 @@
         },
         {
           "date": "пт",
+          "route": "1У",
+          "startPlace": "МЯ",
+          "startTime": "3:55",
+          "trains": "Резерв",
+          "endTime": "8:20",
+          "workHours": "4:25",
+          "nightHours": "2:05"
+        },
+        {
+          "date": "пт",
           "route": "58У",
           "startPlace": "ПУ",
           "startTime": "1:10",
@@ -6398,6 +6464,17 @@
           "endTime": "6:00",
           "workHours": "4:00",
           "nightHours": "4:00"
+        },
+        {
+          "date": "сб",
+          "route": "Д1",
+          "startPlace": "МЯ",
+          "startTime": "6:20",
+          "trains": "Резерв",
+          "endTime": "20:20",
+          "workHours": "12:00",
+          "nightHours": "0:00",
+          "lunch": "12:00-14:00 **"
         },
         {
           "date": "сб",
@@ -6770,6 +6847,18 @@
           "workHours": "11:00",
           "nightHours": "0:00",
           "lunch": "*"
+        },
+        {
+          "date": "сб",
+          "route": "Н1",
+          "startPlace": "МЯ",
+          "startTime": "18:20",
+          "trains": "Резерв",
+          "endTime": "1:55",
+          "workHours": "7:35",
+          "nightHours": "3:55",
+          "morningRoute": "1У",
+          "lunch": "1:55-3:55 **"
         },
         {
           "date": "сб",
@@ -7175,6 +7264,16 @@
         },
         {
           "date": "сб",
+          "route": "1У",
+          "startPlace": "МЯ",
+          "startTime": "3:55",
+          "trains": "Резерв",
+          "endTime": "8:20",
+          "workHours": "4:25",
+          "nightHours": "2:05"
+        },
+        {
+          "date": "сб",
           "route": "58У",
           "startPlace": "ПУ",
           "startTime": "2:00",
@@ -7502,6 +7601,17 @@
           "endTime": "6:00",
           "workHours": "4:00",
           "nightHours": "4:00"
+        },
+        {
+          "date": "вс",
+          "route": "Д1",
+          "startPlace": "МЯ",
+          "startTime": "6:20",
+          "trains": "Резерв",
+          "endTime": "20:20",
+          "workHours": "12:00",
+          "nightHours": "0:00",
+          "lunch": "12:00-14:00 **"
         },
         {
           "date": "вс",
@@ -7874,6 +7984,18 @@
           "workHours": "11:00",
           "nightHours": "0:00",
           "lunch": "*"
+        },
+        {
+          "date": "вс",
+          "route": "Н1",
+          "startPlace": "МЯ",
+          "startTime": "18:20",
+          "trains": "Резерв",
+          "endTime": "1:55",
+          "workHours": "7:35",
+          "nightHours": "3:55",
+          "morningRoute": "1У",
+          "lunch": "1:55-3:55 **"
         },
         {
           "date": "вс",
@@ -8276,6 +8398,16 @@
           "nightHours": "4:00",
           "morningRoute": "99У",
           "lunch": "2:00-2:00 *"
+        },
+        {
+          "date": "вс",
+          "route": "1У",
+          "startPlace": "МЯ",
+          "startTime": "3:55",
+          "trains": "Резерв",
+          "endTime": "8:20",
+          "workHours": "4:25",
+          "nightHours": "2:05"
         },
         {
           "date": "вс",
@@ -13156,7 +13288,7 @@
     }
   ],
   "stats": {
-    "rows": 792,
+    "rows": 804,
     "routes": 105,
     "markers": [
       "вс",

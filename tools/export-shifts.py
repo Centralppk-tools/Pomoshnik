@@ -147,6 +147,15 @@ def flat_row(date: str, route: str, fields: dict[str, str]) -> dict[str, str]:
     return row
 
 
+def find_first_data_row(ws) -> int:
+    max_row = ws.max_row or DATA_START_ROW
+    for row in range(HEADER_ROW, max_row + 1):
+        day_route = cell_str(ws.cell(row, 1).value)
+        if DAY_ROUTE_RE.match(day_route):
+            return row
+    return DATA_START_ROW
+
+
 def parse_workbook(path: Path) -> list[dict[str, str]]:
     marker = detect_marker(path)
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
@@ -156,8 +165,9 @@ def parse_workbook(path: Path) -> list[dict[str, str]]:
     night_rows: list[tuple[int, str]] = []
     flat_rows: list[dict[str, str]] = []
 
-    max_row = ws.max_row or DATA_START_ROW
-    for row in range(DATA_START_ROW, max_row + 1):
+    data_start_row = find_first_data_row(ws)
+    max_row = ws.max_row or data_start_row
+    for row in range(data_start_row, max_row + 1):
         day_route = cell_str(ws.cell(row, 1).value)
         if not DAY_ROUTE_RE.match(day_route):
             continue
