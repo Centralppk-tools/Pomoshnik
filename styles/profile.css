@@ -39,10 +39,8 @@
 }
 
 #screen-profile .profile-month-selector {
-    display: grid;
-    grid-template-columns: 36px 1fr 36px;
-    align-items: center;
-    gap: 8px;
+    display: block;
+    width: 100%;
     box-sizing: border-box;
 }
 

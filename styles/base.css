@@ -198,11 +198,9 @@ body {
 }
 
 .schedule-title-plate {
-    background: linear-gradient(90deg, rgba(0, 105, 92, 0.92) 0%, rgba(0, 156, 139, 0.96) 58%, rgba(0, 194, 176, 0.94) 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: linear-gradient(90deg, #024C4E 0%, #038B6F 50%, #06CA86 100%);
     border: none;
-    border-top: 1px solid rgba(87, 255, 228, 0.22);
+    border-top: 1px solid rgba(6, 202, 134, 0.22);
     border-radius: 0 0 var(--card-radius) var(--card-radius);
     padding: 6px 12px;
     display: flex;

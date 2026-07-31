@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 2.4.6.2 STABLE, deploy-ready)
-const CACHE_VERSION = 'da_v2_4_6_2';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 3.1 STABLE, deploy-ready)
+const CACHE_VERSION = 'da_v3_1';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -21,6 +21,7 @@ const PRECACHE_ASSETS = [
     './data/trains-uids.json',
     './data/shift-templates.json',
     './data/calendar-local-routes.json',
+    './data/line-sections.json',
     './data/release-notes.json',
     './js/app-config.js',
     './assets/brand-logo.png',
@@ -89,6 +90,10 @@ function isAppShellRequest(pathname, mode) {
 
 function isReleaseNotesRequest(pathname) {
     return pathname.endsWith('/data/release-notes.json') || pathname.endsWith('release-notes.json');
+}
+
+function isTrainUidsRequest(pathname) {
+    return pathname.endsWith('/data/trains-uids.json') || pathname.endsWith('trains-uids.json');
 }
 
 async function networkFirst(request) {
@@ -216,7 +221,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
 
-    if (isReleaseNotesRequest(url.pathname)) {
+    if (isReleaseNotesRequest(url.pathname) || isTrainUidsRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }

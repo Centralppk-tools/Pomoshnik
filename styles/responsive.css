@@ -407,10 +407,26 @@
         font-size: var(--font-sm);
     }
 
-    #screen-calendar .shift-summary-title {
-        font-size: var(--font-base);
+    #screen-calendar .shift-summary__head {
         padding: 12px 12px 8px;
-        font-weight: 500;
+    }
+
+    #screen-calendar .shift-summary__title {
+        font-size: var(--font-sm);
+    }
+
+    #screen-calendar .shift-summary__field {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    #screen-calendar .shift-summary__time-input {
+        min-height: 48px;
+        font-size: var(--font-lg);
+    }
+
+    #screen-calendar .shift-summary__calc-value {
+        font-size: var(--font-base);
     }
 
     #screen-calendar .shift-summary-row {
@@ -654,91 +670,97 @@
         gap: 5px;
     }
 
+    /* Компактная сводка смены */
+    .route-shift-panel .shift-date-night {
+        padding: 8px 12px 10px;
+    }
+
+    .route-shift-compact {
+        padding: 8px 10px 10px;
+        gap: 6px;
+    }
+
+    .route-shift-compact__code {
+        min-width: 48px;
+        padding: 7px 10px;
+        font-size: var(--font-sm);
+    }
+
+    .route-shift-compact__work {
+        font-size: var(--font-sm);
+    }
+
+    .route-shift-compact__lunch {
+        font-size: 11px;
+    }
+
+    .route-shift-compact__edit {
+        width: 28px;
+        height: 28px;
+    }
+
+    .route-shift-compact__chip {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .route-shift-compact__add {
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+    }
+
+    .route-shift-expanded {
+        padding: 10px;
+    }
+
+    .route-shift-expanded__times {
+        grid-template-columns: 1fr;
+    }
+
+    .route-train-chip-popover__box {
+        max-width: none;
+        padding: 14px 12px;
+    }
+
     /* Предупреждения ДУ-61 */
     .shift-warnings-modal.shift-confirm-overlay {
-        padding: 12px 14px;
-        align-items: center;
+        padding: 10px;
     }
 
     .shift-warnings-box {
         max-width: none;
+        max-height: min(94vh, 720px);
         padding: 14px 12px;
-        border-radius: 6px;
+        border-radius: var(--card-radius);
     }
 
     .shift-warnings-title {
-        font-size: 15px;
+        font-size: var(--font-base);
     }
 
     .shift-warnings-header {
         margin-bottom: 10px;
+    }
+
+    .shift-warnings-form {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .shift-warnings-fields-row {
         gap: 8px;
     }
 
-    .shift-warnings-close {
-        width: 28px;
-        height: 28px;
-        font-size: 20px;
+    .shift-warnings-section-trigger,
+    .shift-warnings-input,
+    .shift-warnings-dir-tab,
+    .shift-warnings-add {
+        min-height: 44px;
     }
 
-    .shift-warnings-table {
-        --warn-grid-cols: minmax(0, 0.68fr) minmax(0, 0.68fr) minmax(0, 0.82fr) minmax(0, 1.55fr);
-        margin-bottom: 10px;
-    }
-
-    .shift-warnings-columns--4,
-    .shift-warnings-row--4 {
-        column-gap: 4px;
-        min-width: 300px;
-    }
-
-    .shift-warnings-columns {
-        font-size: 10px;
-        gap: 4px;
-    }
-
-    .shift-warnings-scroll {
-        max-height: min(52vh, 220px);
-    }
-
-    .shift-warnings-grid {
-        gap: 6px;
-        padding-right: 4px;
-    }
-
-    .shift-warnings-input {
-        padding: 5px 3px;
-        font-size: 16px;
-        border-radius: 3.5px;
-    }
-
-    .warn-dir-control {
-        gap: 3px;
-    }
-
-    .warn-dir-label {
-        font-size: 9px;
-    }
-
-    .warn-dir-switch {
-        width: 32px;
-        height: 18px;
-    }
-
-    .warn-dir-switch-slider::before {
-        height: 12px;
-        width: 12px;
-        left: 3px;
-        bottom: 3px;
-    }
-
-    .warn-dir-switch-input:checked + .warn-dir-switch-slider::before {
-        transform: translateX(14px);
-    }
-
-    .shift-warnings-save {
-        padding: 11px 12px;
-        font-size: 14px;
+    .shift-warnings-list-scroll {
+        max-height: min(42vh, 240px);
     }
 
     .shift-warnings-trigger {
