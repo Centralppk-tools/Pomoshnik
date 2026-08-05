@@ -1,24 +1,19 @@
-3.1 STABLE ★
+3.1.1 STABLE ★
 
-Дата: 2026-08-01
+Дата: 2026-08-05
 
 Статус: готово к выкладке на GitHub Pages и PWA.
 
-Service Worker: da_v3_1
+Service Worker: da_v3_1_1
 
 Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
 
-Снимок HTML: Version/snapshots/index 3.1.html
+Снимок HTML: Version/snapshots/index 3.1.1.html
 
-Снимок стилей: Version/snapshots/styles 3.1/
+Снимок стилей: Version/snapshots/styles 3.1.1/
 
 Ключевые изменения:
 
-- ui: переработана сводка смен и панель поездов на маршруте (route-shift-compact)
-- feat: редактирование времени смены и обеда в сводке (+ / ×), сброс к шаблону
-- feat: окно предупреждений ДУ-61 — выбор участков перегона (line-sections)
-- feat: выбор месяца в личном кабинете — финансы и баланс часов
-- fix: экспорт календаря .ics — Share API, iOS fallback, bottom sheet
-- fix: порядок поездов при переходе календарь → маршрут совпадает с графиком смены
-- ui: карточки маршрута сортируются по времени отправления (отображение)
-- data: shift-templates, spr.json, trains-uids, line-sections.json
+- data: обновление часов смен — норматив с 05.08 для пн–чт (документ на 3, 4, 5, 6 августа)
+- data: пт, сб, вс — по прежним часам (норматив с 17.07)
+- chore: третий период в shift-templates.json (до 16.07 / 17.07–04.08 / с 05.08)

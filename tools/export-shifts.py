@@ -32,14 +32,21 @@ NORMATIVE_PERIODS = [
         "id": "2026-06-24",
         "normativeFrom": "2026-06-24",
         "normativeTo": "2026-07-16",
-        "folders": [HOURS_DIR],
-        "excludeSubdirs": {"c 17_07"},
+        "folders": [HOURS_DIR / "с 24_06"],
+        "excludeSubdirs": set(),
     },
     {
         "id": "2026-07-17",
         "normativeFrom": "2026-07-17",
-        "normativeTo": None,
+        "normativeTo": "2026-08-04",
         "folders": [HOURS_DIR / "c 17_07"],
+        "excludeSubdirs": set(),
+    },
+    {
+        "id": "2026-08-05",
+        "normativeFrom": "2026-08-05",
+        "normativeTo": None,
+        "folders": [HOURS_DIR / "c 05_08"],
         "excludeSubdirs": set(),
     },
 ]
@@ -122,7 +129,7 @@ def list_xlsx_files(folder: Path, exclude_subdirs: set[str]) -> list[Path]:
         rel_parts = path.relative_to(folder).parts
         if rel_parts and rel_parts[0] in exclude_subdirs:
             continue
-        if path.name.startswith("~$"):
+        if path.name.startswith("~$") or path.name.startswith("_"):
             continue
         files.append(path)
     return files
