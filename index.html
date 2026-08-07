@@ -177,9 +177,6 @@
                             <p id="routeShiftWorkLine" class="route-shift-compact__work">—</p>
                             <p id="routeShiftLunchLine" class="route-shift-compact__lunch">—</p>
                         </div>
-                        <button type="button" id="routeShiftExpandBtn" class="route-shift-compact__edit" aria-label="Развернуть редактирование смены" aria-expanded="false">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        </button>
                     </div>
                     <div class="route-shift-compact__trains">
                         <div id="routeShiftTrainChips" class="route-shift-compact__chips" role="list"></div>
@@ -187,29 +184,17 @@
                     </div>
                 </div>
 
+                <button type="button" id="routeShiftToggleChevron" class="route-shift-compact__chevron" aria-label="Параметры смены" aria-expanded="false" hidden>
+                    <svg class="route-shift-compact__chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </button>
+
                 <div id="routeShiftExpanded" class="route-shift-expanded" hidden>
                     <div class="route-shift-expanded__header">
                         <span class="route-shift-expanded__title">Параметры смены</span>
-                        <button type="button" id="routeShiftCollapseBtn" class="route-shift-expanded__collapse" aria-label="Свернуть">Свернуть</button>
                     </div>
-                    <div id="routeShiftTemplateField" class="route-shift-expanded__field">
-                        <span class="route-shift-expanded__label">Маршрут</span>
-                        <select id="routeShiftTemplateSelect" class="route-shift-expanded__select"></select>
-                    </div>
-                    <div class="route-shift-expanded__times">
-                        <label class="route-shift-expanded__field">
-                            <span class="route-shift-expanded__label">Явка</span>
-                            <input type="time" id="routeShiftStartInput" class="route-shift-expanded__input">
-                        </label>
-                        <label class="route-shift-expanded__field">
-                            <span class="route-shift-expanded__label">Сдача</span>
-                            <input type="time" id="routeShiftEndInput" class="route-shift-expanded__input">
-                        </label>
-                        <label class="route-shift-expanded__field route-shift-expanded__field--lunch">
-                            <span class="route-shift-expanded__label">Обед</span>
-                            <input type="text" id="routeShiftLunchInput" class="route-shift-expanded__input" placeholder="12:30 - 13:30">
-                        </label>
-                    </div>
+                    <div id="routeShiftEditorMount" class="route-shift-editor-mount"></div>
                 </div>
 
                 <div class="route-shift-panel__submit">
@@ -289,15 +274,18 @@
                     <span class="shift-warnings-label">Участок</span>
                     <div class="shift-warnings-section-combobox route-combobox" id="shiftWarningsSectionCombobox">
                         <div class="route-combobox-field">
-                            <button type="button" id="shiftWarningsSectionTrigger" class="shift-warnings-section-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="shiftWarningsSectionList">Москва — Александров</button>
+                            <button type="button" id="shiftWarningsSectionTrigger" class="shift-warnings-section-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="shiftWarningsSectionList">Москва — Мытищи</button>
                         </div>
                         <ul id="shiftWarningsSectionList" class="route-combobox-list shift-warnings-section-list" role="listbox" hidden>
-                            <li class="route-combobox-option is-selected" role="option" data-value="yaroslavskoe">Москва — Александров</li>
-                            <li class="route-combobox-option" role="option" data-value="krasnoarmeysk">Москва — Красноармейск</li>
-                            <li class="route-combobox-option" role="option" data-value="fryazino">Москва — Фрязино</li>
-                            <li class="route-combobox-option" role="option" data-value="fryazevo">Москва — Фрязево</li>
+                            <li class="route-combobox-option is-selected" role="option" data-value="msk_mytishchi">Москва — Мытищи</li>
+                            <li class="route-combobox-option" role="option" data-value="mytishchi_sofrino">Мытищи — Софрино</li>
+                            <li class="route-combobox-option" role="option" data-value="sofrino_alexandrov">Софрино — Александров</li>
+                            <li class="route-combobox-option" role="option" data-value="sofrino_krasnoarmeysk">Софрино — Красноармейск</li>
+                            <li class="route-combobox-option" role="option" data-value="mytishchi_bolshevo">Мытищи — Болшево</li>
+                            <li class="route-combobox-option" role="option" data-value="bolshevo_fryazino">Болшево — Фрязино</li>
+                            <li class="route-combobox-option" role="option" data-value="bolshevo_fryazevo">Болшево — Фрязево</li>
                         </ul>
-                        <input type="hidden" id="shiftWarningsSection" value="yaroslavskoe">
+                        <input type="hidden" id="shiftWarningsSection" value="msk_mytishchi">
                     </div>
                 </div>
 
@@ -337,28 +325,14 @@
     <div id="routeTrainChipPopover" class="route-train-chip-popover shift-confirm-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="routeTrainChipPopoverTitle">
         <div class="route-train-chip-popover__box">
             <div class="route-train-chip-popover__header">
-                <h3 id="routeTrainChipPopoverTitle" class="route-train-chip-popover__title">Поезд</h3>
+                <h3 id="routeTrainChipPopoverTitle" class="route-train-chip-popover__title">Поезда смены</h3>
                 <button type="button" id="routeTrainChipClose" class="route-train-chip-popover__close shift-warnings-icon-close" aria-label="Закрыть"></button>
             </div>
-            <label class="route-train-chip-popover__field">
-                <span class="route-train-chip-popover__label">Номер</span>
-                <input type="text" id="routeTrainChipNumber" class="route-train-chip-popover__input" inputmode="numeric" autocomplete="off">
-            </label>
-            <div class="route-train-chip-popover__times">
-                <label class="route-train-chip-popover__field">
-                    <span class="route-train-chip-popover__label">Отпр.</span>
-                    <input type="time" id="routeTrainChipDeparture" class="route-train-chip-popover__input route-train-chip-popover__input--time">
-                </label>
-                <label class="route-train-chip-popover__field">
-                    <span class="route-train-chip-popover__label">Приб.</span>
-                    <input type="time" id="routeTrainChipArrival" class="route-train-chip-popover__input route-train-chip-popover__input--time">
-                </label>
+            <div id="routeTrainChipGrid" class="route-train-chip-popover__grid" role="group" aria-label="Номера поездов"></div>
+            <div class="route-train-chip-popover__add-wrap">
+                <button type="button" id="routeTrainChipAdd" class="route-train-chip-popover__add" aria-label="Добавить поезд">+</button>
             </div>
-            <p id="routeTrainChipTimesHint" class="route-train-chip-popover__hint"></p>
-            <div class="route-train-chip-popover__actions">
-                <button type="button" id="routeTrainChipDelete" class="route-train-chip-popover__btn route-train-chip-popover__btn--danger">Удалить</button>
-                <button type="button" id="routeTrainChipSave" class="route-train-chip-popover__btn route-train-chip-popover__btn--primary">Сохранить</button>
-            </div>
+            <button type="button" id="routeTrainChipSave" class="route-train-chip-popover__btn route-train-chip-popover__btn--primary route-train-chip-popover__btn--full">Сохранить изменения</button>
         </div>
     </div>
 
@@ -627,13 +601,6 @@
 
     let stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
     let trainThreadsCache = {};
-    let trainUidStaticIndex = null;
-    /** Минимальный встроенный индекс uid — работает даже при устаревшем SW-кэше trains-uids.json */
-    const TRAIN_UID_SEED = {
-        '6024': '6024_2_2000002_g25_4',
-        '6040': '6040_0_2000002_g25_4',
-        '6846': '6846_1_2000002_g25_4'
-    };
     let sprDataCache = null;
     let localTrainsCache = null;
 
@@ -649,7 +616,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '3.1.1';
+    const APP_RELEASE_VERSION = '3.1.2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -935,8 +902,37 @@
         userStorageSet('routeShiftContext', context);
     }
 
+    function pickRouteShiftIndex(dateKey, shifts) {
+        if (!Array.isArray(shifts) || !shifts.length) return 0;
+        const stored = loadRouteShiftContext();
+        if (stored?.dateKey === dateKey && Number.isFinite(stored.shiftIndex) && shifts[stored.shiftIndex]) {
+            return stored.shiftIndex;
+        }
+        const nightOn = document.getElementById('nightMode')?.checked === true;
+        if (nightOn) {
+            const nightIdx = shifts.findIndex(s => isNightRoute(s.route));
+            if (nightIdx >= 0) return nightIdx;
+        }
+        return 0;
+    }
+
     function resolveRouteShiftContext() {
-        const dateKey = getShiftContextDateKey();
+        const dateKey = getRouteTabDateKey();
+        const calendarShifts = getStoredDayShifts(dateKey);
+        if (calendarShifts.length) {
+            const shiftIndex = pickRouteShiftIndex(dateKey, calendarShifts);
+            return {
+                dateKey,
+                shift: { ...calendarShifts[shiftIndex] },
+                shiftIndex
+            };
+        }
+
+        const resolved = resolveShiftForCalendarDay(dateKey);
+        if (resolved) {
+            return { dateKey, shift: { ...resolved }, shiftIndex: 0 };
+        }
+
         const stored = loadRouteShiftContext();
         if (stored?.dateKey === dateKey && stored?.shift) {
             return {
@@ -945,12 +941,51 @@
                 shiftIndex: Number.isFinite(stored.shiftIndex) ? stored.shiftIndex : 0
             };
         }
-
-        const calendarShift = resolveShiftForCalendarDay(dateKey);
-        if (calendarShift) {
-            return { dateKey, shift: { ...calendarShift }, shiftIndex: 0 };
-        }
         return null;
+    }
+
+    function syncTrainNumbersFromShiftContext(shift, dateKey) {
+        if (!shift) return;
+        const payload = buildTrainsNavigationPayload(shift, dateKey, {});
+        const numbers = payload.trainNumbers?.length
+            ? payload.trainNumbers
+            : extractTrainNumbers(getShiftTrainsText(shift));
+        if (!numbers.length) return;
+        const iso = calendarKeyToIso(dateKey) || getSelectedDate();
+        applyRouteTrainNumbersState(numbers, payload.trainPlan, dateKey, iso, false);
+    }
+
+    function syncRouteContextFromCalendar(dateKey, shift, shiftIndex, options = {}) {
+        if (!dateKey || !shift) return;
+        if (dateKey !== getRouteTabDateKey()) return;
+
+        saveRouteShiftContext({
+            dateKey,
+            shift: { ...shift },
+            shiftIndex: Number.isFinite(shiftIndex) ? shiftIndex : 0
+        });
+        syncRouteTrainsFromShiftDraft(shift, dateKey);
+        renderRouteShiftCompact();
+        if (options.remountEditor !== false && isRouteShiftEditorOpen()) {
+            mountRouteShiftEditor();
+        }
+    }
+
+    function refreshCalendarConstructorForDate(dateKey) {
+        if (!dateKey || calendarSelectedDateKey !== dateKey) return;
+        const parts = dateKey.split('.');
+        if (parts.length !== 3) return;
+        renderShiftConstructor(
+            dateKey,
+            parseInt(parts[0], 10),
+            parseInt(parts[1], 10) - 1,
+            parseInt(parts[2], 10)
+        );
+    }
+
+    function getCalendarShiftDayPanel() {
+        return document.querySelector('#screen-calendar [data-shift-day-panel]')
+            || document.querySelector('#constructorContent [data-shift-day-panel]');
     }
 
     function formatRouteShiftCompactWorkLine(shift, dateKey) {
@@ -974,89 +1009,188 @@
         return `${String(h).padStart(2, '0')}:${m}`;
     }
 
-    function populateRouteShiftTemplateSelect(selectedRoute) {
-        const select = document.getElementById('routeShiftTemplateSelect');
-        if (!select) return;
-
-        const dateKey = getShiftContextDateKey();
-        const options = getConstructorRouteOptions(dateKey);
-        const currentRoute = String(selectedRoute || '').trim();
-
-        select.innerHTML = options.length
-            ? options.map(opt => {
-                const route = String(opt.route || '').trim();
-                const selected = route === currentRoute ? ' selected' : '';
-                return `<option value="${escapeAttr(route)}" data-signature="${escapeAttr(opt.signature || '')}"${selected}>${escapeHtml(opt.label)}</option>`;
-            }).join('')
-            : '<option value="">— нет шаблонов —</option>';
+    function getRouteTabDateKey() {
+        const iso = getSelectedDate();
+        if (iso) {
+            const parts = String(iso).split('-');
+            if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return getTodayDateKey();
     }
 
-    function applyRouteShiftTemplate(routeValue) {
-        const dateKey = getShiftContextDateKey();
-        const options = getConstructorRouteOptions(dateKey);
-        const match = options.find(opt => String(opt.route || '').trim() === String(routeValue || '').trim());
-        if (!match?.template) return;
+    function isRouteShiftEditorOpen() {
+        const expanded = document.getElementById('routeShiftExpanded');
+        return Boolean(expanded && !expanded.hidden);
+    }
 
-        const shift = buildCalendarShiftFromTemplate(match.template);
-        const ctx = resolveRouteShiftContext() || { dateKey, shiftIndex: 0 };
-        saveRouteShiftContext({ dateKey, shift, shiftIndex: ctx.shiftIndex ?? 0 });
-
+    function syncRouteTrainsFromShiftDraft(shift, dateKey) {
+        if (!shift) return;
         const payload = buildTrainsNavigationPayload(shift, dateKey, {});
         const numbers = payload.trainNumbers?.length
             ? payload.trainNumbers
             : extractTrainNumbers(getShiftTrainsText(shift));
-        if (numbers.length) {
-            const iso = calendarKeyToIso(dateKey);
-            applyRouteTrainNumbersState(numbers, payload.trainPlan, dateKey, iso, false);
+        const iso = calendarKeyToIso(dateKey) || getSelectedDate();
+        applyRouteTrainNumbersState(numbers.length ? numbers : [''], payload.trainPlan || null, dateKey, iso, false);
+    }
+
+    function buildRouteShiftEditorHtml(dateKey, shifts, shiftIndex) {
+        if (!shifts.length) {
+            return `
+            <div class="shift-day-panel shift-day-panel--design" data-shift-day-panel data-route-shift-editor="1" data-date-key="${escapeAttr(dateKey)}">
+                <div class="shift-day-panel__body">
+                    <div class="shift-card__row shift-card__row--route">
+                        <span class="shift-card__label">Маршрут</span>
+                        <div class="shift-card__field">
+                            <div class="shift-card__route-area">
+                                <div class="shift-card__route-picker">
+                                    <div class="shift-card__route-pill">
+                                        ${buildRouteComboboxBlock('', '', { withList: false, summary: true })}
+                                        <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+                                    </div>
+                                    <ul class="route-combobox-list shift-summary__route-list" data-summary-route-list role="listbox" hidden></ul>
+                                </div>
+                                ${buildShiftPanelQuickRoutesInline('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         }
 
-        syncRouteShiftExpandedFields(shift, dateKey);
-        renderRouteShiftCompact();
-        renderRoutesFromCacheIfVisible();
+        const idx = Math.min(Math.max(0, shiftIndex), shifts.length - 1);
+        const shift = shifts[idx];
+        return `
+            <div class="shift-day-panel shift-day-panel--design" data-shift-day-panel data-route-shift-editor="1" data-date-key="${escapeAttr(dateKey)}">
+                <div class="shift-day-panel__body">
+                    <div class="shift-day-panel__tab-panel" data-shift-tab-panel data-shift-index="${idx}" data-tab-date-key="${escapeAttr(dateKey)}" data-readonly="0">
+                        ${buildShiftSummaryPanelHtml(shift, dateKey, idx, {}, { editable: true })}
+                    </div>
+                </div>
+            </div>`;
     }
 
-    function syncRouteShiftExpandedFields(shift, dateKey) {
-        const ctxShift = shift || resolveRouteShiftContext()?.shift;
-        if (!ctxShift) return;
+    function ensureRouteShiftSyncedToCalendar(dateKey) {
+        const stored = getStoredDayShifts(dateKey);
+        const ctx = loadRouteShiftContext();
+        if (stored.length) return stored;
 
-        const enriched = enrichShiftFromDepotTemplate(ctxShift, dateKey || getShiftContextDateKey());
-        const startInput = document.getElementById('routeShiftStartInput');
-        const endInput = document.getElementById('routeShiftEndInput');
-        const lunchInput = document.getElementById('routeShiftLunchInput');
-
-        if (startInput) startInput.value = timeInputValueFromShift(enriched?.startTime || enriched?.reportTime);
-        if (endInput) endInput.value = timeInputValueFromShift(enriched?.endTime);
-        if (lunchInput) lunchInput.value = formatShiftLunchTimeDisplay(enriched, dateKey || getShiftContextDateKey()).replace(' – ', ' - ');
-
-        populateRouteShiftTemplateSelect(enriched?.route || enriched?.name);
+        if (ctx?.dateKey === dateKey && ctx.shift?.route) {
+            applyShiftToCalendarDay(dateKey, { ...ctx.shift });
+            persistUserShifts();
+            return getStoredDayShifts(dateKey);
+        }
+        return [];
     }
 
-    function persistRouteShiftExpandedFields() {
+    function mountRouteShiftEditor() {
+        const host = document.getElementById('routeShiftEditorMount');
+        if (!host) return;
+
+        const dateKey = getRouteTabDateKey();
+        applyNormativeForDateKey(dateKey);
+        let shifts = ensureRouteShiftSyncedToCalendar(dateKey);
         const ctx = resolveRouteShiftContext();
-        if (!ctx) return;
+        let shiftIndex = 0;
+        if (ctx?.dateKey === dateKey && ctx.shift?.route) {
+            const matchIdx = shifts.findIndex(s =>
+                normalizeCalendarRouteKey(s.route) === normalizeCalendarRouteKey(ctx.shift.route)
+            );
+            shiftIndex = matchIdx >= 0 ? matchIdx : (Number.isFinite(ctx.shiftIndex) ? ctx.shiftIndex : 0);
+        }
 
-        const startInput = document.getElementById('routeShiftStartInput');
-        const endInput = document.getElementById('routeShiftEndInput');
-        const lunchInput = document.getElementById('routeShiftLunchInput');
-        const templateSelect = document.getElementById('routeShiftTemplateSelect');
+        host.innerHTML = buildRouteShiftEditorHtml(dateKey, shifts, shiftIndex);
+        initRouteShiftEditor(host, dateKey, shifts, shiftIndex);
+    }
 
-        const nextShift = {
-            ...ctx.shift,
-            route: templateSelect?.value || ctx.shift.route || '',
-            startTime: startInput?.value ? normalizeShiftTimeToken(startInput.value) : (ctx.shift.startTime || ''),
-            endTime: endInput?.value ? normalizeShiftTimeToken(endInput.value) : (ctx.shift.endTime || ''),
-            reportTime: startInput?.value ? normalizeShiftTimeToken(startInput.value) : (ctx.shift.reportTime || ctx.shift.startTime || ''),
-            lunch: lunchInput?.value?.trim() || ctx.shift.lunch || ''
-        };
+    function refreshRouteShiftEditorIfOpen(forDateKey = null) {
+        if (!isRouteShiftEditorOpen()) return;
+        if (forDateKey && forDateKey !== getRouteTabDateKey()) return;
+        mountRouteShiftEditor();
+    }
 
-        saveRouteShiftContext({ ...ctx, shift: nextShift });
-        renderRouteShiftCompact();
+    function initRouteShiftEditor(host, dateKey, shifts, shiftIndex) {
+        const dayPanel = host.querySelector('[data-shift-day-panel]');
+        if (!dayPanel) return;
+
+        if (!shifts.length) {
+            dayPanel.querySelectorAll('.shift-card__route-picker').forEach(picker => {
+                bindSummaryRoutePicker(picker, dateKey);
+            });
+            const combobox = dayPanel.querySelector('[data-summary-route-combobox]');
+            const routeInput = combobox?.querySelector('[data-summary-route-input]');
+            const routeList = dayPanel.querySelector('[data-summary-route-list]');
+
+            const createFromRoute = (route, signature = '') => {
+                if (!route) return;
+                let template = signature ? constructorRouteOptions.get(signature) : null;
+                if (!template) template = findShiftTemplate(depotShiftTemplates, route, dateKey);
+                if (!template) return;
+                const shift = buildCalendarShiftFromTemplate(template);
+                applyShiftToCalendarDay(dateKey, shift);
+                persistUserShifts();
+                saveRouteShiftContext({ dateKey, shift, shiftIndex: 0 });
+                syncRouteTrainsFromShiftDraft(shift, dateKey);
+                renderRouteShiftCompact();
+                mountRouteShiftEditor();
+                refreshCalendarConstructorForDate(dateKey);
+            };
+
+            routeInput?.addEventListener('change', () => {
+                createFromRoute(getSummaryRouteComboboxValue(combobox));
+            });
+            routeList?.addEventListener('click', (e) => {
+                const option = e.target.closest('.route-combobox-option');
+                if (!option) return;
+                setSummaryRouteComboboxValue(combobox, option.dataset.route || '', option.dataset.signature || '');
+                routeList.hidden = true;
+                createFromRoute(option.dataset.route || '', option.dataset.signature || '');
+            });
+
+            if (!dayPanel.dataset.quickPresetsBound) {
+                dayPanel.dataset.quickPresetsBound = '1';
+                dayPanel.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-local-preset]');
+                    if (!btn || !dayPanel.contains(btn)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const presetId = btn.getAttribute('data-local-preset') || '';
+                    if (presetId) calendarApplyQuickPreset(presetId, dateKey);
+                });
+            }
+
+            if (!shiftSummaryEditorDocBound) {
+                shiftSummaryEditorDocBound = true;
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('[data-summary-route-combobox]')) return;
+                    if (e.target.closest('[data-add-night-route-combobox]')) return;
+                    closeAllSummaryRouteLists();
+                });
+            }
+            return;
+        }
+
+        const idx = Math.min(Math.max(0, shiftIndex), shifts.length - 1);
+        const tabs = [{
+            shift: shifts[idx],
+            dateKey,
+            shiftIndex: idx,
+            editable: true,
+            readonly: false,
+            isPrevNight: false,
+            isLinkedMorning: false
+        }];
+        const prevActiveTab = calendarConstructorActiveTab;
+        const prevKeepTab = calendarConstructorKeepTab;
+        calendarConstructorActiveTab = 0;
+        initShiftDayPanel(host, dateKey, [shifts[idx]], tabs);
+        calendarConstructorActiveTab = prevActiveTab;
+        calendarConstructorKeepTab = prevKeepTab;
     }
 
     function setRouteShiftExpanded(open) {
         const expanded = document.getElementById('routeShiftExpanded');
         const wrap = document.getElementById('routeShiftCompactWrap');
-        const expandBtn = document.getElementById('routeShiftExpandBtn');
+        const chevron = document.getElementById('routeShiftToggleChevron');
         const legacy = document.querySelector('.trains-dynamic--legacy');
         if (!expanded || !wrap) return;
 
@@ -1064,11 +1198,13 @@
         expanded.hidden = !isOpen;
         wrap.classList.toggle('is-expanded', isOpen);
         if (legacy) legacy.hidden = !isOpen;
-        if (expandBtn) expandBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (chevron) {
+            chevron.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            chevron.setAttribute('aria-label', isOpen ? 'Свернуть параметры смены' : 'Параметры смены');
+        }
 
         if (isOpen) {
-            const ctx = resolveRouteShiftContext();
-            syncRouteShiftExpandedFields(ctx?.shift, ctx?.dateKey);
+            mountRouteShiftEditor();
         }
     }
 
@@ -1087,6 +1223,8 @@
         const slotValues = getTrainNumbersIncludingEmptySlots();
 
         compact.hidden = false;
+        const chevron = document.getElementById('routeShiftToggleChevron');
+        if (chevron) chevron.hidden = false;
 
         if (ctx) {
             const enriched = enrichShiftFromDepotTemplate(ctx.shift, ctx.dateKey);
@@ -1137,9 +1275,10 @@
         }
     }
 
-    let routeTrainChipEditIndex = -1;
+    let routeTrainChipFocusIndex = -1;
     let routeTrainChipReturnFocus = null;
     let routeShiftCompactListenersBound = false;
+    const TRAIN_EDITOR_MIN_SLOTS = 6;
 
     function closeRouteTrainChipPopover() {
         const popover = document.getElementById('routeTrainChipPopover');
@@ -1152,7 +1291,7 @@
 
         popover.classList.remove('is-open');
         popover.setAttribute('aria-hidden', 'true');
-        routeTrainChipEditIndex = -1;
+        routeTrainChipFocusIndex = -1;
 
         const returnTo = routeTrainChipReturnFocus;
         routeTrainChipReturnFocus = null;
@@ -1161,156 +1300,189 @@
         }
     }
 
-    function openRouteTrainChipPopover(index) {
-        const values = getTrainNumbersIncludingEmptySlots();
-        if (index < 0 || index >= values.length) return;
+    function buildRouteTrainEditorValues(focusIndex = null) {
+        const current = getTrainNumbersIncludingEmptySlots();
+        const values = current.slice();
+        let focus = Number.isFinite(focusIndex) ? focusIndex : null;
 
-        routeTrainChipEditIndex = index;
-        routeTrainChipReturnFocus = document.querySelector(`.route-shift-compact__chip[data-index="${index}"]`)
-            || document.getElementById('routeShiftAddTrain')
-            || null;
-        const number = values[index]?.trim() || '';
-        const numberInput = document.getElementById('routeTrainChipNumber');
-        const depInput = document.getElementById('routeTrainChipDeparture');
-        const arrInput = document.getElementById('routeTrainChipArrival');
-        const hint = document.getElementById('routeTrainChipTimesHint');
+        if (focus == null) {
+            let emptyIdx = values.findIndex(v => !String(v || '').trim());
+            if (emptyIdx < 0) {
+                if (values.length < MAX_TRAIN_SLOTS) {
+                    values.push('');
+                    emptyIdx = values.length - 1;
+                } else {
+                    emptyIdx = Math.max(0, values.length - 1);
+                }
+            }
+            focus = emptyIdx;
+        }
+
+        focus = Math.max(0, Math.min(focus, MAX_TRAIN_SLOTS - 1));
+        const slotCount = Math.min(
+            MAX_TRAIN_SLOTS,
+            Math.max(TRAIN_EDITOR_MIN_SLOTS, values.length, focus + 1)
+        );
+        while (values.length < slotCount) values.push('');
+        return { values: values.slice(0, slotCount), focusIndex: Math.min(focus, slotCount - 1) };
+    }
+
+    function syncRouteTrainEditorClearButtons(root = document.getElementById('routeTrainChipGrid')) {
+        if (!root) return;
+        const cells = root.querySelectorAll('.route-train-chip-popover__cell');
+        const canRemoveSlot = cells.length > 1;
+        cells.forEach((cell, index) => {
+            const input = cell.querySelector('[data-train-editor-input]');
+            const clearBtn = cell.querySelector('[data-train-editor-clear]');
+            if (!input || !clearBtn) return;
+            const hasValue = Boolean(String(input.value || '').trim());
+            cell.classList.toggle('has-value', hasValue);
+            input.setAttribute('aria-label', `Номер поезда ${index + 1}`);
+            clearBtn.hidden = false;
+            clearBtn.setAttribute(
+                'aria-label',
+                canRemoveSlot ? `Удалить поле поезда ${index + 1}` : 'Очистить номер поезда'
+            );
+        });
+    }
+
+    function syncRouteTrainEditorAddButton() {
+        const addBtn = document.getElementById('routeTrainChipAdd');
+        const grid = document.getElementById('routeTrainChipGrid');
+        if (!addBtn || !grid) return;
+        const count = grid.querySelectorAll('[data-train-editor-input]').length;
+        const atMax = count >= MAX_TRAIN_SLOTS;
+        addBtn.hidden = atMax;
+        addBtn.disabled = atMax;
+        addBtn.parentElement?.classList.toggle('is-hidden', atMax);
+    }
+
+    function collectRouteTrainEditorValues(grid = document.getElementById('routeTrainChipGrid')) {
+        if (!grid) return [];
+        return Array.from(grid.querySelectorAll('[data-train-editor-input]'))
+            .map(input => String(input.value || ''));
+    }
+
+    function renderRouteTrainEditorGrid(values, focusIndex = null) {
+        const grid = document.getElementById('routeTrainChipGrid');
+        if (!grid) return;
+
+        const slots = values.length ? values : [''];
+        grid.innerHTML = slots.map((num, index) => {
+            const value = String(num || '');
+            const hasValue = Boolean(value.trim());
+            return `
+            <div class="route-train-chip-popover__cell${hasValue ? ' has-value' : ''}">
+                <input type="text" class="route-train-chip-popover__input" data-train-editor-input
+                    inputmode="numeric" autocomplete="off" maxlength="8"
+                    value="${escapeAttr(value)}"
+                    aria-label="Номер поезда ${index + 1}">
+                <button type="button" class="route-train-chip-popover__clear" data-train-editor-clear
+                    tabindex="-1" aria-label="Удалить поле поезда ${index + 1}"></button>
+            </div>`;
+        }).join('');
+
+        syncRouteTrainEditorClearButtons(grid);
+        syncRouteTrainEditorAddButton();
+
+        if (focusIndex == null || !Number.isFinite(focusIndex)) return;
+        const inputs = grid.querySelectorAll('[data-train-editor-input]');
+        const target = inputs[Math.max(0, Math.min(focusIndex, inputs.length - 1))] || inputs[0];
+        if (!target) return;
+        target.focus();
+        const len = target.value.length;
+        try { target.setSelectionRange(len, len); } catch (err) { /* ignore */ }
+    }
+
+    function openRouteTrainChipPopover(focusIndex = null) {
+        const grid = document.getElementById('routeTrainChipGrid');
         const popover = document.getElementById('routeTrainChipPopover');
-        const planEntry = number ? getShiftTrainPlanEntryForSlot(index, number) : null;
-        const cached = number ? getTrainCacheEntry(number, getSelectedDate()) : null;
-        const cachedDep = cached?.departure || cached?.stops?.[0]?.departure;
-        const cachedArr = cached?.arrival || cached?.stops?.[cached?.stops?.length - 1]?.arrival;
+        if (!grid || !popover) return;
 
-        if (numberInput) numberInput.value = number;
-        if (depInput) depInput.value = timeInputValueFromShift(planEntry?.departure || cachedDep);
-        if (arrInput) arrInput.value = timeInputValueFromShift(planEntry?.arrival || cachedArr);
-        if (hint) {
-            const hasOverride = Boolean(planEntry?.departure || planEntry?.arrival);
-            const timesHint = hasOverride
-                ? 'Время сохранено вручную и переопределяет расписание'
-                : (number ? getTrainTimesHintForCompact(number) : '');
-            hint.textContent = timesHint;
-            hint.hidden = !timesHint;
-        }
+        const { values, focusIndex: focus } = buildRouteTrainEditorValues(focusIndex);
+        routeTrainChipFocusIndex = focus;
+        routeTrainChipReturnFocus = (Number.isFinite(focusIndex) && focusIndex >= 0)
+            ? document.querySelector(`.route-shift-compact__chip[data-index="${focusIndex}"]`)
+            : document.getElementById('routeShiftAddTrain');
 
-        popover?.classList.add('is-open');
-        popover?.setAttribute('aria-hidden', 'false');
-        numberInput?.focus();
+        renderRouteTrainEditorGrid(values, focus);
+        popover.classList.add('is-open');
+        popover.setAttribute('aria-hidden', 'false');
     }
 
-    function getTrainTimesHintForCompact(trainNumber) {
-        const cached = getTrainCacheEntry(trainNumber, getSelectedDate());
-        if (!cached) return '';
-        const dep = cached.departure || cached.stops?.[0]?.departure;
-        const arr = cached.arrival || cached.stops?.[cached.stops?.length - 1]?.arrival;
-        if (!dep && !arr) return '';
-        return `В расписании: ${dep || '—'} – ${arr || '—'}`;
-    }
+    function addRouteTrainEditorSlot() {
+        const grid = document.getElementById('routeTrainChipGrid');
+        if (!grid) return;
 
-    function slotIndexToPlanIndex(slotValues, slotIndex) {
-        if (slotIndex < 0 || slotIndex >= slotValues.length || !String(slotValues[slotIndex] || '').trim()) {
-            return -1;
-        }
-        let planIndex = 0;
-        for (let i = 0; i < slotIndex; i++) {
-            if (String(slotValues[i] || '').trim()) planIndex++;
-        }
-        return planIndex;
-    }
-
-    function saveRouteTrainChipPopover() {
-        if (routeTrainChipEditIndex < 0) return;
-        const values = getTrainNumbersIncludingEmptySlots();
-        const numberInput = document.getElementById('routeTrainChipNumber');
-        const depInput = document.getElementById('routeTrainChipDeparture');
-        const arrInput = document.getElementById('routeTrainChipArrival');
-        const newNumber = String(numberInput?.value || '').trim();
-        const newDep = depInput?.value ? normalizeShiftTimeToken(depInput.value) : '';
-        const newArr = arrInput?.value ? normalizeShiftTimeToken(arrInput.value) : '';
-
-        if (!newNumber) {
-            removeTrainSlotAt(routeTrainChipEditIndex);
-            closeRouteTrainChipPopover();
-            syncRouteTrainsFromDom();
+        const values = collectRouteTrainEditorValues(grid);
+        if (values.length >= MAX_TRAIN_SLOTS) {
+            syncRouteTrainEditorAddButton();
             return;
         }
 
-        values[routeTrainChipEditIndex] = newNumber;
-        renderTrainInputs(values);
-        syncShiftTrainPlanFromInputs(values);
+        values.push('');
+        renderRouteTrainEditorGrid(values, values.length - 1);
+    }
 
-        const dateKey = getShiftContextDateKey();
-        const stored = userStorageGetJson('shiftTrainPlan', null);
-        const planIndex = slotIndexToPlanIndex(values, routeTrainChipEditIndex);
-        if (stored?.dateKey === dateKey && planIndex >= 0 && stored.items[planIndex]) {
-            const item = { ...stored.items[planIndex], number: newNumber };
-            if (newDep) item.departure = newDep;
-            else delete item.departure;
-            if (newArr) item.arrival = newArr;
-            else delete item.arrival;
-            stored.items[planIndex] = item;
-            userStorageSet('shiftTrainPlan', stored);
+    function removeOrClearRouteTrainEditorSlot(cell) {
+        const grid = document.getElementById('routeTrainChipGrid');
+        if (!grid || !cell || !grid.contains(cell)) return;
+
+        const cells = Array.from(grid.querySelectorAll('.route-train-chip-popover__cell'));
+        const input = cell.querySelector('[data-train-editor-input]');
+        if (!input) return;
+
+        if (cells.length <= 1) {
+            input.value = '';
+            syncRouteTrainEditorClearButtons(grid);
+            return;
         }
 
+        cell.remove();
+        syncRouteTrainEditorClearButtons(grid);
+        syncRouteTrainEditorAddButton();
+    }
+
+    function saveRouteTrainChipPopover() {
+        const grid = document.getElementById('routeTrainChipGrid');
+        if (!grid) return;
+
+        const values = collectRouteTrainEditorValues(grid)
+            .map(value => value.trim())
+            .filter(Boolean);
+
+        renderTrainInputs(values.length ? values : ['', '']);
+        syncShiftTrainPlanFromInputs(getTrainNumbersIncludingEmptySlots());
         closeRouteTrainChipPopover();
         syncRouteTrainsFromDom();
     }
 
-    function deleteRouteTrainChipPopover() {
-        if (routeTrainChipEditIndex < 0) return;
-        removeTrainSlotAt(routeTrainChipEditIndex);
-        closeRouteTrainChipPopover();
-        syncRouteTrainsFromDom();
+    function toggleRouteShiftExpanded() {
+        const expanded = document.getElementById('routeShiftExpanded');
+        setRouteShiftExpanded(Boolean(expanded?.hidden));
     }
 
     function initRouteShiftCompact() {
         if (routeShiftCompactListenersBound) return;
         routeShiftCompactListenersBound = true;
 
-        document.getElementById('routeShiftCodeBtn')?.addEventListener('click', () => {
-            setRouteShiftExpanded(true);
-        });
-
-        document.getElementById('routeShiftExpandBtn')?.addEventListener('click', () => {
-            const expanded = document.getElementById('routeShiftExpanded');
-            setRouteShiftExpanded(expanded?.hidden !== false);
-        });
-
-        document.getElementById('routeShiftCollapseBtn')?.addEventListener('click', () => {
-            persistRouteShiftExpandedFields();
-            setRouteShiftExpanded(false);
+        document.getElementById('routeShiftToggleChevron')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleRouteShiftExpanded();
+            e.currentTarget.blur();
         });
 
         document.getElementById('routeShiftCompact')?.addEventListener('click', (e) => {
-            if (e.target.closest('#routeShiftAddTrain, #routeShiftExpandBtn')) return;
             const chip = e.target.closest('.route-shift-compact__chip');
             if (chip?.dataset.index != null) {
                 e.stopPropagation();
                 openRouteTrainChipPopover(Number(chip.dataset.index));
-                return;
             }
-            setRouteShiftExpanded(true);
         });
 
-        document.getElementById('routeShiftAddTrain')?.addEventListener('click', () => {
-            const values = getTrainNumbersIncludingEmptySlots();
-            const emptyIndex = values.findIndex(v => !String(v || '').trim());
-            if (emptyIndex >= 0) {
-                openRouteTrainChipPopover(emptyIndex);
-                return;
-            }
-            addTrainSlot();
-            const nextValues = getTrainNumbersIncludingEmptySlots();
-            openRouteTrainChipPopover(nextValues.length - 1);
-        });
-
-        document.getElementById('routeShiftTemplateSelect')?.addEventListener('change', (e) => {
-            applyRouteShiftTemplate(e.target.value);
-        });
-
-        ['routeShiftStartInput', 'routeShiftEndInput', 'routeShiftLunchInput'].forEach(id => {
-            document.getElementById(id)?.addEventListener('change', () => {
-                persistRouteShiftExpandedFields();
-            });
+        document.getElementById('routeShiftAddTrain')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openRouteTrainChipPopover(null);
         });
 
         document.getElementById('trainsList')?.addEventListener('input', (e) => {
@@ -1324,10 +1496,37 @@
         });
 
         document.getElementById('routeTrainChipSave')?.addEventListener('click', saveRouteTrainChipPopover);
-        document.getElementById('routeTrainChipDelete')?.addEventListener('click', deleteRouteTrainChipPopover);
+        document.getElementById('routeTrainChipAdd')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            addRouteTrainEditorSlot();
+        });
         document.getElementById('routeTrainChipClose')?.addEventListener('click', closeRouteTrainChipPopover);
         document.getElementById('routeTrainChipPopover')?.addEventListener('click', (e) => {
             if (e.target.id === 'routeTrainChipPopover') closeRouteTrainChipPopover();
+        });
+
+        const grid = document.getElementById('routeTrainChipGrid');
+        grid?.addEventListener('input', (e) => {
+            if (!e.target.matches('[data-train-editor-input]')) return;
+            syncRouteTrainEditorClearButtons(grid);
+        });
+        grid?.addEventListener('pointerdown', (e) => {
+            const clearBtn = e.target.closest('[data-train-editor-clear]');
+            if (!clearBtn || !grid.contains(clearBtn)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            removeOrClearRouteTrainEditorSlot(clearBtn.closest('.route-train-chip-popover__cell'));
+        }, true);
+        grid?.addEventListener('click', (e) => {
+            if (!e.target.closest('[data-train-editor-clear]')) return;
+            e.preventDefault();
+            e.stopPropagation();
+        }, true);
+        grid?.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (!e.target.matches('[data-train-editor-input]')) return;
+            e.preventDefault();
+            saveRouteTrainChipPopover();
         });
     }
 
@@ -1395,6 +1594,7 @@
         dateInput.addEventListener('change', () => {
             setSelectedDateIso(dateInput.value);
             renderRouteShiftCompact();
+            refreshRouteShiftEditorIfOpen();
             renderRoutesFromCacheIfVisible();
             renderScheduleFromCacheIfVisible();
         });
@@ -1415,6 +1615,8 @@
         nightModeInput.addEventListener('change', () => {
             userStorageSet('nightMode', nightModeInput.checked ? '1' : '0');
             updateScheduleDateHint();
+            renderRouteShiftCompact();
+            refreshRouteShiftEditorIfOpen();
             renderRoutesFromCacheIfVisible();
             renderScheduleFromCacheIfVisible();
         });
@@ -1633,6 +1835,28 @@
         return getStationNotesMap()[getStationItemKey(stationIndex)] || '';
     }
 
+    function buildStationNotesPrefix(trainNumber, date = '') {
+        const train = String(trainNumber || '').trim();
+        const day = String(date || getSelectedDate() || '').trim();
+        if (!train || !day) return '';
+        return `${train}|${day}|`;
+    }
+
+    function trainHasStationNotes(trainNumber, date = getSelectedDate()) {
+        const prefix = buildStationNotesPrefix(trainNumber, date);
+        if (!prefix) return false;
+        const map = getStationNotesMap();
+        return Object.keys(map).some(key => key.startsWith(prefix) && String(map[key] || '').trim());
+    }
+
+    function syncRouteCardStationNoteMarkers() {
+        const date = getSelectedDate() || '';
+        document.querySelectorAll('#routeGrid .route-card[data-number]').forEach(card => {
+            const number = card.dataset.number || '';
+            card.classList.toggle('has-station-notes', trainHasStationNotes(number, date));
+        });
+    }
+
     function isStationSelected(stationIndex) {
         return Boolean(getStationSelectionsMap()[getStationItemKey(stationIndex)]);
     }
@@ -1706,6 +1930,7 @@
         saveStationNote(stationIndex, text);
         closeStationNoteSheet();
         refreshStationNoteBadge(stationIndex);
+        syncRouteCardStationNoteMarkers();
     }
 
     function refreshStationNoteBadge(stationIndex) {
@@ -1775,6 +2000,7 @@
             if (!Number.isNaN(stationIndex)) {
                 saveStationNote(stationIndex, '');
                 refreshStationNoteBadge(stationIndex);
+                syncRouteCardStationNoteMarkers();
             }
             return;
         }
@@ -2195,26 +2421,6 @@
         if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
         const [year, month, day] = parts;
         return new Date(year, month - 1, day, Math.floor(minutes / 60), minutes % 60, 0, 0);
-    }
-
-    function getRouteTrainDepartureSortKey(train, fallbackDateIso) {
-        if (!train) return Number.POSITIVE_INFINITY;
-        const dateIso = train.scheduleDate || fallbackDateIso;
-        const dt = buildRouteEventDateTime(dateIso, train.departure);
-        return dt ? dt.getTime() : Number.POSITIVE_INFINITY;
-    }
-
-    function sortRouteTrainEntriesByDeparture(trainEntries, baseDateIso) {
-        return [...trainEntries].sort((a, b) => {
-            const keyA = getRouteTrainDepartureSortKey(a.train, baseDateIso);
-            const keyB = getRouteTrainDepartureSortKey(b.train, baseDateIso);
-            if (keyA !== keyB) {
-                if (!Number.isFinite(keyA)) return 1;
-                if (!Number.isFinite(keyB)) return -1;
-                return keyA - keyB;
-            }
-            return a.originalIndex - b.originalIndex;
-        });
     }
 
     function resolveRouteTrainPhase(nowDate, train) {
@@ -2910,14 +3116,6 @@
                 localTrainsCache = null;
             }
         }
-
-        const uidPaths = ['./data/trains-uids.json', 'data/trains-uids.json', 'app/data/trains-uids.json'];
-        try {
-            const uidBundle = await fetchJsonAsset(uidPaths, 'cppk_trains_uids_cache');
-            applyTrainUidStaticIndex(uidBundle?.uids);
-        } catch (err) {
-            applyTrainUidStaticIndex(loadReferenceJsonCache('cppk_trains_uids_cache')?.uids);
-        }
     }
 
     function getWeekdayInfoForIsoDate(isoDate) {
@@ -2936,17 +3134,6 @@
         return shiftDateMatchesWeekday(normalized, weekdayInfo);
     }
 
-    function getMergedTrainUidIndex() {
-        return { ...TRAIN_UID_SEED, ...(trainUidStaticIndex || {}) };
-    }
-
-    function applyTrainUidStaticIndex(rawUids) {
-        const fetched = rawUids && typeof rawUids === 'object' ? rawUids : {};
-        trainUidStaticIndex = Object.keys(fetched).length ? fetched : null;
-        const merged = getMergedTrainUidIndex();
-        console.log('[trains] uid index:', Object.keys(merged).length, `(seed ${Object.keys(TRAIN_UID_SEED).length})`);
-    }
-
     function findLocalTrainRegistryEntry(trainNumber) {
         const numKey = normalizeTrainCacheKey(trainNumber);
         if (!numKey || !Array.isArray(localTrainsCache?.trains)) return null;
@@ -2961,36 +3148,6 @@
         return entry;
     }
 
-    function resolveThreadUidForTrain(trainNumber, scheduleDate = null) {
-        const registryUid = String(findLocalTrainRegistryEntry(trainNumber)?.threadUid || '').trim();
-        if (registryUid) return registryUid;
-
-        const numKey = normalizeTrainCacheKey(trainNumber);
-        const uidIndex = getMergedTrainUidIndex();
-        if (numKey && uidIndex[numKey]) {
-            return String(uidIndex[numKey]).trim();
-        }
-
-        if (scheduleDate) {
-            const boardHit = lookupTrainOnStationBoard(trainNumber, scheduleDate);
-            const boardUid = String(boardHit?.thread?.uid || '').trim();
-            if (boardUid) return boardUid;
-        }
-
-        if (numKey) {
-            for (const index of Object.values(stationUidIndexByDate)) {
-                if (index?.has(numKey)) {
-                    const hit = index.get(numKey);
-                    const crossUid = String(hit?.thread?.uid || '').trim();
-                    if (crossUid) return crossUid;
-                }
-            }
-        }
-
-        const cached = scheduleDate ? getTrainCacheEntry(trainNumber, scheduleDate) : null;
-        return String(cached?.uid || '').trim() || null;
-    }
-
     function parseTrainServiceDaysMarker(daysStr) {
         const raw = normalizeWeekdayMarker(daysStr);
         if (!raw) return null;
@@ -3001,11 +3158,59 @@
         return raw;
     }
 
+    const SERVICE_DAYS_MONTH_STEMS = [
+        ['январ', 1], ['феврал', 2], ['март', 3], ['апрел', 4], ['ма', 5],
+        ['июн', 6], ['июл', 7], ['август', 8], ['сентябр', 9], ['октябр', 10],
+        ['ноябр', 11], ['декабр', 12]
+    ];
+
+    /** «только 8, 9, 15, 16 августа» → ['2026-08-08', ...] относительно года выбранной даты */
+    function parseServiceDaysExplicitIsoDates(daysStr, scheduleDate) {
+        const raw = String(daysStr || '').toLowerCase().replace(/[–—]/g, '-');
+        if (!raw) return null;
+
+        let month = null;
+        for (const [stem, num] of SERVICE_DAYS_MONTH_STEMS) {
+            if (stem === 'ма') {
+                if (/\bма[йя]\b/.test(raw) || raw.includes('мая')) {
+                    month = num;
+                    break;
+                }
+                continue;
+            }
+            if (raw.includes(stem)) {
+                month = num;
+                break;
+            }
+        }
+        if (!month) return null;
+
+        const dayNums = [...raw.matchAll(/\b([0-3]?\d)\b/g)]
+            .map(m => Number(m[1]))
+            .filter(d => d >= 1 && d <= 31);
+        if (!dayNums.length) return null;
+
+        const yearPart = String(scheduleDate || '').split('-')[0];
+        const year = Number(yearPart);
+        if (!year) return null;
+
+        return [...new Set(dayNums.map(day =>
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        ))];
+    }
+
     function trainRunsOnSelectedDate(trainMeta, scheduleDate, registryEntry) {
+        if (!scheduleDate) return true;
+
+        const daysSource = registryEntry?.days || trainMeta?.serviceDays || trainMeta?.days;
+        const explicitDates = parseServiceDaysExplicitIsoDates(daysSource, scheduleDate);
+        if (explicitDates) {
+            return explicitDates.includes(scheduleDate);
+        }
+
         const weekdayInfo = getWeekdayInfoForIsoDate(scheduleDate);
         if (!weekdayInfo) return true;
 
-        const daysSource = registryEntry?.days || trainMeta?.serviceDays || trainMeta?.days;
         const marker = parseTrainServiceDaysMarker(daysSource);
         if (!marker) return true;
         if (marker === 'daily') return true;
@@ -3015,7 +3220,11 @@
         if (marker === 'сб-вс') {
             return weekdayInfo.single === 'сб' || weekdayInfo.single === 'вс';
         }
-        return shiftDateMatchesWeekday(marker, weekdayInfo);
+        if (isShiftWeekdayMarker(marker)) {
+            return shiftDateMatchesWeekday(marker, weekdayInfo);
+        }
+        // Неизвестная формулировка Яндекса — не помечаем off-day ложно
+        return true;
     }
 
     function buildStopsFromLocalEntry(entry) {
@@ -3426,11 +3635,23 @@
             result.runsOnSelectedDate = false;
             return result;
         }
+
+        // Нитка с остановками на выбранную дату уже подтверждена API/табло
+        const hasLiveStops = Array.isArray(result.stops) && result.stops.length > 0
+            && (result.source === 'api' || result.source === 'cache');
+        if (hasLiveStops) {
+            result.runsOnSelectedDate = true;
+            result.scheduleDayWarning = '';
+            return result;
+        }
+
         const runsOnSelectedDate = trainRunsOnSelectedDate(result, scheduleDate, registryEntry);
         result.runsOnSelectedDate = runsOnSelectedDate;
         if (!runsOnSelectedDate) {
             const daysLabel = registryEntry?.days || result.serviceDays || 'по будням';
             result.scheduleDayWarning = `Не ходит в выбранный день (${daysLabel})`;
+        } else {
+            result.scheduleDayWarning = '';
         }
         return result;
     }
@@ -3588,15 +3809,106 @@
     ];
 
     const SHIFT_WARNINGS_MAX = 10;
-    const SHIFT_WARNING_SECTIONS = [
-        { id: 'yaroslavskoe', label: 'Москва — Александров', shortLabel: 'МЯ — Александров', tone: 'green' },
-        { id: 'krasnoarmeysk', label: 'Москва — Красноармейск', shortLabel: 'МЯ — Красноармейск', tone: 'red' },
-        { id: 'fryazino', label: 'Москва — Фрязино', shortLabel: 'МЯ — Фрязино', tone: 'yellow' },
-        { id: 'fryazevo', label: 'Москва — Фрязево', shortLabel: 'МЯ — Фрязево', tone: 'blue' }
+    const LEGACY_ROUTE_SECTION_IDS = new Set([
+        'yaroslavskoe',
+        'krasnoarmeysk',
+        'fryazino',
+        'fryazevo'
+    ]);
+    const SHARED_SEGMENTS_FALLBACK = [
+        { id: 'msk_mytishchi', label: 'Москва — Мытищи', shortLabel: 'МЯ — Мытищи', tone: 'green', kmMin: 0, kmMax: 19, stations: [] },
+        { id: 'mytishchi_sofrino', label: 'Мытищи — Софрино', shortLabel: 'Мытищи — Софрино', tone: 'green', kmMin: 19, kmMax: 46.1, stations: [] },
+        { id: 'sofrino_alexandrov', label: 'Софрино — Александров', shortLabel: 'Софрино — Александров', tone: 'green', kmMin: 46.1, kmMax: 112, stations: [] },
+        { id: 'sofrino_krasnoarmeysk', label: 'Софрино — Красноармейск', shortLabel: 'Софрино — Красноармейск', tone: 'red', kmMin: 46.1, kmMax: 70, stations: [] },
+        { id: 'mytishchi_bolshevo', label: 'Мытищи — Болшево', shortLabel: 'Мытищи — Болшево', tone: 'yellow', kmMin: 19, kmMax: 26, stations: [] },
+        { id: 'bolshevo_fryazino', label: 'Болшево — Фрязино', shortLabel: 'Болшево — Фрязино', tone: 'yellow', kmMin: 26, kmMax: 42, stations: [] },
+        { id: 'bolshevo_fryazevo', label: 'Болшево — Фрязево', shortLabel: 'Болшево — Фрязево', tone: 'blue', kmMin: 26, kmMax: 74, stations: [] }
     ];
-    const SHIFT_WARNING_SECTION_MAP = Object.fromEntries(
-        SHIFT_WARNING_SECTIONS.map(section => [section.id, section])
-    );
+    const LEGACY_SECTION_DEFAULT_SEGMENT = {
+        yaroslavskoe: 'sofrino_alexandrov',
+        krasnoarmeysk: 'sofrino_krasnoarmeysk',
+        fryazino: 'bolshevo_fryazino',
+        fryazevo: 'bolshevo_fryazevo'
+    };
+
+    function getSharedSegments() {
+        const fromSpr = sprDataCache?.line_sections?.shared_segments;
+        if (Array.isArray(fromSpr) && fromSpr.length) return fromSpr;
+        return SHARED_SEGMENTS_FALLBACK;
+    }
+
+    function getSharedSegmentMap() {
+        return Object.fromEntries(getSharedSegments().map(seg => [seg.id, seg]));
+    }
+
+    function getShiftWarningSectionMeta(sectionId) {
+        const map = getSharedSegmentMap();
+        return map[sectionId] || getSharedSegments()[0] || SHARED_SEGMENTS_FALLBACK[0];
+    }
+
+    function resolveSharedSegmentId(rawSection, km, pk) {
+        const map = getSharedSegmentMap();
+        const raw = String(rawSection || '').trim();
+        if (map[raw]) return raw;
+
+        const kmFloat = warningKmToFloat({ km, pk });
+        const segments = getSharedSegments();
+        if (kmFloat !== null && segments.length) {
+            const containing = segments
+                .filter(seg => {
+                    const min = Number(seg.kmMin);
+                    const max = Number(seg.kmMax);
+                    if (Number.isNaN(min) || Number.isNaN(max)) return false;
+                    return kmFloat >= min && kmFloat <= max;
+                })
+                .sort((a, b) => (Number(a.kmMax) - Number(a.kmMin)) - (Number(b.kmMax) - Number(b.kmMin)));
+            if (containing.length) {
+                if (LEGACY_ROUTE_SECTION_IDS.has(raw)) {
+                    const preferred = containing.find(seg => {
+                        if (raw === 'yaroslavskoe') {
+                            return ['msk_mytishchi', 'mytishchi_sofrino', 'sofrino_alexandrov'].includes(seg.id);
+                        }
+                        if (raw === 'krasnoarmeysk') {
+                            return ['msk_mytishchi', 'mytishchi_sofrino', 'sofrino_krasnoarmeysk'].includes(seg.id);
+                        }
+                        if (raw === 'fryazino') {
+                            return ['msk_mytishchi', 'mytishchi_bolshevo', 'bolshevo_fryazino'].includes(seg.id);
+                        }
+                        if (raw === 'fryazevo') {
+                            return ['msk_mytishchi', 'mytishchi_bolshevo', 'bolshevo_fryazevo'].includes(seg.id);
+                        }
+                        return true;
+                    });
+                    if (preferred) return preferred.id;
+                }
+                return containing[0].id;
+            }
+        }
+
+        if (LEGACY_SECTION_DEFAULT_SEGMENT[raw]) return LEGACY_SECTION_DEFAULT_SEGMENT[raw];
+        return getSharedSegments()[0]?.id || 'msk_mytishchi';
+    }
+
+    function trainPassesSharedSegment(stops, segment) {
+        if (!segment || !Array.isArray(stops) || !stops.length) return false;
+        const stations = Array.isArray(segment.stations) ? segment.stations : [];
+        if (!stations.length) {
+            // Fallback: km-overlap when stations list unavailable
+            const chainages = stops
+                .map(stop => stationChainage(stop.station?.title || ''))
+                .filter(v => v !== null);
+            if (!chainages.length) return false;
+            const trainMin = Math.min(...chainages);
+            const trainMax = Math.max(...chainages);
+            const segMin = Number(segment.kmMin);
+            const segMax = Number(segment.kmMax);
+            if (Number.isNaN(segMin) || Number.isNaN(segMax)) return false;
+            return trainMax >= segMin && trainMin <= segMax;
+        }
+        const score = scoreSectionStops(stops, stations);
+        const need = Math.min(2, stations.length);
+        return score >= need;
+    }
 
     function sanitizeShiftWarningFieldValue(_field, rawValue) {
         return String(rawValue ?? '').replace(/\D/g, '');
@@ -3614,9 +3926,11 @@
         const speed = sanitizeShiftWarningFieldValue('speed', entry.speed ?? '');
         if (!speed) return null;
 
-        const sectionId = SHIFT_WARNING_SECTION_MAP[entry.section]
-            ? entry.section
-            : 'yaroslavskoe';
+        const sectionId = resolveSharedSegmentId(
+            entry.segment || entry.section,
+            km,
+            pk
+        );
 
         return {
             id: String(entry.id || createShiftWarningId()),
@@ -3631,7 +3945,7 @@
     function migrateShiftWarnings(raw) {
         if (!Array.isArray(raw) || !raw.length) return [];
 
-        if (raw.some(item => item && item.id && item.section)) {
+        if (raw.some(item => item && item.id && (item.section || item.segment))) {
             return raw.map(normalizeShiftWarningEntry).filter(Boolean).slice(0, SHIFT_WARNINGS_MAX);
         }
 
@@ -3640,7 +3954,7 @@
             if (!row || typeof row !== 'object') return;
             const normalized = normalizeShiftWarningEntry({
                 id: createShiftWarningId(),
-                section: 'yaroslavskoe',
+                section: 'msk_mytishchi',
                 dir: row.dir,
                 km: row.km,
                 pk: row.pk,
@@ -3662,10 +3976,6 @@
             .slice(0, SHIFT_WARNINGS_MAX);
         userStorageSet('shiftWarnings', normalized);
         return normalized;
-    }
-
-    function getShiftWarningSectionMeta(sectionId) {
-        return SHIFT_WARNING_SECTION_MAP[sectionId] || SHIFT_WARNING_SECTIONS[0];
     }
 
     function getShiftWarningDirLabel(dir) {
@@ -3714,11 +4024,12 @@
     }
 
     function getShiftWarningsSectionValue() {
-        return document.getElementById('shiftWarningsSection')?.value || 'yaroslavskoe';
+        return document.getElementById('shiftWarningsSection')?.value || 'msk_mytishchi';
     }
 
     function syncShiftWarningsSectionUi(sectionId) {
-        const value = SHIFT_WARNING_SECTION_MAP[sectionId] ? sectionId : 'yaroslavskoe';
+        const map = getSharedSegmentMap();
+        const value = map[sectionId] ? sectionId : (getSharedSegments()[0]?.id || 'msk_mytishchi');
         const meta = getShiftWarningSectionMeta(value);
         const hidden = document.getElementById('shiftWarningsSection');
         const trigger = document.getElementById('shiftWarningsSectionTrigger');
@@ -3966,7 +4277,7 @@
         updateShiftWarningsHint(saved.length);
         renderShiftWarningsList();
         resetShiftWarningsFormInputs();
-        syncShiftWarningsSectionUi('yaroslavskoe');
+        syncShiftWarningsSectionUi('msk_mytishchi');
         setShiftWarningsFormDir('out');
 
         if (!isEditing) {
@@ -3983,7 +4294,7 @@
         if (shiftWarningsEditingId === warningId) {
             clearShiftWarningsEditMode();
             resetShiftWarningsFormInputs();
-            syncShiftWarningsSectionUi('yaroslavskoe');
+            syncShiftWarningsSectionUi('msk_mytishchi');
             setShiftWarningsFormDir('out');
         }
         const saved = saveShiftWarnings(loadShiftWarnings().filter(item => item.id !== warningId));
@@ -4003,7 +4314,7 @@
         renderShiftWarningsList();
         resetShiftWarningsFormInputs();
         setShiftWarningsFormDir('out');
-        syncShiftWarningsSectionUi('yaroslavskoe');
+        syncShiftWarningsSectionUi('msk_mytishchi');
         clearShiftWarningsEditMode();
         closeShiftWarningsSectionCombobox();
         overlay.classList.add('is-open');
@@ -4023,7 +4334,7 @@
         saveShiftWarnings([]);
         clearShiftWarningsEditMode();
         resetShiftWarningsFormInputs();
-        syncShiftWarningsSectionUi('yaroslavskoe');
+        syncShiftWarningsSectionUi('msk_mytishchi');
         setShiftWarningsFormDir('out');
         renderShiftWarningsList();
     }
@@ -4440,10 +4751,20 @@
         }
     }
 
+    function formatStationKmLabel(match) {
+        if (!match) return '';
+        const km = match.km;
+        const piket = match.piket;
+        if (km === undefined || km === null || km === '') return '';
+        const pk = (piket === undefined || piket === null || piket === '') ? 0 : piket;
+        return `${km}.${pk}`;
+    }
+
     function stationChainage(stationTitle) {
         const match = findStationPathMatch(stationTitle);
-        if (!match) return null;
-        return match.km + match.piket / 10;
+        if (!match || match.km === undefined || match.km === null) return null;
+        const pk = Number(match.piket);
+        return Number(match.km) + ((Number.isNaN(pk) ? 0 : pk) / 10);
     }
 
     function resolveTrainDir(stops) {
@@ -4662,14 +4983,14 @@
     function buildWarningsByStationIndex(stops, trainDir) {
         const stopChainages = stops.map(stop => stationChainage(stop.station?.title || ''));
         const warningsByStation = {};
-        const routeKey = resolveRouteReferenceKey(stops);
+        const segmentMap = getSharedSegmentMap();
 
         loadShiftWarnings()
-            .filter(warn =>
-                String(warn.speed || '').trim() &&
-                warn.dir === trainDir &&
-                warn.section === routeKey
-            )
+            .filter(warn => {
+                if (!String(warn.speed || '').trim() || warn.dir !== trainDir) return false;
+                const segment = segmentMap[warn.section] || getShiftWarningSectionMeta(warn.section);
+                return trainPassesSharedSegment(stops, segment);
+            })
             .forEach(warn => {
                 const warnKmFloat = warningKmToFloat(warn);
                 if (warnKmFloat === null) return;
@@ -4763,7 +5084,7 @@
         try {
             if (!forceRefresh) {
                 const cachedEntry = findCachedTrainResult(trainNumber, date);
-                if (cachedEntry) {
+                if (cachedEntry && !cachedEntry.apiOffDay && Array.isArray(cachedEntry.stops) && cachedEntry.stops.length) {
                     console.log('[trains] cache hit:', trainNumber, date);
                     const cached = decorateTrainSearchResult(
                         { ...cachedEntry },
@@ -4783,22 +5104,11 @@
                 return null;
             }
 
+            // 1) Табло на дату → актуальный UID → /thread/
             const boardAlreadyUsable = isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`]);
             const needsBoardLoad = !threadsOnly || !boardAlreadyUsable || !lookupTrainOnStationBoard(trainNumber, date);
             if (needsBoardLoad) {
                 await ensureBoardReadyForTrainSearch(date, { forceRefresh });
-            }
-
-            const threadUid = resolveThreadUidForTrain(trainNumber, date);
-            if (threadUid) {
-                console.log('[trains] thread by uid:', trainNumber, threadUid);
-                const threadResult = await fetchThreadByUidSafe(threadUid, trainNumber, date);
-                if (threadResult) {
-                    const result = decorateTrainSearchResult(threadResult, trainNumber, date, registryEntry);
-                    cacheTrainThread(trainNumber, result, date);
-                    return result;
-                }
-                console.warn('[trains] thread empty:', trainNumber, threadUid, date);
             }
 
             const boardOptions = {
@@ -4809,10 +5119,18 @@
 
             let trainData = await findTrainOnStationBoards(trainNumber, date, boardOptions);
             if (trainData) {
+                const boardUid = String(trainData?.thread?.uid || '').trim();
+                console.log('[trains] board → uid:', trainNumber, boardUid || '—', date);
                 const fromBoard = await fetchTrainFromBoardHit(trainData, trainNumber, date, registryEntry);
-                if (fromBoard) return fromBoard;
+                if (fromBoard && !fromBoard.apiOffDay) return fromBoard;
+                if (fromBoard?.apiOffDay) {
+                    console.warn('[trains] board uid off-day, skip stale thread:', trainNumber, boardUid, date);
+                } else if (!fromBoard) {
+                    console.warn('[trains] thread empty for board uid:', trainNumber, boardUid, date);
+                }
             }
 
+            // 2) Повтор с принудительным обновлением табло
             if (!forceRefresh) {
                 await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
                 trainData = await findTrainOnStationBoards(trainNumber, date, {
@@ -4822,9 +5140,23 @@
                     threadsOnly: false
                 });
                 if (trainData) {
+                    const boardUid = String(trainData?.thread?.uid || '').trim();
+                    console.log('[trains] board refresh → uid:', trainNumber, boardUid || '—', date);
                     const fromBoard = await fetchTrainFromBoardHit(trainData, trainNumber, date, registryEntry);
-                    if (fromBoard) return fromBoard;
+                    if (fromBoard && !fromBoard.apiOffDay) return fromBoard;
                 }
+            }
+
+            // 3) Офлайн-резерв без API
+            const localEntry = findLocalTrainEntry(trainNumber, date);
+            if (localEntry) {
+                console.log('[trains] local fallback:', trainNumber, date);
+                return decorateTrainSearchResult(
+                    buildTrainResultFromLocalEntry(localEntry, date),
+                    trainNumber,
+                    date,
+                    registryEntry
+                );
             }
 
             console.warn(`[trains] not found on board: ${trainNumber} @ ${date}`);
@@ -4907,18 +5239,81 @@
     let screenTransitionLock = false;
 
     function getActiveMainScreen() {
+        const tabActive = document.querySelector('.bottom-tab-btn.active')?.dataset.screen;
+        if (tabActive === 'calendar' || tabActive === 'schedule' || tabActive === 'profile') {
+            const preferred = document.getElementById('screen-' + tabActive);
+            if (preferred && !preferred.classList.contains('hidden')) return tabActive;
+        }
+
         const calendarEl = document.getElementById('screen-calendar');
         const scheduleEl = document.getElementById('screen-schedule');
         const profileEl = document.getElementById('screen-profile');
-        if (calendarEl && !calendarEl.classList.contains('hidden')) return 'calendar';
-        if (scheduleEl && !scheduleEl.classList.contains('hidden')) return 'schedule';
-        if (profileEl && !profileEl.classList.contains('hidden')) return 'profile';
-        return 'calendar';
+        const visible = [];
+        if (calendarEl && !calendarEl.classList.contains('hidden')) visible.push('calendar');
+        if (scheduleEl && !scheduleEl.classList.contains('hidden')) visible.push('schedule');
+        if (profileEl && !profileEl.classList.contains('hidden')) visible.push('profile');
+        if (visible.length === 1) return visible[0];
+        if (tabActive && visible.includes(tabActive)) return tabActive;
+        if (visible.includes('calendar')) return 'calendar';
+        return visible[0] || 'calendar';
     }
 
     function getActiveScheduleTab() {
         const active = document.querySelector('#screen-schedule .tab-content.active');
         return active?.id || 'tab-route';
+    }
+
+    function setSwipeChromeBlocked(blocked) {
+        document.body.classList.toggle('is-swipe-dragging', Boolean(blocked));
+    }
+
+    function hardResetNavigationStages(options = {}) {
+        const mainStage = document.getElementById('mainScreensStage');
+        const tabStage = document.getElementById('scheduleTabsStage');
+
+        mainStage?.classList.remove('is-transitioning', 'is-dragging', 'is-dragging--stacked');
+        mainStage?.style.removeProperty('--main-stage-height');
+        tabStage?.classList.remove('is-transitioning', 'is-dragging', 'is-dragging--stacked');
+        tabStage?.style.removeProperty('--tabs-stage-height');
+
+        const activeScreenRaw = options.activeScreen
+            || document.querySelector('.bottom-tab-btn.active')?.dataset.screen
+            || getActiveMainScreen();
+        const activeScreen = (activeScreenRaw === 'calendar'
+            || activeScreenRaw === 'schedule'
+            || activeScreenRaw === 'profile')
+            ? activeScreenRaw
+            : 'calendar';
+
+        ['calendar', 'schedule', 'profile'].forEach(name => {
+            const el = document.getElementById('screen-' + name);
+            if (!el) return;
+            cleanupSlideClasses(el);
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping', 'screen-in-transition');
+            el.style.transform = '';
+            el.style.transition = '';
+            el.style.willChange = '';
+            if (name === activeScreen) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        });
+
+        let activeTab = options.activeTab || getActiveScheduleTab();
+        if (activeTab !== 'tab-route' && activeTab !== 'tab-schedule') {
+            activeTab = 'tab-route';
+        }
+
+        document.querySelectorAll('#screen-schedule .tab-content').forEach(el => {
+            cleanupSlideClasses(el);
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping', 'tab-in-transition');
+            el.style.transform = '';
+            el.style.transition = '';
+            el.style.willChange = '';
+            el.classList.toggle('active', el.id === activeTab);
+        });
+        syncScheduleTabsNavActive(activeTab);
+
+        updateBottomTabbar(activeScreen);
+        setSwipeChromeBlocked(false);
     }
 
     function syncScheduleTabsNavActive(tabId) {
@@ -4989,6 +5384,7 @@
         stage?.style.removeProperty('--tabs-stage-height');
         document.querySelectorAll('#screen-schedule .tab-content').forEach(el => {
             cleanupSlideClasses(el);
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping');
             el.style.transform = '';
             el.style.transition = '';
         });
@@ -5000,6 +5396,7 @@
         stage?.style.removeProperty('--main-stage-height');
         document.querySelectorAll('#mainScreensStage > .screen').forEach(el => {
             cleanupSlideClasses(el);
+            el.classList.remove('swipe-from', 'swipe-neighbor', 'swipe-snapping');
             el.style.transform = '';
             el.style.transition = '';
         });
@@ -5015,8 +5412,10 @@
         stage?.style.removeProperty('--tabs-stage-height');
         screenTransitionLock = false;
 
-        resetScheduleTabsStage();
-        syncScheduleTabsNavActive(tabId);
+        hardResetNavigationStages({
+            activeScreen: 'schedule',
+            activeTab: tabId
+        });
 
         userStorageSet('activeTab', tabId);
         if (tabId === 'tab-schedule') {
@@ -5171,19 +5570,16 @@
 
             if (requestId !== routeDataRequestId) return;
 
-            const trainEntries = sortRouteTrainEntriesByDeparture(
-                inputs.map((trainNumber, originalIndex) => {
-                    let train = allTrainsData[originalIndex];
-                    const planEntry = Array.isArray(trainPlan)
-                        ? trainPlan.find(item => normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber))
-                        : null;
-                    if (train && planEntry) {
-                        train = applyTrainPlanTimeOverrides(train, planEntry);
-                    }
-                    return { trainNumber, train, originalIndex };
-                }),
-                baseDate
-            );
+            const trainEntries = inputs.map((trainNumber, originalIndex) => {
+                let train = allTrainsData[originalIndex];
+                const planEntry = Array.isArray(trainPlan)
+                    ? trainPlan.find(item => normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber))
+                    : null;
+                if (train && planEntry) {
+                    train = applyTrainPlanTimeOverrides(train, planEntry);
+                }
+                return { trainNumber, train, originalIndex };
+            });
             const sortedTrainsData = trainEntries.map(entry => entry.train);
         
         const cards = [];
@@ -5284,9 +5680,12 @@
                     ? `<div class="route-day-warning">${escapeHtml(train.scheduleDayWarning)}</div>`
                     : '';
                 const offDayClass = train.runsOnSelectedDate === false ? ' route-card--off-day' : '';
+                const stationNotesClass = trainHasStationNotes(train.number, getSelectedDate())
+                    ? ' has-station-notes'
+                    : '';
 
                 cards.push(`
-                    <div class="route-card clickable${offDayClass}" data-train-index="${i}" data-uid="${train.uid}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
+                    <div class="route-card clickable${offDayClass}${stationNotesClass}" data-train-index="${i}" data-uid="${train.uid}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
                         <div class="route-card-section route-card-top">
                             <div class="route-card-title">${train.title}</div>
                             <div class="route-card-subtitle">
@@ -5540,11 +5939,11 @@
                 if (sprDataCache) {
                     const stationPathMatch = findStationPathMatch(stationTitleRaw);
                     if (stationPathMatch) {
-                        kmText = `${stationPathMatch.km}.${stationPathMatch.piket}`;
+                        kmText = formatStationKmLabel(stationPathMatch);
                     } else {
                         const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
                         if (anyBrakeMatch) {
-                            kmText = `${anyBrakeMatch.km}.${anyBrakeMatch.piket}`;
+                            kmText = formatStationKmLabel(anyBrakeMatch);
                         }
                     }
                 }
@@ -5601,11 +6000,11 @@
                 const stationPathMatch = findStationPathMatch(stationTitleRaw);
 
                 if (stationPathMatch) {
-                    kmText = `${stationPathMatch.km}.${stationPathMatch.piket}`;
+                    kmText = formatStationKmLabel(stationPathMatch);
                 } else {
                     const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
                     if (anyBrakeMatch) {
-                        kmText = `${anyBrakeMatch.km}.${anyBrakeMatch.piket}`;
+                        kmText = formatStationKmLabel(anyBrakeMatch);
                     }
                 }
 
@@ -5710,6 +6109,8 @@
         if (options.deferTabbar) {
             updateBottomTabbar(toScreen);
         }
+
+        hardResetNavigationStages({ activeScreen: toScreen });
 
         if (typeof options.afterTransition === 'function') {
             options.afterTransition();
@@ -5915,13 +6316,24 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Часы смен',
-            'Норматив с 05.08',
-            'Пн–чт'
+            'Обновлены часы смен (3–6 = пн–чт, 7 = пт, 8 = сб, 9 = вс)',
+            'Доработка предупреждений и участков',
+            'Фикс отдельных электропоездов',
+            'Доработка окна «Маршрут»: параметры и ввод/исправление поездов',
+            'Доработка свайпов',
+            'Заметки по дням и по маршрутам обновлены',
+            'На чипе дня вместо часов работы показывается время явки',
+            'Мелкие доработки по вашим запросам'
         ],
         highlights: [
-            'Обновлены часы смен: норматив с 05.08 для пн–чт по документу на 3, 4, 5, 6 августа.',
-            'Пятница, суббота и воскресенье — по прежним часам (норматив с 17.07).'
+            'Обновлены часы смен (3–6 = пн–чт, 7 = пт, 8 = сб, 9 = вс)',
+            'Доработка предупреждений и участков',
+            'Фикс отдельных электропоездов',
+            'Доработка окна «Маршрут»: параметры и ввод/исправление поездов',
+            'Доработка свайпов',
+            'Заметки по дням и по маршрутам обновлены',
+            'На чипе дня вместо часов работы показывается время явки',
+            'Мелкие доработки по вашим запросам'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -6635,6 +7047,7 @@
         if (document.getElementById('shiftNoteSheet')?.classList.contains('is-open')) return true;
         if (document.getElementById('donateSheet')?.classList.contains('is-open')) return true;
         if (document.getElementById('feedbackSheet')?.classList.contains('is-open')) return true;
+        if (document.getElementById('routeTrainChipPopover')?.classList.contains('is-open')) return true;
         if (screenTransitionLock) return true;
         return false;
     }
@@ -6648,7 +7061,7 @@
             '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-list-scroll, ' +
             '#stationNoteSheet, .station-note-sheet, .station-note-input, ' +
-            '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, ' +
+            '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, .shift-card__note-input, .shift-card__note-send, .shift-card__note-copy, .shift-card__note-delete, ' +
             '#donateSheet, .donate-sheet, .donate-amount-input, .donate-quick-btn, .donate-send-btn, ' +
             '#feedbackSheet, .feedback-sheet, .feedback-message-input, .app-feedback-trigger, ' +
             '.app-donate-trigger, ' +
@@ -6843,6 +7256,9 @@
         if (!pair?.fromEl) return;
         const { stage, fromEl, toEl, kind } = pair;
         clearInteractiveSwipeStyles(fromEl, toEl);
+        if (kind === 'main' && toEl && pair.toElWasHidden) {
+            toEl.classList.add('hidden');
+        }
         stage?.classList.remove('is-dragging', 'is-dragging--stacked');
         if (kind === 'main') {
             stage?.style.removeProperty('--main-stage-height');
@@ -6964,11 +7380,7 @@
         let lastDragDx = 0;
 
         function resetTouchTracking() {
-            if (dragSession?.stageReady) {
-                cancelSwipeTouchPrep(dragSession);
-            }
-            resetScheduleTabsStage();
-            resetMainScreensStage();
+            hardResetNavigationStages();
             tracking = false;
             dragSession = null;
             lastDragDx = 0;
@@ -7226,6 +7638,7 @@
                 }
                 dragSession.dragStarted = true;
                 screenTransitionLock = true;
+                setSwipeChromeBlocked(true);
             }
 
             if (Math.abs(dx) >= SWIPE_NEIGHBOR_PX) {
@@ -7564,8 +7977,8 @@
                     record.linkedMorningDateKey = calendarKeyAddDays(dateKey, 1);
                 }
             }
-            if (shift.note) {
-                record.note = String(shift.note).trim();
+            if (shift.note || (Array.isArray(shift.notes) && shift.notes.length)) {
+                applyShiftNotesToShift(record, getShiftNotesList(shift));
             }
             formatted[dateKey] = enrichShiftWithCalculatedHours(record, dateKey);
         });
@@ -8050,10 +8463,10 @@
         applyShiftToCalendarDay(dateKey, shift);
     }
 
-    function calendarApplyQuickPreset(presetId) {
+    function calendarApplyQuickPreset(presetId, dateKeyOverride) {
         const preset = getLocalRoutePresetById(presetId);
         if (!preset) return;
-        const dateKey = calendarSelectedDateKey;
+        const dateKey = dateKeyOverride || calendarSelectedDateKey || getRouteTabDateKey();
         if (!dateKey) return;
 
         let customHours = null;
@@ -8063,8 +8476,19 @@
 
         applyLocalPresetToCalendar(dateKey, preset, customHours);
         persistUserShifts();
-        calendarRenderCalendar();
+        calendarRenderCalendar({ skipConstructor: calendarSelectedDateKey !== dateKey });
         updateProfileScreen?.();
+        refreshCalendarConstructorForDate(dateKey);
+
+        const shifts = getStoredDayShifts(dateKey);
+        const foundIdx = shifts.findIndex(s =>
+            normalizeCalendarRouteKey(s.route) === normalizeCalendarRouteKey(preset.route)
+        );
+        const shiftIndex = foundIdx >= 0 ? foundIdx : 0;
+        const shift = shifts[shiftIndex];
+        if (shift) {
+            syncRouteContextFromCalendar(dateKey, shift, shiftIndex, { remountEditor: true });
+        }
     }
 
     window.calendarApplyQuickPreset = calendarApplyQuickPreset;
@@ -8171,7 +8595,7 @@
         initRouteCombobox(selectedRoute, matchedOption?.signature || '');
         syncLocalPresetUi(selectedPresetId);
 
-        const dayPanel = document.querySelector('[data-shift-day-panel]');
+        const dayPanel = getCalendarShiftDayPanel();
         dayPanel?.querySelectorAll('.shift-card__route-picker').forEach(picker => {
             bindSummaryRoutePicker(picker, dateKey);
         });
@@ -8184,7 +8608,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const presetId = btn.getAttribute('data-local-preset') || '';
-                if (presetId) calendarApplyQuickPreset(presetId);
+                if (presetId) calendarApplyQuickPreset(presetId, dateKey);
             });
         }
         if (dayPanel && !dayPanel.querySelector('[data-shift-tab-panel]')) {
@@ -9135,8 +9559,10 @@
         const start = parseTimeToMinutes(normalizeShiftTimeToken(startTime));
         const end = parseTimeToMinutes(normalizeShiftTimeToken(endTime));
         if (start == null || end == null) return null;
+        // Одинаковое время явки/сдачи = нулевая смена (напр. У92 workHours 0:00), не сутки.
+        if (end === start) return 0;
         let diff = end - start;
-        if (diff <= 0) diff += 1440;
+        if (diff < 0) diff += 1440;
         return diff;
     }
 
@@ -9144,7 +9570,8 @@
         const start = parseTimeToMinutes(normalizeShiftTimeToken(startTime));
         const end = parseTimeToMinutes(normalizeShiftTimeToken(endTime));
         if (start == null || end == null) return null;
-        const endExtended = end <= start ? end + 1440 : end;
+        if (end === start) return { start, end: start };
+        const endExtended = end < start ? end + 1440 : end;
         return { start, end: endExtended };
     }
 
@@ -9238,6 +9665,8 @@
         }
 
         if (calculated != null && calculated > 0) return calculated;
+        // Нулевая длительность по времени (напр. У92 23:00–23:00) важнее устаревших hours в storage.
+        if (calculated === 0) return 0;
 
         if (normativeHours > 0) return normativeHours;
 
@@ -9273,9 +9702,8 @@
     }
 
     function getShiftWorkTimeDisplay(shift, dateKey) {
-        const hours = getCalendarShiftHours(shift, dateKey);
-        if (hours > 0) return formatCalendarCellHours(hours);
-        return getShiftWorkTimeLine(shift, dateKey);
+        const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
+        return timeInputValueFromShift(enriched?.startTime || enriched?.reportTime || '');
     }
 
     function getCalendarShiftPayment(shift, dateKey) {
@@ -9628,9 +10056,46 @@
         return `<span class="day-shift-route" data-route-len="${lenAttr}"><span class="day-shift-route-num">${escapeHtml(parts.num)}</span></span>`;
     }
 
-    function getShiftNoteText(shift) {
-        return String(shift?.note || '').trim();
+    function getShiftNotesList(shift) {
+        if (Array.isArray(shift?.notes)) {
+            return shift.notes.map(item => String(item || '').trim()).filter(Boolean);
+        }
+        const legacy = String(shift?.note || '').trim();
+        return legacy ? [legacy] : [];
     }
+
+    function getShiftNoteText(shift) {
+        return getShiftNotesList(shift).join('\n');
+    }
+
+    function applyShiftNotesToShift(shift, notes) {
+        if (!shift) return shift;
+        const list = (Array.isArray(notes) ? notes : [])
+            .map(item => String(item || '').trim())
+            .filter(Boolean);
+        if (list.length) {
+            shift.notes = list;
+            shift.note = list.join('\n');
+        } else {
+            delete shift.notes;
+            delete shift.note;
+        }
+        return shift;
+    }
+
+    function copyShiftNotesFromSource(target, source) {
+        if (!target) return target;
+        return applyShiftNotesToShift(target, getShiftNotesList(source));
+    }
+
+    const SHIFT_NOTE_COPY_ICON = `<svg class="shift-card__note-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
+        <path d="M5 15V7a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+    </svg>`;
+
+    const SHIFT_NOTE_CHECK_ICON = `<svg class="shift-card__note-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 12.5 10 17.5 19 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>`;
 
     let shiftNoteSheetContext = null;
 
@@ -9662,23 +10127,72 @@
         return `~ ${formatted} р.`;
     }
 
+    const SHIFT_NOTE_DELETE_ICON = `<svg class="shift-card__note-delete-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+    </svg>`;
+
+    function renderShiftNoteItemHtml(text, index, editable = true) {
+        const actions = editable
+            ? `<div class="shift-card__note-actions">
+                <button type="button" class="shift-card__note-copy" data-note-copy
+                    aria-label="Скопировать заметку" title="Скопировать">
+                    ${SHIFT_NOTE_COPY_ICON}
+                </button>
+                <button type="button" class="shift-card__note-delete" data-note-delete
+                    aria-label="Удалить заметку" title="Удалить">
+                    ${SHIFT_NOTE_DELETE_ICON}
+                </button>
+            </div>`
+            : `<div class="shift-card__note-actions">
+                <button type="button" class="shift-card__note-copy" data-note-copy
+                    aria-label="Скопировать заметку" title="Скопировать">
+                    ${SHIFT_NOTE_COPY_ICON}
+                </button>
+            </div>`;
+
+        return `<div class="shift-card__note-item" data-note-item data-note-index="${index}">
+            <p class="shift-card__note-text is-clamped" data-note-text>${escapeHtml(text)}</p>
+            ${actions}
+        </div>`;
+    }
+
+    function renderShiftNotesListHtml(notes, editable = true) {
+        return notes.map((text, index) => renderShiftNoteItemHtml(text, index, editable)).join('');
+    }
+
+    function renderShiftNoteComposerHtml() {
+        return `<div class="shift-card__note-composer" data-note-composer>
+            <textarea class="shift-card__note-input" data-summary-note
+                rows="1" maxlength="500" placeholder="Добавить заметку"
+                enterkeyhint="send" aria-label="Добавить заметку"
+                autocomplete="off"></textarea>
+            <button type="button" class="shift-card__note-send" data-note-send aria-label="Сохранить заметку">
+                <span class="shift-card__note-send-icon" aria-hidden="true"></span>
+            </button>
+        </div>`;
+    }
+
     function renderShiftSummaryNoteHtml(dateKey, shiftIndex, shift, editable = true) {
-        const attrs = buildShiftNoteTriggerAttrs(dateKey, shiftIndex);
-        const noteText = getShiftNoteText(shift);
+        const notes = getShiftNotesList(shift);
+        const hasNote = notes.length > 0;
 
         if (!editable) {
-            return noteText
-                ? `<span class="shift-card__note-text-inline">${escapeHtml(noteText)}</span>`
-                : `<span class="shift-card__note-muted">—</span>`;
+            if (!hasNote) return '';
+            return `<section class="shift-card__notes-block has-note" data-notes-block>
+                <h4 class="shift-card__notes-title">Заметки</h4>
+                <div class="shift-card__notes-list" data-summary-notes>
+                    ${renderShiftNotesListHtml(notes, false)}
+                </div>
+            </section>`;
         }
 
-        if (noteText) {
-            return `<button type="button" class="shift-card__note-link shift-card__note-link--filled" ${attrs} aria-label="Редактировать заметку">
-                <span class="shift-card__note-text-inline">${escapeHtml(noteText)}</span>
-            </button>`;
-        }
-
-        return `<button type="button" class="shift-card__note-link" ${attrs}>+ Добавить заметку</button>`;
+        return `<section class="shift-card__notes-block${hasNote ? ' has-note' : ''}" data-notes-block>
+            <h4 class="shift-card__notes-title">Заметки</h4>
+            <div class="shift-card__notes-list" data-summary-notes>
+                ${renderShiftNotesListHtml(notes, true)}
+            </div>
+            ${renderShiftNoteComposerHtml()}
+        </section>`;
     }
 
     function formatShiftNoteSheetTitle(dateKey) {
@@ -9741,16 +10255,43 @@
         const shift = shifts[shiftIndex];
         if (!shift) return;
 
-        if (text) {
-            shift.note = text;
-        } else {
-            delete shift.note;
-        }
-
+        applyShiftNotesToShift(shift, text ? text.split(/\n+/).map(line => line.trim()).filter(Boolean) : []);
         setStoredDayShifts(dateKey, shifts);
         persistUserShifts();
         closeShiftNoteSheet();
         refreshShiftNoteUi(dateKey);
+        syncShiftNotesUiEverywhere(dateKey, shiftIndex);
+    }
+
+    function syncShiftNotesUiEverywhere(dateKey, shiftIndex) {
+        if (!dateKey || !Number.isFinite(shiftIndex) || shiftIndex < 0) return;
+
+        const shift = getStoredDayShifts(dateKey)[shiftIndex];
+        const notes = getShiftNotesList(shift);
+
+        calendarRenderCalendar({ skipConstructor: true });
+        reapplyCalendarDaySelection();
+        syncCalendarChipSelection();
+
+        document.querySelectorAll('[data-shift-tab-panel]').forEach(panel => {
+            if (Number(panel.dataset.shiftIndex) !== shiftIndex) return;
+            const tabDate = panel.dataset.tabDateKey || '';
+            if (tabDate && tabDate !== dateKey) return;
+            if (!panel.querySelector('[data-notes-block]')) return;
+            refreshShiftNotesListUi(panel, notes);
+        });
+
+        if (shift && dateKey === getRouteTabDateKey()) {
+            syncRouteContextFromCalendar(dateKey, shift, shiftIndex, { remountEditor: false });
+            if (isRouteShiftEditorOpen()) {
+                const routePanel = document.querySelector(
+                    `#routeShiftEditorMount [data-shift-tab-panel][data-shift-index="${shiftIndex}"]`
+                );
+                if (routePanel?.querySelector('[data-notes-block]')) {
+                    refreshShiftNotesListUi(routePanel, notes);
+                }
+            }
+        }
     }
 
     function deleteShiftNote(dateKey, shiftIndex) {
@@ -9758,10 +10299,226 @@
         const shift = shifts[shiftIndex];
         if (!shift) return;
 
-        delete shift.note;
+        applyShiftNotesToShift(shift, []);
         setStoredDayShifts(dateKey, shifts);
         persistUserShifts();
         refreshShiftNoteUi(dateKey);
+        syncShiftNotesUiEverywhere(dateKey, shiftIndex);
+    }
+
+    function deleteShiftNoteAt(dateKey, shiftIndex, noteIndex, options = {}) {
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return false;
+
+        const notes = getShiftNotesList(shift);
+        if (noteIndex < 0 || noteIndex >= notes.length) return false;
+        notes.splice(noteIndex, 1);
+        applyShiftNotesToShift(shift, notes);
+        setStoredDayShifts(dateKey, shifts);
+        persistUserShifts();
+
+        if (options.refreshUi !== false) {
+            syncShiftNotesUiEverywhere(dateKey, shiftIndex);
+        }
+        return true;
+    }
+
+    function syncShiftNoteClampStates(root) {
+        const listRoot = root?.querySelector?.('[data-summary-notes]') || root;
+        if (!listRoot) return;
+
+        listRoot.querySelectorAll('[data-note-item]').forEach(item => {
+            const textEl = item.querySelector('[data-note-text]');
+            if (!textEl) return;
+
+            const wasExpanded = textEl.classList.contains('is-expanded');
+            textEl.classList.add('is-clamped');
+            textEl.classList.remove('is-expanded', 'is-expandable');
+
+            const overflows = textEl.scrollHeight > textEl.clientHeight + 1;
+            textEl.classList.toggle('is-expandable', overflows);
+            if (wasExpanded && overflows) {
+                textEl.classList.add('is-expanded');
+                textEl.classList.remove('is-clamped');
+            }
+        });
+    }
+
+    function refreshShiftNotesListUi(panelEl, notes) {
+        const block = panelEl?.querySelector('[data-notes-block]');
+        const listRoot = panelEl?.querySelector('[data-summary-notes]');
+        if (!block || !listRoot) return;
+
+        const editable = Boolean(panelEl.querySelector('[data-note-composer]'));
+        listRoot.innerHTML = renderShiftNotesListHtml(notes, editable);
+        block.classList.toggle('has-note', notes.length > 0);
+        requestAnimationFrame(() => syncShiftNoteClampStates(listRoot));
+    }
+
+    function addShiftNoteInline(dateKey, shiftIndex, text, options = {}) {
+        const next = String(text || '').trim();
+        if (!next) return false;
+
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return false;
+
+        const notes = getShiftNotesList(shift);
+        notes.push(next);
+        applyShiftNotesToShift(shift, notes);
+        setStoredDayShifts(dateKey, shifts);
+        persistUserShifts();
+
+        if (options.refreshUi !== false) {
+            syncShiftNotesUiEverywhere(dateKey, shiftIndex);
+        }
+        return true;
+    }
+
+    async function copyShiftNoteText(text, button) {
+        const value = String(text || '').trim();
+        if (!value || !button) return;
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(value);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = value;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+
+            button.classList.add('is-copied');
+            button.setAttribute('aria-label', 'Скопировано');
+            button.innerHTML = SHIFT_NOTE_CHECK_ICON;
+            window.setTimeout(() => {
+                button.classList.remove('is-copied');
+                button.setAttribute('aria-label', 'Скопировать заметку');
+                button.innerHTML = SHIFT_NOTE_COPY_ICON;
+            }, 1100);
+        } catch (_) {
+            /* ignore */
+        }
+    }
+
+    function keepShiftNoteCaretVisible(noteInput) {
+        if (!noteInput) return;
+        noteInput.scrollTop = 0;
+        noteInput.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+
+        const value = String(noteInput.value || '');
+        const pos = Number.isFinite(noteInput.selectionEnd) ? noteInput.selectionEnd : value.length;
+        const len = Math.max(value.length, 1);
+        const ratio = Math.min(1, Math.max(0, pos / len));
+        const maxScroll = Math.max(0, noteInput.scrollWidth - noteInput.clientWidth);
+        noteInput.scrollLeft = Math.max(0, ratio * noteInput.scrollWidth - noteInput.clientWidth * 0.72);
+        if (pos >= value.length) noteInput.scrollLeft = maxScroll;
+    }
+
+    function focusShiftNoteComposer(panelEl) {
+        const noteInput = panelEl?.querySelector('[data-summary-note]');
+        if (!noteInput) return;
+        noteInput.focus({ preventScroll: true });
+        requestAnimationFrame(() => keepShiftNoteCaretVisible(noteInput));
+    }
+
+    function bindShiftSummaryNoteInput(panelEl, dayPanel, dateKey, shiftIndex, tabDateKey) {
+        const notesBlock = panelEl?.querySelector('[data-notes-block]');
+        const notesRoot = panelEl?.querySelector('[data-summary-notes]');
+        const noteInput = panelEl?.querySelector('[data-summary-note]');
+        const sendBtn = panelEl?.querySelector('[data-note-send]');
+        if (!notesBlock || !notesRoot || notesBlock.dataset.notesBound === '1') return;
+        notesBlock.dataset.notesBound = '1';
+
+        const key = tabDateKey || dateKey;
+        requestAnimationFrame(() => syncShiftNoteClampStates(notesRoot));
+
+        const submitNote = () => {
+            if (!noteInput) return;
+            const text = String(noteInput.value || '').replace(/\n/g, ' ').trim();
+            if (!text) {
+                focusShiftNoteComposer(panelEl);
+                return;
+            }
+            if (!addShiftNoteInline(key, shiftIndex, text)) return;
+            noteInput.value = '';
+            noteInput.scrollLeft = 0;
+            focusShiftNoteComposer(panelEl);
+        };
+
+        sendBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            submitNote();
+        });
+
+        noteInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitNote();
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                noteInput.value = '';
+                noteInput.blur();
+            }
+        });
+
+        noteInput?.addEventListener('input', () => {
+            if (noteInput.value.includes('\n')) {
+                const pos = noteInput.selectionStart;
+                noteInput.value = noteInput.value.replace(/\n/g, ' ');
+                if (Number.isFinite(pos)) {
+                    noteInput.setSelectionRange(pos, pos);
+                }
+            }
+            keepShiftNoteCaretVisible(noteInput);
+        });
+
+        noteInput?.addEventListener('keyup', () => keepShiftNoteCaretVisible(noteInput));
+        noteInput?.addEventListener('click', () => keepShiftNoteCaretVisible(noteInput));
+        noteInput?.addEventListener('select', () => keepShiftNoteCaretVisible(noteInput));
+        noteInput?.addEventListener('focus', () => {
+            requestAnimationFrame(() => keepShiftNoteCaretVisible(noteInput));
+        });
+
+        notesBlock.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('[data-note-copy]');
+            if (copyBtn && notesBlock.contains(copyBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const item = copyBtn.closest('[data-note-item]');
+                const text = item?.querySelector('[data-note-text]')?.textContent || '';
+                void copyShiftNoteText(text, copyBtn);
+                return;
+            }
+
+            const deleteBtn = e.target.closest('[data-note-delete]');
+            if (deleteBtn && notesBlock.contains(deleteBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const item = deleteBtn.closest('[data-note-item]');
+                const noteIndex = Number(item?.dataset.noteIndex);
+                if (!Number.isFinite(noteIndex)) return;
+                deleteShiftNoteAt(key, shiftIndex, noteIndex);
+                return;
+            }
+
+            const textEl = e.target.closest('[data-note-text].is-expandable');
+            if (textEl && notesBlock.contains(textEl)) {
+                e.preventDefault();
+                const expanded = textEl.classList.toggle('is-expanded');
+                textEl.classList.toggle('is-clamped', !expanded);
+            }
+        });
     }
 
     function bindShiftSummaryNoteActions(container) {
@@ -9899,10 +10656,17 @@
             lines.push('Оплата за смену: —');
         }
 
-        const note = getShiftNoteText(shift);
-        if (note) {
+        const notes = getShiftNotesList(shift);
+        if (notes.length) {
             lines.push('');
-            lines.push(`Заметка: ${note}`);
+            if (notes.length === 1) {
+                lines.push(`Заметка: ${notes[0]}`);
+            } else {
+                lines.push('Заметки:');
+                notes.forEach((note, index) => {
+                    lines.push(`${index + 1}. ${note}`);
+                });
+            }
         }
 
         return lines.join('\n');
@@ -10626,7 +11390,7 @@
         const resetShift = resolveOriginalShiftFromTemplate(stored, dateKey);
         if (!resetShift) return;
 
-        if (stored.note) resetShift.note = stored.note;
+        copyShiftNotesFromSource(resetShift, stored);
 
         if (isNightRoute(stored.route)) {
             removeMaterializedMorningForNight(dateKey, stored);
@@ -10644,6 +11408,14 @@
         calendarRenderCalendar({ skipConstructor: true });
         reapplyCalendarDaySelection();
         updateProfileScreen?.();
+
+        const updated = getStoredDayShifts(dateKey)[slotIndex];
+        if (updated) {
+            syncRouteContextFromCalendar(dateKey, updated, slotIndex, { remountEditor: true });
+        } else {
+            refreshRouteShiftEditorIfOpen(dateKey);
+            if (dateKey === getRouteTabDateKey()) renderRouteShiftCompact();
+        }
 
         const parts = dateKey.split('.');
         const constructorDateKey = calendarSelectedDateKey;
@@ -11160,7 +11932,7 @@
         };
 
         const tabs = calendarConstructorTabsMeta;
-        const dayPanel = document.querySelector('[data-shift-day-panel]');
+        const dayPanel = getCalendarShiftDayPanel();
         const tabIndex = findConstructorTabForChipPreference(tabs, pref);
 
         if (dayPanel && tabIndex >= 0) {
@@ -11664,15 +12436,23 @@
             data-date-key="${escapeAttr(payload.dateKey || dateKey)}"
             data-is-night="${payload.isNight ? '1' : '0'}"`;
 
-        const chipsHtml = numbers.map(num =>
-            `<button type="button" class="train-num-chip train-num-chip--inline shift-summary__train-chip"
-                data-summary-train="${escapeAttr(num)}"${dataAttrs}
-                aria-label="Открыть маршрут поезда ${escapeAttr(num)}">${escapeHtml(num)}</button>`
+        const chipsHtml = numbers.map((num) =>
+            `<span class="train-num-chip train-num-chip--inline shift-summary__train-chip"
+                aria-hidden="true">${escapeHtml(num)}</span>`
         ).join('');
 
-        return `<div class="shift-card__trains-nav shift-summary__trains-row shift-summary__trains-row--nav" data-summary-trains-row${dataAttrs} tabindex="0" role="button" aria-label="Открыть маршруты поездов смены">
-            <div class="shift-summary__trains-chips">${chipsHtml}</div>
-            <span class="shift-card__trains-go" aria-hidden="true"><span class="shift-card__trains-play"></span></span>
+        const peekChipsHtml = numbers.map(num => renderTrainNumChip(num)).join('');
+
+        return `<div class="trains-chip-wrap shift-summary__trains-peek">
+            <div class="shift-card__trains-nav shift-summary__trains-row shift-summary__trains-row--nav trains-chip-panel--peek"
+                data-summary-trains-row${dataAttrs} tabindex="0" role="button"
+                aria-label="Поезда ${escapeAttr(numbers.join(', '))}. Нажмите для маршрута, удержите для списка">
+                <div class="shift-summary__trains-chips shift-summary__trains-chips--overlap">${chipsHtml}</div>
+                <span class="shift-card__trains-go" aria-hidden="true"><span class="shift-card__trains-play"></span></span>
+            </div>
+            <div class="trains-chip-popover shift-summary__trains-popover" role="region" aria-label="Все поезда смены">
+                <div class="trains-chip-popover__scroll">${peekChipsHtml}</div>
+            </div>
         </div>`;
     }
 
@@ -11799,7 +12579,7 @@
     }
 
     function getConstructorTargetDateKey() {
-        const dayPanel = document.querySelector('[data-shift-day-panel]');
+        const dayPanel = getCalendarShiftDayPanel();
         const activePanel = getActiveShiftTabPanel(dayPanel);
         if (activePanel?.dataset.tabDateKey) return activePanel.dataset.tabDateKey;
         return calendarSelectedDateKey;
@@ -11900,8 +12680,10 @@
 
         if (Array.isArray(tabsMeta) && tabsMeta[tabIndex]) {
             syncShiftDayPanelFooterForTab(dayPanel, tabsMeta[tabIndex]);
-            syncCalendarHighlightForShiftTab(tabsMeta[tabIndex]);
-        } else {
+            if (dayPanel.getAttribute('data-route-shift-editor') !== '1') {
+                syncCalendarHighlightForShiftTab(tabsMeta[tabIndex]);
+            }
+        } else if (dayPanel.getAttribute('data-route-shift-editor') !== '1') {
             reapplyCalendarDaySelection();
             syncCalendarChipSelection();
         }
@@ -11911,7 +12693,7 @@
         const dateKey = calendarSelectedDateKey;
         if (!dateKey) return;
 
-        const dayPanel = document.querySelector('[data-shift-day-panel]');
+        const dayPanel = getCalendarShiftDayPanel();
         const storedShifts = getStoredDayShifts(dateKey);
 
         if (storedShifts.length >= 2) {
@@ -11931,6 +12713,11 @@
             persistUserShifts();
             calendarRenderCalendar();
             updateProfileScreen?.();
+            {
+                const shifts = getStoredDayShifts(dateKey);
+                const shiftIndex = pickRouteShiftIndex(dateKey, shifts);
+                if (shifts[shiftIndex]) syncRouteContextFromCalendar(dateKey, shifts[shiftIndex], shiftIndex);
+            }
             return;
         }
 
@@ -11943,6 +12730,11 @@
             persistUserShifts();
             calendarRenderCalendar();
             updateProfileScreen?.();
+            {
+                const shifts = getStoredDayShifts(dateKey);
+                const shiftIndex = pickRouteShiftIndex(dateKey, shifts);
+                if (shifts[shiftIndex]) syncRouteContextFromCalendar(dateKey, shifts[shiftIndex], shiftIndex);
+            }
         }
     }
 
@@ -11975,6 +12767,119 @@
             presetTrainNumbers,
             trainPlan
         );
+    }
+
+    const TRAINS_PEEK_HOLD_MS = 420;
+    const TRAINS_PEEK_MOVE_TOLERANCE = 12;
+    let trainsPeekDocBound = false;
+
+    function closeAllTrainsPeeks(exceptWrap = null) {
+        document.querySelectorAll('.trains-chip-wrap.is-peek-open').forEach(wrap => {
+            if (wrap !== exceptWrap) wrap.classList.remove('is-peek-open');
+        });
+    }
+
+    function bindSummaryTrainsRowPeek(row) {
+        if (!row || row.dataset.peekBound === '1') return;
+        const wrap = row.closest('.trains-chip-wrap');
+        if (!wrap) {
+            row.dataset.peekBound = '1';
+            row.addEventListener('click', () => navigateFromSummaryTrainsRow(row));
+            row.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigateFromSummaryTrainsRow(row);
+                }
+            });
+            return;
+        }
+
+        row.dataset.peekBound = '1';
+        let pressTimer = null;
+        let pressStartX = 0;
+        let pressStartY = 0;
+        let longPressOpened = false;
+
+        const clearPressTimer = () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        };
+
+        const openPeek = () => {
+            closeAllTrainsPeeks(wrap);
+            wrap.classList.add('is-peek-open');
+            longPressOpened = true;
+        };
+
+        const closePeek = () => {
+            wrap.classList.remove('is-peek-open');
+        };
+
+        row.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            longPressOpened = false;
+            pressStartX = e.clientX;
+            pressStartY = e.clientY;
+            clearPressTimer();
+            pressTimer = setTimeout(() => {
+                pressTimer = null;
+                openPeek();
+            }, TRAINS_PEEK_HOLD_MS);
+        });
+
+        row.addEventListener('pointermove', (e) => {
+            if (!pressTimer) return;
+            if (
+                Math.abs(e.clientX - pressStartX) > TRAINS_PEEK_MOVE_TOLERANCE
+                || Math.abs(e.clientY - pressStartY) > TRAINS_PEEK_MOVE_TOLERANCE
+            ) {
+                clearPressTimer();
+            }
+        });
+
+        row.addEventListener('pointerup', clearPressTimer);
+        row.addEventListener('pointercancel', clearPressTimer);
+        row.addEventListener('contextmenu', (e) => {
+            if (wrap.classList.contains('is-peek-open')) e.preventDefault();
+        });
+
+        row.addEventListener('click', (e) => {
+            clearPressTimer();
+            if (longPressOpened) {
+                e.preventDefault();
+                e.stopPropagation();
+                longPressOpened = false;
+                return;
+            }
+            if (wrap.classList.contains('is-peek-open')) {
+                e.preventDefault();
+                closePeek();
+                return;
+            }
+            navigateFromSummaryTrainsRow(row);
+        });
+
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigateFromSummaryTrainsRow(row);
+            }
+        });
+
+        wrap.querySelector('.trains-chip-popover')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        if (!trainsPeekDocBound) {
+            trainsPeekDocBound = true;
+            document.addEventListener('pointerdown', (e) => {
+                if (!e.target.closest('.trains-chip-wrap')) {
+                    closeAllTrainsPeeks();
+                }
+            });
+        }
     }
 
     function resolveDefaultConstructorTabIndex(tabs, dateKey, storedShifts) {
@@ -12096,6 +13001,7 @@
                         <span class="shift-card__summary-value shift-card__summary-value--pay" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}</span>
                     </div>
                 </div>
+                ${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}
             </div>`;
     }
 
@@ -12128,7 +13034,7 @@
             if (!template) template = findShiftTemplate(depotShiftTemplates, route, dateKey);
             if (template) {
                 nextShift = buildCalendarShiftFromTemplate(template);
-                nextShift.note = storedShift.note;
+                copyShiftNotesFromSource(nextShift, storedShift);
             } else {
                 nextShift.route = route;
             }
@@ -12148,7 +13054,7 @@
             existingLunch.dutyPoint,
             nextShift.route
         );
-        if (storedShift.note) nextShift.note = storedShift.note;
+        copyShiftNotesFromSource(nextShift, storedShift);
 
         return nextShift;
     }
@@ -12195,12 +13101,13 @@
         syncLunchRangeUi(panel, shift, dateKey, panelRoot.dataset?.readonly !== '1');
         syncLunchAddButtonUi(panel, shift, dateKey, panelRoot.dataset?.readonly !== '1');
         updateShiftSummaryCalcDisplay(panelRoot, enriched, dateKey);
+        refreshShiftNotesListUi(panelRoot, getShiftNotesList(shift));
     }
 
     function fillShiftSummaryPanelFromTemplate(panelRoot, route, dateKey, storedShift) {
         const defaults = getShiftTemplateDefaultsForRoute(route, dateKey);
         if (!defaults) return;
-        if (storedShift?.note) defaults.note = storedShift.note;
+        copyShiftNotesFromSource(defaults, storedShift);
         fillShiftSummaryPanelFromShift(panelRoot, defaults, dateKey);
     }
 
@@ -12219,6 +13126,20 @@
         calendarRenderCalendar({ skipConstructor: true });
         reapplyCalendarDaySelection();
         updateProfileScreen?.();
+
+        const fromRouteEditor = dayPanel?.getAttribute('data-route-shift-editor') === '1';
+        const savedShifts = getStoredDayShifts(tabDateKey);
+        const savedShift = savedShifts[shiftIndex] || draft;
+        if (savedShift) {
+            syncRouteContextFromCalendar(tabDateKey, savedShift, shiftIndex, {
+                remountEditor: !fromRouteEditor
+            });
+        }
+
+        if (fromRouteEditor) {
+            refreshCalendarConstructorForDate(tabDateKey);
+            return;
+        }
 
         const parts = dateKey.split('.');
         if (parts.length === 3 && calendarSelectedDateKey === dateKey) {
@@ -12340,12 +13261,19 @@
         dayPanel.querySelectorAll('[data-shift-tab-panel]').forEach(panelEl => {
             const shiftIndex = Number(panelEl.dataset.shiftIndex);
             const tabDateKey = panelEl.dataset.tabDateKey || dateKey;
-            if (shiftIndex < 0 || panelEl.dataset.readonly === '1') return;
+            if (shiftIndex < 0) return;
+
+            if (panelEl.dataset.readonly === '1') {
+                bindShiftSummaryNoteInput(panelEl, dayPanel, dateKey, shiftIndex, tabDateKey);
+                return;
+            }
+
             const shift = getStoredDayShifts(tabDateKey)[shiftIndex];
             if (!shift) return;
 
             bindShiftSummaryPanelLiveCalc(panelEl, dayPanel, dateKey, shiftIndex, tabDateKey);
             bindShiftSummaryTimeInputs(panelEl);
+            bindShiftSummaryNoteInput(panelEl, dayPanel, dateKey, shiftIndex, tabDateKey);
 
             panelEl.querySelectorAll('.shift-card__route-picker').forEach(picker => {
                 bindSummaryRoutePicker(picker, tabDateKey);
@@ -12384,7 +13312,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const presetId = btn.getAttribute('data-local-preset') || '';
-                if (presetId) calendarApplyQuickPreset(presetId);
+                if (presetId) calendarApplyQuickPreset(presetId, dayPanel.dataset.dateKey || dateKey);
             });
         }
 
@@ -12419,19 +13347,7 @@
         }
 
         dayPanel.querySelectorAll('[data-summary-trains-row]').forEach(row => {
-            row.querySelectorAll('[data-summary-train]').forEach(chip => {
-                chip.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    navigateFromSummaryTrainsRow(row, chip.dataset.summaryTrain);
-                });
-            });
-            row.addEventListener('click', () => navigateFromSummaryTrainsRow(row));
-            row.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigateFromSummaryTrainsRow(row);
-                }
-            });
+            bindSummaryTrainsRowPeek(row);
         });
 
         if (!shiftSummaryEditorDocBound) {
@@ -12801,16 +13717,6 @@
 
     window.navigateToRouteWithTrains = navigateToRouteWithTrains;
 
-    const TRAINS_PEEK_HOLD_MS = 420;
-    const TRAINS_PEEK_MOVE_TOLERANCE = 12;
-    let trainsPeekDocBound = false;
-
-    function closeAllTrainsPeeks(exceptWrap = null) {
-        document.querySelectorAll('.trains-chip-wrap.is-peek-open').forEach(wrap => {
-            if (wrap !== exceptWrap) wrap.classList.remove('is-peek-open');
-        });
-    }
-
     function navigateFromTrainsChip(btn) {
         if (!btn) return;
         let presetTrainNumbers = null;
@@ -13130,6 +14036,11 @@
             persistUserShifts();
             calendarRenderCalendar();
             updateProfileScreen();
+            {
+                const shifts = getStoredDayShifts(dateKey);
+                const shiftIndex = pickRouteShiftIndex(dateKey, shifts);
+                if (shifts[shiftIndex]) syncRouteContextFromCalendar(dateKey, shifts[shiftIndex], shiftIndex, { remountEditor: true });
+            }
             return;
         }
 
@@ -13161,6 +14072,11 @@
         persistUserShifts();
         calendarRenderCalendar();
         updateProfileScreen();
+        {
+            const shifts = getStoredDayShifts(dateKey);
+            const shiftIndex = pickRouteShiftIndex(dateKey, shifts);
+            if (shifts[shiftIndex]) syncRouteContextFromCalendar(dateKey, shifts[shiftIndex], shiftIndex, { remountEditor: true });
+        }
     }
 
     function calendarDeleteShift(slotIndex, targetDateKey) {
@@ -13185,6 +14101,16 @@
         persistUserShifts();
         calendarRenderCalendar();
         updateProfileScreen();
+
+        const remaining = getStoredDayShifts(dateKey);
+        if (remaining.length) {
+            const shiftIndex = pickRouteShiftIndex(dateKey, remaining);
+            syncRouteContextFromCalendar(dateKey, remaining[shiftIndex], shiftIndex, { remountEditor: true });
+        } else if (dateKey === getRouteTabDateKey()) {
+            saveRouteShiftContext(null);
+            renderRouteShiftCompact();
+            refreshRouteShiftEditorIfOpen(dateKey);
+        }
     }
 
     function getProfileMonthPickerMaxYear() {

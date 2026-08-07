@@ -694,33 +694,47 @@
         font-size: 11px;
     }
 
-    .route-shift-compact__edit {
-        width: 28px;
-        height: 28px;
+    .route-shift-compact__chevron {
+        min-height: 24px;
+        padding: 0 0 4px;
+    }
+
+    .route-shift-compact__trains {
+        min-height: 36px;
+        height: 36px;
+        padding: 4px 42px 4px 8px;
     }
 
     .route-shift-compact__chip {
-        padding: 5px 10px;
+        min-height: 24px;
+        padding: 2px 8px;
         font-size: 11px;
     }
 
     .route-shift-compact__add {
-        width: 30px;
-        height: 30px;
+        width: 28px;
+        height: 28px;
         font-size: 18px;
+        right: 5px;
     }
 
     .route-shift-expanded {
         padding: 10px;
     }
 
-    .route-shift-expanded__times {
-        grid-template-columns: 1fr;
-    }
-
     .route-train-chip-popover__box {
         max-width: none;
         padding: 14px 12px;
+    }
+
+    .route-train-chip-popover__grid {
+        gap: 8px;
+    }
+
+    .route-train-chip-popover__input {
+        min-height: 48px;
+        padding: 10px 8px;
+        font-size: var(--font-base);
     }
 
     /* Предупреждения ДУ-61 */

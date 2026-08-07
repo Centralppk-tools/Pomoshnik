@@ -421,15 +421,15 @@
     width: 0;
     height: 0;
     border-style: solid;
-    border-width: 0 9px 9px 0;
-    border-color: transparent rgba(251, 191, 36, 0.92) transparent transparent;
+    border-width: 0 10px 10px 0;
+    border-color: transparent #f97316 transparent transparent;
     border-top-right-radius: 6px;
     pointer-events: none;
-    filter: drop-shadow(-1px 1px 1px rgba(0, 0, 0, 0.18));
+    filter: drop-shadow(-1px 1px 1px rgba(0, 0, 0, 0.22));
 }
 
 #screen-calendar .day--multi .day-shift-chip.has-shift-note::after {
-    border-width: 0 7px 7px 0;
+    border-width: 0 8px 8px 0;
     border-top-right-radius: 5px;
 }
 
@@ -655,7 +655,7 @@
 }
 
 /* ===== Сводка смены (макет) ===== */
-#screen-calendar .shift-day-panel--design {
+.shift-day-panel--design {
     --shift-card-bg: #1c1c1e;
     --shift-card-label: #888888;
     --shift-card-border: rgba(255, 255, 255, 0.12);
@@ -667,14 +667,14 @@
     overflow: visible;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__head {
+.shift-day-panel--design .shift-day-panel__head {
     padding: 18px 18px 0;
     border: none;
     background: transparent;
     text-align: center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__date {
+.shift-day-panel--design .shift-day-panel__date {
     margin: 0 0 12px;
     font-size: 17px;
     font-weight: 700;
@@ -682,7 +682,7 @@
     letter-spacing: -0.02em;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tabs {
+.shift-day-panel--design .shift-day-panel__tabs {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -690,7 +690,7 @@
     margin-bottom: 14px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill {
+.shift-day-panel--design .shift-day-panel__tab-pill {
     display: inline-flex;
     flex-direction: row;
     align-items: center;
@@ -707,21 +707,21 @@
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill-route {
+.shift-day-panel--design .shift-day-panel__tab-pill-route {
     font-size: 14px;
     font-weight: 700;
     line-height: 1.2;
     color: inherit;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill-sep {
+.shift-day-panel--design .shift-day-panel__tab-pill-sep {
     font-size: 12px;
     font-weight: 400;
     color: inherit;
     opacity: 0.45;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill-date {
+.shift-day-panel--design .shift-day-panel__tab-pill-date {
     font-size: 11px;
     font-weight: 500;
     line-height: 1.2;
@@ -729,39 +729,39 @@
     opacity: 0.75;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill.is-active {
+.shift-day-panel--design .shift-day-panel__tab-pill.is-active {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.62);
     color: #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill.is-active .shift-day-panel__tab-pill-route {
+.shift-day-panel--design .shift-day-panel__tab-pill.is-active .shift-day-panel__tab-pill-route {
     color: #fff;
     font-weight: 700;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill:not(.is-active) .shift-day-panel__tab-pill-route {
+.shift-day-panel--design .shift-day-panel__tab-pill:not(.is-active) .shift-day-panel__tab-pill-route {
     color: #888;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__tab-pill.is-active .shift-day-panel__tab-pill-date {
+.shift-day-panel--design .shift-day-panel__tab-pill.is-active .shift-day-panel__tab-pill-date {
     color: #aaa;
     opacity: 1;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__head-divider {
+.shift-day-panel--design .shift-day-panel__head-divider {
     height: 1px;
     margin: 0;
     background: rgba(255, 255, 255, 0.08);
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__body {
+.shift-day-panel--design .shift-day-panel__body {
     padding: 14px 18px 12px;
     background: transparent;
     overflow: visible;
 }
 
-#screen-calendar .shift-day-panel--design .shift-day-panel__footer {
+.shift-day-panel--design .shift-day-panel__footer {
     padding: 0 18px 14px;
     border: none;
     background: transparent;
@@ -771,33 +771,33 @@
     gap: 6px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-summary__panel {
+.shift-day-panel--design .shift-summary__panel {
     padding: 0;
     gap: 14px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__panel {
+.shift-day-panel--design .shift-card__panel {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__row {
+.shift-day-panel--design .shift-card__row {
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr);
     gap: 10px;
     align-items: center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__row--route {
+.shift-day-panel--design .shift-card__row--route {
     align-items: start;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__row--route .shift-card__label {
+.shift-day-panel--design .shift-card__row--route .shift-card__label {
     padding-top: 11px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-stack {
+.shift-day-panel--design .shift-card__route-stack {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -805,7 +805,7 @@
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-line {
+.shift-day-panel--design .shift-card__route-line {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -813,12 +813,12 @@
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-line > .shift-card__route-area {
+.shift-day-panel--design .shift-card__route-line > .shift-card__route-area {
     flex: 1;
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn {
+.shift-day-panel--design .shift-card__route-add-btn {
     position: relative;
     flex-shrink: 0;
     align-self: center;
@@ -835,8 +835,8 @@
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn::before,
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn::after {
+.shift-day-panel--design .shift-card__route-add-btn::before,
+.shift-day-panel--design .shift-card__route-add-btn::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -846,56 +846,56 @@
     transform: translate(-50%, -50%);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn::before {
+.shift-day-panel--design .shift-card__route-add-btn::before {
     width: 14px;
     height: 2px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn::after {
+.shift-day-panel--design .shift-card__route-add-btn::after {
     width: 2px;
     height: 14px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn:hover {
+.shift-day-panel--design .shift-card__route-add-btn:hover {
     border-color: rgba(148, 163, 184, 0.65);
     background: rgba(100, 116, 139, 0.22);
     color: #e2e8f0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-btn.is-active {
+.shift-day-panel--design .shift-card__route-add-btn.is-active {
     border-color: rgba(148, 163, 184, 0.75);
     background: rgba(100, 116, 139, 0.28);
     color: #f1f5f9;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-add-row[hidden] {
+.shift-day-panel--design .shift-card__route-add-row[hidden] {
     display: none !important;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-routes--add-night {
+.shift-day-panel--design .shift-card__quick-routes--add-night {
     margin-top: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__row--trains {
-    align-items: start;
+.shift-day-panel--design .shift-card__row--trains {
+    align-items: center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__row--trains .shift-card__label {
-    padding-top: 8px;
+.shift-day-panel--design .shift-card__row--trains .shift-card__label {
+    padding-top: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__label {
+.shift-day-panel--design .shift-card__label {
     font-size: 12px;
     font-weight: 500;
     color: var(--shift-card-label);
     line-height: 1.3;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__field {
+.shift-day-panel--design .shift-card__field {
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-area {
+.shift-day-panel--design .shift-card__route-area {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -904,16 +904,16 @@
     width: 100%;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-area--solo {
+.shift-day-panel--design .shift-card__route-area--solo {
     gap: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-picker {
+.shift-day-panel--design .shift-card__route-picker {
     position: relative;
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-pill {
+.shift-day-panel--design .shift-card__route-pill {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -929,19 +929,19 @@
     box-sizing: border-box;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-summary__route,
-#screen-calendar .shift-day-panel--design .shift-card__route-pill .route-combobox {
+.shift-day-panel--design .shift-card__route-pill .shift-summary__route,
+.shift-day-panel--design .shift-card__route-pill .route-combobox {
     flex: 1;
     min-width: 52px;
     margin-bottom: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-pill .route-combobox-field {
+.shift-day-panel--design .shift-card__route-pill .route-combobox-field {
     width: 100%;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-picker > .route-combobox-list,
-#screen-calendar .shift-day-panel--design .shift-card__route-picker > .shift-summary__route-list {
+.shift-day-panel--design .shift-card__route-picker > .route-combobox-list,
+.shift-day-panel--design .shift-card__route-picker > .shift-summary__route-list {
     position: absolute;
     z-index: 40;
     left: 0;
@@ -962,7 +962,7 @@
     box-sizing: border-box;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-picker .route-combobox-option {
+.shift-day-panel--design .shift-card__route-picker .route-combobox-option {
     padding: 10px 12px;
     border-radius: 8px;
     font-size: 14px;
@@ -973,42 +973,55 @@
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-picker .route-combobox-option:hover,
-#screen-calendar .shift-day-panel--design .shift-card__route-picker .route-combobox-option.is-selected {
+.shift-day-panel--design .shift-card__route-picker .route-combobox-option:hover,
+.shift-day-panel--design .shift-card__route-picker .route-combobox-option.is-selected {
     background: rgba(0, 107, 95, 0.28);
     color: #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-picker .route-combobox-empty {
+.shift-day-panel--design .shift-card__route-picker .route-combobox-empty {
     padding: 12px;
     text-align: center;
     font-size: 13px;
     color: #888;
 }
 
+.shift-day-panel--design .shift-card__route-pill .shift-summary__route-input,
+.shift-day-panel--design .shift-card__route-pill .shift-card__route-input,
+.shift-day-panel--design .shift-card__route-pill #constructorRouteInput,
 #screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-summary__route-input,
 #screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-card__route-input,
+#screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-constructor-input,
 #screen-calendar .shift-day-panel--design .shift-card__route-pill #constructorRouteInput {
     width: 100%;
     min-width: 4.5ch;
     flex: 1 1 auto;
     min-height: 36px;
+    margin: 0;
     padding: 0;
     border: none;
+    border-radius: 0;
     background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
     color: #fff;
     font-size: 14px;
     font-weight: 600;
     box-sizing: border-box;
 }
 
+.shift-day-panel--design .shift-card__route-pill .shift-summary__route-input:focus,
+.shift-day-panel--design .shift-card__route-pill #constructorRouteInput:focus,
 #screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-summary__route-input:focus,
+#screen-calendar .shift-day-panel--design .shift-card__route-pill .shift-constructor-input:focus,
 #screen-calendar .shift-day-panel--design .shift-card__route-pill #constructorRouteInput:focus {
     outline: none;
+    border: none;
+    background: transparent;
     box-shadow: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-chevron {
+.shift-day-panel--design .shift-card__route-chevron {
     flex-shrink: 0;
     position: relative;
     z-index: 2;
@@ -1029,12 +1042,12 @@
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-chevron:hover {
+.shift-day-panel--design .shift-card__route-chevron:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-routes {
+.shift-day-panel--design .shift-card__quick-routes {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1043,20 +1056,20 @@
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__route-readonly {
+.shift-day-panel--design .shift-card__route-readonly {
     font-size: 14px;
     font-weight: 600;
     color: #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-label {
+.shift-day-panel--design .shift-card__quick-label {
     font-size: 10px;
     font-weight: 500;
     color: #666;
     line-height: 1;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-btns {
+.shift-day-panel--design .shift-card__quick-btns {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -1064,7 +1077,7 @@
     width: 100%;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-btn {
+.shift-day-panel--design .shift-card__quick-btn {
     min-height: 26px;
     padding: 3px 8px;
     border-radius: 8px;
@@ -1078,19 +1091,19 @@
     transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__quick-btn.is-active {
+.shift-day-panel--design .shift-card__quick-btn.is-active {
     border-color: rgba(6, 202, 134, 0.55);
     color: #fff;
     background: linear-gradient(135deg, rgba(2, 76, 78, 0.65) 0%, rgba(6, 202, 134, 0.32) 100%);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-row {
+.shift-day-panel--design .shift-card__time-row {
     display: flex;
     align-items: center;
     width: 100%;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-line {
+.shift-day-panel--design .shift-card__time-line {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1098,16 +1111,16 @@
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-line > .shift-card__time-range,
-#screen-calendar .shift-day-panel--design .shift-card__time-line > .shift-card__time-range--readonly,
-#screen-calendar .shift-day-panel--design .shift-card__time-line--lunch > .shift-card__time-range,
-#screen-calendar .shift-day-panel--design .shift-card__time-line--lunch > .shift-card__time-range--readonly {
+.shift-day-panel--design .shift-card__time-line > .shift-card__time-range,
+.shift-day-panel--design .shift-card__time-line > .shift-card__time-range--readonly,
+.shift-day-panel--design .shift-card__time-line--lunch > .shift-card__time-range,
+.shift-day-panel--design .shift-card__time-line--lunch > .shift-card__time-range--readonly {
     flex: 1;
     min-width: 0;
     width: auto;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn {
+.shift-day-panel--design .shift-card__time-add-btn {
     position: relative;
     flex-shrink: 0;
     align-self: center;
@@ -1124,12 +1137,12 @@
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn[hidden] {
+.shift-day-panel--design .shift-card__time-add-btn[hidden] {
     display: none !important;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn::before,
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn::after {
+.shift-day-panel--design .shift-card__time-add-btn::before,
+.shift-day-panel--design .shift-card__time-add-btn::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -1139,23 +1152,23 @@
     transform: translate(-50%, -50%);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn::before {
+.shift-day-panel--design .shift-card__time-add-btn::before {
     width: 12px;
     height: 2px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn::after {
+.shift-day-panel--design .shift-card__time-add-btn::after {
     width: 2px;
     height: 12px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-add-btn:hover {
+.shift-day-panel--design .shift-card__time-add-btn:hover {
     border-color: rgba(148, 163, 184, 0.65);
     background: rgba(100, 116, 139, 0.22);
     color: #e2e8f0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn {
+.shift-day-panel--design .shift-card__time-remove-btn {
     position: relative;
     flex-shrink: 0;
     align-self: center;
@@ -1172,8 +1185,8 @@
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn::before,
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn::after {
+.shift-day-panel--design .shift-card__time-remove-btn::before,
+.shift-day-panel--design .shift-card__time-remove-btn::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -1184,21 +1197,21 @@
     border-radius: 1px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn::before {
+.shift-day-panel--design .shift-card__time-remove-btn::before {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn::after {
+.shift-day-panel--design .shift-card__time-remove-btn::after {
     transform: translate(-50%, -50%) rotate(-45deg);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-remove-btn:hover {
+.shift-day-panel--design .shift-card__time-remove-btn:hover {
     border-color: rgba(248, 113, 113, 0.72);
     background: rgba(239, 68, 68, 0.18);
     color: #fecaca;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-line--lunch {
+.shift-day-panel--design .shift-card__time-line--lunch {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1206,42 +1219,42 @@
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch {
+.shift-day-panel--design .shift-card__time-slot--lunch {
     min-height: 34px;
     padding: 0 8px;
     border-radius: 9px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-display {
+.shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-display {
     font-size: 13px;
     padding: 0 4px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-divider {
+.shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-divider {
     height: 16px;
     margin: 0 6px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon {
+.shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon {
     width: 16px;
     height: 16px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon::before {
+.shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon::before {
     height: 5px;
     margin-top: -4px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon::after {
+.shift-day-panel--design .shift-card__time-slot--lunch .shift-card__time-icon::after {
     width: 4px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-range {
+.shift-day-panel--design .shift-card__time-range {
     width: 100%;
     min-width: 0;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot {
+.shift-day-panel--design .shift-card__time-slot {
     display: flex;
     align-items: center;
     gap: 0;
@@ -1264,14 +1277,14 @@ button.shift-card__time-slot {
     text-align: left;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot:hover,
-#screen-calendar .shift-day-panel--design .shift-card__time-slot:focus-visible {
+.shift-day-panel--design .shift-card__time-slot:hover,
+.shift-day-panel--design .shift-card__time-slot:focus-visible {
     border-color: rgba(0, 184, 148, 0.45);
     background: rgba(36, 42, 52, 0.98);
     outline: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-display {
+.shift-day-panel--design .shift-card__time-display {
     flex: 1;
     min-width: 0;
     padding: 0 6px;
@@ -1285,11 +1298,11 @@ button.shift-card__time-slot {
     white-space: nowrap;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-display.is-placeholder {
+.shift-day-panel--design .shift-card__time-display.is-placeholder {
     color: rgba(255, 255, 255, 0.42);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-divider {
+.shift-day-panel--design .shift-card__time-divider {
     flex-shrink: 0;
     width: 0;
     height: 18px;
@@ -1297,7 +1310,7 @@ button.shift-card__time-slot {
     border-left: 1px dashed rgba(255, 255, 255, 0.28);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-icon {
+.shift-day-panel--design .shift-card__time-icon {
     flex-shrink: 0;
     width: 18px;
     height: 18px;
@@ -1307,7 +1320,7 @@ button.shift-card__time-slot {
     box-sizing: border-box;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-icon::before {
+.shift-day-panel--design .shift-card__time-icon::before {
     content: '';
     position: absolute;
     left: 50%;
@@ -1320,7 +1333,7 @@ button.shift-card__time-slot {
     transform-origin: bottom center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-icon::after {
+.shift-day-panel--design .shift-card__time-icon::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -1333,7 +1346,7 @@ button.shift-card__time-slot {
     transform-origin: left center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-slot .shift-summary__time-input {
+.shift-day-panel--design .shift-card__time-slot .shift-summary__time-input {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1341,7 +1354,7 @@ button.shift-card__time-slot {
     pointer-events: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-trigger {
+.shift-day-panel--design .shift-card__time-trigger {
     flex-shrink: 0;
     width: 18px;
     height: 18px;
@@ -1354,7 +1367,7 @@ button.shift-card__time-slot {
     box-sizing: border-box;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-trigger::before {
+.shift-day-panel--design .shift-card__time-trigger::before {
     content: '';
     position: absolute;
     left: 50%;
@@ -1367,7 +1380,7 @@ button.shift-card__time-slot {
     transform-origin: bottom center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-trigger::after {
+.shift-day-panel--design .shift-card__time-trigger::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -1380,15 +1393,15 @@ button.shift-card__time-slot {
     transform-origin: left center;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__time-trigger:hover {
+.shift-day-panel--design .shift-card__time-trigger:hover {
     border-color: rgba(0, 184, 148, 0.75);
 }
 
-#screen-calendar .shift-day-panel--design .shift-summary__time-input--24h {
+.shift-day-panel--design .shift-summary__time-input--24h {
     caret-color: #00b894;
 }
 
-#screen-calendar .shift-day-panel--design .shift-summary__lunch-editor .shift-summary__time-input {
+.shift-day-panel--design .shift-summary__lunch-editor .shift-summary__time-input {
     min-height: 36px;
     padding: 6px 8px;
     border-radius: 8px;
@@ -1402,7 +1415,7 @@ button.shift-card__time-slot {
     box-sizing: border-box;
 }
 
-#screen-calendar .shift-day-panel--design .shift-summary__lunch-editor .shift-summary__time-input:focus {
+.shift-day-panel--design .shift-summary__lunch-editor .shift-summary__time-input:focus {
     outline: none;
     border-color: rgba(0, 184, 148, 0.45);
 }
@@ -1534,12 +1547,13 @@ button.shift-card__time-slot {
     color: #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-nav {
+.shift-day-panel--design .shift-card__trains-nav {
     display: flex;
     align-items: center;
     gap: 0;
     width: 100%;
     min-height: 40px;
+    height: 40px;
     padding: 5px 46px 5px 10px;
     border-radius: 10px;
     border: 1px solid rgba(6, 202, 134, 0.28);
@@ -1549,43 +1563,71 @@ button.shift-card__time-slot {
     overflow: hidden;
     position: relative;
     transition: background 0.15s ease, border-color 0.15s ease;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-nav:hover {
+.shift-day-panel--design .shift-card__trains-nav:hover {
     background: rgba(3, 139, 111, 0.24);
     border-color: rgba(6, 202, 134, 0.42);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-nav .shift-summary__trains-chips {
+.shift-day-panel--design .shift-summary__trains-peek {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+}
+
+.shift-day-panel--design .shift-summary__trains-peek.is-peek-open .shift-card__trains-nav {
+    border-color: rgba(6, 202, 134, 0.55);
+    box-shadow: 0 4px 14px rgba(6, 202, 134, 0.2);
+}
+
+.shift-day-panel--design .shift-card__trains-nav .shift-summary__trains-chips,
+.shift-day-panel--design .shift-summary__trains-chips--overlap {
     display: flex;
     flex-wrap: nowrap;
-    gap: 6px;
+    align-items: center;
+    gap: 5px;
     flex: 1;
     min-width: 0;
-    overflow-x: auto;
+    overflow: hidden;
     padding-right: 4px;
-    scrollbar-width: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-nav .shift-summary__trains-chips::-webkit-scrollbar {
-    display: none;
-}
-
-#screen-calendar .shift-day-panel--design .shift-card__trains-nav .shift-summary__train-chip {
-    flex-shrink: 0;
+.shift-day-panel--design .shift-card__trains-nav .shift-summary__train-chip,
+.shift-day-panel--design .shift-summary__trains-chips--overlap .shift-summary__train-chip {
+    flex: 0 0 auto;
+    position: relative;
     min-height: 26px;
+    margin-left: 0;
     padding: 3px 9px;
     border-radius: 8px;
-    border: 1px solid rgba(6, 202, 134, 0.3);
-    background: rgba(3, 139, 111, 0.18);
+    border: 1px solid rgba(180, 245, 220, 0.42);
+    background: linear-gradient(180deg, rgba(3, 139, 111, 0.96) 0%, rgba(2, 76, 78, 0.98) 100%);
     color: #eefdf6;
     font-size: 12px;
     font-weight: 700;
     font-family: inherit;
-    cursor: pointer;
+    line-height: 1.2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-go {
+.shift-day-panel--design .shift-summary__trains-chips--overlap .shift-summary__train-chip:first-child {
+    margin-left: 0;
+}
+
+.shift-day-panel--design .shift-summary__trains-popover {
+    right: 0;
+    left: auto;
+    max-width: min(92vw, 320px);
+    border-color: rgba(6, 202, 134, 0.4);
+}
+
+.shift-day-panel--design .shift-card__trains-go {
     position: absolute;
     right: 6px;
     top: 50%;
@@ -1601,7 +1643,7 @@ button.shift-card__time-slot {
     box-shadow: 0 2px 8px rgba(6, 202, 134, 0.28);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__trains-play {
+.shift-day-panel--design .shift-card__trains-play {
     display: block;
     width: 0;
     height: 0;
@@ -1611,7 +1653,7 @@ button.shift-card__time-slot {
     border-left: 9px solid #fff;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__summary {
+.shift-day-panel--design .shift-card__summary {
     margin-top: 2px;
     padding: 14px 16px;
     border-radius: 12px;
@@ -1622,27 +1664,261 @@ button.shift-card__time-slot {
     gap: 8px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__summary-row {
+.shift-day-panel--design .shift-card__summary-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__summary-label {
+.shift-day-panel--design .shift-card__summary-label {
     font-size: 13px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.88);
 }
 
-#screen-calendar .shift-day-panel--design .shift-card__summary-value {
+.shift-day-panel--design .shift-card__summary-value {
     font-size: 16px;
     font-weight: 700;
     color: #fff;
     font-variant-numeric: tabular-nums;
 }
 
-#screen-calendar .shift-day-panel--design #constructorRouteCombobox .route-combobox-field {
+.shift-day-panel--design .shift-card__notes-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+}
+
+.shift-day-panel--design .shift-card__notes-title {
+    margin: 0;
+    padding: 0 2px;
+    color: rgba(148, 163, 184, 0.78);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.shift-day-panel--design .shift-card__notes-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+}
+
+.shift-day-panel--design .shift-card__notes-list:empty {
+    display: none;
+}
+
+.shift-day-panel--design .shift-card__note-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 8px 2px;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    border-radius: 0;
+    box-sizing: border-box;
+}
+
+.shift-day-panel--design .shift-card__note-item:last-child {
+    border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+.shift-day-panel--design .shift-card__note-text {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: rgba(168, 178, 194, 0.88);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    transition: color 0.15s ease;
+}
+
+.shift-day-panel--design .shift-card__note-text.is-clamped {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.shift-day-panel--design .shift-card__note-text.is-expandable {
+    cursor: pointer;
+}
+
+.shift-day-panel--design .shift-card__note-text.is-expandable:hover {
+    color: rgba(210, 218, 230, 0.96);
+}
+
+.shift-day-panel--design .shift-card__note-text.is-expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+}
+
+.shift-day-panel--design .shift-card__note-actions {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: -2px;
+    opacity: 0.72;
+    transition: opacity 0.15s ease;
+}
+
+.shift-day-panel--design .shift-card__note-item:hover .shift-card__note-actions,
+.shift-day-panel--design .shift-card__note-item:focus-within .shift-card__note-actions {
+    opacity: 1;
+}
+
+.shift-day-panel--design .shift-card__note-copy,
+.shift-day-panel--design .shift-card__note-delete {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(148, 163, 184, 0.78);
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+
+.shift-day-panel--design .shift-card__note-copy:hover {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.shift-day-panel--design .shift-card__note-delete:hover {
+    color: #fda4af;
+    background: rgba(244, 63, 94, 0.1);
+}
+
+.shift-day-panel--design .shift-card__note-copy:active,
+.shift-day-panel--design .shift-card__note-delete:active {
+    transform: scale(0.94);
+}
+
+.shift-day-panel--design .shift-card__note-copy.is-copied {
+    color: #06CA86;
+}
+
+.shift-day-panel--design .shift-card__note-composer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    height: 40px;
+    margin-top: 2px;
+    padding: 0 46px 0 0;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(18, 22, 30, 0.55);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shift-day-panel--design .shift-card__note-composer:focus-within {
+    border-color: rgba(6, 202, 134, 0.45);
+    background: rgba(18, 22, 30, 0.78);
+    box-shadow: 0 0 0 3px rgba(6, 202, 134, 0.12);
+}
+
+.shift-day-panel--design .shift-card__note-input {
+    display: block;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 40px;
+    max-height: 40px;
+    margin: 0;
+    padding: 0 12px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: rgba(240, 244, 250, 0.96);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 40px;
+    white-space: nowrap;
+    overflow: hidden;
+    resize: none;
+    box-sizing: border-box;
+}
+
+.shift-day-panel--design .shift-card__note-input::placeholder {
+    color: rgba(168, 178, 194, 0.58);
+    font-weight: 500;
+}
+
+.shift-day-panel--design .shift-card__note-input:focus {
+    outline: none;
+}
+
+.shift-day-panel--design .shift-card__note-send {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #038B6F 0%, #06CA86 100%);
+    box-shadow: 0 2px 8px rgba(6, 202, 134, 0.28);
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.shift-day-panel--design .shift-card__note-send:hover {
+    filter: brightness(1.06);
+}
+
+.shift-day-panel--design .shift-card__note-send:active {
+    transform: translateY(-50%) scale(0.94);
+}
+
+.shift-day-panel--design .shift-card__note-send-icon {
+    display: block;
+    width: 0;
+    height: 0;
+    margin-left: 3px;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 9px solid #fff;
+}
+
+.shift-day-panel--design #constructorRouteCombobox .route-combobox-field {
     min-width: 0;
 }
 

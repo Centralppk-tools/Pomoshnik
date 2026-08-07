@@ -576,17 +576,11 @@
     width: 100%;
     max-width: 640px;
     overflow: hidden;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
 }
 
 .main-screens-stage:not(.is-transitioning):not(.is-dragging) {
-    touch-action: pan-y pinch-zoom;
-}
-
-.main-screens-stage:has(#screen-schedule:not(.hidden)),
-.main-screens-stage:has(#screen-profile:not(.hidden)),
-.main-screens-stage:has(#screen-calendar:not(.hidden)) {
-    overflow: visible;
+    touch-action: pan-y;
 }
 
 .main-screens-stage.is-transitioning {
@@ -738,7 +732,7 @@
 }
 
 .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
 }
 
 .schedule-tabs-stage.is-transitioning {
@@ -819,6 +813,14 @@ body.auth-locked {
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     box-shadow: var(--glass-shadow);
+}
+
+body.is-swipe-dragging .bottom-tabbar,
+body.is-swipe-dragging .bottom-tab-btn,
+body.is-swipe-dragging #screen-schedule .tabs-nav,
+body.is-swipe-dragging #screen-schedule .tab-btn {
+    pointer-events: none !important;
+    touch-action: none;
 }
 
 .bottom-tab-btn {
