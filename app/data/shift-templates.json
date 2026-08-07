@@ -1,6 +1,6 @@
 {
   "version": "2026-08-05",
-  "generatedAt": "2026-08-05T08:15:53Z",
+  "generatedAt": "2026-08-07T08:16:47Z",
   "source": {
     "type": "local-xlsx",
     "folder": "Часы смен/",
@@ -9938,12 +9938,12 @@
           "date": "пт",
           "route": "Д61",
           "startPlace": "МЯ",
-          "startTime": "6:45",
-          "trains": "6008 - 7644 - 6109 - 6046 - 6053",
+          "startTime": "6:15",
+          "trains": "6814 - 6819 - 6914 - 6913 - 6046 - 6053",
           "endTime": "18:45",
-          "workHours": "12:00",
+          "workHours": "11:30",
           "nightHours": "0:00",
-          "lunch": "*"
+          "lunch": "15:00-16:00 **"
         },
         {
           "date": "пт",
@@ -9973,10 +9973,10 @@
           "startPlace": "МЯ",
           "startTime": "6:35",
           "trains": "состав 62 мар. 6558 - 6557, состав сдают по смене;\nготовят и выдают состав под п.6064",
-          "endTime": "19:45",
-          "workHours": "12:00",
+          "endTime": "19:05",
+          "workHours": "11:30",
           "nightHours": "0:00",
-          "lunch": "13:00-14:10 **"
+          "lunch": "13:00-14:00 **"
         },
         {
           "date": "пт",
@@ -10005,10 +10005,10 @@
           "route": "Д75",
           "startPlace": "МЯ",
           "startTime": "12:00",
-          "trains": "состав 84 мар. 6462 - 6467, состав сдают по смене;\nпринимают состав 90 мар. 6518 - 6519",
-          "endTime": "22:00",
-          "workHours": "10:00",
-          "nightHours": "0:00",
+          "trains": "состав 84 мар. 6462 - 6467 - 6248 - 6261",
+          "endTime": "22:30",
+          "workHours": "10:30",
+          "nightHours": "0:30",
           "lunch": "*"
         },
         {
@@ -10027,11 +10027,11 @@
           "route": "Д77",
           "startPlace": "МЯ",
           "startTime": "8:05",
-          "trains": "6016 - 6025 - 7816 - 7831, состав сдают по смене;\nпринимают состав 82 мар. 6062 - 6073",
-          "endTime": "21:35",
+          "trains": "6016 - 6025 - 7816 - 7831, состав сдают по смене;\nпринимают состав 90 мар. 6518 - 6519",
+          "endTime": "22:05",
           "workHours": "12:00",
-          "nightHours": "0:00",
-          "lunch": "14:00-15:30 **"
+          "nightHours": "0:05",
+          "lunch": "13:30-15:30 **"
         },
         {
           "date": "пт",
@@ -10082,11 +10082,11 @@
           "route": "Д82",
           "startPlace": "МЯ",
           "startTime": "8:25",
-          "trains": "6624 - 6641 - 6110 - 6113",
-          "endTime": "19:00",
-          "workHours": "10:35",
+          "trains": "6624 - 6641 - 6110 - 6073",
+          "endTime": "21:35",
+          "workHours": "12:00",
           "nightHours": "0:00",
-          "lunch": "*"
+          "lunch": "17:25-18:35 **"
         },
         {
           "date": "пт",
@@ -10103,12 +10103,12 @@
           "date": "пт",
           "route": "Д84",
           "startPlace": "МЯ",
-          "startTime": "8:30",
-          "trains": "6108 - 6111, состав сдают по смене под п.6462;\nпринимают состав от п.6467, 6248 - 6261",
-          "endTime": "22:30",
+          "startTime": "6:45",
+          "trains": "6008 - 7644 - 6111, состав сдают по смене;\nпринимают состав 88 мар. 6112 - 6115",
+          "endTime": "19:55",
           "workHours": "12:00",
-          "nightHours": "0:30",
-          "lunch": "14:15-16:15 **"
+          "nightHours": "0:00",
+          "lunch": "13:55-15:05 **"
         },
         {
           "date": "пт",
@@ -10192,18 +10192,18 @@
           "route": "Д92",
           "startPlace": "МЯ",
           "startTime": "6:40",
-          "trains": "6816 - 6821 - 6028 - 6047, состав сдают по смене;\nпринимают состав 88 мар. 6112-6115",
-          "endTime": "19:40",
-          "workHours": "12:00",
+          "trains": "6816 - 6821 - 6028 - 6047",
+          "endTime": "16:10",
+          "workHours": "9:30",
           "nightHours": "0:00",
-          "lunch": "15:10-16:10 **"
+          "lunch": "*"
         },
         {
           "date": "пт",
           "route": "Д93",
           "startPlace": "МЯ",
           "startTime": "7:55",
-          "trains": "6014-6039, состав сдают по смене;\nпринимают состав 94 мар. 6570 - 6569",
+          "trains": "6014 - 6039, состав сдают по смене;\nпринимают состав 94 мар. 6570 - 6569",
           "endTime": "21:55",
           "workHours": "12:00",
           "nightHours": "0:00",
@@ -10361,13 +10361,13 @@
           "date": "пт",
           "route": "Н64",
           "startPlace": "МЯ",
-          "startTime": "18:30",
+          "startTime": "18:10",
           "trains": "6064",
           "endTime": "0:10",
-          "workHours": "5:40",
+          "workHours": "6:00",
           "nightHours": "2:10",
           "morningRoute": "58У",
-          "lunch": "0:10-1:10 **"
+          "lunch": "0:10-1:20 **"
         },
         {
           "date": "пт",
@@ -10408,19 +10408,19 @@
           "route": "Н76",
           "startPlace": "МЯ",
           "startTime": "22:30",
-          "trains": "приёмка состава 77 мар. от п.6675",
-          "endTime": "0:30",
-          "workHours": "2:00",
-          "nightHours": "2:00",
+          "trains": "состав 77 мар. 6080 - 6081",
+          "endTime": "3:00",
+          "workHours": "4:30",
+          "nightHours": "4:30",
           "morningRoute": "77У",
-          "lunch": "0:30-0:30 *"
+          "lunch": "3:00-3:00 *"
         },
         {
           "date": "пт",
           "route": "Н77",
           "startPlace": "МЯ",
           "startTime": "17:30",
-          "trains": "6660 - 6675",
+          "trains": "6658 - 6675",
           "endTime": "1:00",
           "workHours": "7:30",
           "nightHours": "3:00",
@@ -10588,7 +10588,7 @@
           "route": "Н91",
           "startPlace": "МЯ",
           "startTime": "13:00",
-          "trains": "6708 - 6713 - 6058 - 6079",
+          "trains": "состав 93 мар. 6708 - 6713 - 6058 - 6079",
           "endTime": "23:00",
           "workHours": "10:00",
           "nightHours": "1:00",
@@ -10703,11 +10703,11 @@
           "date": "пт",
           "route": "58У",
           "startPlace": "ПУ",
-          "startTime": "1:10",
+          "startTime": "1:20",
           "trains": "7632 - 6205",
           "endTime": "7:20",
-          "workHours": "6:10",
-          "nightHours": "4:50"
+          "workHours": "6:00",
+          "nightHours": "4:40"
         },
         {
           "date": "пт",
@@ -10715,8 +10715,8 @@
           "startPlace": "МН",
           "startTime": "4:00",
           "trains": "6621",
-          "endTime": "10:40",
-          "workHours": "6:40",
+          "endTime": "10:20",
+          "workHours": "6:20",
           "nightHours": "2:00"
         },
         {
@@ -10798,7 +10798,7 @@
           "route": "76У",
           "startPlace": "ПУ",
           "startTime": "3:00",
-          "trains": "6011",
+          "trains": "6083 - 6086 - 6011",
           "endTime": "8:45",
           "workHours": "5:45",
           "nightHours": "3:00"
@@ -10807,11 +10807,11 @@
           "date": "пт",
           "route": "77У",
           "startPlace": "МЯ",
-          "startTime": "0:30",
+          "startTime": "3:00",
           "trains": "6608 - 6617",
           "endTime": "9:40",
-          "workHours": "9:10",
-          "nightHours": "5:30"
+          "workHours": "6:40",
+          "nightHours": "3:00"
         },
         {
           "date": "пт",
@@ -10919,8 +10919,8 @@
           "startPlace": "БО",
           "startTime": "4:00",
           "trains": "состав 87 мар. 7738 - 6615",
-          "endTime": "9:00",
-          "workHours": "5:00",
+          "endTime": "9:05",
+          "workHours": "5:05",
           "nightHours": "2:00"
         },
         {
@@ -10948,10 +10948,10 @@
           "route": "91У",
           "startPlace": "ПУ",
           "startTime": "3:00",
-          "trains": "состав 92 мар. 6005",
-          "endTime": "7:30",
-          "workHours": "4:30",
-          "nightHours": "3:00"
+          "trains": "пасс. до ст М.Ярославская с п.6101",
+          "endTime": "5:50",
+          "workHours": "2:50",
+          "nightHours": "2:50"
         },
         {
           "date": "пт",
@@ -10976,7 +10976,7 @@
           "route": "94У",
           "startPlace": "МН",
           "startTime": "3:00",
-          "trains": "6609",
+          "trains": "7663",
           "endTime": "10:00",
           "workHours": "7:00",
           "nightHours": "3:00"
@@ -11044,23 +11044,23 @@
           "date": "сб",
           "route": "Д58",
           "startPlace": "МЯ",
-          "startTime": "6:25",
-          "trains": "6556 - 6555 - 6506 - 6507 - 6048 - 6067",
-          "endTime": "19:55",
-          "workHours": "12:00",
+          "startTime": "6:15",
+          "trains": "6814 - 6819 - 6626 - 6639, состав сдают по смене под п.6110",
+          "endTime": "15:25",
+          "workHours": "9:10",
           "nightHours": "0:00",
-          "lunch": "11:55-13:25 **"
+          "lunch": "*"
         },
         {
           "date": "сб",
           "route": "Д59",
           "startPlace": "МЯ",
-          "startTime": "9:50",
+          "startTime": "9:25",
           "trains": "6024 - 6051 - 6846 - 6849, состав сдают по смене;\nпринимают состав 58 мар. 6666 - 6677",
           "endTime": "23:25",
           "workHours": "12:00",
           "nightHours": "1:25",
-          "lunch": "12:25-14:00 **"
+          "lunch": "12:00-14:00 **"
         },
         {
           "date": "сб",
@@ -11143,12 +11143,12 @@
           "date": "сб",
           "route": "Д75",
           "startPlace": "МЯ",
-          "startTime": "6:50",
-          "trains": "состав 83 мар. 6614 - 6629, состав сдают по смене;\nпринимают состав 85 мар. 6630 - 6643",
-          "endTime": "15:30",
-          "workHours": "8:40",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "startTime": "10:30",
+          "trains": "состав 85 мар. 6630 - 6643, состав сдают по смене;\nпринимают состав 62 мар. 6710 - 6715 - 6862 - 6863",
+          "endTime": "23:30",
+          "workHours": "12:00",
+          "nightHours": "1:30",
+          "lunch": "14:50-15:50 **"
         },
         {
           "date": "сб",
@@ -11199,11 +11199,11 @@
           "route": "Д80",
           "startPlace": "МЯ",
           "startTime": "8:40",
-          "trains": "6826 - 6831 - 6564 - 6563; состав 93 мар. 6858 - 6859",
-          "endTime": "22:30",
-          "workHours": "12:00",
-          "nightHours": "0:30",
-          "lunch": "16:30-18:20 **"
+          "trains": "6826 - 6831 - 6564 - 6569",
+          "endTime": "21:20",
+          "workHours": "11:40",
+          "nightHours": "0:00",
+          "lunch": "16:30-17:30 **"
         },
         {
           "date": "сб",
@@ -11231,10 +11231,10 @@
           "date": "сб",
           "route": "Д83",
           "startPlace": "МЯ",
-          "startTime": "10:20",
-          "trains": "принимают состав от п.6629, 6638 - 6653 - 6852 - 6855",
-          "endTime": "21:30",
-          "workHours": "11:10",
+          "startTime": "6:50",
+          "trains": "6614 - 6653",
+          "endTime": "18:20",
+          "workHours": "11:30",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -11276,22 +11276,22 @@
           "route": "Д87",
           "startPlace": "МЯ",
           "startTime": "8:00",
-          "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав от п.6649, 6570 - 6569",
-          "endTime": "21:10",
+          "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав 83 мар. 6852 - 6855",
+          "endTime": "21:30",
           "workHours": "12:00",
           "nightHours": "0:00",
-          "lunch": "14:10-15:20 **"
+          "lunch": "14:10-15:40 **"
         },
         {
           "date": "сб",
           "route": "Д88",
           "startPlace": "МЯ",
           "startTime": "9:30",
-          "trains": "6460 - 6465 - 6238 - 6251",
-          "endTime": "19:50",
-          "workHours": "10:20",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "trains": "6460 - 6465, состав сдают по смене;\nпринимают состав 93 мар. 6858 - 6859",
+          "endTime": "22:30",
+          "workHours": "12:00",
+          "nightHours": "0:30",
+          "lunch": "16:45-17:45 **"
         },
         {
           "date": "сб",
@@ -11309,7 +11309,7 @@
           "route": "Д90",
           "startPlace": "МЯ",
           "startTime": "7:50",
-          "trains": "6016 - 6053 - 6468 - 6473",
+          "trains": "6016 - 6093 - 6468 - 6473",
           "endTime": "21:30",
           "workHours": "12:00",
           "nightHours": "0:00",
@@ -11320,9 +11320,9 @@
           "route": "Д91",
           "startPlace": "МЯ",
           "startTime": "9:10",
-          "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 92 мар. 6466 - 6471",
-          "endTime": "20:30",
-          "workHours": "11:20",
+          "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 58 мар. 6110 - 6067",
+          "endTime": "20:20",
+          "workHours": "11:10",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -11330,10 +11330,10 @@
           "date": "сб",
           "route": "Д92",
           "startPlace": "МЯ",
-          "startTime": "6:15",
-          "trains": "6816 - 6821 - 6028 - 6047",
-          "endTime": "15:30",
-          "workHours": "9:15",
+          "startTime": "8:30",
+          "trains": "пасс. до ст. Пушкино, 6047 - 6466 - 6471",
+          "endTime": "20:30",
+          "workHours": "12:00",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -11352,10 +11352,10 @@
           "date": "сб",
           "route": "Д94",
           "startPlace": "МЯ",
-          "startTime": "10:30",
+          "startTime": "10:25",
           "trains": "состав 93м 6220 - 6235; 6854 - 6857",
           "endTime": "22:00",
-          "workHours": "11:30",
+          "workHours": "11:35",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -11428,13 +11428,13 @@
           "date": "сб",
           "route": "Н58",
           "startPlace": "МЯ",
-          "startTime": "22:30",
+          "startTime": "22:25",
           "trains": "6678",
-          "endTime": "3:00",
-          "workHours": "4:30",
-          "nightHours": "4:30",
+          "endTime": "4:00",
+          "workHours": "5:35",
+          "nightHours": "5:35",
           "morningRoute": "59У",
-          "lunch": "3:00-4:00 **"
+          "lunch": "4:00-4:00 *"
         },
         {
           "date": "сб",
@@ -11465,12 +11465,12 @@
           "route": "Н61",
           "startPlace": "МЯ",
           "startTime": "17:40",
-          "trains": "принимают состав от п.6245, 6578",
-          "endTime": "1:30",
-          "workHours": "7:50",
-          "nightHours": "3:30",
+          "trains": "6688 - 6673 - 6588",
+          "endTime": "2:10",
+          "workHours": "8:30",
+          "nightHours": "4:10",
           "morningRoute": "62У",
-          "lunch": "1:30-3:30 **"
+          "lunch": "2:10-4:10 **"
         },
         {
           "date": "сб",
@@ -11500,11 +11500,11 @@
           "date": "сб",
           "route": "Н64",
           "startPlace": "МЯ",
-          "startTime": "22:10",
+          "startTime": "21:20",
           "trains": "пасс. до ст. Пушкино",
           "endTime": "2:00",
-          "workHours": "3:50",
-          "nightHours": "3:50",
+          "workHours": "4:40",
+          "nightHours": "4:00",
           "morningRoute": "58У",
           "lunch": "2:00-2:00 *"
         },
@@ -11522,10 +11522,10 @@
           "date": "сб",
           "route": "Н74",
           "startPlace": "МЯ",
-          "startTime": "16:00",
-          "trains": "состав 80 мар. 6648 - 6681",
+          "startTime": "15:20",
+          "trains": "состав 88 мар. 6238 - 6251;\nпринимают состав 80 мар. 6670 - 6681",
           "endTime": "1:10",
-          "workHours": "9:10",
+          "workHours": "9:50",
           "nightHours": "3:10",
           "morningRoute": "74У",
           "lunch": "1:10-1:10 *"
@@ -11534,20 +11534,20 @@
           "date": "сб",
           "route": "Н75",
           "startPlace": "МЯ",
-          "startTime": "15:20",
-          "trains": "состав 62 мар. 6710 - 6715 - 6862 - 6863",
-          "endTime": "23:30",
-          "workHours": "8:10",
-          "nightHours": "1:30",
+          "startTime": "16:20",
+          "trains": "состав 87 мар. 6648 - 7733",
+          "endTime": "2:00",
+          "workHours": "9:40",
+          "nightHours": "4:00",
           "morningRoute": "75У",
-          "lunch": "23:30-0:00 *"
+          "lunch": "2:00-2:00 *"
         },
         {
           "date": "сб",
           "route": "Н76",
           "startPlace": "МЯ",
           "startTime": "15:50",
-          "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6081",
+          "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6095",
           "endTime": "1:00",
           "workHours": "9:10",
           "nightHours": "3:00",
@@ -11583,7 +11583,7 @@
           "route": "Н79",
           "startPlace": "МЯ",
           "startTime": "23:40",
-          "trains": "приёмка состава от п.6081",
+          "trains": "приёмка состава от п.6095",
           "endTime": "3:00",
           "workHours": "3:20",
           "nightHours": "3:20",
@@ -11678,13 +11678,13 @@
           "date": "сб",
           "route": "Н87",
           "startPlace": "МЯ",
-          "startTime": "20:10",
-          "trains": "6670 - 7733 - 7734",
-          "endTime": "3:00",
-          "workHours": "6:50",
-          "nightHours": "5:00",
+          "startTime": "23:50",
+          "trains": "7734",
+          "endTime": "3:30",
+          "workHours": "3:40",
+          "nightHours": "3:40",
           "morningRoute": "88У",
-          "lunch": "3:00-4:00 **"
+          "lunch": "3:30-3:30 *"
         },
         {
           "date": "сб",
@@ -11773,12 +11773,12 @@
           "route": "Н95",
           "startPlace": "МЯ",
           "startTime": "18:50",
-          "trains": "6064",
+          "trains": "6092",
           "endTime": "2:00",
           "workHours": "7:10",
           "nightHours": "4:00",
           "morningRoute": "91У",
-          "lunch": "2:00-3:00 **"
+          "lunch": "2:00-2:00 *"
         },
         {
           "date": "сб",
@@ -11841,9 +11841,9 @@
           "route": "58У",
           "startPlace": "ПУ",
           "startTime": "2:00",
-          "trains": "7632 - 6205 - 6556 - 6555",
-          "endTime": "10:10",
-          "workHours": "8:10",
+          "trains": "7632 - 6205",
+          "endTime": "7:20",
+          "workHours": "5:20",
           "nightHours": "4:00"
         },
         {
@@ -11852,8 +11852,8 @@
           "startPlace": "МН",
           "startTime": "4:00",
           "trains": "6621",
-          "endTime": "10:40",
-          "workHours": "6:40",
+          "endTime": "10:25",
+          "workHours": "6:25",
           "nightHours": "2:00"
         },
         {
@@ -11880,11 +11880,11 @@
           "date": "сб",
           "route": "62У",
           "startPlace": "ЩЕ",
-          "startTime": "3:30",
+          "startTime": "4:10",
           "trains": "6551",
           "endTime": "7:40",
-          "workHours": "4:10",
-          "nightHours": "2:30"
+          "workHours": "3:30",
+          "nightHours": "1:50"
         },
         {
           "date": "сб",
@@ -11920,22 +11920,26 @@
           "startPlace": "МЯ",
           "startTime": "1:10",
           "trains": "резерв",
-          "endTime": "4:00",
-          "workHours": "2:50",
-          "nightHours": "2:50"
+          "endTime": "3:20",
+          "workHours": "2:10",
+          "nightHours": "2:10"
         },
         {
           "date": "сб",
           "route": "75У",
-          "workHours": "0:00",
-          "nightHours": "0:00"
+          "startPlace": "МЯ",
+          "startTime": "2:00",
+          "trains": "резерв",
+          "endTime": "4:20",
+          "workHours": "2:20",
+          "nightHours": "2:20"
         },
         {
           "date": "сб",
           "route": "76У",
           "startPlace": "ПУ",
           "startTime": "3:00",
-          "trains": "6011",
+          "trains": "6083 - 6086 - 6011",
           "endTime": "8:45",
           "workHours": "5:45",
           "nightHours": "3:00"
@@ -12054,11 +12058,11 @@
           "date": "сб",
           "route": "88У",
           "startPlace": "БО",
-          "startTime": "4:00",
+          "startTime": "3:30",
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
-          "workHours": "5:00",
-          "nightHours": "2:00"
+          "workHours": "5:30",
+          "nightHours": "2:30"
         },
         {
           "date": "сб",
@@ -12084,11 +12088,11 @@
           "date": "сб",
           "route": "91У",
           "startPlace": "ПУ",
-          "startTime": "3:00",
-          "trains": "состав 92 мар. 6005",
-          "endTime": "7:30",
-          "workHours": "4:30",
-          "nightHours": "3:00"
+          "startTime": "2:00",
+          "trains": "пасс. до ст М.Ярославская с п.6101",
+          "endTime": "5:50",
+          "workHours": "3:50",
+          "nightHours": "3:50"
         },
         {
           "date": "сб",
@@ -12113,7 +12117,7 @@
           "route": "94У",
           "startPlace": "МН",
           "startTime": "3:00",
-          "trains": "6609",
+          "trains": "7663",
           "endTime": "10:00",
           "workHours": "7:00",
           "nightHours": "3:00"
@@ -12181,10 +12185,10 @@
           "date": "вс",
           "route": "Д58",
           "startPlace": "МЯ",
-          "startTime": "8:50",
-          "trains": "6506 - 6507 - 6048 - 6067",
-          "endTime": "20:20",
-          "workHours": "11:30",
+          "startTime": "6:15",
+          "trains": "6814 - 6819 - 6626 - 6639, состав сдают по смене под п.6110",
+          "endTime": "15:25",
+          "workHours": "9:10",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -12192,12 +12196,12 @@
           "date": "вс",
           "route": "Д59",
           "startPlace": "МЯ",
-          "startTime": "9:50",
+          "startTime": "9:25",
           "trains": "6024 - 6051 - 6846 - 6849, состав сдают по смене;\nпринимают состав 58 мар. 6666 - 6677",
           "endTime": "23:25",
           "workHours": "12:00",
           "nightHours": "1:25",
-          "lunch": "12:25-14:00 **"
+          "lunch": "12:00-14:00 **"
         },
         {
           "date": "вс",
@@ -12280,12 +12284,12 @@
           "date": "вс",
           "route": "Д75",
           "startPlace": "МЯ",
-          "startTime": "6:50",
-          "trains": "состав 83 мар. 6614 - 6629, состав сдают по смене;\nпринимают состав 85 мар. 6630 - 6643",
-          "endTime": "15:30",
-          "workHours": "8:40",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "startTime": "10:30",
+          "trains": "состав 85 мар. 6630 - 6643, состав сдают по смене;\nпринимают состав 62 мар. 6710 - 6715 - 6862 - 6863",
+          "endTime": "23:30",
+          "workHours": "12:00",
+          "nightHours": "1:30",
+          "lunch": "14:50-15:50 **"
         },
         {
           "date": "вс",
@@ -12336,11 +12340,11 @@
           "route": "Д80",
           "startPlace": "МЯ",
           "startTime": "8:40",
-          "trains": "6826 - 6831 - 6564 - 6563; состав 93 мар. 6858 - 6859",
-          "endTime": "22:30",
-          "workHours": "12:00",
-          "nightHours": "0:30",
-          "lunch": "16:30-18:20 **"
+          "trains": "6826 - 6831 - 6564 - 6569",
+          "endTime": "21:20",
+          "workHours": "11:40",
+          "nightHours": "0:00",
+          "lunch": "16:30-17:30 **"
         },
         {
           "date": "вс",
@@ -12368,10 +12372,10 @@
           "date": "вс",
           "route": "Д83",
           "startPlace": "МЯ",
-          "startTime": "10:20",
-          "trains": "принимают состав от п.6629, 6638 - 6653 - 6852 - 6855",
-          "endTime": "21:30",
-          "workHours": "11:10",
+          "startTime": "6:50",
+          "trains": "6614 - 6653",
+          "endTime": "18:20",
+          "workHours": "11:30",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -12413,22 +12417,22 @@
           "route": "Д87",
           "startPlace": "МЯ",
           "startTime": "8:00",
-          "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав от п.6649, 6570 - 6569",
-          "endTime": "21:10",
+          "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав 83 мар. 6852 - 6855",
+          "endTime": "21:30",
           "workHours": "12:00",
           "nightHours": "0:00",
-          "lunch": "14:10-15:20 **"
+          "lunch": "14:10-15:40 **"
         },
         {
           "date": "вс",
           "route": "Д88",
           "startPlace": "МЯ",
           "startTime": "9:30",
-          "trains": "6460 - 6465 - 6238 - 6251",
-          "endTime": "19:50",
-          "workHours": "10:20",
-          "nightHours": "0:00",
-          "lunch": "*"
+          "trains": "6460 - 6465, состав сдают по смене;\nпринимают состав 93 мар. 6858 - 6859",
+          "endTime": "22:30",
+          "workHours": "12:00",
+          "nightHours": "0:30",
+          "lunch": "16:45-17:45 **"
         },
         {
           "date": "вс",
@@ -12446,7 +12450,7 @@
           "route": "Д90",
           "startPlace": "МЯ",
           "startTime": "7:50",
-          "trains": "6016 - 6053 - 6468 - 6473",
+          "trains": "6016 - 6093 - 6468 - 6473",
           "endTime": "21:30",
           "workHours": "12:00",
           "nightHours": "0:00",
@@ -12457,9 +12461,9 @@
           "route": "Д91",
           "startPlace": "МЯ",
           "startTime": "9:10",
-          "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 92 мар. 6466 - 6471",
-          "endTime": "20:30",
-          "workHours": "11:20",
+          "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 58 мар. 6110 - 6067",
+          "endTime": "20:20",
+          "workHours": "11:10",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -12467,10 +12471,10 @@
           "date": "вс",
           "route": "Д92",
           "startPlace": "МЯ",
-          "startTime": "6:25",
-          "trains": "6816 - 6821 - 6028 - 6047",
-          "endTime": "15:30",
-          "workHours": "9:05",
+          "startTime": "8:30",
+          "trains": "пасс. до ст. Пушкино, 6047 - 6466 - 6471",
+          "endTime": "20:30",
+          "workHours": "12:00",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -12489,10 +12493,10 @@
           "date": "вс",
           "route": "Д94",
           "startPlace": "МЯ",
-          "startTime": "10:30",
+          "startTime": "10:25",
           "trains": "состав 93м 6220 - 6235; 6854 - 6857",
           "endTime": "22:00",
-          "workHours": "11:30",
+          "workHours": "11:35",
           "nightHours": "0:00",
           "lunch": "*"
         },
@@ -12602,12 +12606,12 @@
           "route": "Н61",
           "startPlace": "МЯ",
           "startTime": "17:40",
-          "trains": "принимают состав от п.6245, 6578",
-          "endTime": "1:30",
-          "workHours": "7:50",
-          "nightHours": "3:30",
+          "trains": "6688 - 6673 - 6588",
+          "endTime": "2:10",
+          "workHours": "8:30",
+          "nightHours": "4:10",
           "morningRoute": "62У",
-          "lunch": "1:30-3:30 **"
+          "lunch": "2:10-4:10 **"
         },
         {
           "date": "вс",
@@ -12659,10 +12663,10 @@
           "date": "вс",
           "route": "Н74",
           "startPlace": "МЯ",
-          "startTime": "16:00",
-          "trains": "состав 80 мар. 6648 - 6681",
+          "startTime": "15:20",
+          "trains": "состав 88 мар. 6238 - 6251;\nпринимают состав 80 мар. 6670 - 6681",
           "endTime": "1:10",
-          "workHours": "9:10",
+          "workHours": "9:50",
           "nightHours": "3:10",
           "morningRoute": "74У",
           "lunch": "1:10-1:10 *"
@@ -12671,20 +12675,20 @@
           "date": "вс",
           "route": "Н75",
           "startPlace": "МЯ",
-          "startTime": "15:20",
-          "trains": "состав 62 мар. 6710 - 6715 - 6862 - 6863",
-          "endTime": "23:30",
-          "workHours": "8:10",
-          "nightHours": "1:30",
+          "startTime": "16:20",
+          "trains": "состав 87 мар. 6648 - 7733",
+          "endTime": "2:00",
+          "workHours": "9:40",
+          "nightHours": "4:00",
           "morningRoute": "75У",
-          "lunch": "23:30-0:00 *"
+          "lunch": "2:00-2:00 *"
         },
         {
           "date": "вс",
           "route": "Н76",
           "startPlace": "МЯ",
           "startTime": "15:50",
-          "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6081",
+          "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6095",
           "endTime": "1:00",
           "workHours": "9:10",
           "nightHours": "3:00",
@@ -12720,7 +12724,7 @@
           "route": "Н79",
           "startPlace": "МЯ",
           "startTime": "23:40",
-          "trains": "приёмка состава от п.6081",
+          "trains": "приёмка состава от п.6095",
           "endTime": "3:00",
           "workHours": "3:20",
           "nightHours": "3:20",
@@ -12769,11 +12773,11 @@
           "startPlace": "МЯ",
           "startTime": "20:20",
           "trains": "6674",
-          "endTime": "1:50",
-          "workHours": "5:30",
-          "nightHours": "3:50",
+          "endTime": "3:00",
+          "workHours": "6:40",
+          "nightHours": "5:00",
           "morningRoute": "84У",
-          "lunch": "1:50-3:00 **"
+          "lunch": "3:00-3:00 *"
         },
         {
           "date": "вс",
@@ -12815,13 +12819,13 @@
           "date": "вс",
           "route": "Н87",
           "startPlace": "МЯ",
-          "startTime": "20:10",
-          "trains": "6670 - 7733 - 7734",
-          "endTime": "3:00",
-          "workHours": "6:50",
-          "nightHours": "5:00",
+          "startTime": "23:50",
+          "trains": "7734",
+          "endTime": "3:30",
+          "workHours": "3:40",
+          "nightHours": "3:40",
           "morningRoute": "88У",
-          "lunch": "3:00-4:00 **"
+          "lunch": "3:30-3:30 *"
         },
         {
           "date": "вс",
@@ -12910,7 +12914,7 @@
           "route": "Н95",
           "startPlace": "МЯ",
           "startTime": "18:50",
-          "trains": "6064",
+          "trains": "6092",
           "endTime": "2:00",
           "workHours": "7:10",
           "nightHours": "4:00",
@@ -13008,20 +13012,20 @@
           "route": "61У",
           "startPlace": "МЯ",
           "startTime": "2:30",
-          "trains": "6002 - 6007",
-          "endTime": "7:45",
-          "workHours": "5:15",
+          "trains": "6002 - 6101",
+          "endTime": "7:15",
+          "workHours": "4:45",
           "nightHours": "3:30"
         },
         {
           "date": "вс",
           "route": "62У",
           "startPlace": "ЩЕ",
-          "startTime": "3:30",
+          "startTime": "4:10",
           "trains": "6551",
           "endTime": "7:40",
-          "workHours": "4:10",
-          "nightHours": "2:30"
+          "workHours": "3:30",
+          "nightHours": "1:50"
         },
         {
           "date": "вс",
@@ -13057,15 +13061,19 @@
           "startPlace": "МЯ",
           "startTime": "1:10",
           "trains": "резерв",
-          "endTime": "4:00",
-          "workHours": "2:50",
-          "nightHours": "2:50"
+          "endTime": "3:20",
+          "workHours": "2:10",
+          "nightHours": "2:10"
         },
         {
           "date": "вс",
           "route": "75У",
-          "workHours": "0:00",
-          "nightHours": "0:00"
+          "startPlace": "МЯ",
+          "startTime": "2:00",
+          "trains": "резерв",
+          "endTime": "4:20",
+          "workHours": "2:20",
+          "nightHours": "2:20"
         },
         {
           "date": "вс",
@@ -13152,9 +13160,9 @@
           "route": "84У",
           "startPlace": "МН",
           "startTime": "3:00",
-          "trains": "6601 - 6504 - 6503",
-          "endTime": "9:30",
-          "workHours": "6:30",
+          "trains": "6601, состав сдают по смене под п.6008",
+          "endTime": "8:00",
+          "workHours": "5:00",
           "nightHours": "3:00"
         },
         {
@@ -13191,11 +13199,11 @@
           "date": "вс",
           "route": "88У",
           "startPlace": "БО",
-          "startTime": "4:00",
+          "startTime": "3:30",
           "trains": "состав 87 мар. 7738 - 6615",
           "endTime": "9:00",
-          "workHours": "5:00",
-          "nightHours": "2:00"
+          "workHours": "5:30",
+          "nightHours": "2:30"
         },
         {
           "date": "вс",
@@ -14483,12 +14491,12 @@
       "date": "пт",
       "route": "Д61",
       "startPlace": "МЯ",
-      "startTime": "6:45",
-      "trains": "6008 - 7644 - 6109 - 6046 - 6053",
+      "startTime": "6:15",
+      "trains": "6814 - 6819 - 6914 - 6913 - 6046 - 6053",
       "endTime": "18:45",
-      "workHours": "12:00",
+      "workHours": "11:30",
       "nightHours": "0:00",
-      "lunch": "*"
+      "lunch": "15:00-16:00 **"
     },
     {
       "date": "пт",
@@ -14518,10 +14526,10 @@
       "startPlace": "МЯ",
       "startTime": "6:35",
       "trains": "состав 62 мар. 6558 - 6557, состав сдают по смене;\nготовят и выдают состав под п.6064",
-      "endTime": "19:45",
-      "workHours": "12:00",
+      "endTime": "19:05",
+      "workHours": "11:30",
       "nightHours": "0:00",
-      "lunch": "13:00-14:10 **"
+      "lunch": "13:00-14:00 **"
     },
     {
       "date": "пт",
@@ -14550,10 +14558,10 @@
       "route": "Д75",
       "startPlace": "МЯ",
       "startTime": "12:00",
-      "trains": "состав 84 мар. 6462 - 6467, состав сдают по смене;\nпринимают состав 90 мар. 6518 - 6519",
-      "endTime": "22:00",
-      "workHours": "10:00",
-      "nightHours": "0:00",
+      "trains": "состав 84 мар. 6462 - 6467 - 6248 - 6261",
+      "endTime": "22:30",
+      "workHours": "10:30",
+      "nightHours": "0:30",
       "lunch": "*"
     },
     {
@@ -14572,11 +14580,11 @@
       "route": "Д77",
       "startPlace": "МЯ",
       "startTime": "8:05",
-      "trains": "6016 - 6025 - 7816 - 7831, состав сдают по смене;\nпринимают состав 82 мар. 6062 - 6073",
-      "endTime": "21:35",
+      "trains": "6016 - 6025 - 7816 - 7831, состав сдают по смене;\nпринимают состав 90 мар. 6518 - 6519",
+      "endTime": "22:05",
       "workHours": "12:00",
-      "nightHours": "0:00",
-      "lunch": "14:00-15:30 **"
+      "nightHours": "0:05",
+      "lunch": "13:30-15:30 **"
     },
     {
       "date": "пт",
@@ -14627,11 +14635,11 @@
       "route": "Д82",
       "startPlace": "МЯ",
       "startTime": "8:25",
-      "trains": "6624 - 6641 - 6110 - 6113",
-      "endTime": "19:00",
-      "workHours": "10:35",
+      "trains": "6624 - 6641 - 6110 - 6073",
+      "endTime": "21:35",
+      "workHours": "12:00",
       "nightHours": "0:00",
-      "lunch": "*"
+      "lunch": "17:25-18:35 **"
     },
     {
       "date": "пт",
@@ -14648,12 +14656,12 @@
       "date": "пт",
       "route": "Д84",
       "startPlace": "МЯ",
-      "startTime": "8:30",
-      "trains": "6108 - 6111, состав сдают по смене под п.6462;\nпринимают состав от п.6467, 6248 - 6261",
-      "endTime": "22:30",
+      "startTime": "6:45",
+      "trains": "6008 - 7644 - 6111, состав сдают по смене;\nпринимают состав 88 мар. 6112 - 6115",
+      "endTime": "19:55",
       "workHours": "12:00",
-      "nightHours": "0:30",
-      "lunch": "14:15-16:15 **"
+      "nightHours": "0:00",
+      "lunch": "13:55-15:05 **"
     },
     {
       "date": "пт",
@@ -14737,18 +14745,18 @@
       "route": "Д92",
       "startPlace": "МЯ",
       "startTime": "6:40",
-      "trains": "6816 - 6821 - 6028 - 6047, состав сдают по смене;\nпринимают состав 88 мар. 6112-6115",
-      "endTime": "19:40",
-      "workHours": "12:00",
+      "trains": "6816 - 6821 - 6028 - 6047",
+      "endTime": "16:10",
+      "workHours": "9:30",
       "nightHours": "0:00",
-      "lunch": "15:10-16:10 **"
+      "lunch": "*"
     },
     {
       "date": "пт",
       "route": "Д93",
       "startPlace": "МЯ",
       "startTime": "7:55",
-      "trains": "6014-6039, состав сдают по смене;\nпринимают состав 94 мар. 6570 - 6569",
+      "trains": "6014 - 6039, состав сдают по смене;\nпринимают состав 94 мар. 6570 - 6569",
       "endTime": "21:55",
       "workHours": "12:00",
       "nightHours": "0:00",
@@ -14906,13 +14914,13 @@
       "date": "пт",
       "route": "Н64",
       "startPlace": "МЯ",
-      "startTime": "18:30",
+      "startTime": "18:10",
       "trains": "6064",
       "endTime": "0:10",
-      "workHours": "5:40",
+      "workHours": "6:00",
       "nightHours": "2:10",
       "morningRoute": "58У",
-      "lunch": "0:10-1:10 **"
+      "lunch": "0:10-1:20 **"
     },
     {
       "date": "пт",
@@ -14953,19 +14961,19 @@
       "route": "Н76",
       "startPlace": "МЯ",
       "startTime": "22:30",
-      "trains": "приёмка состава 77 мар. от п.6675",
-      "endTime": "0:30",
-      "workHours": "2:00",
-      "nightHours": "2:00",
+      "trains": "состав 77 мар. 6080 - 6081",
+      "endTime": "3:00",
+      "workHours": "4:30",
+      "nightHours": "4:30",
       "morningRoute": "77У",
-      "lunch": "0:30-0:30 *"
+      "lunch": "3:00-3:00 *"
     },
     {
       "date": "пт",
       "route": "Н77",
       "startPlace": "МЯ",
       "startTime": "17:30",
-      "trains": "6660 - 6675",
+      "trains": "6658 - 6675",
       "endTime": "1:00",
       "workHours": "7:30",
       "nightHours": "3:00",
@@ -15133,7 +15141,7 @@
       "route": "Н91",
       "startPlace": "МЯ",
       "startTime": "13:00",
-      "trains": "6708 - 6713 - 6058 - 6079",
+      "trains": "состав 93 мар. 6708 - 6713 - 6058 - 6079",
       "endTime": "23:00",
       "workHours": "10:00",
       "nightHours": "1:00",
@@ -15248,11 +15256,11 @@
       "date": "пт",
       "route": "58У",
       "startPlace": "ПУ",
-      "startTime": "1:10",
+      "startTime": "1:20",
       "trains": "7632 - 6205",
       "endTime": "7:20",
-      "workHours": "6:10",
-      "nightHours": "4:50"
+      "workHours": "6:00",
+      "nightHours": "4:40"
     },
     {
       "date": "пт",
@@ -15260,8 +15268,8 @@
       "startPlace": "МН",
       "startTime": "4:00",
       "trains": "6621",
-      "endTime": "10:40",
-      "workHours": "6:40",
+      "endTime": "10:20",
+      "workHours": "6:20",
       "nightHours": "2:00"
     },
     {
@@ -15343,7 +15351,7 @@
       "route": "76У",
       "startPlace": "ПУ",
       "startTime": "3:00",
-      "trains": "6011",
+      "trains": "6083 - 6086 - 6011",
       "endTime": "8:45",
       "workHours": "5:45",
       "nightHours": "3:00"
@@ -15352,11 +15360,11 @@
       "date": "пт",
       "route": "77У",
       "startPlace": "МЯ",
-      "startTime": "0:30",
+      "startTime": "3:00",
       "trains": "6608 - 6617",
       "endTime": "9:40",
-      "workHours": "9:10",
-      "nightHours": "5:30"
+      "workHours": "6:40",
+      "nightHours": "3:00"
     },
     {
       "date": "пт",
@@ -15464,8 +15472,8 @@
       "startPlace": "БО",
       "startTime": "4:00",
       "trains": "состав 87 мар. 7738 - 6615",
-      "endTime": "9:00",
-      "workHours": "5:00",
+      "endTime": "9:05",
+      "workHours": "5:05",
       "nightHours": "2:00"
     },
     {
@@ -15493,10 +15501,10 @@
       "route": "91У",
       "startPlace": "ПУ",
       "startTime": "3:00",
-      "trains": "состав 92 мар. 6005",
-      "endTime": "7:30",
-      "workHours": "4:30",
-      "nightHours": "3:00"
+      "trains": "пасс. до ст М.Ярославская с п.6101",
+      "endTime": "5:50",
+      "workHours": "2:50",
+      "nightHours": "2:50"
     },
     {
       "date": "пт",
@@ -15521,7 +15529,7 @@
       "route": "94У",
       "startPlace": "МН",
       "startTime": "3:00",
-      "trains": "6609",
+      "trains": "7663",
       "endTime": "10:00",
       "workHours": "7:00",
       "nightHours": "3:00"
@@ -15589,23 +15597,23 @@
       "date": "сб",
       "route": "Д58",
       "startPlace": "МЯ",
-      "startTime": "6:25",
-      "trains": "6556 - 6555 - 6506 - 6507 - 6048 - 6067",
-      "endTime": "19:55",
-      "workHours": "12:00",
+      "startTime": "6:15",
+      "trains": "6814 - 6819 - 6626 - 6639, состав сдают по смене под п.6110",
+      "endTime": "15:25",
+      "workHours": "9:10",
       "nightHours": "0:00",
-      "lunch": "11:55-13:25 **"
+      "lunch": "*"
     },
     {
       "date": "сб",
       "route": "Д59",
       "startPlace": "МЯ",
-      "startTime": "9:50",
+      "startTime": "9:25",
       "trains": "6024 - 6051 - 6846 - 6849, состав сдают по смене;\nпринимают состав 58 мар. 6666 - 6677",
       "endTime": "23:25",
       "workHours": "12:00",
       "nightHours": "1:25",
-      "lunch": "12:25-14:00 **"
+      "lunch": "12:00-14:00 **"
     },
     {
       "date": "сб",
@@ -15688,12 +15696,12 @@
       "date": "сб",
       "route": "Д75",
       "startPlace": "МЯ",
-      "startTime": "6:50",
-      "trains": "состав 83 мар. 6614 - 6629, состав сдают по смене;\nпринимают состав 85 мар. 6630 - 6643",
-      "endTime": "15:30",
-      "workHours": "8:40",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "startTime": "10:30",
+      "trains": "состав 85 мар. 6630 - 6643, состав сдают по смене;\nпринимают состав 62 мар. 6710 - 6715 - 6862 - 6863",
+      "endTime": "23:30",
+      "workHours": "12:00",
+      "nightHours": "1:30",
+      "lunch": "14:50-15:50 **"
     },
     {
       "date": "сб",
@@ -15744,11 +15752,11 @@
       "route": "Д80",
       "startPlace": "МЯ",
       "startTime": "8:40",
-      "trains": "6826 - 6831 - 6564 - 6563; состав 93 мар. 6858 - 6859",
-      "endTime": "22:30",
-      "workHours": "12:00",
-      "nightHours": "0:30",
-      "lunch": "16:30-18:20 **"
+      "trains": "6826 - 6831 - 6564 - 6569",
+      "endTime": "21:20",
+      "workHours": "11:40",
+      "nightHours": "0:00",
+      "lunch": "16:30-17:30 **"
     },
     {
       "date": "сб",
@@ -15776,10 +15784,10 @@
       "date": "сб",
       "route": "Д83",
       "startPlace": "МЯ",
-      "startTime": "10:20",
-      "trains": "принимают состав от п.6629, 6638 - 6653 - 6852 - 6855",
-      "endTime": "21:30",
-      "workHours": "11:10",
+      "startTime": "6:50",
+      "trains": "6614 - 6653",
+      "endTime": "18:20",
+      "workHours": "11:30",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -15821,22 +15829,22 @@
       "route": "Д87",
       "startPlace": "МЯ",
       "startTime": "8:00",
-      "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав от п.6649, 6570 - 6569",
-      "endTime": "21:10",
+      "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав 83 мар. 6852 - 6855",
+      "endTime": "21:30",
       "workHours": "12:00",
       "nightHours": "0:00",
-      "lunch": "14:10-15:20 **"
+      "lunch": "14:10-15:40 **"
     },
     {
       "date": "сб",
       "route": "Д88",
       "startPlace": "МЯ",
       "startTime": "9:30",
-      "trains": "6460 - 6465 - 6238 - 6251",
-      "endTime": "19:50",
-      "workHours": "10:20",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "trains": "6460 - 6465, состав сдают по смене;\nпринимают состав 93 мар. 6858 - 6859",
+      "endTime": "22:30",
+      "workHours": "12:00",
+      "nightHours": "0:30",
+      "lunch": "16:45-17:45 **"
     },
     {
       "date": "сб",
@@ -15854,7 +15862,7 @@
       "route": "Д90",
       "startPlace": "МЯ",
       "startTime": "7:50",
-      "trains": "6016 - 6053 - 6468 - 6473",
+      "trains": "6016 - 6093 - 6468 - 6473",
       "endTime": "21:30",
       "workHours": "12:00",
       "nightHours": "0:00",
@@ -15865,9 +15873,9 @@
       "route": "Д91",
       "startPlace": "МЯ",
       "startTime": "9:10",
-      "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 92 мар. 6466 - 6471",
-      "endTime": "20:30",
-      "workHours": "11:20",
+      "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 58 мар. 6110 - 6067",
+      "endTime": "20:20",
+      "workHours": "11:10",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -15875,10 +15883,10 @@
       "date": "сб",
       "route": "Д92",
       "startPlace": "МЯ",
-      "startTime": "6:15",
-      "trains": "6816 - 6821 - 6028 - 6047",
-      "endTime": "15:30",
-      "workHours": "9:15",
+      "startTime": "8:30",
+      "trains": "пасс. до ст. Пушкино, 6047 - 6466 - 6471",
+      "endTime": "20:30",
+      "workHours": "12:00",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -15897,10 +15905,10 @@
       "date": "сб",
       "route": "Д94",
       "startPlace": "МЯ",
-      "startTime": "10:30",
+      "startTime": "10:25",
       "trains": "состав 93м 6220 - 6235; 6854 - 6857",
       "endTime": "22:00",
-      "workHours": "11:30",
+      "workHours": "11:35",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -15973,13 +15981,13 @@
       "date": "сб",
       "route": "Н58",
       "startPlace": "МЯ",
-      "startTime": "22:30",
+      "startTime": "22:25",
       "trains": "6678",
-      "endTime": "3:00",
-      "workHours": "4:30",
-      "nightHours": "4:30",
+      "endTime": "4:00",
+      "workHours": "5:35",
+      "nightHours": "5:35",
       "morningRoute": "59У",
-      "lunch": "3:00-4:00 **"
+      "lunch": "4:00-4:00 *"
     },
     {
       "date": "сб",
@@ -16010,12 +16018,12 @@
       "route": "Н61",
       "startPlace": "МЯ",
       "startTime": "17:40",
-      "trains": "принимают состав от п.6245, 6578",
-      "endTime": "1:30",
-      "workHours": "7:50",
-      "nightHours": "3:30",
+      "trains": "6688 - 6673 - 6588",
+      "endTime": "2:10",
+      "workHours": "8:30",
+      "nightHours": "4:10",
       "morningRoute": "62У",
-      "lunch": "1:30-3:30 **"
+      "lunch": "2:10-4:10 **"
     },
     {
       "date": "сб",
@@ -16045,11 +16053,11 @@
       "date": "сб",
       "route": "Н64",
       "startPlace": "МЯ",
-      "startTime": "22:10",
+      "startTime": "21:20",
       "trains": "пасс. до ст. Пушкино",
       "endTime": "2:00",
-      "workHours": "3:50",
-      "nightHours": "3:50",
+      "workHours": "4:40",
+      "nightHours": "4:00",
       "morningRoute": "58У",
       "lunch": "2:00-2:00 *"
     },
@@ -16067,10 +16075,10 @@
       "date": "сб",
       "route": "Н74",
       "startPlace": "МЯ",
-      "startTime": "16:00",
-      "trains": "состав 80 мар. 6648 - 6681",
+      "startTime": "15:20",
+      "trains": "состав 88 мар. 6238 - 6251;\nпринимают состав 80 мар. 6670 - 6681",
       "endTime": "1:10",
-      "workHours": "9:10",
+      "workHours": "9:50",
       "nightHours": "3:10",
       "morningRoute": "74У",
       "lunch": "1:10-1:10 *"
@@ -16079,20 +16087,20 @@
       "date": "сб",
       "route": "Н75",
       "startPlace": "МЯ",
-      "startTime": "15:20",
-      "trains": "состав 62 мар. 6710 - 6715 - 6862 - 6863",
-      "endTime": "23:30",
-      "workHours": "8:10",
-      "nightHours": "1:30",
+      "startTime": "16:20",
+      "trains": "состав 87 мар. 6648 - 7733",
+      "endTime": "2:00",
+      "workHours": "9:40",
+      "nightHours": "4:00",
       "morningRoute": "75У",
-      "lunch": "23:30-0:00 *"
+      "lunch": "2:00-2:00 *"
     },
     {
       "date": "сб",
       "route": "Н76",
       "startPlace": "МЯ",
       "startTime": "15:50",
-      "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6081",
+      "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6095",
       "endTime": "1:00",
       "workHours": "9:10",
       "nightHours": "3:00",
@@ -16128,7 +16136,7 @@
       "route": "Н79",
       "startPlace": "МЯ",
       "startTime": "23:40",
-      "trains": "приёмка состава от п.6081",
+      "trains": "приёмка состава от п.6095",
       "endTime": "3:00",
       "workHours": "3:20",
       "nightHours": "3:20",
@@ -16223,13 +16231,13 @@
       "date": "сб",
       "route": "Н87",
       "startPlace": "МЯ",
-      "startTime": "20:10",
-      "trains": "6670 - 7733 - 7734",
-      "endTime": "3:00",
-      "workHours": "6:50",
-      "nightHours": "5:00",
+      "startTime": "23:50",
+      "trains": "7734",
+      "endTime": "3:30",
+      "workHours": "3:40",
+      "nightHours": "3:40",
       "morningRoute": "88У",
-      "lunch": "3:00-4:00 **"
+      "lunch": "3:30-3:30 *"
     },
     {
       "date": "сб",
@@ -16318,12 +16326,12 @@
       "route": "Н95",
       "startPlace": "МЯ",
       "startTime": "18:50",
-      "trains": "6064",
+      "trains": "6092",
       "endTime": "2:00",
       "workHours": "7:10",
       "nightHours": "4:00",
       "morningRoute": "91У",
-      "lunch": "2:00-3:00 **"
+      "lunch": "2:00-2:00 *"
     },
     {
       "date": "сб",
@@ -16386,9 +16394,9 @@
       "route": "58У",
       "startPlace": "ПУ",
       "startTime": "2:00",
-      "trains": "7632 - 6205 - 6556 - 6555",
-      "endTime": "10:10",
-      "workHours": "8:10",
+      "trains": "7632 - 6205",
+      "endTime": "7:20",
+      "workHours": "5:20",
       "nightHours": "4:00"
     },
     {
@@ -16397,8 +16405,8 @@
       "startPlace": "МН",
       "startTime": "4:00",
       "trains": "6621",
-      "endTime": "10:40",
-      "workHours": "6:40",
+      "endTime": "10:25",
+      "workHours": "6:25",
       "nightHours": "2:00"
     },
     {
@@ -16425,11 +16433,11 @@
       "date": "сб",
       "route": "62У",
       "startPlace": "ЩЕ",
-      "startTime": "3:30",
+      "startTime": "4:10",
       "trains": "6551",
       "endTime": "7:40",
-      "workHours": "4:10",
-      "nightHours": "2:30"
+      "workHours": "3:30",
+      "nightHours": "1:50"
     },
     {
       "date": "сб",
@@ -16465,22 +16473,26 @@
       "startPlace": "МЯ",
       "startTime": "1:10",
       "trains": "резерв",
-      "endTime": "4:00",
-      "workHours": "2:50",
-      "nightHours": "2:50"
+      "endTime": "3:20",
+      "workHours": "2:10",
+      "nightHours": "2:10"
     },
     {
       "date": "сб",
       "route": "75У",
-      "workHours": "0:00",
-      "nightHours": "0:00"
+      "startPlace": "МЯ",
+      "startTime": "2:00",
+      "trains": "резерв",
+      "endTime": "4:20",
+      "workHours": "2:20",
+      "nightHours": "2:20"
     },
     {
       "date": "сб",
       "route": "76У",
       "startPlace": "ПУ",
       "startTime": "3:00",
-      "trains": "6011",
+      "trains": "6083 - 6086 - 6011",
       "endTime": "8:45",
       "workHours": "5:45",
       "nightHours": "3:00"
@@ -16599,11 +16611,11 @@
       "date": "сб",
       "route": "88У",
       "startPlace": "БО",
-      "startTime": "4:00",
+      "startTime": "3:30",
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
-      "workHours": "5:00",
-      "nightHours": "2:00"
+      "workHours": "5:30",
+      "nightHours": "2:30"
     },
     {
       "date": "сб",
@@ -16629,11 +16641,11 @@
       "date": "сб",
       "route": "91У",
       "startPlace": "ПУ",
-      "startTime": "3:00",
-      "trains": "состав 92 мар. 6005",
-      "endTime": "7:30",
-      "workHours": "4:30",
-      "nightHours": "3:00"
+      "startTime": "2:00",
+      "trains": "пасс. до ст М.Ярославская с п.6101",
+      "endTime": "5:50",
+      "workHours": "3:50",
+      "nightHours": "3:50"
     },
     {
       "date": "сб",
@@ -16658,7 +16670,7 @@
       "route": "94У",
       "startPlace": "МН",
       "startTime": "3:00",
-      "trains": "6609",
+      "trains": "7663",
       "endTime": "10:00",
       "workHours": "7:00",
       "nightHours": "3:00"
@@ -16726,10 +16738,10 @@
       "date": "вс",
       "route": "Д58",
       "startPlace": "МЯ",
-      "startTime": "8:50",
-      "trains": "6506 - 6507 - 6048 - 6067",
-      "endTime": "20:20",
-      "workHours": "11:30",
+      "startTime": "6:15",
+      "trains": "6814 - 6819 - 6626 - 6639, состав сдают по смене под п.6110",
+      "endTime": "15:25",
+      "workHours": "9:10",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -16737,12 +16749,12 @@
       "date": "вс",
       "route": "Д59",
       "startPlace": "МЯ",
-      "startTime": "9:50",
+      "startTime": "9:25",
       "trains": "6024 - 6051 - 6846 - 6849, состав сдают по смене;\nпринимают состав 58 мар. 6666 - 6677",
       "endTime": "23:25",
       "workHours": "12:00",
       "nightHours": "1:25",
-      "lunch": "12:25-14:00 **"
+      "lunch": "12:00-14:00 **"
     },
     {
       "date": "вс",
@@ -16825,12 +16837,12 @@
       "date": "вс",
       "route": "Д75",
       "startPlace": "МЯ",
-      "startTime": "6:50",
-      "trains": "состав 83 мар. 6614 - 6629, состав сдают по смене;\nпринимают состав 85 мар. 6630 - 6643",
-      "endTime": "15:30",
-      "workHours": "8:40",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "startTime": "10:30",
+      "trains": "состав 85 мар. 6630 - 6643, состав сдают по смене;\nпринимают состав 62 мар. 6710 - 6715 - 6862 - 6863",
+      "endTime": "23:30",
+      "workHours": "12:00",
+      "nightHours": "1:30",
+      "lunch": "14:50-15:50 **"
     },
     {
       "date": "вс",
@@ -16881,11 +16893,11 @@
       "route": "Д80",
       "startPlace": "МЯ",
       "startTime": "8:40",
-      "trains": "6826 - 6831 - 6564 - 6563; состав 93 мар. 6858 - 6859",
-      "endTime": "22:30",
-      "workHours": "12:00",
-      "nightHours": "0:30",
-      "lunch": "16:30-18:20 **"
+      "trains": "6826 - 6831 - 6564 - 6569",
+      "endTime": "21:20",
+      "workHours": "11:40",
+      "nightHours": "0:00",
+      "lunch": "16:30-17:30 **"
     },
     {
       "date": "вс",
@@ -16913,10 +16925,10 @@
       "date": "вс",
       "route": "Д83",
       "startPlace": "МЯ",
-      "startTime": "10:20",
-      "trains": "принимают состав от п.6629, 6638 - 6653 - 6852 - 6855",
-      "endTime": "21:30",
-      "workHours": "11:10",
+      "startTime": "6:50",
+      "trains": "6614 - 6653",
+      "endTime": "18:20",
+      "workHours": "11:30",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -16958,22 +16970,22 @@
       "route": "Д87",
       "startPlace": "МЯ",
       "startTime": "8:00",
-      "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав от п.6649, 6570 - 6569",
-      "endTime": "21:10",
+      "trains": "6822 - 6827, состав сдают по смене;\nпринимают состав 83 мар. 6852 - 6855",
+      "endTime": "21:30",
       "workHours": "12:00",
       "nightHours": "0:00",
-      "lunch": "14:10-15:20 **"
+      "lunch": "14:10-15:40 **"
     },
     {
       "date": "вс",
       "route": "Д88",
       "startPlace": "МЯ",
       "startTime": "9:30",
-      "trains": "6460 - 6465 - 6238 - 6251",
-      "endTime": "19:50",
-      "workHours": "10:20",
-      "nightHours": "0:00",
-      "lunch": "*"
+      "trains": "6460 - 6465, состав сдают по смене;\nпринимают состав 93 мар. 6858 - 6859",
+      "endTime": "22:30",
+      "workHours": "12:00",
+      "nightHours": "0:30",
+      "lunch": "16:45-17:45 **"
     },
     {
       "date": "вс",
@@ -16991,7 +17003,7 @@
       "route": "Д90",
       "startPlace": "МЯ",
       "startTime": "7:50",
-      "trains": "6016 - 6053 - 6468 - 6473",
+      "trains": "6016 - 6093 - 6468 - 6473",
       "endTime": "21:30",
       "workHours": "12:00",
       "nightHours": "0:00",
@@ -17002,9 +17014,9 @@
       "route": "Д91",
       "startPlace": "МЯ",
       "startTime": "9:10",
-      "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 92 мар. 6466 - 6471",
-      "endTime": "20:30",
-      "workHours": "11:20",
+      "trains": "состав 81 мар. 6560 - 6559, состав сдают по смене;\nпринимают состав 58 мар. 6110 - 6067",
+      "endTime": "20:20",
+      "workHours": "11:10",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -17012,10 +17024,10 @@
       "date": "вс",
       "route": "Д92",
       "startPlace": "МЯ",
-      "startTime": "6:25",
-      "trains": "6816 - 6821 - 6028 - 6047",
-      "endTime": "15:30",
-      "workHours": "9:05",
+      "startTime": "8:30",
+      "trains": "пасс. до ст. Пушкино, 6047 - 6466 - 6471",
+      "endTime": "20:30",
+      "workHours": "12:00",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -17034,10 +17046,10 @@
       "date": "вс",
       "route": "Д94",
       "startPlace": "МЯ",
-      "startTime": "10:30",
+      "startTime": "10:25",
       "trains": "состав 93м 6220 - 6235; 6854 - 6857",
       "endTime": "22:00",
-      "workHours": "11:30",
+      "workHours": "11:35",
       "nightHours": "0:00",
       "lunch": "*"
     },
@@ -17147,12 +17159,12 @@
       "route": "Н61",
       "startPlace": "МЯ",
       "startTime": "17:40",
-      "trains": "принимают состав от п.6245, 6578",
-      "endTime": "1:30",
-      "workHours": "7:50",
-      "nightHours": "3:30",
+      "trains": "6688 - 6673 - 6588",
+      "endTime": "2:10",
+      "workHours": "8:30",
+      "nightHours": "4:10",
       "morningRoute": "62У",
-      "lunch": "1:30-3:30 **"
+      "lunch": "2:10-4:10 **"
     },
     {
       "date": "вс",
@@ -17204,10 +17216,10 @@
       "date": "вс",
       "route": "Н74",
       "startPlace": "МЯ",
-      "startTime": "16:00",
-      "trains": "состав 80 мар. 6648 - 6681",
+      "startTime": "15:20",
+      "trains": "состав 88 мар. 6238 - 6251;\nпринимают состав 80 мар. 6670 - 6681",
       "endTime": "1:10",
-      "workHours": "9:10",
+      "workHours": "9:50",
       "nightHours": "3:10",
       "morningRoute": "74У",
       "lunch": "1:10-1:10 *"
@@ -17216,20 +17228,20 @@
       "date": "вс",
       "route": "Н75",
       "startPlace": "МЯ",
-      "startTime": "15:20",
-      "trains": "состав 62 мар. 6710 - 6715 - 6862 - 6863",
-      "endTime": "23:30",
-      "workHours": "8:10",
-      "nightHours": "1:30",
+      "startTime": "16:20",
+      "trains": "состав 87 мар. 6648 - 7733",
+      "endTime": "2:00",
+      "workHours": "9:40",
+      "nightHours": "4:00",
       "morningRoute": "75У",
-      "lunch": "23:30-0:00 *"
+      "lunch": "2:00-2:00 *"
     },
     {
       "date": "вс",
       "route": "Н76",
       "startPlace": "МЯ",
       "startTime": "15:50",
-      "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6081",
+      "trains": "состав 79 мар. 6568 - 6577 - 6070 - 6095",
       "endTime": "1:00",
       "workHours": "9:10",
       "nightHours": "3:00",
@@ -17265,7 +17277,7 @@
       "route": "Н79",
       "startPlace": "МЯ",
       "startTime": "23:40",
-      "trains": "приёмка состава от п.6081",
+      "trains": "приёмка состава от п.6095",
       "endTime": "3:00",
       "workHours": "3:20",
       "nightHours": "3:20",
@@ -17314,11 +17326,11 @@
       "startPlace": "МЯ",
       "startTime": "20:20",
       "trains": "6674",
-      "endTime": "1:50",
-      "workHours": "5:30",
-      "nightHours": "3:50",
+      "endTime": "3:00",
+      "workHours": "6:40",
+      "nightHours": "5:00",
       "morningRoute": "84У",
-      "lunch": "1:50-3:00 **"
+      "lunch": "3:00-3:00 *"
     },
     {
       "date": "вс",
@@ -17360,13 +17372,13 @@
       "date": "вс",
       "route": "Н87",
       "startPlace": "МЯ",
-      "startTime": "20:10",
-      "trains": "6670 - 7733 - 7734",
-      "endTime": "3:00",
-      "workHours": "6:50",
-      "nightHours": "5:00",
+      "startTime": "23:50",
+      "trains": "7734",
+      "endTime": "3:30",
+      "workHours": "3:40",
+      "nightHours": "3:40",
       "morningRoute": "88У",
-      "lunch": "3:00-4:00 **"
+      "lunch": "3:30-3:30 *"
     },
     {
       "date": "вс",
@@ -17455,7 +17467,7 @@
       "route": "Н95",
       "startPlace": "МЯ",
       "startTime": "18:50",
-      "trains": "6064",
+      "trains": "6092",
       "endTime": "2:00",
       "workHours": "7:10",
       "nightHours": "4:00",
@@ -17553,20 +17565,20 @@
       "route": "61У",
       "startPlace": "МЯ",
       "startTime": "2:30",
-      "trains": "6002 - 6007",
-      "endTime": "7:45",
-      "workHours": "5:15",
+      "trains": "6002 - 6101",
+      "endTime": "7:15",
+      "workHours": "4:45",
       "nightHours": "3:30"
     },
     {
       "date": "вс",
       "route": "62У",
       "startPlace": "ЩЕ",
-      "startTime": "3:30",
+      "startTime": "4:10",
       "trains": "6551",
       "endTime": "7:40",
-      "workHours": "4:10",
-      "nightHours": "2:30"
+      "workHours": "3:30",
+      "nightHours": "1:50"
     },
     {
       "date": "вс",
@@ -17602,15 +17614,19 @@
       "startPlace": "МЯ",
       "startTime": "1:10",
       "trains": "резерв",
-      "endTime": "4:00",
-      "workHours": "2:50",
-      "nightHours": "2:50"
+      "endTime": "3:20",
+      "workHours": "2:10",
+      "nightHours": "2:10"
     },
     {
       "date": "вс",
       "route": "75У",
-      "workHours": "0:00",
-      "nightHours": "0:00"
+      "startPlace": "МЯ",
+      "startTime": "2:00",
+      "trains": "резерв",
+      "endTime": "4:20",
+      "workHours": "2:20",
+      "nightHours": "2:20"
     },
     {
       "date": "вс",
@@ -17697,9 +17713,9 @@
       "route": "84У",
       "startPlace": "МН",
       "startTime": "3:00",
-      "trains": "6601 - 6504 - 6503",
-      "endTime": "9:30",
-      "workHours": "6:30",
+      "trains": "6601, состав сдают по смене под п.6008",
+      "endTime": "8:00",
+      "workHours": "5:00",
       "nightHours": "3:00"
     },
     {
@@ -17736,11 +17752,11 @@
       "date": "вс",
       "route": "88У",
       "startPlace": "БО",
-      "startTime": "4:00",
+      "startTime": "3:30",
       "trains": "состав 87 мар. 7738 - 6615",
       "endTime": "9:00",
-      "workHours": "5:00",
-      "nightHours": "2:00"
+      "workHours": "5:30",
+      "nightHours": "2:30"
     },
     {
       "date": "вс",

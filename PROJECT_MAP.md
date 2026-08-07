@@ -1,6 +1,6 @@
 # Карта проекта «Цифровой помощник»
 
-> Краткий контекст для задач. Актуальная версия: **3.1.1** (`app/sw.js` → `da_v3_1_1`).
+> Краткий контекст для задач. Актуальная версия: **3.1.2** (`app/sw.js` → `da_v3_1_2`).
 
 ---
 
@@ -57,12 +57,12 @@ Digital Assistant/
 │   ├── data/
 │   │   ├── shift-templates.json  # ★ часы смен (экспорт из xlsx)
 │   │   ├── calendar-local-routes.json  # пресеты ТО/И/Д99/Н99/У99
-│   │   ├── trains-uids.json      # индекс номер→threadUid (Яндекс)
+│   │   ├── trains-uids.json      # устарел (UID с табло; файл для SW-precache)
 │   │   ├── release-notes.json    # «Что нового» после обновления
 │   │   ├── shift-hours/          # схемы/справочники для export-shifts.py
 │   │   └── trains-api/README.md  # ★ правила лимита API поездов
 │   ├── spr.json                  # справочник тормозов, станций, маршрутов
-│   ├── trains-local.json         # резервная база поездов + threadUid
+│   ├── trains-local.json         # офлайн-резерв поездов (без обязательного uid)
 │   └── generate_pdf.py           # генерация patent_doc.pdf (не runtime)
 │
 ├── google-script/
@@ -119,7 +119,7 @@ Digital Assistant/
 app-config.js → APP_CFG
     → initUserAuth()           # сессия по табельному
     → loadLocalShiftTemplatesBundle()  # shift-templates.json
-    → loadReferenceData()      # spr.json, trains-local.json, trains-uids.json
+    → loadReferenceData()      # spr.json, trains-local.json
     → loadTrainThreadsCacheFromStorage()
     → initServiceWorker()
     → loadUserShifts()         # календарь из localStorage
@@ -156,7 +156,7 @@ shift-templates.json (нормативы по датам)
 **Cache-first цепочка** (`searchTrainByNumber`):
 ```
 trainThreadsCache[num@date]     # localStorage, per-user
-    → trains-local.json / trains-uids.json (threadUid)
+    → табло Ярославского на дату → thread.uid → /thread/
     → stationScheduleCache (табло s2000002, max 4 даты)
     → fallback s9600701 (Пушкино)
     → trains-local.json offline (2 остановки)
@@ -296,7 +296,7 @@ In-memory массив шаблонов смен; источник — `shift-te
 | `npm run serve` | локальный dev http://127.0.0.1:8765 |
 | `npm run snapshot` | снимок в Version/snapshots/ |
 | `npm run export:shifts` | xlsx → shift-templates.json |
-| `npm run enrich:train-uids` | Yandex schedule → trains-uids.json |
+| `npm run enrich:train-uids` | устарел (UID теперь с табло на дату) |
 | `npm run clasp:push` | push google-script/ в Apps Script |
 
 ---
