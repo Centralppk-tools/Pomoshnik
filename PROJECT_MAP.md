@@ -155,15 +155,12 @@ shift-templates.json (нормативы по датам)
 
 **Cache-first цепочка** (`searchTrainByNumber`):
 ```
-trainThreadsCache[num@date]     # localStorage, per-user
-    → табло Ярославского на дату → thread.uid → /thread/
-    → stationScheduleCache (табло s2000002, max 4 даты)
-    → fallback s9600701 (Пушкино)
-    → trains-local.json offline (2 остановки)
+6000–6999: trainThreadsCache[num@date] → табло → /thread/ → trains-local.json
+7000+ и прочие: только trains-local.json (0 API) — isYandexApiEligibleTrainNumber()
 ```
 
 - Запросы через `MY_CLOUDFLARE_PROXY` (Cloudflare Worker)
-- Лимит ~500 запросов/сутки — **не вызывать API из таймеров/полночи**
+- Лимит ~500 запросов/сутки — **API только для 6000–6999**, см. `app/data/trains-api/README.md`
 
 ### Справочник тормозов (`spr.json`)
 

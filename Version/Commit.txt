@@ -777,3 +777,21 @@ fix: доработан экспорт календаря в .ics — Share API,
 - Деплой: залить app/ на GitHub.
 - Снимок HTML: Version/snapshots/index 3.1.2.html
 - Снимок стилей: Version/snapshots/styles 3.1.2/
+
+3.1.3 STABLE ★
+
+Основное:
+fix: экономия лимита Яндекс API — запросы только для поездов 6000–6999
+fix: поезда 7000-й серии и прочие номера — строго trains-local.json, без HTTP к API
+fix: табло вокзала грузится только для дат, где есть поезд 6000-й нумерации
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- isYandexApiEligibleTrainNumber(), resolveTrainFromLocalOnly() в app/index.html.
+- searchTrainByNumber / findTrainOnStationBoards / collectBoardDatesForShift — фильтр серий.
+- app/data/trains-api/README.md, .cursor/rules/train-api-quota.mdc, PROJECT_MAP.md.
+- Service Worker: da_v3_1_3.
+- Деплой: залить app/ на GitHub.
+- Снимок HTML: Version/snapshots/index 3.1.3.html
+- Снимок стилей: Version/snapshots/styles 3.1.3/
