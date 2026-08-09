@@ -8,9 +8,14 @@
     "clasp:push": "clasp push --force",
     "clasp:deploy": "node -e \"console.error('Use manual Web App deploy in script.google.com — clasp deploy breaks /exec. See google-script/README-DEPLOY.txt'); process.exit(1)\"",
     "clasp:cleanup-deployments": "node tools/clasp-cleanup-deployments.mjs",
-    "clasp:release": "npm run clasp:push"
+    "clasp:release": "npm run clasp:push",
+    "worker:login": "wrangler login",
+    "worker:kv:create": "wrangler kv namespace create TRAIN_CACHE",
+    "worker:deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@google/clasp": "^3.3.0"
+    "@google/clasp": "^3.3.0",
+    "edgepush": "^0.1.1",
+    "wrangler": "^4.14.0"
   }
 }

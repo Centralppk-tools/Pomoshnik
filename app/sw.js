@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 3.1.3 STABLE, deploy-ready)
-const CACHE_VERSION = 'da_v3_1_3';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 3.1.4 STABLE)
+const CACHE_VERSION = 'da_v3_1_4';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -176,6 +176,43 @@ async function showScheduleSystemNotification(payload = {}) {
         }
     });
 }
+
+function parseWebPushPayload(event) {
+    if (!event?.data) return {};
+    try {
+        return event.data.json();
+    } catch {
+        try {
+            const text = event.data.text();
+            return text ? JSON.parse(text) : {};
+        } catch {
+            return {};
+        }
+    }
+}
+
+async function handleIncomingWebPush(event) {
+    const payload = parseWebPushPayload(event);
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const visibleClient = clients.find((client) => client.visibilityState === 'visible');
+
+    if (visibleClient) {
+        visibleClient.postMessage({
+            type: 'REMOTE_SCHEDULE_NOTIFICATION',
+            payload
+        });
+        return;
+    }
+
+    await showScheduleSystemNotification(payload);
+}
+
+self.addEventListener('push', (event) => {
+    event.waitUntil(
+        handleIncomingWebPush(event)
+            .catch((err) => console.warn('[sw] web push failed:', err))
+    );
+});
 
 self.addEventListener('message', (event) => {
     const data = event.data;

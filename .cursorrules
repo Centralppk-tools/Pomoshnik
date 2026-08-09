@@ -1,0 +1,37 @@
+# Правила Cursor — Цифровой помощник
+
+## Правило кэширования API (Cloudflare Worker + KV)
+
+**ВНИМАНИЕ:** все запросы к Яндекс API выполняются **только** через Cloudflare Worker (`worker.js`, binding `CACHE_KV`) с сохранением ответов в **Cloudflare KV**.
+
+- **6000–6999:** Worker → KV → Яндекс (`/schedule/`, `/thread/`).
+- **7000+:** только `trains-local.json`, Worker **не вызывается**.
+
+**Срок жизни KV:** табло и нитки `thread` привязаны к окончанию суток **D+1** и сгорают **строго в 00:00:00 MSK** дня **после D+1** (= полночь календарного **D+2**).  
+**Запрещён** фиксированный TTL 24 часа.
+
+**Архитектура:**
+1. Двухдневное табло (D + D+1) — источник UID поездов.
+2. Нитка — запрос по UID через `/thread/` через Worker.
+3. Повторное принудительное перекачивание табло при поиске **запрещено** — KV и клиентский кэш достаточны.
+
+Подробности: `app/data/trains-api/README.md`, `.cursor/rules/train-api-quota.mdc`, `worker.js`.
+
+## Общие правила проекта
+
+См. `.cursor/rules/workflow-app-only.mdc` — все изменения только в `app/`, без `Release/`.  
+Контекст архитектуры: `PROJECT_MAP.md`.
+
+## Деплой Cloudflare Worker
+
+**ЖЁСТКОЕ ПРАВИЛО:** после любых изменений в `worker.js`, `wrangler.toml` или push/analytics-логике Worker агент **сам** выполняет деплой:
+
+```bash
+npx wrangler deploy
+```
+
+- **Не** перекладывать деплой на пользователя и **не** писать «задеплойте сами», если задача включает правки Worker.
+- При ошибке сборки — исправить и повторить deploy до успеха.
+- Логин: `npx wrangler login --device` (если сессия истекла).
+- Worker URL: `https://late-shape-356d.maksbarybin9458.workers.dev`
+- Для Web Push в Worker использовать **edgepush** (Web Crypto), **не** npm `web-push` (несовместим с Workers).

@@ -68,6 +68,8 @@ Digital Assistant/
 ├── google-script/
 │   └── Код.js                    # Google Apps Script Web App (депо API)
 │
+├── worker.js                     # ★ Cloudflare Worker: прокси Яндекс API + KV CACHE_KV
+│
 ├── tools/                        # dev/build утилиты (не в деплое)
 │   ├── snapshot.mjs              # npm run snapshot → Version/snapshots/
 │   ├── export-shifts.py          # npm run export:shifts → shift-templates.json
@@ -155,12 +157,12 @@ shift-templates.json (нормативы по датам)
 
 **Cache-first цепочка** (`searchTrainByNumber`):
 ```
-6000–6999: trainThreadsCache[num@date] → табло → /thread/ → trains-local.json
-7000+ и прочие: только trains-local.json (0 API) — isYandexApiEligibleTrainNumber()
+6000–6999: trainThreadsCache → табло D+D+1 → UID → Worker/KV → /thread/
+7000+ и прочие: только trains-local.json (0 API)
 ```
 
-- Запросы через `MY_CLOUDFLARE_PROXY` (Cloudflare Worker)
-- Лимит ~500 запросов/сутки — **API только для 6000–6999**, см. `app/data/trains-api/README.md`
+- Запросы через Cloudflare Worker + KV (`worker.js`, `CACHE_KV`)
+- Лимит ~500 запросов/сутки — расход только при `X-Cache-Status: MISS_YANDEX_API`
 
 ### Справочник тормозов (`spr.json`)
 

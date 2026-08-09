@@ -778,7 +778,7 @@ fix: доработан экспорт календаря в .ics — Share API,
 - Снимок HTML: Version/snapshots/index 3.1.2.html
 - Снимок стилей: Version/snapshots/styles 3.1.2/
 
-3.1.3 STABLE ★
+3.1.3
 
 Основное:
 fix: экономия лимита Яндекс API — запросы только для поездов 6000–6999
@@ -795,3 +795,28 @@ fix: табло вокзала грузится только для дат, гд
 - Деплой: залить app/ на GitHub.
 - Снимок HTML: Version/snapshots/index 3.1.3.html
 - Снимок стилей: Version/snapshots/styles 3.1.3/
+
+3.1.4
+
+Основное:
+feat: Cloudflare Worker — прокси Яндекс API + общий KV-кэш расписаний (до 48 ч / D+2 MSK)
+feat: Web Push — настоящие push-уведомления смены через Worker + Cron
+feat: offline-очередь analytics ping (localStorage, без потери DAU)
+fix: анонимная аналитика — только device_uuid, табельный не уходит на Worker
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- fetchYandexViaWorker(), app/js/app-config.js → yandexProxy workers.dev.
+- worker.js: /schedule/, /thread/ KV-кэш; register_push, sync_alerts, Cron push.
+- app/sw.js: push event; локальные алерты сохранены (schedulePushStack + system).
+- getOrCreateAnonymousDeviceUuid(), da_anonymous_uuid — единый ID для Worker.
+- checkAndSendPendingPing(), da_ping_pending — retry ping при offline.
+- isYandexApiEligibleTrainNumber() (6000–6999) — без изменений от 3.1.3.
+- Service Worker: da_v3_1_4.
+- Деплой: залить app/ на GitHub; Worker: npx wrangler deploy.
+- Снимок HTML: Version/snapshots/index 3.1.4.html
+- Снимок стилей: Version/snapshots/styles 3.1.4/
+
+Не для приложения (release-notes / UI):
+- Анонимные метрики DAU (/stats на Worker, ping по device_uuid)
