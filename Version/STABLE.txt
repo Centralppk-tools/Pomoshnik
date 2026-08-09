@@ -1,22 +1,20 @@
-3.1.4 STABLE ★
+3.1.5 STABLE ★
 
 Дата: 2026-08-09
 
 Статус: готово к выкладке на GitHub Pages и PWA.
 
-Service Worker: da_v3_1_4
+Service Worker: da_v3_1_5
 
 Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
-Worker: npx wrangler deploy (отдельно, уже на workers.dev)
+Worker: npx wrangler deploy (отдельно; уже на workers.dev)
 
-Снимок HTML: Version/snapshots/index 3.1.4.html
+Снимок HTML: Version/snapshots/index 3.1.5.html
 
-Снимок стилей: Version/snapshots/styles 3.1.4/
+Снимок стилей: Version/snapshots/styles 3.1.5/
 
 Ключевые изменения:
 
-- Cloudflare Worker: прокси Яндекс API + KV-кэш (до полночи D+2 MSK)
-- Web Push: уведомления смены при закрытом PWA (Cron на Worker)
-- Анонимная аналитика DAU по device_uuid (не в UI приложения)
-- Очередь offline-ping в localStorage
-- Табельный номер не отправляется на Worker (ФЗ-152)
+- Worker: отказ от KV.list() — индексы global_push_jobs / push_subs / stats_*
+- Свайпы вкладок «Маршрут» / «Расписание» (без лишних block-зон)
+- Часы в glass-stack синхронизируются при смене вкладки

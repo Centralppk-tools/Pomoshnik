@@ -12,12 +12,17 @@
  *   POST ?unregister_push=1&device_uuid=
  *
  * Cron (* * * * *): отправка просроченных push-алертов через Web Push Protocol.
+ *
+ * KV: только .get / .put / .delete — без .list() (лимит Free Tier list = 1000/день).
  */
 
 import { sendNotification, isExpired } from 'edgepush';
 
 const MSK_OFFSET_SEC = 3 * 60 * 60;
 const PUSH_DELIVERY_WINDOW_SEC = 240;
+
+const GLOBAL_PUSH_JOBS_KEY = 'global_push_jobs';
+const STATS_TOTAL_USERS_KEY = 'stats_total_users';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -98,16 +103,37 @@ function sanitizeDeviceUuid(raw) {
     return uuid;
 }
 
-async function countKeysByPrefix(kv, prefix) {
-    if (!kv) return 0;
-    let cursor;
-    let count = 0;
-    do {
-        const result = await kv.list({ prefix, cursor });
-        count += (result.keys || []).length;
-        cursor = result.list_complete ? undefined : result.cursor;
-    } while (cursor);
-    return count;
+function statsDailyUsersKey(dailyDate) {
+    return `stats_daily_users:${dailyDate}`;
+}
+
+function pushSubsIndexKey(deviceUuid) {
+    return `push_subs:${deviceUuid}`;
+}
+
+async function readJsonArray(kv, key) {
+    if (!kv) return [];
+    const value = await kv.get(key, { type: 'json' });
+    return Array.isArray(value) ? value : [];
+}
+
+async function putJsonArray(kv, key, arr, options = {}) {
+    const payload = JSON.stringify(arr);
+    if (options.expiration && options.expiration > Math.floor(Date.now() / 1000)) {
+        await kv.put(key, payload, { expiration: options.expiration });
+        return;
+    }
+    await kv.put(key, payload);
+}
+
+async function addUniqueUuidToIndex(kv, key, deviceUuid, options = {}) {
+    const list = await readJsonArray(kv, key);
+    if (list.includes(deviceUuid)) {
+        return { list, changed: false };
+    }
+    list.push(deviceUuid);
+    await putJsonArray(kv, key, list, options);
+    return { list, changed: true };
 }
 
 async function handleUsagePing(reqUrl, env) {
@@ -126,18 +152,13 @@ async function handleUsagePing(reqUrl, env) {
     }
 
     const dailyDate = getMskDailyKeyDate();
-    const dailyKey = `user_daily:${dailyDate}:${deviceUuid}`;
-    const registeredKey = `user_registered:${deviceUuid}`;
+    const dailyKey = statsDailyUsersKey(dailyDate);
     const expiration = mskEndOfTodayUnixSec();
     const nowSec = Math.floor(Date.now() / 1000);
-    const meta = '1';
+    const dailyOpts = expiration > nowSec ? { expiration } : {};
 
-    if (expiration > nowSec) {
-        await kv.put(dailyKey, meta, { expiration });
-    } else {
-        await kv.put(dailyKey, meta);
-    }
-    await kv.put(registeredKey, meta);
+    await addUniqueUuidToIndex(kv, dailyKey, deviceUuid, dailyOpts);
+    await addUniqueUuidToIndex(kv, STATS_TOTAL_USERS_KEY, deviceUuid);
 
     return corsResponse(JSON.stringify({
         ok: true,
@@ -201,13 +222,15 @@ async function handleStats(reqUrl, env) {
     }
 
     const dailyDate = getMskDailyKeyDate();
-    const dau = await countKeysByPrefix(kv, `user_daily:${dailyDate}:`);
-    const registeredTotal = await countKeysByPrefix(kv, 'user_registered:');
+    const [dailyUsers, totalUsers] = await Promise.all([
+        readJsonArray(kv, statsDailyUsersKey(dailyDate)),
+        readJsonArray(kv, STATS_TOTAL_USERS_KEY),
+    ]);
     const payload = {
         ok: true,
         date_msk: dailyDate,
-        dau,
-        registered_total: registeredTotal,
+        dau: dailyUsers.length,
+        registered_total: totalUsers.length,
         generated_at: new Date().toISOString(),
     };
 
@@ -321,32 +344,62 @@ async function readJsonBody(request) {
     }
 }
 
-function subscriptionKvKey(deviceUuid, endpoint) {
-    const endpointTail = String(endpoint || '').slice(-48).replace(/[^a-zA-Z0-9]/g, '_') || 'unknown';
-    return `push_sub:${deviceUuid}:${endpointTail}`;
+function isValidSubscription(subscription) {
+    const endpoint = String(subscription?.endpoint || '').trim();
+    return Boolean(endpoint && subscription?.keys?.p256dh && subscription?.keys?.auth);
 }
 
-async function listSubscriptionsForDevice(kv, deviceUuid) {
-    const prefix = `push_sub:${deviceUuid}:`;
-    let cursor;
-    const items = [];
-    do {
-        const result = await kv.list({ prefix, cursor });
-        for (const key of result.keys || []) {
-            const raw = await kv.get(key.name);
-            if (!raw) continue;
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed?.subscription?.endpoint) {
-                    items.push({ kvKey: key.name, subscription: parsed.subscription });
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-        cursor = result.list_complete ? undefined : result.cursor;
-    } while (cursor);
-    return items;
+async function readDeviceSubscriptions(kv, deviceUuid) {
+    const items = await readJsonArray(kv, pushSubsIndexKey(deviceUuid));
+    return items
+        .filter((item) => isValidSubscription(item?.subscription || item))
+        .map((item) => {
+            const subscription = item.subscription || item;
+            return {
+                endpoint: String(subscription.endpoint).trim(),
+                subscription: {
+                    endpoint: String(subscription.endpoint).trim(),
+                    keys: {
+                        p256dh: String(subscription.keys.p256dh),
+                        auth: String(subscription.keys.auth),
+                    },
+                },
+            };
+        });
+}
+
+async function writeDeviceSubscriptions(kv, deviceUuid, items, expiration) {
+    const key = pushSubsIndexKey(deviceUuid);
+    if (!items.length) {
+        await kv.delete(key);
+        return;
+    }
+    const payload = items.map((item) => ({
+        endpoint: item.endpoint || item.subscription?.endpoint,
+        subscription: item.subscription || {
+            endpoint: item.endpoint,
+            keys: item.keys,
+        },
+        updated_at: item.updated_at || new Date().toISOString(),
+    }));
+    await putJsonArray(kv, key, payload, { expiration });
+}
+
+async function removeJobsForDevice(kv, deviceUuid) {
+    const allJobs = await readJsonArray(kv, GLOBAL_PUSH_JOBS_KEY);
+    const next = allJobs.filter((job) => job?.device_uuid !== deviceUuid);
+    if (next.length === allJobs.length) return next;
+    if (!next.length) {
+        await kv.delete(GLOBAL_PUSH_JOBS_KEY);
+        return [];
+    }
+    let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
+    const fireAts = next.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
+    if (fireAts.length) {
+        expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
+    }
+    await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, { expiration });
+    return next;
 }
 
 async function handleRegisterPush(request, reqUrl, env) {
@@ -373,14 +426,21 @@ async function handleRegisterPush(request, reqUrl, env) {
         });
     }
 
-    const key = subscriptionKvKey(deviceUuid, endpoint);
     const expiration = mskEndOfTodayUnixSec() + 90 * 86400;
-
-    await kv.put(key, JSON.stringify({
-        device_uuid: deviceUuid,
-        subscription,
+    const existing = await readDeviceSubscriptions(kv, deviceUuid);
+    const next = existing.filter((item) => item.endpoint !== endpoint);
+    next.push({
+        endpoint,
+        subscription: {
+            endpoint,
+            keys: {
+                p256dh: String(subscription.keys.p256dh),
+                auth: String(subscription.keys.auth),
+            },
+        },
         updated_at: new Date().toISOString(),
-    }), { expiration });
+    });
+    await writeDeviceSubscriptions(kv, deviceUuid, next, expiration);
 
     return corsResponse(JSON.stringify({ ok: true, device_uuid: deviceUuid }), 200, {
         'Content-Type': 'application/json; charset=utf-8',
@@ -411,28 +471,35 @@ async function handleSyncAlerts(request, reqUrl, env) {
             const fireAtUnix = Number(job?.fireAtUnix);
             if (!key || !Number.isFinite(fireAtUnix)) return null;
             return {
+                device_uuid: deviceUuid,
                 key,
                 fireAtUnix: Math.floor(fireAtUnix),
                 title: String(job?.title || '').slice(0, 180),
                 kicker: String(job?.kicker || '').slice(0, 120),
                 body: String(job?.body || '').slice(0, 240),
                 tone: String(job?.tone || 'default').slice(0, 32),
+                session_id: sessionId,
             };
         })
         .filter(Boolean);
 
-    const jobsKey = `push_jobs:${deviceUuid}`;
-    let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
-    if (sanitizedJobs.length) {
-        const maxFireAt = Math.max(...sanitizedJobs.map((job) => job.fireAtUnix));
-        expiration = Math.max(expiration, maxFireAt + 2 * 86400);
+    const existing = await readJsonArray(kv, GLOBAL_PUSH_JOBS_KEY);
+    const others = existing.filter((job) => job?.device_uuid !== deviceUuid);
+    const next = others.concat(sanitizedJobs);
+
+    if (!next.length) {
+        await kv.delete(GLOBAL_PUSH_JOBS_KEY);
+    } else {
+        let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
+        const fireAts = next.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
+        if (fireAts.length) {
+            expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
+        }
+        await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, { expiration });
     }
 
-    await kv.put(jobsKey, JSON.stringify({
-        session_id: sessionId,
-        updated_at: new Date().toISOString(),
-        jobs: sanitizedJobs,
-    }), { expiration });
+    // Миграция: старый per-device ключ больше не нужен
+    await kv.delete(`push_jobs:${deviceUuid}`);
 
     return corsResponse(JSON.stringify({
         ok: true,
@@ -460,16 +527,15 @@ async function handleUnregisterPush(request, reqUrl, env) {
 
     const body = await readJsonBody(request);
     const endpoint = String(body?.endpoint || body?.subscription?.endpoint || '').trim();
+    const expiration = mskEndOfTodayUnixSec() + 90 * 86400;
+
     if (endpoint) {
-        await kv.delete(subscriptionKvKey(deviceUuid, endpoint));
+        const existing = await readDeviceSubscriptions(kv, deviceUuid);
+        const next = existing.filter((item) => item.endpoint !== endpoint);
+        await writeDeviceSubscriptions(kv, deviceUuid, next, expiration);
     } else {
-        const prefix = `push_sub:${deviceUuid}:`;
-        let cursor;
-        do {
-            const result = await kv.list({ prefix, cursor });
-            await Promise.all((result.keys || []).map((key) => kv.delete(key.name)));
-            cursor = result.list_complete ? undefined : result.cursor;
-        } while (cursor);
+        await kv.delete(pushSubsIndexKey(deviceUuid));
+        await removeJobsForDevice(kv, deviceUuid);
         await kv.delete(`push_jobs:${deviceUuid}`);
     }
 
@@ -483,67 +549,103 @@ async function processScheduledPushes(env) {
     if (!kv || !getVapidConfig(env)) return;
 
     const now = Math.floor(Date.now() / 1000);
-    let cursor;
+    const allJobs = await readJsonArray(kv, GLOBAL_PUSH_JOBS_KEY);
+    if (!allJobs.length) return;
 
-    do {
-        const list = await kv.list({ prefix: 'push_jobs:', cursor });
-        for (const keyInfo of list.keys || []) {
-            const deviceUuid = keyInfo.name.slice('push_jobs:'.length);
-            if (!deviceUuid) continue;
+    const remaining = [];
+    const subsCache = new Map();
+    let dirtySubs = false;
 
-            const raw = await kv.get(keyInfo.name);
-            if (!raw) continue;
+    async function getSubs(deviceUuid) {
+        if (subsCache.has(deviceUuid)) return subsCache.get(deviceUuid);
+        const items = await readDeviceSubscriptions(kv, deviceUuid);
+        subsCache.set(deviceUuid, items);
+        return items;
+    }
 
-            let data;
+    for (const job of allJobs) {
+        const deviceUuid = sanitizeDeviceUuid(job?.device_uuid);
+        if (!deviceUuid || !job?.key || !Number.isFinite(job.fireAtUnix)) {
+            continue;
+        }
+
+        // Ещё рано — оставляем в индексе
+        if (job.fireAtUnix > now) {
+            remaining.push(job);
+            continue;
+        }
+
+        // Окно доставки истекло — выбрасываем
+        if (job.fireAtUnix + PUSH_DELIVERY_WINDOW_SEC < now) {
+            continue;
+        }
+
+        const sentKey = `push_sent:${job.key}`;
+        if (await kv.get(sentKey)) {
+            continue;
+        }
+
+        const subscriptions = await getSubs(deviceUuid);
+        if (!subscriptions.length) {
+            // Нет подписок: оставляем job до конца окна (клиент может успеть зарегистрировать push)
+            remaining.push(job);
+            continue;
+        }
+
+        const payload = {
+            key: job.key,
+            tag: job.key,
+            title: job.title || 'Цифровой помощник',
+            kicker: job.kicker || '',
+            body: job.body || '',
+            tone: job.tone || 'default',
+        };
+
+        let delivered = false;
+        const alive = [];
+        for (const item of subscriptions) {
             try {
-                data = JSON.parse(raw);
-            } catch {
-                continue;
-            }
-
-            const jobs = Array.isArray(data?.jobs) ? data.jobs : [];
-            if (!jobs.length) continue;
-
-            const subscriptions = await listSubscriptionsForDevice(kv, deviceUuid);
-            if (!subscriptions.length) continue;
-
-            for (const job of jobs) {
-                if (!job?.key || !Number.isFinite(job.fireAtUnix)) continue;
-                if (job.fireAtUnix > now) continue;
-                if (job.fireAtUnix + PUSH_DELIVERY_WINDOW_SEC < now) continue;
-
-                const sentKey = `push_sent:${job.key}`;
-                if (await kv.get(sentKey)) continue;
-
-                const payload = {
-                    key: job.key,
-                    tag: job.key,
-                    title: job.title || 'Цифровой помощник',
-                    kicker: job.kicker || '',
-                    body: job.body || '',
-                    tone: job.tone || 'default',
-                };
-
-                let delivered = false;
-                for (const item of subscriptions) {
-                    try {
-                        await sendWebPushNotification(item.subscription, payload, env);
-                        delivered = true;
-                    } catch (error) {
-                        const statusCode = error?.statusCode;
-                        if (statusCode === 404 || statusCode === 410) {
-                            await kv.delete(item.kvKey);
-                        }
-                    }
+                await sendWebPushNotification(item.subscription, payload, env);
+                delivered = true;
+                alive.push(item);
+            } catch (error) {
+                const statusCode = error?.statusCode;
+                if (statusCode === 404 || statusCode === 410) {
+                    dirtySubs = true;
+                    continue;
                 }
-
-                if (delivered) {
-                    await kv.put(sentKey, '1', { expiration: job.fireAtUnix + 86400 });
-                }
+                alive.push(item);
             }
         }
-        cursor = list.list_complete ? undefined : list.cursor;
-    } while (cursor);
+
+        if (alive.length !== subscriptions.length) {
+            subsCache.set(deviceUuid, alive);
+            const expiration = mskEndOfTodayUnixSec() + 90 * 86400;
+            await writeDeviceSubscriptions(kv, deviceUuid, alive, expiration);
+        }
+
+        if (delivered) {
+            await kv.put(sentKey, '1', { expiration: job.fireAtUnix + 86400 });
+            // Доставлено — не возвращаем в индекс
+            continue;
+        }
+
+        // Не доставлено (временная ошибка) — оставляем до конца окна
+        remaining.push(job);
+    }
+
+    if (remaining.length !== allJobs.length || dirtySubs) {
+        if (!remaining.length) {
+            await kv.delete(GLOBAL_PUSH_JOBS_KEY);
+        } else {
+            let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
+            const fireAts = remaining.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
+            if (fireAts.length) {
+                expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
+            }
+            await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, remaining, { expiration });
+        }
+    }
 }
 
 export default {

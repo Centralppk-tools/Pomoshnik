@@ -820,3 +820,25 @@ fix: анонимная аналитика — только device_uuid, таб�
 
 Не для приложения (release-notes / UI):
 - Анонимные метрики DAU (/stats на Worker, ping по device_uuid)
+
+3.1.5
+- Доработка воркера и лимитов
+
+Основное:
+fix: Cloudflare Worker — убран KV.list() (лимит Free 1000/день); индексы get/put
+fix: push — global_push_jobs + push_subs:{uuid}; stats — stats_total_users / stats_daily_users
+fix: свайпы вкладок «Маршрут» / «Расписание»; синхронизация часов в glass-stack
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- worker.js: Cron/stats без .list(); KV только get/put/delete.
+- app: isSwipeBlockedTarget ослаблен для schedule-glass-tabs и контента; edge-reserve убран.
+- syncScheduleGlassStack(forcedTabId) — компакт/полная карточка часов при свайпе.
+- Service Worker: da_v3_1_5.
+- Деплой: залить app/ на GitHub; Worker уже задеплоен (wrangler).
+- Снимок HTML: Version/snapshots/index 3.1.5.html
+- Снимок стилей: Version/snapshots/styles 3.1.5/
+
+Не для приложения (release-notes / UI):
+- Внутренняя схема ключей KV (global_push_jobs, stats_*)
