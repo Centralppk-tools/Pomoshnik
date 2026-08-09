@@ -45,11 +45,13 @@ Chip «84 У 6:30» **не** грузит поезда. API — только к�
 
 1. **`trainThreadsCache`** в localStorage — ключ `номер@дата`. Есть запись с остановками → **0 API**.  
    Записи `apiOffDay` / пустые stops **не** считаются попаданием (чтобы не залипал устаревший UID).
-2. **Табло Ярославского** (`s2000002`) на дату — **один раз на дату**, не на поезд:
+2. **Табло Ярославского** (`s2000002`) на **D и D+1** — один раз на `станция+дата`:
    - все параллельные поиски ждут один `stationScheduleLoaders[station_date]`
-   - из табло берётся **актуальный** `thread.uid` на эту дату → **`/thread/`** (1 API на поезд).
-3. **Fallback:** табло Пушкино (`s9600701`) — **только** если на Ярославском нет номера.
+   - из табло берётся **актуальный** `thread.uid` → **`/thread/`** через Worker (KV cache)
+3. **Fallback:** табло Пушкино (`s9600701`) — **только** если на Ярославском нет номера (без forceRefresh-retry).
 4. **Офлайн-резерв:** `trains-local.json` (2 остановки, без API).
+
+**Запрещено:** принудительное перекачивание табло (`forceRefresh: true`) при обычном поиске поезда — Worker KV и клиентский кэш.
 
 Для поезда **7000+** (и вне 6000–6999): сразу `resolveTrainFromLocalOnly()` — **0 API**.
 
@@ -110,7 +112,8 @@ Chip «84 У 6:30» **не** грузит поезда. API — только к�
 
 | Файл | Назначение |
 |------|------------|
-| `app/index.html` | `searchTrainByNumber`, кэши, триггеры |
+| `worker.js` | Cloudflare Worker: CORS-прокси, KV-кэш, expiration D+2 midnight MSK |
+| `app/index.html` | `searchTrainByNumber`, кэши, триггеры, `fetchYandexViaWorker` |
 | `app/trains-local.json` | Офлайн-резерв (без обязательного `threadUid`) |
 | `app/data/trains-uids.json` | Устарел: не источник истины; UID с табло |
 
@@ -122,12 +125,52 @@ Chip «84 У 6:30» **не** грузит поезда. API — только к�
 - [ ] Поезд 6000–6999 для API, 7000+ только `trains-local.json`?
 - [ ] Сначала `trainThreadsCache` на `номер@дата` (без apiOffDay)?
 - [ ] UID с табло выбранной даты, не из статического файла?
-- [ ] Табло — один раз на `станция+дата` с dedupe, только даты с 6000-серией?
+- [ ] Табло D + D+1, без forceRefresh-retry при поиске?
+- [ ] Worker KV: expiration D+2 midnight, не TTL 24 ч?
 - [ ] «Обновить» не чистит табло?
 - [ ] Нет fetch в таймере / полночи?
 
 ---
 
-## Прокси
+## Прокси и серверный кэш (Cloudflare Worker + KV)
 
-Запросы идут через Cloudflare Worker (`MY_CLOUDFLARE_PROXY`). Счётчик лимита — на стороне Яндекса / worker; каждый `fetch` к worker с URL schedule/thread = 1 единица расхода.
+Все запросы к Яндекс.Rasp идут через **Cloudflare Worker** (`worker.js`, binding `CACHE_KV`).
+
+| Компонент | Файл / настройка |
+|-----------|------------------|
+| Worker + KV | `worker.js` в корне проекта |
+| KV namespace | Cloudflare Dashboard → **TRAIN_CACHE** |
+| Binding | `CACHE_KV` → TRAIN_CACHE |
+| URL прокси | `app/js/app-config.js` → `yandexProxy` |
+
+### Алгоритм
+
+1. **Двухдневное табло (D + D+1)** — `/schedule/` Ярославский; из табло берутся **UID** поездов 6000-й серии.
+2. **Нитка** — `/thread/?uid=…&date=…` строго по UID с табло, через Worker.
+3. **Worker KV:** ключ = целевой URL Яндекса. HIT → без запроса к API (`X-Cache-Status: HIT_WORKER_KV`).
+4. **Сгорание KV:** **00:00:00 MSK** дня **после D+1** (= полночь **D+2**). **Не** TTL 24 ч.
+5. **Клиент:** без forceRefresh-retry при поиске; локальный `trainThreadsCache` + `stationScheduleCache`.
+
+### Настройка в Cloudflare Dashboard (или Wrangler)
+
+**CLI (рекомендуется):**
+
+```bash
+npm install
+npx wrangler login --device    # без localhost — если ERR_CONNECTION_REFUSED на :8976
+npx wrangler kv namespace create TRAIN_CACHE   # один раз; id → wrangler.toml
+npx wrangler deploy
+```
+
+Файл `wrangler.toml` в корне: worker `late-shape-356d`, binding `CACHE_KV`.
+
+**Если `wrangler login` без `--device`:** терминал должен оставаться открытым, пока браузер не вернётся на `localhost:8976/oauth/callback`. Иначе — `ERR_CONNECTION_REFUSED`.
+
+**Dashboard (вручную):**
+
+1. Workers and Pages → **KV** → Create namespace **TRAIN_CACHE**.
+2. Worker → **Settings** → Variables → KV Namespace Binding: имя **CACHE_KV**, namespace **TRAIN_CACHE**.
+3. Редактор Worker → вставить `worker.js` → **Save and Deploy**.
+4. Проверка: ответ с заголовком `X-Cache-Status: MISS_YANDEX_API`, повтор — `HIT_WORKER_KV`.
+
+Счётчик лимита Яндекса: только при `MISS_YANDEX_API` (реальный upstream fetch).

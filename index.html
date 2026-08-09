@@ -609,6 +609,11 @@
 
     const USERS_DB_KEY = 'rzd_users';
     const AUTH_SESSION_KEY = 'currentUserTab';
+    const ANONYMOUS_DEVICE_UUID_KEY = 'da_anonymous_uuid';
+    const LEGACY_ANALYTICS_DEVICE_ID_KEY = 'da_device_id';
+    const ANALYTICS_PING_PENDING_KEY = 'da_ping_pending';
+    const ANALYTICS_PING_PENDING_UUID_KEY = 'da_ping_pending_uuid';
+    const analyticsPingInFlightUuids = new Set();
     const DEPOT_SHIFTS_KEY = 'depotShifts';
     const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache';
     const REFERENCE_TRAINS_STORAGE_KEY = 'cppk_trains_local_cache';
@@ -619,7 +624,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '3.1.3';
+    const APP_RELEASE_VERSION = '3.1.4';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1668,13 +1673,20 @@
         loadTrainThreadsCacheFromStorage();
 
         initUserAuth();
+        getOrCreateAnonymousDeviceUuid();
+        trackAppUsagePing();
         initSwipeNavigation();
         initScheduleLiveClockResume();
         initServiceWorker();
+        initWebPushClient();
         void initReleaseNotesUi();
 
         syncOfflineModeUi();
-        window.addEventListener('online', syncOfflineModeUi);
+        window.addEventListener('online', () => {
+            syncOfflineModeUi();
+            void checkAndSendPendingPing();
+            void syncScheduleAlertsToWorker();
+        });
         window.addEventListener('offline', () => {
             syncOfflineModeUi();
             notifyOfflineModeIfNeeded();
@@ -1806,6 +1818,7 @@
     const SCHEDULE_NOTIFICATION_GRACE_MINUTES = 3;
     const SCHEDULE_NOTIF_PERMISSION_ASKED_KEY = 'scheduleNotifPermissionAsked';
     const SCHEDULE_PUSH_FIRED_STORAGE_KEY = 'schedulePushFiredKeys';
+    const WEB_PUSH_ENABLED_KEY = 'da_web_push_enabled';
 
     const STATION_NOTES_STORAGE_KEY = 'stationNotes';
     const STATION_SELECTIONS_STORAGE_KEY = 'stationSelections';
@@ -2195,8 +2208,11 @@
         if (schedulePushFiredKeys.size === 0) {
             loadSchedulePushFiredKeys();
         }
-        ensureScheduleNotificationPermission();
+        void ensureScheduleNotificationPermission().then((granted) => {
+            if (granted) void ensureWebPushSubscription();
+        });
         checkSchedulePushNotifications();
+        void syncScheduleAlertsToWorker();
     }
 
     function resumeScheduleLiveClockIfNeeded() {
@@ -2208,7 +2224,9 @@
         e?.preventDefault?.();
         e?.stopPropagation?.();
         if (!document.getElementById('scheduleLiveClock')) return;
-        ensureScheduleNotificationPermission(true);
+        ensureScheduleNotificationPermission(true).then((granted) => {
+            if (granted) void ensureWebPushSubscription(true);
+        });
         syncScheduleLiveClock();
     }
 
@@ -2628,7 +2646,9 @@
         if (pushKey && stack?.querySelector(`[data-push-key="${pushKey}"]`)) return;
 
         if (document.hidden) {
-            showSystemScheduleNotification(payload);
+            if (userStorageGet(WEB_PUSH_ENABLED_KEY) !== '1') {
+                showSystemScheduleNotification(payload);
+            }
             return;
         }
 
@@ -2747,6 +2767,278 @@
                 );
             });
         }
+    }
+
+    function scheduleAlertFireUnix(isoDate, minutesFromMidnight) {
+        if (!isoDate || minutesFromMidnight === null || minutesFromMidnight === undefined) return null;
+        const [y, m, d] = isoDate.split('-').map(Number);
+        if (!y || !m || !d) return null;
+        const hours = Math.floor(minutesFromMidnight / 60);
+        const mins = minutesFromMidnight % 60;
+        return Math.floor(Date.UTC(y, m - 1, d, hours - 3, mins, 0) / 1000);
+    }
+
+    function isWebPushSupported() {
+        return 'serviceWorker' in navigator
+            && 'PushManager' in window
+            && Boolean(APP_CFG.webPushVapidPublicKey);
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    function collectScheduleAlertJobsForWorker() {
+        const jobs = [];
+        const selectedDate = getSelectedDate();
+        if (!selectedDate) return jobs;
+
+        const addJob = (key, triggerDate, triggerMinutes, leadMinutes, payload) => {
+            if (!key || !triggerDate || triggerMinutes === null || leadMinutes === null) return;
+            if (schedulePushFiredKeys.has(key)) return;
+            const fireAtUnix = scheduleAlertFireUnix(triggerDate, triggerMinutes - leadMinutes);
+            if (!fireAtUnix) return;
+            jobs.push({
+                key,
+                fireAtUnix,
+                title: payload.title || '',
+                kicker: payload.kicker || '',
+                body: payload.body || '',
+                tone: payload.tone || 'default'
+            });
+        };
+
+        if (Array.isArray(routeNotificationTrains) && routeNotificationTrains.length) {
+            routeNotificationTrains.forEach((train) => {
+                const depMinutes = parseTimeToMinutes(train.departure);
+                const arrMinutes = parseTimeToMinutes(train.arrival);
+                const trainLabel = train.number ? `Поезд ${train.number}` : (train.title || '');
+
+                if (depMinutes !== null) {
+                    addJob(
+                        `route_brake10_${train.index}`,
+                        train.departureDate,
+                        depMinutes,
+                        10,
+                        {
+                            tone: 'brake',
+                            kicker: 'Проба тормозов',
+                            title: 'Сокращенная проба тормозов',
+                            body: trainLabel
+                        }
+                    );
+                    addJob(
+                        `route_ready3_${train.index}`,
+                        train.departureDate,
+                        depMinutes,
+                        3,
+                        {
+                            tone: 'ready',
+                            kicker: 'Минутная готовность',
+                            title: 'Минутная готовность',
+                            body: trainLabel
+                        }
+                    );
+                }
+
+                if (arrMinutes !== null && train.turnaroundMinutes !== null && train.turnaroundMinutes > 30) {
+                    addJob(
+                        `route_to1_${train.index}`,
+                        train.arrivalDate,
+                        arrMinutes,
+                        0,
+                        {
+                            tone: 'to1',
+                            kicker: 'ТО-1',
+                            title: 'Провести ТО-1, если позволяют условия',
+                            body: `Оборот: ${formatMinutesToHoursAndMinutes(train.turnaroundMinutes)}`
+                        }
+                    );
+                }
+            });
+        }
+
+        if (Array.isArray(scheduleNotificationTargets) && scheduleNotificationTargets.length) {
+            scheduleNotificationTargets.forEach((target) => {
+                addJob(
+                    target.key,
+                    target.triggerDate,
+                    target.triggerMinutes,
+                    target.leadMinutes,
+                    {
+                        tone: target.tone,
+                        kicker: target.kicker,
+                        title: target.title,
+                        body: target.body
+                    }
+                );
+            });
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const gracePast = SCHEDULE_NOTIFICATION_GRACE_MINUTES * 60;
+        return jobs.filter((job) => job.fireAtUnix + gracePast >= now);
+    }
+
+    async function registerWebPushSubscriptionWithWorker(subscription) {
+        const deviceUuid = getOrCreateAnonymousDeviceUuid();
+        if (!deviceUuid || !MY_CLOUDFLARE_PROXY || !subscription) return false;
+
+        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+        const params = new URLSearchParams({
+            register_push: '1',
+            device_uuid: deviceUuid
+        });
+
+        try {
+            const res = await fetch(`${proxyBase}?${params.toString()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscription: subscription.toJSON() }),
+                keepalive: true
+            });
+            return res.ok;
+        } catch (error) {
+            console.warn('[web-push] register failed:', error);
+            return false;
+        }
+    }
+
+    async function ensureWebPushSubscription(force = false) {
+        if (!isWebPushSupported() || !getAuthSessionTab()) return false;
+        if (!force && userStorageGet(WEB_PUSH_ENABLED_KEY) === '1') {
+            const reg = await navigator.serviceWorker.ready.catch(() => null);
+            const existing = reg ? await reg.pushManager.getSubscription().catch(() => null) : null;
+            if (existing) {
+                void syncScheduleAlertsToWorker();
+                return true;
+            }
+        }
+
+        const permissionGranted = await ensureScheduleNotificationPermission(force);
+        if (!permissionGranted) return false;
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(APP_CFG.webPushVapidPublicKey)
+                });
+            }
+
+            const registered = await registerWebPushSubscriptionWithWorker(subscription);
+            if (!registered) return false;
+
+            userStorageSet(WEB_PUSH_ENABLED_KEY, '1');
+            await syncScheduleAlertsToWorker();
+            return true;
+        } catch (error) {
+            console.warn('[web-push] subscribe failed:', error);
+            return false;
+        }
+    }
+
+    async function syncScheduleAlertsToWorker() {
+        if (!MY_CLOUDFLARE_PROXY) return false;
+        if (userStorageGet(WEB_PUSH_ENABLED_KEY) !== '1') return false;
+
+        const registration = await navigator.serviceWorker?.ready?.catch(() => null);
+        const subscription = registration
+            ? await registration.pushManager.getSubscription().catch(() => null)
+            : null;
+        if (!subscription) return false;
+
+        const jobs = collectScheduleAlertJobsForWorker();
+        if (!jobs.length) return true;
+
+        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+        const params = new URLSearchParams({
+            sync_alerts: '1',
+            device_uuid: getOrCreateAnonymousDeviceUuid(),
+            session_id: getSchedulePushSessionId()
+        });
+
+        try {
+            const res = await fetch(`${proxyBase}?${params.toString()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jobs }),
+                keepalive: true
+            });
+            if (!res.ok) {
+                console.warn('[web-push] sync_alerts failed:', res.status);
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.warn('[web-push] sync_alerts error:', error);
+            return false;
+        }
+    }
+
+    async function unregisterWebPushSubscription() {
+        userStorageRemove(WEB_PUSH_ENABLED_KEY);
+        if (!MY_CLOUDFLARE_PROXY) return;
+
+        const deviceUuid = getOrCreateAnonymousDeviceUuid();
+        const registration = await navigator.serviceWorker?.ready?.catch(() => null);
+        const subscription = registration
+            ? await registration.pushManager.getSubscription().catch(() => null)
+            : null;
+
+        if (subscription) {
+            const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+            const params = new URLSearchParams({
+                unregister_push: '1',
+                device_uuid: deviceUuid
+            });
+            try {
+                await fetch(`${proxyBase}?${params.toString()}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: subscription.endpoint }),
+                    keepalive: true
+                });
+            } catch (error) {
+                console.warn('[web-push] unregister failed:', error);
+            }
+            await subscription.unsubscribe().catch(() => {});
+        }
+    }
+
+    function handleRemoteScheduleNotification(payload = {}) {
+        const key = payload.key || payload.tag || '';
+        if (key && schedulePushFiredKeys.has(key)) return;
+        if (key) {
+            schedulePushFiredKeys.add(key);
+            persistSchedulePushFiredKeys();
+        }
+        showSchedulePushNotification({
+            key,
+            tag: key,
+            tone: payload.tone,
+            kicker: payload.kicker,
+            title: payload.title,
+            body: payload.body
+        });
+    }
+
+    function initWebPushClient() {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'REMOTE_SCHEDULE_NOTIFICATION') {
+                handleRemoteScheduleNotification(event.data.payload || {});
+            }
+        });
     }
 
     function updateScheduleEmptyState() {}
@@ -2889,15 +3181,24 @@
         if (!date) return false;
         const forceRefresh = options.forceRefresh === true;
         try {
-            let schedule = await getStationSchedule(ANCHOR_STATION, date, forceRefresh);
-            if (!isUsableStationBoard(schedule) && !forceRefresh) {
-                schedule = await getStationSchedule(ANCHOR_STATION, date, true);
-            }
+            const schedule = await getStationSchedule(ANCHOR_STATION, date, forceRefresh);
             return isUsableStationBoard(schedule);
         } catch (err) {
             console.warn('[trains] board load failed:', date, err);
             return false;
         }
+    }
+
+    function logWorkerCacheStatus(response, context) {
+        const status = response?.headers?.get('X-Cache-Status');
+        if (status) console.log('[trains] worker KV:', status, context || '');
+    }
+
+    async function fetchYandexViaWorker(yandexUrl, context) {
+        void checkAndSendPendingPing();
+        const response = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(yandexUrl)}`);
+        logWorkerCacheStatus(response, context);
+        return response;
     }
 
     function isApiTrainCacheEntry(entry) {
@@ -3379,7 +3680,7 @@
 
         while (offset <= 8000) {
             const url = `${API_BASE}/schedule/?apikey=${API_KEY}&station=${stationCode}&transport_types=suburban&direction=all&limit=${limit}&offset=${offset}&date=${date}&lang=ru_RU`;
-            const response = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(url)}`);
+            const response = await fetchYandexViaWorker(url, `schedule ${stationCode} ${date} offset=${offset}`);
             if (!response.ok) {
                 throw new Error(`Ошибка сервера код ${response.status}`);
             }
@@ -3509,12 +3810,6 @@
         let primaryHit = lookupTrainOnStationBoard(trainNumber, date);
         if (primaryHit) return primaryHit;
 
-        if (allowBoardFetch && !forceRefresh) {
-            await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
-            primaryHit = lookupTrainOnStationBoard(trainNumber, date);
-            if (primaryHit) return primaryHit;
-        }
-
         if (threadsOnly && !allowBoardFetch) return null;
 
         for (const stationCode of EXTRA_SCHEDULE_STATIONS) {
@@ -3540,7 +3835,7 @@
     async function fetchThreadDetails(trainData, scheduleDate) {
         const date = scheduleDate || getSelectedDate();
         const threadUrl = `${API_BASE}/thread/?apikey=${API_KEY}&uid=${trainData.thread.uid}&date=${date}&lang=ru_RU`;
-        const threadResponse = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(threadUrl)}`);
+        const threadResponse = await fetchYandexViaWorker(threadUrl, `thread ${trainData.thread.number} ${date}`);
         let threadData;
         try {
             threadData = await threadResponse.json();
@@ -5169,24 +5464,7 @@
                 }
             }
 
-            // 2) Повтор с принудительным обновлением табло
-            if (!forceRefresh) {
-                await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
-                trainData = await findTrainOnStationBoards(trainNumber, date, {
-                    ...boardOptions,
-                    forceRefresh: true,
-                    allowBoardFetch: true,
-                    threadsOnly: false
-                });
-                if (trainData) {
-                    const boardUid = String(trainData?.thread?.uid || '').trim();
-                    console.log('[trains] board refresh → uid:', trainNumber, boardUid || '—', date);
-                    const fromBoard = await fetchTrainFromBoardHit(trainData, trainNumber, date, registryEntry);
-                    if (fromBoard && !fromBoard.apiOffDay) return fromBoard;
-                }
-            }
-
-            // 3) Офлайн-резерв без API
+            // 2) Офлайн-резерв без API
             const localEntry = findLocalTrainEntry(trainNumber, date);
             if (localEntry) {
                 console.log('[trains] local fallback:', trainNumber, date);
@@ -5223,6 +5501,16 @@
     function collectBoardDatesForShift(trainPlan, baseDate, trainNumbers) {
         const dates = new Set();
         const numbers = Array.isArray(trainNumbers) ? trainNumbers : [];
+        const hasApiTrain = numbers.length === 0
+            || numbers.some(isYandexApiEligibleTrainNumber)
+            || (Array.isArray(trainPlan) && trainPlan.some(item =>
+                item?.number && isYandexApiEligibleTrainNumber(item.number)
+            ));
+
+        if (hasApiTrain && baseDate) {
+            dates.add(baseDate);
+            dates.add(addDaysToDateStr(baseDate, 1));
+        }
 
         if (Array.isArray(trainPlan) && trainPlan.length) {
             trainPlan.forEach(item => {
@@ -5230,13 +5518,8 @@
                 if (item.scheduleDate) dates.add(item.scheduleDate);
                 if (item.morningScheduleDate) dates.add(item.morningScheduleDate);
             });
-        } else if (baseDate) {
-            const needsBoard = numbers.length === 0 || numbers.some(isYandexApiEligibleTrainNumber);
-            if (needsBoard) {
-                dates.add(baseDate);
-                if (isNightMode()) dates.add(addDaysToDateStr(baseDate, 1));
-            }
         }
+
         return [...dates];
     }
 
@@ -5397,6 +5680,7 @@
         } else {
             checkSchedulePushNotifications();
         }
+        void syncScheduleAlertsToWorker();
     }
 
     function runScreenSideEffects(screen) {
@@ -5411,6 +5695,7 @@
 
         resumeScheduleLiveClockIfNeeded();
         bootstrapScheduleAlertsIfReady();
+        void checkAndSendPendingPing();
     }
 
     function cleanupSlideClasses(el) {
@@ -5470,6 +5755,7 @@
             requestAnimationFrame(applyScheduleTextFit);
         }
         syncScheduleGlassStack();
+        void checkAndSendPendingPing();
     }
 
     function switchTab(tabId, btn, options = {}) {
@@ -5500,6 +5786,7 @@
                 requestAnimationFrame(applyScheduleTextFit);
             }
             syncScheduleGlassStack();
+            void checkAndSendPendingPing();
             return true;
         }
 
@@ -5550,6 +5837,10 @@
         if (!getSelectedDate()) {
             alert('Укажите дату смены.');
             return;
+        }
+
+        if (!fromCacheOnly) {
+            void checkAndSendPendingPing();
         }
 
         const loader = document.getElementById('routeLoader');
@@ -5788,6 +6079,7 @@
 
             routeNotificationTrains = buildRouteNotificationTrains(sortedTrainsData, getSelectedDate());
             checkSchedulePushNotifications();
+            void syncScheduleAlertsToWorker();
 
             grid.innerHTML = boardWarningHtml + cards.join('');
             grid.style.display = 'flex';
@@ -5958,6 +6250,7 @@
             trainDeparture,
             trainArrival
         );
+        void syncScheduleAlertsToWorker();
         if (schedulePushFiredKeys.size === 0) {
             loadSchedulePushFiredKeys();
         }
@@ -6363,24 +6656,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Обновлены часы смен (3–6 = пн–чт, 7 = пт, 8 = сб, 9 = вс)',
-            'Доработка предупреждений и участков',
-            'Фикс отдельных электропоездов',
-            'Доработка окна «Маршрут»: параметры и ввод/исправление поездов',
-            'Доработка свайпов',
-            'Заметки по дням и по маршрутам обновлены',
-            'На чипе дня вместо часов работы показывается время явки',
-            'Мелкие доработки по вашим запросам'
+            'Общий кэш расписаний через Cloudflare Worker — меньше запросов к API',
+            'Push-уведомления о смене на заблокированный экран (PWA с иконки)'
         ],
         highlights: [
-            'Обновлены часы смен (3–6 = пн–чт, 7 = пт, 8 = сб, 9 = вс)',
-            'Доработка предупреждений и участков',
-            'Фикс отдельных электропоездов',
-            'Доработка окна «Маршрут»: параметры и ввод/исправление поездов',
-            'Доработка свайпов',
-            'Заметки по дням и по маршрутам обновлены',
-            'На чипе дня вместо часов работы показывается время явки',
-            'Мелкие доработки по вашим запросам'
+            'Общий кэш расписаний через Cloudflare Worker — меньше запросов к API',
+            'Push-уведомления о смене на заблокированный экран (PWA с иконки)'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -7780,7 +8061,110 @@
     }
 
     function setAuthSessionTab(tabNumber) {
-        localStorage.setItem(AUTH_SESSION_KEY, tabNumber);
+        const tab = normalizeTabNumber(tabNumber);
+        if (!tab) return;
+        localStorage.setItem(AUTH_SESSION_KEY, tab);
+        localStorage.setItem(DEPOT_TAB_KEY, tab);
+    }
+
+    function getOrCreateAnonymousDeviceUuid() {
+        let id = localStorage.getItem(ANONYMOUS_DEVICE_UUID_KEY);
+        if (!id) {
+            id = localStorage.getItem(LEGACY_ANALYTICS_DEVICE_ID_KEY);
+        }
+        if (!id) {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                id = crypto.randomUUID();
+            } else {
+                id = `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+            }
+        }
+        localStorage.setItem(ANONYMOUS_DEVICE_UUID_KEY, id);
+        return id;
+    }
+
+    function hasAnalyticsPingPending() {
+        return localStorage.getItem(ANALYTICS_PING_PENDING_KEY) === 'true';
+    }
+
+    function getAnalyticsPendingUuid() {
+        return String(localStorage.getItem(ANALYTICS_PING_PENDING_UUID_KEY) || '').trim();
+    }
+
+    function markAnalyticsPingPending(deviceUuid) {
+        const uuid = String(deviceUuid || '').trim();
+        if (!uuid) return;
+        localStorage.setItem(ANALYTICS_PING_PENDING_KEY, 'true');
+        localStorage.setItem(ANALYTICS_PING_PENDING_UUID_KEY, uuid);
+    }
+
+    function clearAnalyticsPingPending() {
+        localStorage.removeItem(ANALYTICS_PING_PENDING_KEY);
+        localStorage.removeItem(ANALYTICS_PING_PENDING_UUID_KEY);
+        localStorage.removeItem('da_ping_pending_tab');
+    }
+
+    function isAnalyticsNetworkError(error) {
+        if (!navigator.onLine) return true;
+        if (error instanceof TypeError) return true;
+        return error?.name === 'AbortError';
+    }
+
+    async function sendUsageAnalyticsPing() {
+        const deviceUuid = getOrCreateAnonymousDeviceUuid();
+        if (!deviceUuid || !MY_CLOUDFLARE_PROXY) return false;
+        if (analyticsPingInFlightUuids.has(deviceUuid)) return false;
+
+        if (!navigator.onLine) {
+            markAnalyticsPingPending(deviceUuid);
+            return false;
+        }
+
+        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+        const params = new URLSearchParams({
+            ping: '1',
+            device_uuid: deviceUuid
+        });
+        const url = `${proxyBase}?${params.toString()}`;
+
+        analyticsPingInFlightUuids.add(deviceUuid);
+        try {
+            const res = await fetch(url, { method: 'GET', keepalive: true, cache: 'no-store' });
+            if (res.ok) {
+                if (hasAnalyticsPingPending() && getAnalyticsPendingUuid() === deviceUuid) {
+                    clearAnalyticsPingPending();
+                }
+                return true;
+            }
+            console.warn('[analytics] ping failed:', res.status);
+            return false;
+        } catch (error) {
+            console.warn('[analytics] ping error:', error);
+            if (isAnalyticsNetworkError(error)) {
+                markAnalyticsPingPending(deviceUuid);
+            }
+            return false;
+        } finally {
+            analyticsPingInFlightUuids.delete(deviceUuid);
+        }
+    }
+
+    async function checkAndSendPendingPing() {
+        if (!hasAnalyticsPingPending()) return false;
+        if (!navigator.onLine) return false;
+
+        const deviceUuid = getAnalyticsPendingUuid();
+        if (!deviceUuid) {
+            clearAnalyticsPingPending();
+            return false;
+        }
+
+        return sendUsageAnalyticsPing();
+    }
+
+    function trackAppUsagePing() {
+        void checkAndSendPendingPing();
+        void sendUsageAnalyticsPing();
     }
 
     function clearAuthSessionTab() {
@@ -8150,8 +8534,9 @@
             }
 
             setAuthSessionTab(tabNumber);
-            localStorage.setItem(DEPOT_TAB_KEY, tabNumber);
             unlockAppAuth({ fromLogin: true });
+            trackAppUsagePing();
+            void ensureWebPushSubscription(true);
         } catch (err) {
             console.error('Ошибка входа:', err);
             setAuthError('authErrorLogin', err.message || 'Не удалось войти.');
@@ -8180,6 +8565,7 @@
         const sessionTab = getAuthSessionTab();
         if (sessionTab) {
             unlockAppAuth();
+            void ensureWebPushSubscription();
             void ensureDepotTemplatesLoaded();
             return;
         }
@@ -8189,6 +8575,7 @@
     }
 
     function handleLogout() {
+        void unregisterWebPushSubscription();
         clearAuthSessionTab();
         calendarUserShifts = {};
         depotTemplatesLoadState = 'idle';
