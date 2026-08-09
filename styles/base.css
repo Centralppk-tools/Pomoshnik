@@ -610,10 +610,24 @@ transform: translateX(20px);
     display: none;
 }
 
+/* Компактные часы на «Маршруте» остаются внутри того же glass-stack, без отрыва от вкладок */
+#screen-schedule .schedule-glass-stack--route-tab #scheduleHeader.schedule-glass-body {
+    display: block;
+}
+
+#screen-schedule .schedule-glass-stack--route-tab .schedule-route-card {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 #screen-schedule .schedule-glass-stack--route-tab .schedule-route-card-middle {
     min-height: 32px;
     padding-top: 6px;
     padding-bottom: 4px;
+}
+
+#screen-schedule .schedule-glass-stack--route-tab .schedule-route-clock-row {
+    position: relative;
+    min-height: 32px;
 }
 
 #screen-schedule .schedule-glass-stack--route-tab .schedule-route-card-footer {

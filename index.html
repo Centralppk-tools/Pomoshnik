@@ -5753,8 +5753,10 @@
             updateScheduleDateHint();
             updateScheduleEmptyState();
             requestAnimationFrame(applyScheduleTextFit);
+        } else {
+            updateScheduleLiveClockDisplay();
         }
-        syncScheduleGlassStack();
+        syncScheduleGlassStack(tabId);
         void checkAndSendPendingPing();
     }
 
@@ -5785,7 +5787,7 @@
                 updateScheduleEmptyState();
                 requestAnimationFrame(applyScheduleTextFit);
             }
-            syncScheduleGlassStack();
+            syncScheduleGlassStack(tabId);
             void checkAndSendPendingPing();
             return true;
         }
@@ -7382,11 +7384,20 @@
 
     function isSwipeBlockedTarget(target) {
         if (!(target instanceof Element)) return true;
+
+        // Стеклянные вкладки «Маршрут / Расписание» и карточка часов — зона свайпа.
+        // Кнопка обновления часов отсекается ниже через button.
+        if (target.closest('.schedule-glass-tabs')) return false;
+        if (target.closest('#scheduleHeader') && !target.closest('button, a, input, textarea, select')) {
+            return false;
+        }
+
         return Boolean(target.closest(
-            'input, textarea, select, button, a, label, ' +
+            'input, textarea, select, a, label, ' +
+            'button:not(.tab-btn), ' +
             '.route-combobox-list, .route-combobox-input, .profile-position-combobox, .profile-position-trigger, .profile-position-list, ' +
             '.shift-constructor-btn, .profile-logout-btn, ' +
-            '.user-auth-overlay, .bottom-tabbar, .tabs-nav, ' +
+            '.user-auth-overlay, .bottom-tabbar, ' +
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-list-scroll, ' +
             '#stationNoteSheet, .station-note-sheet, .station-note-input, ' +
             '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, .shift-card__note-input, .shift-card__note-send, .shift-card__note-copy, .shift-card__note-delete, ' +
@@ -7396,8 +7407,7 @@
             '.shift-warnings-form, .shift-warnings-section-combobox, .shift-warnings-section-trigger, .shift-warnings-section-list, .shift-warnings-input, .shift-warnings-dir-tabs, ' +
             '.shift-warnings-card, .shift-warnings-card-remove, ' +
             '.calendar-nav-btn, ' +
-            '#routeGrid, #routeSummary, .trains-dynamic, .shift-warnings-wrap, ' +
-            '#routeShiftCompact, .route-shift-compact, .route-shift-expanded, .route-train-chip-popover, ' +
+            '.route-train-chip-popover, ' +
             '.trains-chip-popover, .trains-chip-panel, ' +
             '.shift-confirm-overlay.is-open'
         ));
@@ -7413,25 +7423,6 @@
     const SWIPE_VERTICAL_CANCEL_RATIO = 1.05;
     const SWIPE_HORIZONTAL_LOCK_RATIO = 1.45;
     const SWIPE_EDGE_RESISTANCE = 0.32;
-    const SWIPE_SCREEN_EDGE_PX = 32;
-
-    function isNearHorizontalSwipeEdge(touch) {
-        const x = touch.clientX;
-        const edge = Math.min(SWIPE_SCREEN_EDGE_PX, Math.max(20, Math.round(window.innerWidth * 0.09)));
-        return x <= edge || x >= window.innerWidth - edge;
-    }
-
-    function isScheduleScrollContent(target) {
-        if (!(target instanceof Element)) return false;
-        return Boolean(target.closest(
-            '#tab-schedule, #scheduleResults, #stationsList, .timeline.schedule-results-wrap, #scheduleLoader'
-        ));
-    }
-
-    function shouldReserveEdgeSwipeForScroll(target, touch) {
-        if (!isScheduleScrollContent(target)) return false;
-        return !isNearHorizontalSwipeEdge(touch);
-    }
 
     function canConsumeVerticalScroll(dy) {
         if (Math.abs(dy) < 2) return false;
@@ -7750,6 +7741,7 @@
             if (dragSession.kind === 'tab' && dragSession.target?.tab) {
                 const previewTab = Math.abs(dx) > width * 0.18 ? dragSession.target.tab : dragSession.fromEl.id;
                 syncScheduleTabsNavActive(previewTab);
+                syncScheduleGlassStack(previewTab);
             }
             return;
         }
@@ -7826,6 +7818,7 @@
                 () => {
                     if (session.kind === 'tab') {
                         syncScheduleTabsNavActive(session.fromEl.id);
+                        syncScheduleGlassStack(session.fromEl.id);
                     }
                     teardownInteractiveSwipeStage(session, true);
                     screenTransitionLock = false;
@@ -7898,7 +7891,6 @@
         document.addEventListener('touchstart', (e) => {
             if (snapInProgress || e.touches.length !== 1 || isSwipeGloballyBlocked()) return;
             if (isSwipeBlockedTarget(e.target)) return;
-            if (shouldReserveEdgeSwipeForScroll(e.target, e.touches[0])) return;
 
             const pair = getCurrentSwipeFromPair();
             if (!pair?.fromEl || !pair.stage) return;
@@ -8024,7 +8016,12 @@
 
         document.addEventListener('click', (e) => {
             if (!suppressClickAfterSwipe) return;
-            if (e.target.closest('#screen-calendar .day')) {
+            if (
+                e.target.closest('#screen-calendar .day')
+                || e.target.closest('.schedule-glass-tabs .tab-btn')
+                || e.target.closest('#routeGrid .route-card.clickable')
+                || e.target.closest('#stationsList .station-node')
+            ) {
                 e.preventDefault();
                 e.stopPropagation();
             }
@@ -14819,21 +14816,30 @@
         syncProfileHoursValueFit();
     }
 
-    function syncScheduleGlassStack() {
+    function syncScheduleGlassStack(forcedTabId) {
         const stack = document.getElementById('scheduleGlassStack');
         const header = document.getElementById('scheduleHeader');
         if (!stack) return;
 
-        const activeTab = getActiveScheduleTab();
+        const activeTab = (forcedTabId === 'tab-route' || forcedTabId === 'tab-schedule')
+            ? forcedTabId
+            : getActiveScheduleTab();
         const hasContent = header && header.innerHTML.trim().length > 0;
         const showRouteCard = hasContent;
         const isRouteTab = activeTab === 'tab-route';
+        const clockEl = document.getElementById('scheduleLiveClock');
 
         stack.classList.toggle('has-route-card', showRouteCard);
         stack.classList.toggle('schedule-glass-stack--route-tab', showRouteCard && isRouteTab);
 
         if (header && hasContent) {
             header.style.display = showRouteCard ? 'block' : 'none';
+        }
+
+        // Часы живут в sticky glass-stack (вне #scheduleTabsStage) — не должны «отклеиваться»
+        // при смене вкладки; при наличии узла просто освежаем текст.
+        if (clockEl && scheduleLiveClockSynced && scheduleLiveClockTime) {
+            clockEl.textContent = formatLiveClockTime(scheduleLiveClockTime);
         }
 
         requestAnimationFrame(updateScheduleStickyOffset);
