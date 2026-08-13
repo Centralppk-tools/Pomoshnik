@@ -10,7 +10,7 @@ alwaysApply: true
 1. **Все изменения только в `app/`** — index.html, sw.js, styles/, data/, js/, assets/.
 2. **Папку `Release/` НЕ создавать, НЕ использовать, НЕ коммитить.** Не запускать `tools/build.mjs`, не копировать app в Release.
 3. **Перед деплоем на GitHub** — снимок в `Version/`:
-   - `npm run snapshot` → `Version/snapshots/index X.Y.Z.html` и `Version/snapshots/styles X.Y.Z/`
+   - `npm run snapshot` → `Version/snapshots/index X.Y.Z.html`, `styles X.Y.Z/`, `app-config X.Y.Z.js`, `wrangler X.Y.Z.toml`
    - обновить `Version/STABLE.txt` и `Version/Commit.txt`
 4. **На GitHub заливается содержимое `app/`** (корень сайта / подпапка PWA), не Release.
 5. Локальный dev: `npm run serve` → http://127.0.0.1:8765

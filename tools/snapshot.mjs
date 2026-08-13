@@ -27,3 +27,13 @@ cpSync(stylesSource, stylesTarget, { recursive: true });
 
 const styleFiles = readdirSync(stylesTarget).filter((name) => name.endsWith('.css'));
 console.log(`Снимок стилей: Version/snapshots/styles ${version}/ (${styleFiles.length} файлов)`);
+
+const configSource = join(root, 'app', 'js', 'app-config.js');
+const configTarget = join(snapshotsDir, `app-config ${version}.js`);
+copyFileSync(configSource, configTarget);
+console.log(`Снимок конфига: Version/snapshots/app-config ${version}.js`);
+
+const wranglerSource = join(root, 'wrangler.toml');
+const wranglerTarget = join(snapshotsDir, `wrangler ${version}.toml`);
+copyFileSync(wranglerSource, wranglerTarget);
+console.log(`Снимок Worker: Version/snapshots/wrangler ${version}.toml`);

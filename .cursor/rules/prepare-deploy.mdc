@@ -17,9 +17,9 @@ alwaysApply: false
 
 - Проверить `app/` (файлы, SW precache, убрать debug).
 - Bump `app/sw.js` → `da_vX_Y_Z`, обновить `app/data/release-notes.json`.
-- `npm run snapshot` — снимок в `Version/snapshots/`.
+- `npm run snapshot` — снимок в `Version/snapshots/` (index, styles, app-config, wrangler.toml).
 - Обновить `Version/STABLE.txt` и `Version/Commit.txt`.
-- Git: stage `app/`, `Version/`, при необходимости `google-script/`; commit.
+- Git: stage `app/`, `Version/` (включая 4 артефакта снимка), при необходимости `google-script/`, `worker.js`; commit.
 - Отчёт: версия, SW, путь снимка, hash коммита. Деплой = залить **`app/`** на GitHub.
 
 ## Не делать

@@ -1,20 +1,24 @@
-3.1.5 STABLE ★
+3.1.6 STABLE ★
 
-Дата: 2026-08-09
+Дата: 2026-08-13
 
 Статус: готово к выкладке на GitHub Pages и PWA.
 
-Service Worker: da_v3_1_5
+Service Worker: da_v3_1_6
 
 Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
-Worker: npx wrangler deploy (отдельно; уже на workers.dev)
+Worker: npx wrangler deploy (отдельно; при необходимости)
 
-Снимок HTML: Version/snapshots/index 3.1.5.html
+Снимок HTML: Version/snapshots/index 3.1.6.html
 
-Снимок стилей: Version/snapshots/styles 3.1.5/
+Снимок стилей: Version/snapshots/styles 3.1.6/
+
+Снимок конфига: Version/snapshots/app-config 3.1.6.js
+
+Снимок Worker: Version/snapshots/wrangler 3.1.6.toml
 
 Ключевые изменения:
 
-- Worker: отказ от KV.list() — индексы global_push_jobs / push_subs / stats_*
-- Свайпы вкладок «Маршрут» / «Расписание» (без лишних block-зон)
-- Часы в glass-stack синхронизируются при смене вкладки
+- Обновлена база часов смен (от 14.08)
+- Финально обновлены участки и предупреждения
+- Проведена Дифференция объектов инфраструктуры (Появилось разделение на станции и ост пункты)

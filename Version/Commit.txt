@@ -797,7 +797,6 @@ fix: табло вокзала грузится только для дат, гд
 - Снимок стилей: Version/snapshots/styles 3.1.3/
 
 3.1.4
-
 Основное:
 feat: Cloudflare Worker — прокси Яндекс API + общий KV-кэш расписаний (до 48 ч / D+2 MSK)
 feat: Web Push — настоящие push-уведомления смены через Worker + Cron
@@ -822,8 +821,6 @@ fix: анонимная аналитика — только device_uuid, таб�
 - Анонимные метрики DAU (/stats на Worker, ping по device_uuid)
 
 3.1.5
-- Доработка воркера и лимитов
-
 Основное:
 fix: Cloudflare Worker — убран KV.list() (лимит Free 1000/день); индексы get/put
 fix: push — global_push_jobs + push_subs:{uuid}; stats — stats_total_users / stats_daily_users
@@ -842,3 +839,26 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 
 Не для приложения (release-notes / UI):
 - Внутренняя схема ключей KV (global_push_jobs, stats_*)
+
+3.1.6
+Основное:
+- Обновлена база часов смен (от 14.08)
+- Финально обновлены участки и предупреждения
+- Проведена Дифференция объектов инфраструктуры (Появилось разделение на станции и ост пункты)
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app/data/shift-templates.json — часы смен от 14.08 (ПТ и связанные нормативы).
+- app/data/line-sections.json v4 + app/spr.json — участки МЯЭД, station_kinds / kind (station|halt).
+- Лента остановок: station-node--station / --halt; точка на timeline у станций; sticky #scheduleGlassStack.
+- tools/sync-line-sections.py, tools/_import_station_kinds.py — синхронизация справочника.
+- Service Worker: da_v3_1_6.
+- Деплой: залить app/ на GitHub.
+- Снимок HTML: Version/snapshots/index 3.1.6.html
+- Снимок стилей: Version/snapshots/styles 3.1.6/
+- Снимок конфига: Version/snapshots/app-config 3.1.6.js
+- Снимок Worker: Version/snapshots/wrangler 3.1.6.toml
+
+Не для приложения (release-notes / UI):
+- Внутренние CSS-детали timeline / glass-stack sticky

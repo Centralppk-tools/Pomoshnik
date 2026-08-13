@@ -292,6 +292,7 @@
   "stations_path": [
     {
       "station": "Москва (Ярославский вокзал)",
+      "kind": "station",
       "km": 1,
       "piket": 1,
       "sections": [
@@ -303,6 +304,7 @@
     },
     {
       "station": "Москва-3",
+      "kind": "halt",
       "km": 4,
       "piket": 2,
       "sections": [
@@ -314,6 +316,7 @@
     },
     {
       "station": "Маленковская",
+      "kind": "halt",
       "km": 5,
       "piket": 8,
       "sections": [
@@ -325,6 +328,7 @@
     },
     {
       "station": "Яуза",
+      "kind": "halt",
       "km": 7,
       "piket": 5,
       "sections": [
@@ -336,17 +340,19 @@
     },
     {
       "station": "Ростокино (Ярославское направление)",
+      "kind": "halt",
+      "km": 8,
+      "piket": 5,
       "sections": [
         "yaroslavskoe",
         "krasnoarmeysk",
         "fryazino",
         "fryazevo"
-      ],
-      "km": 8,
-      "piket": 5
+      ]
     },
     {
       "station": "Лосиноостровская",
+      "kind": "station",
       "km": 11,
       "piket": 5,
       "sections": [
@@ -358,6 +364,7 @@
     },
     {
       "station": "Лось",
+      "kind": "halt",
       "km": 13,
       "piket": 10,
       "sections": [
@@ -369,6 +376,7 @@
     },
     {
       "station": "Перловская",
+      "kind": "halt",
       "km": 15,
       "piket": 3,
       "sections": [
@@ -380,6 +388,7 @@
     },
     {
       "station": "Тайнинская",
+      "kind": "halt",
       "km": 16,
       "piket": 8,
       "sections": [
@@ -391,6 +400,7 @@
     },
     {
       "station": "Мытищи",
+      "kind": "station",
       "km": 18,
       "piket": 10,
       "sections": [
@@ -402,6 +412,7 @@
     },
     {
       "station": "Строитель",
+      "kind": "halt",
       "km": 21,
       "piket": 5,
       "sections": [
@@ -411,6 +422,7 @@
     },
     {
       "station": "Челюскинская",
+      "kind": "halt",
       "km": 23,
       "piket": 5,
       "sections": [
@@ -420,6 +432,7 @@
     },
     {
       "station": "Тарасовская",
+      "kind": "halt",
       "km": 25,
       "piket": 1,
       "sections": [
@@ -429,6 +442,7 @@
     },
     {
       "station": "Клязьма",
+      "kind": "halt",
       "km": 27,
       "piket": 1,
       "sections": [
@@ -438,6 +452,7 @@
     },
     {
       "station": "Мамонтовская",
+      "kind": "halt",
       "km": 28,
       "piket": 9,
       "sections": [
@@ -447,6 +462,7 @@
     },
     {
       "station": "Пушкино",
+      "kind": "station",
       "km": 31,
       "piket": 1,
       "sections": [
@@ -456,6 +472,7 @@
     },
     {
       "station": "Заветы Ильича",
+      "kind": "halt",
       "km": 34,
       "piket": 3,
       "sections": [
@@ -465,6 +482,7 @@
     },
     {
       "station": "Правда",
+      "kind": "halt",
       "km": 37,
       "piket": 2,
       "sections": [
@@ -474,6 +492,7 @@
     },
     {
       "station": "Зеленоградская",
+      "kind": "halt",
       "km": 41,
       "piket": 1,
       "sections": [
@@ -483,15 +502,17 @@
     },
     {
       "station": "Нагорное (43 км)",
+      "kind": "halt",
+      "km": 43,
+      "piket": 8,
       "sections": [
         "yaroslavskoe",
         "krasnoarmeysk"
-      ],
-      "km": 43,
-      "piket": 8
+      ]
     },
     {
       "station": "Софрино",
+      "kind": "station",
       "km": 46,
       "piket": 1,
       "sections": [
@@ -501,6 +522,7 @@
     },
     {
       "station": "Ашукинская",
+      "kind": "halt",
       "km": 48,
       "piket": 10,
       "sections": [
@@ -509,6 +531,7 @@
     },
     {
       "station": "Калистово",
+      "kind": "halt",
       "km": 52,
       "piket": 5,
       "sections": [
@@ -517,6 +540,7 @@
     },
     {
       "station": "Радонеж",
+      "kind": "halt",
       "km": 55,
       "piket": 2,
       "sections": [
@@ -525,6 +549,7 @@
     },
     {
       "station": "Абрамцево",
+      "kind": "halt",
       "km": 57,
       "piket": 0,
       "sections": [
@@ -533,6 +558,7 @@
     },
     {
       "station": "Хотьково",
+      "kind": "station",
       "km": 60,
       "piket": 5,
       "sections": [
@@ -541,6 +567,7 @@
     },
     {
       "station": "Семхоз",
+      "kind": "halt",
       "km": 66,
       "piket": 7,
       "sections": [
@@ -549,6 +576,7 @@
     },
     {
       "station": "Сергиев Посад",
+      "kind": "station",
       "km": 71,
       "piket": 2,
       "sections": [
@@ -557,14 +585,16 @@
     },
     {
       "station": "Топорково (76 км)",
+      "kind": "halt",
+      "km": 75,
+      "piket": 6,
       "sections": [
         "yaroslavskoe"
-      ],
-      "km": 75,
-      "piket": 6
+      ]
     },
     {
       "station": "81 км",
+      "kind": "halt",
       "km": 80,
       "piket": 7,
       "sections": [
@@ -573,6 +603,7 @@
     },
     {
       "station": "83 км",
+      "kind": "halt",
       "km": 82,
       "piket": 0,
       "sections": [
@@ -581,6 +612,7 @@
     },
     {
       "station": "Бужаниново",
+      "kind": "station",
       "km": 84,
       "piket": 8,
       "sections": [
@@ -589,14 +621,16 @@
     },
     {
       "station": "Шубино (90 км)",
+      "kind": "halt",
+      "km": 89,
+      "piket": 4,
       "sections": [
         "yaroslavskoe"
-      ],
-      "km": 89,
-      "piket": 4
+      ]
     },
     {
       "station": "Арсаки",
+      "kind": "station",
       "km": 96,
       "piket": 0,
       "sections": [
@@ -605,6 +639,7 @@
     },
     {
       "station": "Струнино",
+      "kind": "station",
       "km": 104,
       "piket": 8,
       "sections": [
@@ -613,38 +648,44 @@
     },
     {
       "station": "Александров-1",
+      "kind": "station",
+      "km": 111,
+      "piket": 4,
       "sections": [
         "yaroslavskoe"
-      ],
-      "km": 111,
-      "piket": 4
+      ]
     },
     {
       "station": "Посёлок Дальний",
+      "kind": "halt",
       "sections": [
         "krasnoarmeysk"
       ]
     },
     {
       "station": "Рахманово",
+      "kind": "halt",
       "sections": [
         "krasnoarmeysk"
       ]
     },
     {
       "station": "Фёдоровское",
+      "kind": "halt",
       "sections": [
         "krasnoarmeysk"
       ]
     },
     {
       "station": "Путилово",
+      "kind": "halt",
       "sections": [
         "krasnoarmeysk"
       ]
     },
     {
       "station": "Красноармейск",
+      "kind": "station",
       "km": 10,
       "piket": 4,
       "sections": [
@@ -653,6 +694,7 @@
     },
     {
       "station": "Подлипки-Дачные",
+      "kind": "station",
       "km": 22,
       "piket": 7,
       "sections": [
@@ -662,6 +704,7 @@
     },
     {
       "station": "Болшево",
+      "kind": "station",
       "km": 25,
       "piket": 10,
       "sections": [
@@ -671,22 +714,25 @@
     },
     {
       "station": "Фабрика 1 Мая",
+      "kind": "halt",
+      "km": 27,
+      "piket": 7,
       "sections": [
         "fryazino"
-      ],
-      "km": 27,
-      "piket": 7
+      ]
     },
     {
       "station": "Зелёный Бор",
+      "kind": "station",
+      "km": 31,
+      "piket": 1,
       "sections": [
         "fryazino"
-      ],
-      "km": 31,
-      "piket": 1
+      ]
     },
     {
       "station": "Ивантеевка-2",
+      "kind": "halt",
       "km": 32,
       "piket": 9,
       "sections": [
@@ -695,6 +741,7 @@
     },
     {
       "station": "Ивантеевка",
+      "kind": "station",
       "km": 34,
       "piket": 9,
       "sections": [
@@ -703,6 +750,7 @@
     },
     {
       "station": "Детская",
+      "kind": "halt",
       "km": 36,
       "piket": 5,
       "sections": [
@@ -711,22 +759,25 @@
     },
     {
       "station": "Фрязино-Тов.",
+      "kind": "station",
+      "km": 40,
+      "piket": 8,
       "sections": [
         "fryazino"
-      ],
-      "km": 40,
-      "piket": 8
+      ]
     },
     {
       "station": "Фрязино-Пасс.",
+      "kind": "station",
+      "km": 41,
+      "piket": 7,
       "sections": [
         "fryazino"
-      ],
-      "km": 41,
-      "piket": 7
+      ]
     },
     {
       "station": "Валентиновка",
+      "kind": "halt",
       "km": 27,
       "piket": 4,
       "sections": [
@@ -735,6 +786,7 @@
     },
     {
       "station": "Загорянская",
+      "kind": "halt",
       "km": 28,
       "piket": 10,
       "sections": [
@@ -743,6 +795,7 @@
     },
     {
       "station": "Соколовская",
+      "kind": "station",
       "km": 30,
       "piket": 9,
       "sections": [
@@ -751,6 +804,7 @@
     },
     {
       "station": "Воронок",
+      "kind": "halt",
       "km": 32,
       "piket": 8,
       "sections": [
@@ -759,6 +813,7 @@
     },
     {
       "station": "Щёлково",
+      "kind": "station",
       "km": 35,
       "piket": 3,
       "sections": [
@@ -767,6 +822,7 @@
     },
     {
       "station": "Гагаринская",
+      "kind": "halt",
       "km": 37,
       "piket": 2,
       "sections": [
@@ -775,6 +831,7 @@
     },
     {
       "station": "Чкаловская",
+      "kind": "halt",
       "km": 39,
       "piket": 1,
       "sections": [
@@ -783,6 +840,7 @@
     },
     {
       "station": "Бахчиванджи",
+      "kind": "halt",
       "km": 41,
       "piket": 2,
       "sections": [
@@ -791,6 +849,7 @@
     },
     {
       "station": "Циолковская",
+      "kind": "halt",
       "km": 43,
       "piket": 1,
       "sections": [
@@ -799,6 +858,7 @@
     },
     {
       "station": "Осеевская",
+      "kind": "halt",
       "km": 45,
       "piket": 3,
       "sections": [
@@ -807,6 +867,7 @@
     },
     {
       "station": "Монино",
+      "kind": "station",
       "km": 49,
       "piket": 6,
       "sections": [
@@ -815,6 +876,7 @@
     },
     {
       "station": "Кашино",
+      "kind": "halt",
       "km": 54,
       "piket": 2,
       "sections": [
@@ -823,6 +885,7 @@
     },
     {
       "station": "Колонтаево",
+      "kind": "halt",
       "km": 58,
       "piket": 10,
       "sections": [
@@ -831,14 +894,16 @@
     },
     {
       "station": "Лесная (64 км)",
+      "kind": "halt",
+      "km": 65,
+      "piket": 4,
       "sections": [
         "fryazevo"
-      ],
-      "km": 65,
-      "piket": 4
+      ]
     },
     {
       "station": "Фрязево",
+      "kind": "station",
       "km": 73,
       "piket": 4,
       "sections": [
@@ -1150,9 +1215,9 @@
     }
   },
   "line_sections": {
-    "version": 3,
-    "updatedAt": "2026-08-07",
-    "description": "Участки Ярославского направления ЦППК — нитки + общие сегменты для предупреждений ДУ-61",
+    "version": 4,
+    "updatedAt": "2026-08-13",
+    "description": "Участки Ярославского направления ЦППК — нитки + общие сегменты для предупреждений ДУ-61 (по таблице Участки работы МЯЭД)",
     "origin": {
       "title": "Москва (Ярославский вокзал)",
       "yandexCode": "s2000002"
@@ -1490,6 +1555,73 @@
         "kmMin": 26.0,
         "kmMax": 74.0
       }
-    ]
+    ],
+    "station_kinds": {
+      "81 км": "halt",
+      "83 км": "halt",
+      "Абрамцево": "halt",
+      "Александров-1": "station",
+      "Арсаки": "station",
+      "Ашукинская": "halt",
+      "Бахчиванджи": "halt",
+      "Болшево": "station",
+      "Бужаниново": "station",
+      "Валентиновка": "halt",
+      "Воронок": "halt",
+      "Гагаринская": "halt",
+      "Детская": "halt",
+      "Заветы Ильича": "halt",
+      "Загорянская": "halt",
+      "Зеленоградская": "halt",
+      "Зелёный Бор": "station",
+      "Ивантеевка": "station",
+      "Ивантеевка-2": "halt",
+      "Калистово": "halt",
+      "Кашино": "halt",
+      "Клязьма": "halt",
+      "Колонтаево": "halt",
+      "Красноармейск": "station",
+      "Лесная (64 км)": "halt",
+      "Лосиноостровская": "station",
+      "Лось": "halt",
+      "Маленковская": "halt",
+      "Мамонтовская": "halt",
+      "Монино": "station",
+      "Москва (Ярославский вокзал)": "station",
+      "Москва-3": "halt",
+      "Мытищи": "station",
+      "Нагорное (43 км)": "halt",
+      "Осеевская": "halt",
+      "Перловская": "halt",
+      "Подлипки-Дачные": "station",
+      "Посёлок Дальний": "halt",
+      "Правда": "halt",
+      "Путилово": "halt",
+      "Пушкино": "station",
+      "Радонеж": "halt",
+      "Рахманово": "halt",
+      "Ростокино (Ярославское направление)": "halt",
+      "Семхоз": "halt",
+      "Сергиев Посад": "station",
+      "Соколовская": "station",
+      "Софрино": "station",
+      "Строитель": "halt",
+      "Струнино": "station",
+      "Тайнинская": "halt",
+      "Тарасовская": "halt",
+      "Топорково (76 км)": "halt",
+      "Фабрика 1 Мая": "halt",
+      "Фрязево": "station",
+      "Фрязино-Пасс.": "station",
+      "Фрязино-Тов.": "station",
+      "Фёдоровское": "halt",
+      "Хотьково": "station",
+      "Циолковская": "halt",
+      "Челюскинская": "halt",
+      "Чкаловская": "halt",
+      "Шубино (90 км)": "halt",
+      "Щёлково": "station",
+      "Яуза": "halt"
+    }
   }
 }

@@ -46,8 +46,10 @@ npm run snapshot
 
 Создаёт:
 
-- `Version/snapshots/index X.Y.Z.html`
-- `Version/snapshots/styles X.Y.Z/`
+- `Version/snapshots/index X.Y.Z.html` — UI + inline JS
+- `Version/snapshots/styles X.Y.Z/` — CSS
+- `Version/snapshots/app-config X.Y.Z.js` — фронт-конфиг (пара к index)
+- `Version/snapshots/wrangler X.Y.Z.toml` — Cloudflare Worker (KV, cron, vars)
 
 Версия берётся из `app/sw.js`.
 
@@ -78,8 +80,11 @@ Version/STABLE.txt
 Version/Commit.txt
 Version/snapshots/index X.Y.Z.html
 Version/snapshots/styles X.Y.Z/
+Version/snapshots/app-config X.Y.Z.js
+Version/snapshots/wrangler X.Y.Z.toml
 google-script/     — если менялся
 package.json       — если менялся
+worker.js / wrangler.toml — если менялись
 ```
 
 **Не stage:** `Release/`, `Ins_pan/`, лишние PNG, `secrets.local.json`.
