@@ -523,13 +523,17 @@ transform: translateX(20px);
     z-index: auto;
 }
 
+#screen-schedule .screen-card--schedule {
+    overflow: visible;
+}
+
 #screen-schedule .screen-card--schedule .schedule-glass-stack {
     width: 100%;
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
     position: sticky;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     z-index: 50;
 }
 
@@ -550,7 +554,7 @@ transform: translateX(20px);
     max-width: 100%;
     margin: 0 auto 14px;
     position: sticky;
-    top: 8px;
+    top: env(safe-area-inset-top, 0px);
     z-index: 40;
     border: var(--card-border);
     border-radius: var(--card-radius);

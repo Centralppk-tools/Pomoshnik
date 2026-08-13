@@ -117,13 +117,13 @@
         width: 100%;
         max-width: none;
         margin: 0;
-        top: 8px;
+        top: env(safe-area-inset-top, 0px);
         border-radius: var(--card-radius);
     }
 
     #screen-schedule .screen-card--schedule .schedule-glass-stack {
         width: 100%;
-        top: 0;
+        top: env(safe-area-inset-top, 0px);
     }
 
     .route-grid,
@@ -565,7 +565,7 @@
     }
 
     #screen-schedule .screen-card--schedule .schedule-glass-stack {
-        top: 0;
+        top: env(safe-area-inset-top, 0px);
     }
 
     #tab-schedule {

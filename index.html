@@ -274,18 +274,15 @@
                     <span class="shift-warnings-label">Участок</span>
                     <div class="shift-warnings-section-combobox route-combobox" id="shiftWarningsSectionCombobox">
                         <div class="route-combobox-field">
-                            <button type="button" id="shiftWarningsSectionTrigger" class="shift-warnings-section-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="shiftWarningsSectionList">Москва — Мытищи</button>
+                            <button type="button" id="shiftWarningsSectionTrigger" class="shift-warnings-section-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="shiftWarningsSectionList">Участок 1: Александров 1</button>
                         </div>
                         <ul id="shiftWarningsSectionList" class="route-combobox-list shift-warnings-section-list" role="listbox" hidden>
-                            <li class="route-combobox-option is-selected" role="option" data-value="msk_mytishchi">Москва — Мытищи</li>
-                            <li class="route-combobox-option" role="option" data-value="mytishchi_sofrino">Мытищи — Софрино</li>
-                            <li class="route-combobox-option" role="option" data-value="sofrino_alexandrov">Софрино — Александров</li>
-                            <li class="route-combobox-option" role="option" data-value="sofrino_krasnoarmeysk">Софрино — Красноармейск</li>
-                            <li class="route-combobox-option" role="option" data-value="mytishchi_bolshevo">Мытищи — Болшево</li>
-                            <li class="route-combobox-option" role="option" data-value="bolshevo_fryazino">Болшево — Фрязино</li>
-                            <li class="route-combobox-option" role="option" data-value="bolshevo_fryazevo">Болшево — Фрязево</li>
+                            <li class="route-combobox-option is-selected" role="option" data-value="yaroslavskoe">Участок 1: Александров 1</li>
+                            <li class="route-combobox-option" role="option" data-value="fryazevo">Участок 2: Фрязево</li>
+                            <li class="route-combobox-option" role="option" data-value="fryazino">Участок 3: Фрязино пассажирская</li>
+                            <li class="route-combobox-option" role="option" data-value="krasnoarmeysk">Участок 4: Красноармейск</li>
                         </ul>
-                        <input type="hidden" id="shiftWarningsSection" value="msk_mytishchi">
+                        <input type="hidden" id="shiftWarningsSection" value="yaroslavskoe">
                     </div>
                 </div>
 
@@ -4139,12 +4136,25 @@
     ];
 
     const SHIFT_WARNINGS_MAX = 10;
-    const LEGACY_ROUTE_SECTION_IDS = new Set([
-        'yaroslavskoe',
-        'krasnoarmeysk',
-        'fryazino',
-        'fryazevo'
-    ]);
+    /** Порядок как в таблице «Участки работы МЯЭД» */
+    const WARNING_ROUTE_SECTION_ORDER = ['yaroslavskoe', 'fryazevo', 'fryazino', 'krasnoarmeysk'];
+    const WARNING_ROUTE_SECTION_LABELS = {
+        yaroslavskoe: 'Участок 1: Александров 1',
+        fryazevo: 'Участок 2: Фрязево',
+        fryazino: 'Участок 3: Фрязино пассажирская',
+        krasnoarmeysk: 'Участок 4: Красноармейск'
+    };
+    const LEGACY_ROUTE_SECTION_IDS = new Set(WARNING_ROUTE_SECTION_ORDER);
+    /** Старые shared_segments → 4 участка (для миграции сохранённых предупреждений) */
+    const SHARED_TO_ROUTE_SECTION = {
+        msk_mytishchi: 'yaroslavskoe',
+        mytishchi_sofrino: 'yaroslavskoe',
+        sofrino_alexandrov: 'yaroslavskoe',
+        sofrino_krasnoarmeysk: 'krasnoarmeysk',
+        mytishchi_bolshevo: 'fryazevo',
+        bolshevo_fryazino: 'fryazino',
+        bolshevo_fryazevo: 'fryazevo'
+    };
     const SHARED_SEGMENTS_FALLBACK = [
         { id: 'msk_mytishchi', label: 'Москва — Мытищи', shortLabel: 'МЯ — Мытищи', tone: 'green', kmMin: 0, kmMax: 19, stations: [] },
         { id: 'mytishchi_sofrino', label: 'Мытищи — Софрино', shortLabel: 'Мытищи — Софрино', tone: 'green', kmMin: 19, kmMax: 46.1, stations: [] },
@@ -4154,12 +4164,6 @@
         { id: 'bolshevo_fryazino', label: 'Болшево — Фрязино', shortLabel: 'Болшево — Фрязино', tone: 'yellow', kmMin: 26, kmMax: 42, stations: [] },
         { id: 'bolshevo_fryazevo', label: 'Болшево — Фрязево', shortLabel: 'Болшево — Фрязево', tone: 'blue', kmMin: 26, kmMax: 74, stations: [] }
     ];
-    const LEGACY_SECTION_DEFAULT_SEGMENT = {
-        yaroslavskoe: 'sofrino_alexandrov',
-        krasnoarmeysk: 'sofrino_krasnoarmeysk',
-        fryazino: 'bolshevo_fryazino',
-        fryazevo: 'bolshevo_fryazevo'
-    };
 
     function getSharedSegments() {
         const fromSpr = sprDataCache?.line_sections?.shared_segments;
@@ -4171,9 +4175,34 @@
         return Object.fromEntries(getSharedSegments().map(seg => [seg.id, seg]));
     }
 
+    function getWarningRouteSections() {
+        const fromSpr = sprDataCache?.line_sections?.sections;
+        const byId = Object.fromEntries(
+            (Array.isArray(fromSpr) ? fromSpr : []).map(section => [section.id, section])
+        );
+        return WARNING_ROUTE_SECTION_ORDER.map(id => {
+            const src = byId[id] || {};
+            const label = WARNING_ROUTE_SECTION_LABELS[id] || src.name || id;
+            return {
+                id,
+                label,
+                shortLabel: label,
+                stations: Array.isArray(src.from_moscow) ? src.from_moscow : [],
+                tone: 'green'
+            };
+        });
+    }
+
+    function getWarningRouteSectionMap() {
+        return Object.fromEntries(getWarningRouteSections().map(section => [section.id, section]));
+    }
+
     function getShiftWarningSectionMeta(sectionId) {
-        const map = getSharedSegmentMap();
-        return map[sectionId] || getSharedSegments()[0] || SHARED_SEGMENTS_FALLBACK[0];
+        const map = getWarningRouteSectionMap();
+        const resolved = map[sectionId]
+            ? sectionId
+            : (SHARED_TO_ROUTE_SECTION[sectionId] || WARNING_ROUTE_SECTION_ORDER[0]);
+        return map[resolved] || getWarningRouteSections()[0];
     }
 
     function resolveSharedSegmentId(rawSection, km, pk) {
@@ -4215,8 +4244,19 @@
             }
         }
 
-        if (LEGACY_SECTION_DEFAULT_SEGMENT[raw]) return LEGACY_SECTION_DEFAULT_SEGMENT[raw];
         return getSharedSegments()[0]?.id || 'msk_mytishchi';
+    }
+
+    function resolveWarningSectionId(rawSection, km, pk) {
+        const raw = String(rawSection || '').trim();
+        const routeMap = getWarningRouteSectionMap();
+        if (routeMap[raw]) return raw;
+        if (SHARED_TO_ROUTE_SECTION[raw]) return SHARED_TO_ROUTE_SECTION[raw];
+
+        const sharedId = resolveSharedSegmentId(raw, km, pk);
+        if (SHARED_TO_ROUTE_SECTION[sharedId]) return SHARED_TO_ROUTE_SECTION[sharedId];
+        if (routeMap[sharedId]) return sharedId;
+        return WARNING_ROUTE_SECTION_ORDER[0];
     }
 
     function trainPassesSharedSegment(stops, segment) {
@@ -4256,7 +4296,7 @@
         const speed = sanitizeShiftWarningFieldValue('speed', entry.speed ?? '');
         if (!speed) return null;
 
-        const sectionId = resolveSharedSegmentId(
+        const sectionId = resolveWarningSectionId(
             entry.segment || entry.section,
             km,
             pk
@@ -4284,7 +4324,7 @@
             if (!row || typeof row !== 'object') return;
             const normalized = normalizeShiftWarningEntry({
                 id: createShiftWarningId(),
-                section: 'msk_mytishchi',
+                section: WARNING_ROUTE_SECTION_ORDER[0],
                 dir: row.dir,
                 km: row.km,
                 pk: row.pk,
@@ -4354,12 +4394,24 @@
     }
 
     function getShiftWarningsSectionValue() {
-        return document.getElementById('shiftWarningsSection')?.value || 'msk_mytishchi';
+        return document.getElementById('shiftWarningsSection')?.value || WARNING_ROUTE_SECTION_ORDER[0];
+    }
+
+    function populateShiftWarningsSectionList() {
+        const list = document.getElementById('shiftWarningsSectionList');
+        if (!list) return;
+        const sections = getWarningRouteSections();
+        list.innerHTML = sections.map((section, index) => (
+            `<li class="route-combobox-option${index === 0 ? ' is-selected' : ''}" role="option" data-value="${section.id}" aria-selected="${index === 0 ? 'true' : 'false'}">${section.label}</li>`
+        )).join('');
     }
 
     function syncShiftWarningsSectionUi(sectionId) {
-        const map = getSharedSegmentMap();
-        const value = map[sectionId] ? sectionId : (getSharedSegments()[0]?.id || 'msk_mytishchi');
+        const map = getWarningRouteSectionMap();
+        const resolved = map[sectionId]
+            ? sectionId
+            : (SHARED_TO_ROUTE_SECTION[sectionId] || WARNING_ROUTE_SECTION_ORDER[0]);
+        const value = map[resolved] ? resolved : WARNING_ROUTE_SECTION_ORDER[0];
         const meta = getShiftWarningSectionMeta(value);
         const hidden = document.getElementById('shiftWarningsSection');
         const trigger = document.getElementById('shiftWarningsSectionTrigger');
@@ -4407,6 +4459,7 @@
         const list = document.getElementById('shiftWarningsSectionList');
         if (!combobox || !trigger || !list) return;
 
+        populateShiftWarningsSectionList();
         syncShiftWarningsSectionUi(getShiftWarningsSectionValue());
 
         if (shiftWarningsSectionListenersBound) return;
@@ -4607,7 +4660,7 @@
         updateShiftWarningsHint(saved.length);
         renderShiftWarningsList();
         resetShiftWarningsFormInputs();
-        syncShiftWarningsSectionUi('msk_mytishchi');
+        syncShiftWarningsSectionUi(WARNING_ROUTE_SECTION_ORDER[0]);
         setShiftWarningsFormDir('out');
 
         if (!isEditing) {
@@ -4624,7 +4677,7 @@
         if (shiftWarningsEditingId === warningId) {
             clearShiftWarningsEditMode();
             resetShiftWarningsFormInputs();
-            syncShiftWarningsSectionUi('msk_mytishchi');
+            syncShiftWarningsSectionUi(WARNING_ROUTE_SECTION_ORDER[0]);
             setShiftWarningsFormDir('out');
         }
         const saved = saveShiftWarnings(loadShiftWarnings().filter(item => item.id !== warningId));
@@ -4641,10 +4694,11 @@
         const overlay = document.getElementById('shiftWarningsModal');
         if (!overlay) return;
 
+        populateShiftWarningsSectionList();
         renderShiftWarningsList();
         resetShiftWarningsFormInputs();
         setShiftWarningsFormDir('out');
-        syncShiftWarningsSectionUi('msk_mytishchi');
+        syncShiftWarningsSectionUi(WARNING_ROUTE_SECTION_ORDER[0]);
         clearShiftWarningsEditMode();
         closeShiftWarningsSectionCombobox();
         overlay.classList.add('is-open');
@@ -4664,7 +4718,7 @@
         saveShiftWarnings([]);
         clearShiftWarningsEditMode();
         resetShiftWarningsFormInputs();
-        syncShiftWarningsSectionUi('msk_mytishchi');
+        syncShiftWarningsSectionUi(WARNING_ROUTE_SECTION_ORDER[0]);
         setShiftWarningsFormDir('out');
         renderShiftWarningsList();
     }
@@ -5027,6 +5081,14 @@
         return sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === matchedKey) || null;
     }
 
+    /** @returns {'station'|'halt'} */
+    function resolveStationInfraKind(stationTitle, { forceStation = false } = {}) {
+        if (forceStation) return 'station';
+        const match = findStationPathMatch(stationTitle);
+        if (match?.kind === 'station' || match?.kind === 'halt') return match.kind;
+        return 'halt';
+    }
+
     function findStationBrakes(stationTitle, preferredDirection) {
         if (!sprDataCache?.brakes) return [];
 
@@ -5313,13 +5375,13 @@
     function buildWarningsByStationIndex(stops, trainDir) {
         const stopChainages = stops.map(stop => stationChainage(stop.station?.title || ''));
         const warningsByStation = {};
-        const segmentMap = getSharedSegmentMap();
+        const sectionMap = getWarningRouteSectionMap();
 
         loadShiftWarnings()
             .filter(warn => {
                 if (!String(warn.speed || '').trim() || warn.dir !== trainDir) return false;
-                const segment = segmentMap[warn.section] || getShiftWarningSectionMeta(warn.section);
-                return trainPassesSharedSegment(stops, segment);
+                const section = sectionMap[warn.section] || getShiftWarningSectionMeta(warn.section);
+                return trainPassesSharedSegment(stops, section);
             })
             .forEach(warn => {
                 const warnKmFloat = warningKmToFloat(warn);
@@ -6301,10 +6363,13 @@
 
                 const selectedClass = isStationSelected(index) ? ' is-selected' : '';
                 const noteHtml = renderStationNoteBadgeHtml(index);
+                const infraKind = resolveStationInfraKind(stationTitleRaw);
+                const kindClass = ` station${D}node--${infraKind}`;
 
                 return `
-                    <div class="station${D}node pass-through${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}">
+                    <div class="station${D}node pass-through${kindClass}${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
                         <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
+                        <span class="station${D}mark" aria-hidden="true"></span>
                         <div class="station${D}card${stationWarningTexts.length ? ' has-brakes' : ''}">
                             <div class="card${D}row${D}top">
                                 <span class="station${D}name">${stationTitle}</span>
@@ -6399,10 +6464,13 @@
 
             const selectedClass = isStationSelected(index) ? ' is-selected' : '';
             const noteHtml = renderStationNoteBadgeHtml(index);
+            const infraKind = resolveStationInfraKind(stationTitleRaw, { forceStation: isTerminal });
+            const kindClass = ` station${D}node--${infraKind}`;
 
             return `
-                <div class="station${D}node${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}">
+                <div class="station${D}node${kindClass}${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
                     <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
+                    <span class="station${D}mark" aria-hidden="true"></span>
                     <div class="station${D}card${hasBrakes ? ' has-brakes' : ''}">
                         <div class="card${D}row${D}top">
                             <span class="station${D}name">${stationTitle}</span>

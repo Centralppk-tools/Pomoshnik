@@ -4,8 +4,12 @@
     padding-left: 6px;
     overflow: visible;
     --km-marker-width: 44px;
-    --km-marker-gap: 10px;
-    --timeline-left: calc(6px + var(--km-marker-width) / 2);
+    /* Зазор: линия + точка только у станций (ОП без кружка) */
+    --km-marker-gap: 18px;
+    --timeline-mark-station: 10px;
+    --timeline-line-width: 2.5px;
+    /* Линия между км-квадратом и карточкой — сюда же точка station */
+    --timeline-left: calc(6px + var(--km-marker-width) + var(--km-marker-gap) / 2);
     --station-fill: #141b27;
     --station-stroke: rgba(255, 255, 255, 0.05);
     --station-brakes-fill: linear-gradient(135deg, #30291d, #171925);
@@ -24,8 +28,12 @@
     left: var(--timeline-left);
     top: 24px;
     bottom: 24px;
-    width: 2px;
-    background: rgba(255, 255, 255, 0.08);
+    width: var(--timeline-line-width);
+    margin-left: calc(var(--timeline-line-width) / -2);
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 2px;
+    z-index: 1;
+    pointer-events: none;
 }
 
 .station-node {
@@ -100,6 +108,11 @@
 
 .station-node.is-selected.pass-through .station-dot::after {
     color: #bfdbfe;
+}
+
+.station-node.is-selected.station-node--station .station-mark {
+    background: #dbeafe;
+    box-shadow: 0 0 0 3px var(--app-bg);
 }
 
 .station-note-badge {
@@ -308,7 +321,7 @@
 /* Название станции */
 .station-name {
     font-size: clamp(14px, 3.8vw, 16px);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--app-text-bright);
     white-space: nowrap;
     overflow: hidden;
@@ -316,6 +329,37 @@
     overflow-wrap: normal;
     flex: 1;
     min-width: 0;
+}
+
+/* Точка только у станций; у ОП линия идёт без кружка */
+.station-mark {
+    position: absolute;
+    left: calc(var(--km-marker-width) + var(--km-marker-gap) / 2);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 3;
+    display: none;
+}
+
+.station-node--station .station-mark {
+    display: block;
+    width: var(--timeline-mark-station);
+    height: var(--timeline-mark-station);
+    background: rgba(255, 255, 255, 0.92);
+    border: none;
+    box-shadow: 0 0 0 3px var(--app-bg);
+}
+
+.station-node.pass-through.station-node--station .station-mark {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.station-node.active.station-node--station .station-mark {
+    background: #ffffff;
+    box-shadow: 0 0 0 3px var(--app-bg), 0 0 0 5px rgba(23, 128, 56, 0.32);
 }
 
 /* Время остановки (вверху справа) */
@@ -438,12 +482,10 @@
 
 .station-node.pass-through .station-name {
     color: var(--app-muted-soft);
-    font-weight: 500;
 }
 
 .station-node.pass-through .time-badge {
     color: var(--app-muted-soft);
-    font-weight: 600;
 }
 
 .station-node.pass-through .station-dot {
@@ -463,12 +505,10 @@
 
 .station-node.pass-through.has-brakes .station-name {
     color: #8b97ab;
-    font-weight: 500;
 }
 
 .station-node.pass-through.has-brakes .time-badge {
     color: #8b97ab;
-    font-weight: 600;
 }
 
 .station-node.pass-through.has-brakes .station-dot {
@@ -566,8 +606,14 @@
 
     .timeline {
         --km-marker-width: 40px;
-        --km-marker-gap: 8px;
-        --timeline-left: calc(6px + var(--km-marker-width) / 2);
+        --km-marker-gap: 18px;
+        --timeline-mark-station: 11px;
+        --timeline-line-width: 2.5px;
+        --timeline-left: calc(6px + var(--km-marker-width) + var(--km-marker-gap) / 2);
+    }
+
+    .timeline-line {
+        background: rgba(255, 255, 255, 0.32);
     }
 }
 
@@ -579,7 +625,9 @@
     touch-action: pan-y;
 }
 
+/* Idle: не клипать по Y — иначе position:sticky у #scheduleGlassStack не работает при скролле body */
 .main-screens-stage:not(.is-transitioning):not(.is-dragging) {
+    overflow: visible;
     touch-action: pan-y;
 }
 
