@@ -10,7 +10,7 @@
 
 | Проверка | Действие |
 |----------|----------|
-| `app/index.html` | главный файл, без сломанной разметки |
+| `app/index.html` | главный файл; **обязательно** `APP_RELEASE_VERSION = 'X.Y.Z'` = текущий релиз; обновить `RELEASE_NOTES_FALLBACK` под пункты пользователя |
 | `app/sw.js` | версия кэша актуальна (§2) |
 | `app/manifest.json` | иконки на месте |
 | `app/js/app-config.js` | ключи API на месте |
@@ -34,7 +34,12 @@
 
 ## 3. Release notes
 
-Обновить `app/data/release-notes.json`: `"version"`, `"tags"`, `"highlights"`.
+Обновить **синхронно** (один номер версии X.Y.Z):
+
+1. `app/data/release-notes.json` — `"version"`, `"tags"`, `"highlights"` (формулировки пользователя).
+2. `app/index.html` — `APP_RELEASE_VERSION = 'X.Y.Z'` и `RELEASE_NOTES_FALLBACK` (те же пункты).
+
+Без пункта 2 оверлей «Что нового» и футер берут **старый** fallback и игнорируют свежий JSON.
 
 ---
 

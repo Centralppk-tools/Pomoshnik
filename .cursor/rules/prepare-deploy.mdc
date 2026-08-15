@@ -16,7 +16,8 @@ alwaysApply: false
 ## Обязательные шаги (кратко)
 
 - Проверить `app/` (файлы, SW precache, убрать debug).
-- Bump `app/sw.js` → `da_vX_Y_Z`, обновить `app/data/release-notes.json`.
+- Bump `app/sw.js` → `da_vX_Y_Z`.
+- Синхронно: `app/data/release-notes.json` **и** `app/index.html` → `APP_RELEASE_VERSION` + `RELEASE_NOTES_FALLBACK` (формулировки пользователя).
 - `npm run snapshot` — снимок в `Version/snapshots/` (index, styles, app-config, wrangler.toml).
 - Обновить `Version/STABLE.txt` и `Version/Commit.txt`.
 - Git: stage `app/`, `Version/` (включая 4 артефакта снимка), при необходимости `google-script/`, `worker.js`; commit.

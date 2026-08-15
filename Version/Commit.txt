@@ -863,7 +863,7 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 Не для приложения (release-notes / UI):
 - Внутренние CSS-детали timeline / glass-stack sticky
 
-3.1.7
+    3.1.7
 Основное:
 - Обновление часов смен от 15-16.08.
 
@@ -872,6 +872,7 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 Описание (что внутри):
 - app/data/shift-templates.json — норматив c 05_08: СБ (15.08) и ВС (16.08).
 - Часы смен/c 05_08/3_…_СБ.xlsx, 4_…_ВС.xlsx (+ _source_СБ/_source_ВС).
+- app/index.html — APP_RELEASE_VERSION 3.1.7 + RELEASE_NOTES_FALLBACK.
 - Service Worker: da_v3_1_7.
 - Деплой: залить app/ на GitHub.
 - Снимок HTML: Version/snapshots/index 3.1.7.html
