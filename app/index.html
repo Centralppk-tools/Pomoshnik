@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="styles/auth.css">
     <link rel="stylesheet" href="styles/community.css">
+    <link rel="stylesheet" href="styles/instructions.css">
 </head>
 <body class="auth-locked">
 
@@ -107,9 +108,15 @@
         </span>
         <span>Маршрут</span>
     </button>
-    <button type="button" class="bottom-tab-btn" data-screen="profile" onclick="switchMainScreenAnimated('profile')">
+    <button type="button" class="bottom-tab-btn" data-screen="instructions" onclick="switchMainScreenAnimated('instructions')">
         <span class="tab-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 11h8M8 15h5"/></svg>
+        </span>
+        <span>Инструкции</span>
+    </button>
+    <button type="button" class="bottom-tab-btn bottom-tab-btn--profile" data-screen="profile" onclick="switchMainScreenAnimated('profile')">
+        <span class="tab-icon tab-icon--avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.4"/><path d="M6.2 18.6c1.4-2.2 3.4-3.3 5.8-3.3s4.4 1.1 5.8 3.3"/></svg>
         </span>
         <span>Я</span>
     </button>
@@ -575,9 +582,111 @@
     </div>
 </div>
 
+<div id="screen-instructions" class="screen hidden">
+    <div class="phone-screen instructions-app-wrap">
+        <header class="app-screen-header">
+            <div class="app-header-bar">
+                <div class="app-header-bar-brand">
+                    <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+                </div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+            </div>
+            <div class="schedule-title-plate instructions-title-plate">
+                <h2 class="screen-section-title">Инструкции</h2>
+            </div>
+        </header>
+
+        <div class="screen-card screen-card--instructions">
+            <div class="instr-top-card" id="instrTopCard">
+                <div id="instrSearchBlock" class="instr-search">
+                    <label class="instr-search__field">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                        <input type="search" id="instrSearchInput" class="instr-search__input" placeholder="Поиск в тексте..." autocomplete="off">
+                    </label>
+                    <p class="instr-search__hint">Поиск по словам внутри оцифрованных PDF.</p>
+                </div>
+            </div>
+
+            <div id="instrPaneFiles" class="instr-pane active">
+                <div id="instrFsNav" class="instr-fs-nav" aria-label="Навигация">
+                    <button type="button" id="instrFsBack" class="instr-fs-back" hidden aria-label="На рабочий стол">← Назад</button>
+                    <span id="instrFsTitle" class="instr-fs-title">Рабочий стол</span>
+                </div>
+                <div id="instrBaseSection" class="instr-base-section" hidden>
+                    <div class="instr-section-label">Основная документация</div>
+                    <div id="instrBaseFolders" class="instr-folders" aria-label="Основная документация"></div>
+                </div>
+                <div id="instrFolders" class="instr-folders" aria-label="Папки"></div>
+                <div id="instrDocs" class="instr-docs" aria-label="Документы"></div>
+                <p id="instrStatus" class="instr-status" aria-live="polite"></p>
+                <div class="instr-fab-wrap">
+                    <div id="instrFabMenu" class="instr-fab-menu" hidden role="menu" aria-label="Действия">
+                        <button type="button" class="instr-fab-menu__item" data-fab-action="upload" role="menuitem">Загрузить PDF</button>
+                        <button type="button" class="instr-fab-menu__item" data-fab-action="folder" role="menuitem">Создать папку</button>
+                    </div>
+                    <button type="button" id="instrFab" class="instr-fab" aria-label="Добавить" aria-haspopup="menu" aria-expanded="false">
+                        <svg class="instr-fab__plus" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                    </button>
+                </div>
+                <input type="file" id="instrFileInput" accept="application/pdf,.pdf" multiple hidden>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<div id="instrNameDialog" class="instr-name-dialog" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="instrNameDialogTitle">
+    <div class="instr-name-dialog__backdrop" data-instr-name-cancel></div>
+    <div class="instr-name-dialog__card">
+        <h3 id="instrNameDialogTitle" class="instr-name-dialog__title">Новая папка</h3>
+        <input type="text" id="instrNameDialogInput" class="instr-name-dialog__input" maxlength="48" placeholder="Название папки" autocomplete="off">
+        <div class="instr-name-dialog__actions">
+            <button type="button" class="instr-name-dialog__btn" data-instr-name-cancel>Отмена</button>
+            <button type="button" class="instr-name-dialog__btn instr-name-dialog__btn--ok" id="instrNameDialogOk">Создать</button>
+        </div>
+    </div>
+</div>
+
+<ul id="instrItemMenu" class="instr-item-menu" hidden role="menu">
+    <li role="none"><button type="button" class="instr-item-menu__btn is-danger" data-instr-ctx="delete" role="menuitem">Удалить</button></li>
+</ul>
+
+<div id="instrPdfOverlay" class="instr-pdf-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Просмотр документа">
+    <div class="instr-pdf-top">
+        <div class="instr-pdf-toolbar">
+            <button type="button" id="instrPdfCloseBtn" class="instr-pdf-toolbar__btn">Закрыть</button>
+            <div id="instrPdfTitle" class="instr-pdf-toolbar__title">Документ</div>
+        </div>
+        <div class="instr-pdf-find" role="search">
+            <label class="instr-pdf-find__field">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="search" id="instrPdfFindInput" class="instr-pdf-find__input" placeholder="Поиск в документе…" autocomplete="off">
+            </label>
+            <button type="button" id="instrPdfFindPrev" class="instr-pdf-toolbar__btn instr-pdf-toolbar__btn--icon" aria-label="Предыдущее совпадение">↑</button>
+            <button type="button" id="instrPdfFindNext" class="instr-pdf-toolbar__btn instr-pdf-toolbar__btn--icon" aria-label="Следующее совпадение">↓</button>
+            <span id="instrPdfFindCount" class="instr-pdf-find__count" aria-live="polite">0 из 0</span>
+        </div>
+    </div>
+    <div id="instrPdfStage" class="instr-pdf-stage" tabindex="0"></div>
+    <div class="instr-pdf-bottom">
+        <div class="instr-pdf-nav">
+            <button type="button" id="instrPdfPrev" class="instr-pdf-toolbar__btn instr-pdf-toolbar__btn--icon" aria-label="Назад">‹</button>
+            <label class="instr-pdf-page-label">
+                Стр.
+                <input type="number" id="instrPdfPageInput" class="instr-pdf-page-input" min="1" value="1" inputmode="numeric">
+                из <span id="instrPdfPageTotal">1</span>
+            </label>
+            <button type="button" id="instrPdfNext" class="instr-pdf-toolbar__btn instr-pdf-toolbar__btn--icon" aria-label="Вперёд">›</button>
+        </div>
+        <input type="range" id="instrPdfPageScrubber" class="instr-pdf-scrubber" min="1" max="1" value="1" aria-label="Ползунок страниц">
+    </div>
 </div>
 
 <script src="js/app-config.js"></script>
+<script src="js/instructions.js"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
 
@@ -621,7 +730,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '3.1.7';
+    const APP_RELEASE_VERSION = '3.2.1';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1682,7 +1791,6 @@
         window.addEventListener('online', () => {
             syncOfflineModeUi();
             void checkAndSendPendingPing();
-            void syncScheduleAlertsToWorker();
         });
         window.addEventListener('offline', () => {
             syncOfflineModeUi();
@@ -2209,7 +2317,6 @@
             if (granted) void ensureWebPushSubscription();
         });
         checkSchedulePushNotifications();
-        void syncScheduleAlertsToWorker();
     }
 
     function resumeScheduleLiveClockIfNeeded() {
@@ -2914,7 +3021,6 @@
             const reg = await navigator.serviceWorker.ready.catch(() => null);
             const existing = reg ? await reg.pushManager.getSubscription().catch(() => null) : null;
             if (existing) {
-                void syncScheduleAlertsToWorker();
                 return true;
             }
         }
@@ -3670,7 +3776,72 @@
         });
     }
 
+    let lastBoardNotReadyMeta = null;
+
+    function createBoardNotReadyError(payload, fallback) {
+        const err = new Error(payload?.message || fallback || 'Расписание на эту дату ещё не готово');
+        err.code = payload?.code || 'BOARD_NOT_READY';
+        err.boardMessage = payload?.message || err.message;
+        err.boardMeta = payload || null;
+        if (payload && typeof payload === 'object') {
+            lastBoardNotReadyMeta = payload;
+        }
+        return err;
+    }
+
+    function collectBoardFailureMeta(failedBoards) {
+        const metas = (failedBoards || [])
+            .map(item => item?.error?.boardMeta)
+            .filter(item => item && typeof item === 'object');
+        const first = metas[0] || lastBoardNotReadyMeta || {};
+        return {
+            availableUntil: first.availableUntil || null,
+            retryAfterDate: first.retryAfterDate || null,
+            code: first.code || failedBoards?.[0]?.error?.code || null,
+        };
+    }
+
+    function buildBoardHorizonWarningHtml(meta) {
+        const until = formatShortDateLabel(meta?.availableUntil);
+        const when = formatShortDateLabel(meta?.retryAfterDate);
+        let body = 'Расписание на выбранное число ещё формируется.';
+        if (until && when) {
+            body = `График движения сформирован по ${escapeHtml(until)}.<br>Обновление на выбранное число запланировано на ${escapeHtml(when)}.`;
+        } else if (when) {
+            body = `Обновление на выбранное число запланировано на ${escapeHtml(when)}.`;
+        }
+        return `<div class="route-api-warning">${body}</div>`;
+    }
+
+    function buildBoardFormingHintHtml() {
+        return '<div class="route-forming-hint">Расписание формируется</div>';
+    }
+
+    async function fetchYaroslavlBoardFromWorker(date) {
+        if (!MY_CLOUDFLARE_PROXY) {
+            throw createBoardNotReadyError(null, 'Прокси табло не настроен');
+        }
+        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+        const params = new URLSearchParams({ board: '1', date });
+        const response = await fetchWithTimeout(`${proxyBase}?${params.toString()}`);
+        logWorkerCacheStatus(response, `board ${date}`);
+        let payload = null;
+        try {
+            payload = await response.json();
+        } catch {
+            throw createBoardNotReadyError(null, `Некорректный ответ табло (${response.status})`);
+        }
+        if (response.ok && Array.isArray(payload?.schedule) && payload.schedule.length) {
+            return payload.schedule;
+        }
+        throw createBoardNotReadyError(payload, `Табло ${date} недоступно`);
+    }
+
     async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION) {
+        if (stationCode === ANCHOR_STATION) {
+            return fetchYaroslavlBoardFromWorker(date);
+        }
+
         const all = [];
         const limit = 1000;
         let offset = 0;
@@ -5129,6 +5300,63 @@
         return list.find(b => normalizeStationKey(b.station) === matchedKey) || null;
     }
 
+    function findStationOpsEntry(stationTitle) {
+        const map = sprDataCache?.station_ops;
+        if (!map || typeof map !== 'object') return null;
+        const entries = Object.entries(map);
+        if (!entries.length) return null;
+
+        for (const key of stationSearchKeys(stationTitle)) {
+            const hit = entries.find(([name]) => normalizeStationKey(name) === key);
+            if (hit) return hit[1];
+        }
+
+        const asList = entries.map(([station]) => ({ station }));
+        const matchedKey = findBestMatchingStationKey(stationTitle, asList);
+        if (!matchedKey) return null;
+        const hit = entries.find(([name]) => normalizeStationKey(name) === matchedKey);
+        return hit ? hit[1] : null;
+    }
+
+    function getStopDwellMinutes(stop) {
+        if (!stop) return null;
+        const arr = parseTimeToMinutes(getTime(stop.arrival));
+        const dep = parseTimeToMinutes(getTime(stop.departure));
+        if (arr == null || dep == null) return null;
+        let dwell = dep - arr;
+        if (dwell < 0) dwell += 1440;
+        return dwell;
+    }
+
+    function collectStationOpsPlaques(stationTitle, direction, stop) {
+        const entry = findStationOpsEntry(stationTitle);
+        if (!entry) return { tags: [], notes: [] };
+        const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+        const tags = [];
+        const notes = [];
+
+        (entry.tags?.[dir] || []).forEach((t) => {
+            const s = String(t || '').trim();
+            if (s) tags.push(s);
+        });
+
+        const dwell = getStopDwellMinutes(stop);
+        (entry.ops || []).forEach((op) => {
+            if (op?.direction && op.direction !== dir) return;
+            const need = Number(op?.when?.dwellMinGte);
+            if (op?.type === 'TO' && Number.isFinite(need) && dwell != null && dwell >= need) {
+                tags.push(String(op.label || `ТО (≥${need} мин)`).trim());
+            }
+        });
+
+        const passage = String(entry.passage?.[dir] || '').trim();
+        if (passage) notes.push({ kind: 'passage', text: passage });
+        const hint = String(entry.hints?.[dir] || '').trim();
+        if (hint) notes.push({ kind: 'hint', text: hint });
+
+        return { tags, notes };
+    }
+
     function findBrakeMatch(stationTitle, direction) {
         const brakes = findStationBrakes(stationTitle, direction);
         if (brakes.length) return brakes[0];
@@ -5623,25 +5851,27 @@
         return searchTrainByNumber(trainNumber, addDaysToDateStr(baseDate, 1), options);
     }
 
-    const SCREEN_ORDER = { calendar: 0, schedule: 1, profile: 2 };
+    const SCREEN_ORDER = { calendar: 0, schedule: 1, instructions: 2, profile: 3 };
+    const MAIN_SCREENS = ['calendar', 'schedule', 'instructions', 'profile'];
     const TAB_ORDER = { 'tab-route': 0, 'tab-schedule': 1 };
     const SCREEN_TRANSITION_MS = 260;
     let screenTransitionLock = false;
 
+    function isMainScreenName(name) {
+        return MAIN_SCREENS.includes(name);
+    }
+
     function getActiveMainScreen() {
         const tabActive = document.querySelector('.bottom-tab-btn.active')?.dataset.screen;
-        if (tabActive === 'calendar' || tabActive === 'schedule' || tabActive === 'profile') {
+        if (isMainScreenName(tabActive)) {
             const preferred = document.getElementById('screen-' + tabActive);
             if (preferred && !preferred.classList.contains('hidden')) return tabActive;
         }
 
-        const calendarEl = document.getElementById('screen-calendar');
-        const scheduleEl = document.getElementById('screen-schedule');
-        const profileEl = document.getElementById('screen-profile');
-        const visible = [];
-        if (calendarEl && !calendarEl.classList.contains('hidden')) visible.push('calendar');
-        if (scheduleEl && !scheduleEl.classList.contains('hidden')) visible.push('schedule');
-        if (profileEl && !profileEl.classList.contains('hidden')) visible.push('profile');
+        const visible = MAIN_SCREENS.filter((name) => {
+            const el = document.getElementById('screen-' + name);
+            return el && !el.classList.contains('hidden');
+        });
         if (visible.length === 1) return visible[0];
         if (tabActive && visible.includes(tabActive)) return tabActive;
         if (visible.includes('calendar')) return 'calendar';
@@ -5669,13 +5899,9 @@
         const activeScreenRaw = options.activeScreen
             || document.querySelector('.bottom-tab-btn.active')?.dataset.screen
             || getActiveMainScreen();
-        const activeScreen = (activeScreenRaw === 'calendar'
-            || activeScreenRaw === 'schedule'
-            || activeScreenRaw === 'profile')
-            ? activeScreenRaw
-            : 'calendar';
+        const activeScreen = isMainScreenName(activeScreenRaw) ? activeScreenRaw : 'calendar';
 
-        ['calendar', 'schedule', 'profile'].forEach(name => {
+        MAIN_SCREENS.forEach(name => {
             const el = document.getElementById('screen-' + name);
             if (!el) return;
             cleanupSlideClasses(el);
@@ -5730,6 +5956,16 @@
         document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.screen === screen);
         });
+        if (isMainScreenName(screen)) {
+            try {
+                userStorageSet('lastMainScreen', screen);
+            } catch (_) { /* ignore */ }
+        }
+    }
+
+    function getLastMainScreen(fallback = 'calendar') {
+        const saved = String(userStorageGet('lastMainScreen', '') || '').trim();
+        return isMainScreenName(saved) ? saved : fallback;
     }
 
     function bootstrapScheduleAlertsIfReady() {
@@ -5742,7 +5978,6 @@
         } else {
             checkSchedulePushNotifications();
         }
-        void syncScheduleAlertsToWorker();
     }
 
     function runScreenSideEffects(screen) {
@@ -5751,6 +5986,10 @@
             calendarRenderCalendar();
         } else if (screen === 'schedule') {
             resumeScheduleLiveClockIfNeeded();
+        } else if (screen === 'instructions') {
+            if (window.InstructionsModule?.init) {
+                void window.InstructionsModule.init();
+            }
         } else if (screen === 'profile') {
             updateProfileScreen();
         }
@@ -5934,6 +6173,7 @@
 
         try {
             let boardWarningHtml = '';
+            let boardPendingMeta = null;
 
             const boardDates = collectBoardDatesForShift(trainPlan, baseDate, inputs);
 
@@ -5945,10 +6185,9 @@
                     if (requestId !== routeDataRequestId) return;
 
                     const failedBoards = boardResults.filter(item => !item.ok);
-                    if (failedBoards.length && failedBoards.length === boardResults.length) {
-                        boardWarningHtml = '<div class="route-api-warning" style="width:100%;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:rgba(255,107,107,0.12);color:#ffb4b4;font-size:13px;">Не удалось загрузить расписание с вокзала. Проверьте интернет и нажмите «Обновить» (удержание — полное обновление).</div>';
-                    } else if (failedBoards.length) {
-                        boardWarningHtml = '<div class="route-api-warning" style="width:100%;padding:10px 12px;margin-bottom:8px;border-radius:8px;background:rgba(140,148,160,0.12);color:rgba(210,216,224,0.92);font-size:13px;">Часть данных с вокзала недоступна. Повторите запрос или обновите табло.</div>';
+                    if (failedBoards.length) {
+                        boardPendingMeta = collectBoardFailureMeta(failedBoards);
+                        boardWarningHtml = buildBoardHorizonWarningHtml(boardPendingMeta);
                     }
                 } else {
                     await Promise.all(boardDates.map(async date => {
@@ -5957,6 +6196,15 @@
                         }
                     }));
                     if (requestId !== routeDataRequestId) return;
+                    const stillPending = boardDates.some(date => (
+                        !isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`])
+                    ));
+                    if (stillPending && lastBoardNotReadyMeta) {
+                        boardPendingMeta = collectBoardFailureMeta([{
+                            error: { boardMeta: lastBoardNotReadyMeta },
+                        }]);
+                        boardWarningHtml = buildBoardHorizonWarningHtml(boardPendingMeta);
+                    }
                 }
             }
 
@@ -6110,7 +6358,7 @@
                         </div>
                     </div>
                 `);
-            } else {
+            } else if (!boardPendingMeta) {
                 cards.push(`
                     <div class="route-card" style="opacity: 0.5;">
                         <div class="route-card-section route-card-top">
@@ -6122,6 +6370,10 @@
                     </div>
                 `);
             }
+        }
+
+        if (boardPendingMeta && trainEntries.some(entry => !entry.train)) {
+            cards.push(buildBoardFormingHintHtml());
         }
 
         if (totals.trainCount > 0) {
@@ -6143,7 +6395,9 @@
 
             routeNotificationTrains = buildRouteNotificationTrains(sortedTrainsData, getSelectedDate());
             checkSchedulePushNotifications();
-            void syncScheduleAlertsToWorker();
+            if (!fromCacheOnly) {
+                void syncScheduleAlertsToWorker();
+            }
 
             grid.innerHTML = boardWarningHtml + cards.join('');
             grid.style.display = 'flex';
@@ -6314,7 +6568,6 @@
             trainDeparture,
             trainArrival
         );
-        void syncScheduleAlertsToWorker();
         if (schedulePushFiredKeys.size === 0) {
             loadSchedulePushFiredKeys();
         }
@@ -6443,9 +6696,24 @@
             const stationWarningTexts = warningsByStation[index] || [];
             const bottomPlaques = [];
 
+            const opsPlaques = collectStationOpsPlaques(
+                stationTitleRaw,
+                currentDirection,
+                item.passThrough ? null : item.threadStop
+            );
+            opsPlaques.tags.forEach((tag) => tags.push(tag));
+
             tags.forEach(tag => {
                 bottomPlaques.push(
                     `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(tag)}</span></div>`
+                );
+            });
+
+            opsPlaques.notes.forEach((note) => {
+                hasBrakes = true;
+                const cls = note.kind === 'passage' ? 'route-ops-box route-ops-box--passage' : 'route-ops-box route-ops-box--hint';
+                bottomPlaques.push(
+                    `<div class="${cls}"><span class="route-ops-text">${escapeHtml(note.text)}</span></div>`
                 );
             });
 
@@ -6457,6 +6725,8 @@
                     );
                 });
             }
+
+            if (opsPlaques.tags.length) hasBrakes = true;
 
             if (bottomPlaques.length > 0) {
                 brakeHtml = `<div class="route${D}tags${D}container">${bottomPlaques.join('')}</div>`;
@@ -6542,6 +6812,7 @@
         const screens = {
             calendar: document.getElementById('screen-calendar'),
             schedule: document.getElementById('screen-schedule'),
+            instructions: document.getElementById('screen-instructions'),
             profile: document.getElementById('screen-profile')
         };
         if (!screens[screen]) return false;
@@ -6632,14 +6903,16 @@
 
         const calendarEl = document.getElementById('screen-calendar');
         const scheduleEl = document.getElementById('screen-schedule');
+        const instructionsEl = document.getElementById('screen-instructions');
         const profileEl = document.getElementById('screen-profile');
 
         if (calendarEl && !calendarEl.classList.contains('hidden')) return 'calendar';
-        if (profileEl && !profileEl.classList.contains('hidden')) return 'profile';
         if (scheduleEl && !scheduleEl.classList.contains('hidden')) {
             const activeTab = document.querySelector('#screen-schedule .tab-content.active');
             return activeTab?.id === 'tab-schedule' ? 'schedule-tab' : 'route-tab';
         }
+        if (instructionsEl && !instructionsEl.classList.contains('hidden')) return 'instructions';
+        if (profileEl && !profileEl.classList.contains('hidden')) return 'profile';
         return null;
     }
 
@@ -6666,6 +6939,9 @@
                 return { kind: 'tab', tab: 'tab-schedule', dir: 'forward' };
             }
             if (state === 'schedule-tab') {
+                return { kind: 'main', screen: 'instructions', dir: 'forward' };
+            }
+            if (state === 'instructions') {
                 return { kind: 'main', screen: 'profile', dir: 'forward' };
             }
             return null;
@@ -6678,12 +6954,19 @@
         if (state === 'schedule-tab') {
             return { kind: 'tab', tab: 'tab-route', dir: 'backward' };
         }
-        if (state === 'profile') {
+        if (state === 'instructions') {
             return {
                 kind: 'main',
                 screen: 'schedule',
                 dir: 'backward',
                 prepare: () => activateScheduleTab('tab-route')
+            };
+        }
+        if (state === 'profile') {
+            return {
+                kind: 'main',
+                screen: 'instructions',
+                dir: 'backward'
             };
         }
         return null;
@@ -6726,10 +7009,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Обновление часов смен от 15-16.08.'
+            'Файловый менеджер',
+            'Обновленная логика поиска поездов',
+            'Актуальное расписание на 7 дней вперед (3 точно, 4 примерно)',
+            'Доработка Push-уведомлений (Обновление лимитов)'
         ],
         highlights: [
-            'Обновление часов смен от 15-16.08.'
+            'Файловый менеджер',
+            'Обновленная логика поиска поездов',
+            'Актуальное расписание на 7 дней вперед (3 точно, 4 примерно)',
+            'Доработка Push-уведомлений (Обновление лимитов)'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -7467,6 +7756,7 @@
             '#shiftWarningsModal, .shift-warnings-box, .shift-warnings-list-scroll, ' +
             '#stationNoteSheet, .station-note-sheet, .station-note-input, ' +
             '#shiftNoteSheet, .shift-note-sheet, .shift-note-input, .shift-card__note-input, .shift-card__note-send, .shift-card__note-copy, .shift-card__note-delete, ' +
+            '#instrPdfOverlay, .instr-folders, .instr-docs, ' +
             '#donateSheet, .donate-sheet, .donate-amount-input, .donate-quick-btn, .donate-send-btn, ' +
             '#feedbackSheet, .feedback-sheet, .feedback-message-input, .app-feedback-trigger, ' +
             '.app-donate-trigger, ' +
@@ -7524,6 +7814,15 @@
                 kind: 'main',
                 stage: document.getElementById('mainScreensStage'),
                 fromEl: document.getElementById('screen-profile'),
+                toEl: null
+            };
+        }
+        if (state === 'instructions') {
+            return {
+                target: null,
+                kind: 'main',
+                stage: document.getElementById('mainScreensStage'),
+                fromEl: document.getElementById('screen-instructions'),
                 toEl: null
             };
         }
@@ -8559,7 +8858,7 @@
             renderRouteComboboxListIfOpen();
         });
         updateProfileScreen();
-        switchMainScreen('calendar', { forceSideEffects: true });
+        switchMainScreen(getLastMainScreen('calendar'), { forceSideEffects: true });
         void maybeShowReleaseNotesOverlay();
     }
 

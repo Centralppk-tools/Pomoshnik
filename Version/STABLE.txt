@@ -1,22 +1,25 @@
-3.1.7 STABLE ★
+3.2.1 STABLE ★
 
-Дата: 2026-08-15
+Дата: 2026-08-23
 
 Статус: готово к выкладке на GitHub Pages и PWA.
 
-Service Worker: da_v3_1_7
+Service Worker: da_v3_2_1
 
 Деплой: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
 Worker: npx wrangler deploy (отдельно; при необходимости)
 
-Снимок HTML: Version/snapshots/index 3.1.7.html
+Снимок HTML: Version/snapshots/index 3.2.1.html
 
-Снимок стилей: Version/snapshots/styles 3.1.7/
+Снимок стилей: Version/snapshots/styles 3.2.1/
 
-Снимок конфига: Version/snapshots/app-config 3.1.7.js
+Снимок конфига: Version/snapshots/app-config 3.2.1.js
 
-Снимок Worker: Version/snapshots/wrangler 3.1.7.toml
+Снимок Worker: Version/snapshots/wrangler 3.2.1.toml
 
 Ключевые изменения:
 
-- Обновление часов смен от 15-16.08.
+- Файловый менеджер
+- Обновленная логика поиска поездов
+- Актуальное расписание на 7 дней вперед (3 точно, 4 примерно)
+- Доработка Push-уведомлений (Обновление лимитов)

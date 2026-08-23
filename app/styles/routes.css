@@ -6,6 +6,27 @@
     width: 100%;
 }
 
+.route-api-warning {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 0;
+    border-radius: 8px;
+    background: rgba(234, 179, 8, 0.14);
+    border: 1px solid rgba(234, 179, 8, 0.28);
+    color: #ffc56a;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.route-forming-hint {
+    width: 100%;
+    padding: 18px 12px;
+    text-align: center;
+    color: var(--app-muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
 @keyframes fadeInScale {
     from {
         opacity: 0; /* Карточка появляется прозрачной */
@@ -254,6 +275,38 @@
     font-size: 12px; /* Маленький шрифт */
     font-weight: 600; /* Полужирный */
     white-space: nowrap; /* Не переносит текст */
+}
+
+/* Справочные операции / проход / подсказки из station_ops (админка) */
+.route-ops-box {
+    border: 1px solid rgba(0, 184, 148, 0.28);
+    background: rgba(0, 184, 148, 0.08);
+    border-radius: var(--app-radius);
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.route-ops-box--hint {
+    border-color: rgba(158, 176, 198, 0.28);
+    background: rgba(158, 176, 198, 0.08);
+}
+
+.route-ops-text {
+    color: #9fdcc8;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.route-ops-box--hint .route-ops-text {
+    color: #b7c4d6;
 }
 
 /* ===== МАРШРУТЫ: Нижняя секция — в пути, пробег, оборот ===== */

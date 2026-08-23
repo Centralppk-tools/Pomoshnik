@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 3.1.7 STABLE)
-const CACHE_VERSION = 'da_v3_1_7';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 3.2.1 STABLE)
+const CACHE_VERSION = 'da_v3_2_1';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -16,6 +16,7 @@ const PRECACHE_ASSETS = [
     './styles/responsive.css',
     './styles/auth.css',
     './styles/community.css',
+    './styles/instructions.css',
     './spr.json',
     './trains-local.json',
     './data/trains-uids.json',
@@ -23,7 +24,13 @@ const PRECACHE_ASSETS = [
     './data/calendar-local-routes.json',
     './data/line-sections.json',
     './data/release-notes.json',
+    './data/instructions/catalog.json',
+    './data/instructions/index.json',
     './js/app-config.js',
+    './js/instructions.js',
+    './vendor/pdfjs/pdf.min.mjs',
+    './vendor/pdfjs/pdf.worker.min.mjs',
+    './vendor/pdfjs/pdf.worker.mjs',
     './assets/brand-logo.png',
     './assets/app-icon.png',
     './.nojekyll'

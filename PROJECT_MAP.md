@@ -1,6 +1,17 @@
 # Карта проекта «Цифровой помощник»
 
-> Краткий контекст для задач. Актуальная версия: **3.1.5** (`app/sw.js` → `da_v3_1_5`).
+> Краткий контекст для задач. Актуальная версия: **3.2.1** (`app/sw.js` → `da_v3_2_1`).
+
+---
+
+## Официальные названия
+
+| Название | Папка | Роль |
+|----------|-------|------|
+| **Цифровой помощник** | `app/` | Основное приложение (PWA). Прод-деплой. |
+| **Админ панель инструктора** | `Ins_pan/` | Локальное управление данными приложения. Не в деплое PWA. |
+
+Правило: админка всегда связана с `app/` и управляет его параметрами/данными. Подробнее: `.cursor/rules/admin-ins-pan.mdc`.
 
 ---
 
@@ -27,6 +38,7 @@
 **Экраны (bottom tabbar):**
 - `screen-calendar` — график смен (дефолтный)
 - `screen-schedule` — маршрут / расписание поездов
+- `screen-instructions` — инструкции (файлы + чат по документам)
 - `screen-profile` — личный кабинет
 - `screen-auth` — вход по табельному номеру (overlay)
 
@@ -37,19 +49,21 @@
 ```
 Digital Assistant/
 ├── app/                          # ★ PRODUCTION — единственная папка для деплоя
-│   ├── index.html                # UI + вся логика приложения
+│   ├── index.html                # UI + основная логика (inline) + экраны
 │   ├── sw.js                     # Service Worker
 │   ├── manifest.json
 │   ├── js/
 │   │   ├── app-config.js         # API-ключи (в git; example: app-config.example.js)
-│   │   └── app-config.example.js
-│   ├── styles/                   # UI (9 CSS-модулей)
-│   │   ├── tokens.css            # CSS-переменные, тема
+│   │   ├── app-config.example.js
+│   │   └── instructions.js       # модуль «Инструкции» (IndexedDB + keyword-чат)
+│   ├── styles/                   # UI (10 CSS-модулей)
+│   │   ├── tokens.css            # CSS-переменные, тема; фирменный градиент --brand-grad-light #06C785 → --brand-grad-dark #024C4E
 │   │   ├── base.css              # layout, типографика
 │   │   ├── routes.css            # вкладка «Маршрут»
 │   │   ├── schedule.css          # таймлайн остановок
 │   │   ├── calendar.css          # календарь смен
 │   │   ├── profile.css           # личный кабинет
+│   │   ├── instructions.css      # инструкции: файлы + чат
 │   │   ├── auth.css              # экран входа
 │   │   ├── community.css         # футер, donate, feedback
 │   │   └── responsive.css        # адаптив
@@ -68,7 +82,7 @@ Digital Assistant/
 ├── google-script/
 │   └── Код.js                    # Google Apps Script Web App (депо API)
 │
-├── worker.js                     # ★ Cloudflare Worker: прокси Яндекс API + KV CACHE_KV
+├── worker.js                     # ★ ночное табло Ярославского + прокси ниток/Пушкино + KV
 │
 ├── tools/                        # dev/build утилиты (не в деплое)
 │   ├── snapshot.mjs              # npm run snapshot → Version/snapshots/
@@ -86,7 +100,7 @@ Digital Assistant/
 │   ├── c 17_07/                  # норматив 17.07–04.08.2026
 │   └── c 05_08/                  # норматив с 05.08.2026 (пн–чт новые)
 │
-├── Ins_pan/                      # ★ отдельный прототип (НЕ в деплое app/)
+├── Ins_pan/                      # ★ Админ панель инструктора (localhost:8790; пишет в app/data)
 │   ├── js/app.js, config.js      # конструктор распоряжений + Supabase
 │   ├── css/app.css, data/stations.json
 │   └── supabase/schema.sql
@@ -150,19 +164,22 @@ shift-templates.json (нормативы по датам)
 
 ### Маршрут поездов (Яндекс.Rasp)
 
-**3 триггера API** (см. `app/data/trains-api/README.md`):
-1. `getRouteData()` — кнопка «Показать маршруты»
+Подробно: `app/data/trains-api/README.md`.
+
+**Табло Ярославского** качает Worker в 00:05 МСК (сегодня, +1, +2, +6) → KV `board:s2000002:дата`. Клиент только `GET ?board=1&date=`. Клиентский `/schedule/` на `s2000002` запрещён.
+
+**3 триггера сети** (не таймер, не полночь):
+1. `getRouteData()` — «Показать маршруты»
 2. `navigateToRouteWithTrains()` — «Маршрут» из календаря/профиля
-3. `refreshRouteData()` — «Обновить» (короткое / long-press)
+3. `refreshRouteData()` — «Обновить» (коротко — нитки; удержание — ещё раз `?board=1`)
 
-**Cache-first цепочка** (`searchTrainByNumber`):
 ```
-6000–6999: trainThreadsCache → табло D+D+1 → UID → Worker/KV → /thread/
-7000+ и прочие: только trains-local.json (0 API)
+6000–6999: кэш нитки → табло ?board=1 (D / ночь D+D+1) → UID → Worker /thread/
+7000+ и прочие: только trains-local.json
+Пушкино: запасной ?url= /schedule/, если номера нет на Ярославском
 ```
 
-- Запросы через Cloudflare Worker + KV (`worker.js`, `CACHE_KV`)
-- Лимит ~500 запросов/сутки — расход только при `X-Cache-Status: MISS_YANDEX_API`
+Квота Яндекса ~500/сутки: ночью 8–12 `/schedule/`, с телефона в основном `/thread/` (`MISS_YANDEX_API`).
 
 ### Справочник тормозов (`spr.json`)
 

@@ -8,6 +8,11 @@
     --cppk-blue: #004a99;
     --app-green: #178038;
     --app-green-glow: rgba(26, 111, 82, 0.38);
+    /* Фирменный градиент модуля «Инструкции» (и акцентов) */
+    --brand-grad-dark: #024C4E;
+    --brand-grad-light: #06C785;
+    --brand-grad: linear-gradient(135deg, var(--brand-grad-light) 0%, var(--brand-grad-dark) 100%);
+    --brand-grad-vertical: linear-gradient(180deg, var(--brand-grad-light) 0%, var(--brand-grad-dark) 100%);
     --app-blue: #2f80ed;
     --app-text: #f8faff;
     --app-text-bright: #ffffff;
@@ -41,7 +46,7 @@
     --glass-blur: none;
     --glass-shadow: none;
     --glass-radius: 16px;
-    --glass-tabbar-width: min(52vw, 420px);
-    --glass-tabbar-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    --glass-tabbar-width: 100%;
+    --glass-tabbar-bottom: 0px;
     --schedule-glass-width: min(590px, calc(100% - 24px));
 }

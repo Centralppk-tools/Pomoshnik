@@ -35,7 +35,8 @@
     .screen,
     #screen-schedule,
     #screen-calendar,
-    #screen-profile {
+    #screen-profile,
+    #screen-instructions {
         width: 100%;
         max-width: none;
         align-items: stretch;
@@ -48,9 +49,12 @@
     #screen-calendar .phone-screen.calendar-app-wrap,
     #screen-profile .phone-screen,
     #screen-profile .phone-screen.profile-app-wrap,
+    #screen-instructions .phone-screen,
+    #screen-instructions .phone-screen.instructions-app-wrap,
     #screen-schedule .schedule-app-wrap,
     #screen-calendar .calendar-app-wrap,
-    #screen-profile .profile-app-wrap {
+    #screen-profile .profile-app-wrap,
+    #screen-instructions .instructions-app-wrap {
         width: 100%;
         max-width: none;
         padding: 0;
@@ -99,7 +103,8 @@
     .screen-card,
     #screen-schedule .screen-card--schedule,
     #screen-calendar .screen-card--calendar,
-    #screen-profile .screen-card--profile {
+    #screen-profile .screen-card--profile,
+    #screen-instructions .screen-card--instructions {
         width: calc(100% - (var(--mobile-edge) * 2));
         max-width: none;
         margin-left: var(--mobile-edge);
@@ -214,7 +219,11 @@
     }
 
     .bottom-tabbar {
-        max-width: calc(100% - 32px);
+        max-width: none;
+        width: 100%;
+        left: 0;
+        right: 0;
+        transform: none;
     }
 }
 
@@ -579,8 +588,8 @@
     }
 
     :root {
-        --glass-tabbar-width: min(72vw, 380px);
-        --glass-tabbar-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        --glass-tabbar-width: 100%;
+        --glass-tabbar-bottom: 0px;
     }
 
     .bottom-tab-btn {

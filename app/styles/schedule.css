@@ -842,25 +842,26 @@ body.auth-locked {
 
 .bottom-tabbar {
     position: fixed;
-    left: 50%;
-    right: auto;
-    bottom: var(--glass-tabbar-bottom);
-    transform: translateX(-50%);
-    width: var(--glass-tabbar-width);
-    min-width: min(100%, 300px);
-    max-width: calc(100% - 24px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     z-index: 2000;
     display: flex;
     justify-content: space-between;
     align-items: stretch;
-    gap: 6px;
-    padding: 8px 10px;
-    border-radius: var(--tabbar-radius);
+    gap: 4px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-radius: 16px 16px 0 0;
     border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
+    border-bottom: none;
+    background: rgba(14, 18, 26, 0.94);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    box-shadow: var(--glass-shadow);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
 }
 
 body.is-swipe-dragging .bottom-tabbar,
@@ -915,6 +916,20 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
     transition: stroke 0.22s ease;
 }
 
+.bottom-tab-btn .tab-icon--avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.bottom-tab-btn .tab-icon--avatar svg {
+    width: 16px;
+    height: 16px;
+}
+
 .bottom-tab-btn.active {
     color: var(--app-green);
     background: rgba(23, 128, 56, 0.16);
@@ -928,6 +943,13 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
 
 .bottom-tab-btn.active .tab-icon svg {
     stroke: var(--app-green);
+}
+
+.bottom-tab-btn--profile.active .tab-icon--avatar {
+    background: rgba(23, 128, 56, 0.22);
+    border-color: rgba(23, 128, 56, 0.55);
+    box-shadow: 0 0 0 2px rgba(23, 128, 56, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: none;
 }
 
 button:active,

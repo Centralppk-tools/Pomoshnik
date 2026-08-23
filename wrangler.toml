@@ -9,10 +9,11 @@ compatibility_flags = ["nodejs_compat"]
 preview_urls = false
 
 [triggers]
-crons = ["* * * * *"]
+crons = ["* * * * *", "5 21 * * *"]
 
 [vars]
 STATS_SECRET = "da_cppk_stats_view_2026"
+YANDEX_API_KEY = "64eba113-a83b-421c-baa8-d51f432cb3f3"
 VAPID_PUBLIC_KEY = "BPKYfiRk4SLmag3Q4xclEcQB8TkYY-3r-jfzo00lXFjW6JSIDi8-F7MDH72MEIhsLeFSSY62fYlrR-h5-hMVA1A"
 VAPID_PRIVATE_KEY = "kDAbqcatqSlgd_624mAFoe4NmTYKFOkn7KhC8E3s8do"
 VAPID_SUBJECT = "mailto:pomoshnikcppk@t.me"

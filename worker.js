@@ -4,7 +4,9 @@
  * Bindings: env.CACHE_KV → TRAIN_CACHE, env.STATS_SECRET → секрет /stats
  *
  * Эндпоинты:
- *   GET ?url=…              — прокси Яндекс API + KV-кэш расписаний
+ *   GET ?board=1&date=YYYY-MM-DD — табло Ярославского из KV (без Яндекса)
+ *   GET ?preload_boards=1&secret= — ручной прогон ночной заливки табло
+ *   GET ?url=…              — прокси Яндекс API + KV (нити / Пушкино; не табло Ярославского)
  *   GET ?ping=1&device_uuid= — учёт DAU и регистрации (анонимно)
  *   GET /stats?secret=…     — статистика (HTML или ?format=json)
  *   POST ?register_push=1&device_uuid= — регистрация Web Push subscription
@@ -12,8 +14,10 @@
  *   POST ?unregister_push=1&device_uuid=
  *
  * Cron (* * * * *): отправка просроченных push-алертов через Web Push Protocol.
+ * Cron (5 21 * * * UTC = 00:05 MSK): табло на 4 даты (сегодня, +1, +2, +6).
  *
  * KV: только .get / .put / .delete — без .list() (лимит Free Tier list = 1000/день).
+ * Пуш-джобы: без delete, только put + expirationTtl; одинаковый набор алертов — без put.
  */
 
 import { sendNotification, isExpired } from 'edgepush';
@@ -23,6 +27,10 @@ const PUSH_DELIVERY_WINDOW_SEC = 240;
 
 const GLOBAL_PUSH_JOBS_KEY = 'global_push_jobs';
 const STATS_TOTAL_USERS_KEY = 'stats_total_users';
+const BOARD_STATION = 's2000002';
+const BOARD_META_KEY = 'board:meta';
+const BOARD_CRON = '5 21 * * *';
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -92,6 +100,213 @@ function cacheKeyForUrl(targetUrl) {
     return `yandex:${targetUrl}`;
 }
 
+function boardKvKey(date) {
+    return `board:${BOARD_STATION}:${date}`;
+}
+
+function isIsoDate(value) {
+    return ISO_DATE_RE.test(String(value || ''));
+}
+
+function formatRuIso(iso) {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return String(iso || '');
+    return `${m[3]}.${m[2]}.${m[1]}`;
+}
+
+function collectBoardPreloadDates(now = new Date()) {
+    const today = getMskDateString(now);
+    return [
+        today,
+        addDaysToIsoDate(today, 1),
+        addDaysToIsoDate(today, 2),
+        addDaysToIsoDate(today, 6),
+    ];
+}
+
+function computeBoardRetryAfter(date, today) {
+    const horizonEnd = addDaysToIsoDate(today, 6);
+    if (date > horizonEnd) {
+        return addDaysToIsoDate(date, -6);
+    }
+    const tonight = [
+        today,
+        addDaysToIsoDate(today, 1),
+        addDaysToIsoDate(today, 2),
+        addDaysToIsoDate(today, 6),
+    ];
+    if (tonight.includes(date)) {
+        return addDaysToIsoDate(today, 1);
+    }
+    return addDaysToIsoDate(date, -2);
+}
+
+function buildBoardNotReadyPayload(date, meta, today) {
+    const known = Object.keys(meta?.dates || {}).filter(isIsoDate).sort();
+    const availableUntil = known.length ? known[known.length - 1] : null;
+    const retryAfterDate = computeBoardRetryAfter(date, today);
+    const horizonEnd = addDaysToIsoDate(today, 6);
+    const message = date > horizonEnd
+        ? `Пока есть расписание только до ${formatRuIso(availableUntil || horizonEnd)}. Этот день появится ${formatRuIso(retryAfterDate)}.`
+        : `Расписание на эту дату ещё готовится. Актуальное табло — на ближайшие три дня. Зайдите после ${formatRuIso(retryAfterDate)} (обычно после полуночи).`;
+    return {
+        ok: false,
+        code: 'BOARD_NOT_READY',
+        date,
+        availableUntil,
+        retryAfterDate,
+        message,
+    };
+}
+
+function isYaroslavlScheduleUrl(parsed) {
+    if (!parsed || !String(parsed.pathname || '').includes('/schedule/')) return false;
+    return parsed.searchParams.get('station') === BOARD_STATION;
+}
+
+async function readBoardMeta(kv) {
+    if (!kv) return { dates: {} };
+    const raw = await kv.get(BOARD_META_KEY, { type: 'json' });
+    if (!raw || typeof raw !== 'object') return { dates: {} };
+    const dates = raw.dates && typeof raw.dates === 'object' && !Array.isArray(raw.dates)
+        ? raw.dates
+        : {};
+    return { dates };
+}
+
+async function fetchYaroslavlBoardDay(date, env) {
+    const apiKey = String(env.YANDEX_API_KEY || '').trim();
+    if (!apiKey) {
+        throw new Error('YANDEX_API_KEY not configured');
+    }
+
+    const all = [];
+    let offset = 0;
+    let pageCount = 0;
+    const limit = 1000;
+
+    while (offset <= 8000) {
+        const url = `https://api.rasp.yandex.net/v3.0/schedule/?apikey=${encodeURIComponent(apiKey)}&station=${BOARD_STATION}&transport_types=suburban&direction=all&limit=${limit}&offset=${offset}&date=${date}&lang=ru_RU`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) {
+            const errText = typeof data.error === 'string'
+                ? data.error
+                : (data.error?.text || `HTTP ${res.status}`);
+            throw new Error(`${date}: ${errText}`);
+        }
+        const batch = Array.isArray(data.schedule) ? data.schedule : [];
+        all.push(...batch);
+        pageCount += 1;
+        if (batch.length < limit) break;
+        offset += limit;
+    }
+
+    return { schedule: all, pageCount };
+}
+
+async function runBoardPreload(env) {
+    const kv = env.CACHE_KV;
+    if (!kv) {
+        return { ok: false, error: 'KV not configured', dates: [] };
+    }
+
+    const today = getMskDateString();
+    const dates = collectBoardPreloadDates();
+    const meta = await readBoardMeta(kv);
+    const results = [];
+
+    for (const date of dates) {
+        try {
+            const { schedule, pageCount } = await fetchYaroslavlBoardDay(date, env);
+            if (!schedule.length) {
+                results.push({ date, ok: false, error: 'empty schedule', pageCount });
+                continue;
+            }
+            const fetchedAt = new Date().toISOString();
+            const payload = {
+                date,
+                station: BOARD_STATION,
+                fetchedAt,
+                pageCount,
+                schedule,
+            };
+            const expiration = mskMidnightUnixSec(addDaysToIsoDate(date, 2));
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (expiration > nowSec) {
+                await kv.put(boardKvKey(date), JSON.stringify(payload), { expiration });
+            } else {
+                await kv.put(boardKvKey(date), JSON.stringify(payload));
+            }
+            meta.dates[date] = { fetchedAt, pageCount, rows: schedule.length };
+            results.push({ date, ok: true, pageCount, rows: schedule.length });
+        } catch (err) {
+            results.push({ date, ok: false, error: err.message || String(err) });
+        }
+    }
+
+    const known = Object.keys(meta.dates).filter(isIsoDate).sort();
+    const maxDate = known.length ? known[known.length - 1] : addDaysToIsoDate(today, 6);
+    const metaExpiration = mskMidnightUnixSec(addDaysToIsoDate(maxDate, 2));
+    const nowSec = Math.floor(Date.now() / 1000);
+    const metaBody = JSON.stringify({ dates: meta.dates, updatedAt: new Date().toISOString() });
+    if (metaExpiration > nowSec) {
+        await kv.put(BOARD_META_KEY, metaBody, { expiration: metaExpiration });
+    } else {
+        await kv.put(BOARD_META_KEY, metaBody);
+    }
+
+    return { ok: true, today, dates: results };
+}
+
+async function handleGetBoard(reqUrl, env) {
+    const date = String(reqUrl.searchParams.get('date') || '').trim();
+    const today = getMskDateString();
+    const kv = env.CACHE_KV;
+
+    if (!isIsoDate(date)) {
+        return corsResponse(JSON.stringify({
+            ok: false,
+            code: 'BOARD_BAD_DATE',
+            message: 'Нужна дата YYYY-MM-DD',
+        }), 400, { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+
+    if (!kv) {
+        return corsResponse(JSON.stringify({
+            ok: false,
+            code: 'BOARD_NO_KV',
+            message: 'KV не настроен',
+        }), 503, { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+
+    const cached = await kv.get(boardKvKey(date), { type: 'json' });
+    if (cached && Array.isArray(cached.schedule) && cached.schedule.length) {
+        return corsResponse(JSON.stringify(cached), 200, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Cache-Status': 'HIT_WORKER_KV',
+        });
+    }
+
+    const meta = await readBoardMeta(kv);
+    return corsResponse(JSON.stringify(buildBoardNotReadyPayload(date, meta, today)), 404, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-Cache-Status': 'BOARD_NOT_READY',
+    });
+}
+
+async function handlePreloadBoards(reqUrl, env) {
+    const secret = reqUrl.searchParams.get('secret') || '';
+    const expected = String(env.STATS_SECRET || '').trim();
+    if (!expected || secret !== expected) {
+        return corsResponse('Forbidden', 403);
+    }
+    const result = await runBoardPreload(env);
+    return corsResponse(JSON.stringify(result), result.ok ? 200 : 503, {
+        'Content-Type': 'application/json; charset=utf-8',
+    });
+}
+
 function isAllowedYandexHost(hostname) {
     return hostname === 'api.rasp.yandex.net' || hostname.endsWith('.rasp.yandex.net');
 }
@@ -117,13 +332,38 @@ async function readJsonArray(kv, key) {
     return Array.isArray(value) ? value : [];
 }
 
+function toExpirationTtl(expirationUnix) {
+    const ttl = Math.floor(Number(expirationUnix) - Math.floor(Date.now() / 1000));
+    return Number.isFinite(ttl) ? ttl : 0;
+}
+
 async function putJsonArray(kv, key, arr, options = {}) {
     const payload = JSON.stringify(arr);
-    if (options.expiration && options.expiration > Math.floor(Date.now() / 1000)) {
-        await kv.put(key, payload, { expiration: options.expiration });
+    let ttl = Number(options.expirationTtl);
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+        ttl = toExpirationTtl(options.expiration);
+    }
+    if (ttl >= 60) {
+        await kv.put(key, payload, { expirationTtl: ttl });
         return;
     }
     await kv.put(key, payload);
+}
+
+function pushJobsKvOptions(jobs) {
+    let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
+    const fireAts = (jobs || []).map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
+    if (fireAts.length) {
+        expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
+    }
+    return { expiration };
+}
+
+function deviceAlertsFingerprint(jobs) {
+    return (jobs || [])
+        .map((job) => `${String(job?.key || '')}\t${String(job?.fireAtUnix || '')}`)
+        .sort()
+        .join('\n');
 }
 
 async function addUniqueUuidToIndex(kv, key, deviceUuid, options = {}) {
@@ -263,6 +503,16 @@ async function handleYandexProxy(request, reqUrl, env) {
         return corsResponse('Forbidden target host', 403);
     }
 
+    if (isYaroslavlScheduleUrl(parsed)) {
+        const date = parsed.searchParams.get('date') || '';
+        return corsResponse(JSON.stringify({
+            ok: false,
+            code: 'USE_BOARD_API',
+            message: 'Табло Ярославского только через ?board=1&date=',
+            date,
+        }), 400, { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+
     const key = cacheKeyForUrl(targetUrl);
     const kv = env.CACHE_KV;
 
@@ -389,16 +639,7 @@ async function removeJobsForDevice(kv, deviceUuid) {
     const allJobs = await readJsonArray(kv, GLOBAL_PUSH_JOBS_KEY);
     const next = allJobs.filter((job) => job?.device_uuid !== deviceUuid);
     if (next.length === allJobs.length) return next;
-    if (!next.length) {
-        await kv.delete(GLOBAL_PUSH_JOBS_KEY);
-        return [];
-    }
-    let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
-    const fireAts = next.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
-    if (fireAts.length) {
-        expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
-    }
-    await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, { expiration });
+    await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, pushJobsKvOptions(next));
     return next;
 }
 
@@ -484,25 +725,25 @@ async function handleSyncAlerts(request, reqUrl, env) {
         .filter(Boolean);
 
     const existing = await readJsonArray(kv, GLOBAL_PUSH_JOBS_KEY);
-    const others = existing.filter((job) => job?.device_uuid !== deviceUuid);
-    const next = others.concat(sanitizedJobs);
-
-    if (!next.length) {
-        await kv.delete(GLOBAL_PUSH_JOBS_KEY);
-    } else {
-        let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
-        const fireAts = next.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
-        if (fireAts.length) {
-            expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
-        }
-        await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, { expiration });
+    const existingForDevice = existing.filter((job) => job?.device_uuid === deviceUuid);
+    if (deviceAlertsFingerprint(existingForDevice) === deviceAlertsFingerprint(sanitizedJobs)) {
+        return corsResponse(JSON.stringify({
+            ok: true,
+            unchanged: true,
+            device_uuid: deviceUuid,
+            jobs_count: sanitizedJobs.length,
+        }), 200, {
+            'Content-Type': 'application/json; charset=utf-8',
+        });
     }
 
-    // Миграция: старый per-device ключ больше не нужен
-    await kv.delete(`push_jobs:${deviceUuid}`);
+    const others = existing.filter((job) => job?.device_uuid !== deviceUuid);
+    const next = others.concat(sanitizedJobs);
+    await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, next, pushJobsKvOptions(next));
 
     return corsResponse(JSON.stringify({
         ok: true,
+        unchanged: false,
         device_uuid: deviceUuid,
         jobs_count: sanitizedJobs.length,
     }), 200, {
@@ -536,7 +777,6 @@ async function handleUnregisterPush(request, reqUrl, env) {
     } else {
         await kv.delete(pushSubsIndexKey(deviceUuid));
         await removeJobsForDevice(kv, deviceUuid);
-        await kv.delete(`push_jobs:${deviceUuid}`);
     }
 
     return corsResponse(JSON.stringify({ ok: true, device_uuid: deviceUuid }), 200, {
@@ -635,16 +875,7 @@ async function processScheduledPushes(env) {
     }
 
     if (remaining.length !== allJobs.length || dirtySubs) {
-        if (!remaining.length) {
-            await kv.delete(GLOBAL_PUSH_JOBS_KEY);
-        } else {
-            let expiration = mskEndOfTodayUnixSec() + 2 * 86400;
-            const fireAts = remaining.map((job) => Number(job.fireAtUnix)).filter(Number.isFinite);
-            if (fireAts.length) {
-                expiration = Math.max(expiration, Math.max(...fireAts) + 2 * 86400);
-            }
-            await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, remaining, { expiration });
-        }
+        await putJsonArray(kv, GLOBAL_PUSH_JOBS_KEY, remaining, pushJobsKvOptions(remaining));
     }
 }
 
@@ -682,10 +913,22 @@ export default {
             return handleUsagePing(reqUrl, env);
         }
 
+        if (reqUrl.searchParams.get('board') === '1') {
+            return handleGetBoard(reqUrl, env);
+        }
+
+        if (reqUrl.searchParams.get('preload_boards') === '1') {
+            return handlePreloadBoards(reqUrl, env);
+        }
+
         return handleYandexProxy(request, reqUrl, env);
     },
 
     async scheduled(event, env) {
+        if (event?.cron === BOARD_CRON) {
+            await runBoardPreload(env);
+            return;
+        }
         await processScheduledPushes(env);
     },
 };
