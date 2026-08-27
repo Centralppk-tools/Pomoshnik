@@ -695,6 +695,34 @@
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
     const MY_CLOUDFLARE_PROXY = APP_CFG.yandexProxy || '';
     const APP_DATA_API = String(MY_CLOUDFLARE_PROXY || '').replace(/\/?$/, '');
+    const YANDEX_CLIENT_TOKEN = String(APP_CFG.yandexClientToken || '').trim();
+    const YANDEX_PROXY_PREFIX = APP_DATA_API;
+
+    /** Все запросы к Cloud Function — с заголовком X-DA-Client */
+    (function patchFetchForYandexProxy() {
+        if (!YANDEX_PROXY_PREFIX || !YANDEX_CLIENT_TOKEN || typeof window.fetch !== 'function') return;
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = function daFetch(input, init) {
+            try {
+                const url = typeof input === 'string'
+                    ? input
+                    : (input && typeof input.url === 'string' ? input.url : '');
+                if (url && url.startsWith(YANDEX_PROXY_PREFIX)) {
+                    const headers = new Headers(
+                        (init && init.headers)
+                        || (input && typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined)
+                    );
+                    if (!headers.has('X-DA-Client')) headers.set('X-DA-Client', YANDEX_CLIENT_TOKEN);
+                    if (input && typeof Request !== 'undefined' && input instanceof Request) {
+                        return nativeFetch(new Request(input, { ...(init || {}), headers }));
+                    }
+                    return nativeFetch(url, { ...(init || {}), headers });
+                }
+            } catch (_) { /* fall through */ }
+            return nativeFetch(input, init);
+        };
+    })();
+
     function appDataApiUrl(apiName, params = {}) {
         const u = new URL(APP_DATA_API || 'https://invalid.local');
         u.searchParams.set('api', apiName);
@@ -739,7 +767,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.1';
+    const APP_RELEASE_VERSION = '4.0.2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
