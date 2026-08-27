@@ -1,0 +1,35 @@
+---
+description: Подготовка к деплою — «подготовь к деплою», prepare deploy
+alwaysApply: false
+---
+
+# Подготовка к деплою
+
+**См. обязательное правило:** `.cursor/rules/workflow-app-only.mdc` — **без `Release/`**.
+
+При запросах **«подготовь к деплою»**, **«prepare deploy»**, **«выложи версию»**:
+
+1. **Прочитай полностью:** `Version/PREPARE-DEPLOY.md` — выполни чеклист без пропусков.
+2. **Не спрашивай** «делать ли коммит» — при деплое коммит **включён**, если пользователь не написал «без коммита».
+3. **Версия:** patch +1 от `Version/STABLE.txt` / `app/sw.js`, если пользователь не указал номер.
+
+## Обязательные шаги (кратко)
+
+- Проверить `app/` (файлы, SW precache, убрать debug).
+- Bump `app/sw.js` → `da_vX_Y_Z`.
+- Синхронно: `app/data/release-notes.json` **и** `app/index.html` → `APP_RELEASE_VERSION` + `RELEASE_NOTES_FALLBACK` (формулировки пользователя).
+- Проверить `yandex-cloud/function/` (query/CORS/кэш) и `app/js/app-config.js` → `yandexProxy`.
+- `npm run snapshot` — снимок в `Version/snapshots/`:
+  - index, styles, app-config
+  - **`yandex-cloud X.Y.Z/` — вся серверная часть (обязательно)**
+- Обновить `Version/STABLE.txt` и `Version/Commit.txt`.
+- Git: stage `app/`, `yandex-cloud/` (без `node_modules` если в ignore), `Version/` (включая снимок сервера), tools snapshot/pack; commit.
+- Отчёт: версия, SW, пути снимков, hash. PWA = `app/` на GitHub; сервер = ZIP в YC.
+
+## Не делать
+
+- `Release/`, `npm run build`, `tools/build.mjs`, obfuscate-release, `npx wrangler deploy`.
+
+## Push
+
+Только по явной просьбе пользователя.

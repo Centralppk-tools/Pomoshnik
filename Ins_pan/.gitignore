@@ -1,0 +1,5 @@
+data/
+*.log
+.DS_Store
+ocr/models/**
+!ocr/models/.gitkeep

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Цифровой помощник · Админ-панель</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">ЦИФРОВОЙ ПОМОЩНИК <span>· ADMIN</span></div>
+    <nav class="tabs" aria-label="Разделы админки">
+      <button type="button" class="tab-btn active" data-tab="line">Линия и станции</button>
+      <button type="button" class="tab-btn" data-tab="regs">Регламенты</button>
+    </nav>
+    <div id="connStatus" class="status-pill">подключение…</div>
+  </header>
+
+  <!-- ===== Линия ===== -->
+  <section id="view-line" class="view active">
+    <div class="layout split-layout" id="lineLayout">
+      <aside class="panel panel-left" id="linePaneLeft">
+        <div>
+          <label class="field-label" for="sectionSelect">Ход / участок</label>
+          <select id="sectionSelect" class="select"></select>
+        </div>
+        <div>
+          <label class="field-label" for="stationSearch">Поиск</label>
+          <input id="stationSearch" class="input" type="search" placeholder="Станция или ОП…" autocomplete="off">
+        </div>
+        <div id="timeline" class="timeline" role="listbox" aria-label="Остановочные пункты"></div>
+      </aside>
+      <div class="split-resize" data-split="line" role="separator" aria-orientation="vertical"></div>
+      <main class="panel panel-right" id="stationCard">
+        <p class="empty">Выберите станцию слева</p>
+      </main>
+    </div>
+  </section>
+
+  <!-- ===== Регламенты ===== -->
+  <section id="view-regs" class="view">
+    <div class="layout split-layout regs-layout" id="regsLayout">
+      <aside class="panel panel-left" id="regsDropHost">
+        <div class="pane-head">
+          <div class="section-title">Рабочий стол</div>
+        </div>
+        <div id="regsFolders" class="fs-tree" tabindex="0"></div>
+      </aside>
+      <div class="split-resize" data-split="regs" role="separator" aria-orientation="vertical"></div>
+      <main class="panel panel-right">
+        <div class="pane-head">
+          <div class="section-title" id="regsChunksTitle">Чанки</div>
+          <label class="pane-head__search">
+            <input id="regsChunkSearch" class="input" type="search" placeholder="Поиск по словам и фразам…" autocomplete="off">
+          </label>
+        </div>
+        <div id="ocrStudio" class="ocr-studio" hidden>
+            <div class="ocr-studio__bar">
+              <div>
+                <div class="section-title" id="ocrStudioTitle">Распознавание</div>
+                <p class="muted" id="ocrStudioStatus"></p>
+              </div>
+              <div class="ocr-studio__nav">
+                <span id="ocrDevicePill" class="ocr-device" hidden>…</span>
+                <button type="button" class="btn-secondary" id="ocrPrevPage">←</button>
+                <span class="mono" id="ocrPageLabel">1 / 1</span>
+                <button type="button" class="btn-secondary" id="ocrNextPage">→</button>
+              </div>
+            </div>
+            <div class="ocr-progress"><div id="ocrProgressFill" class="ocr-progress__fill"></div></div>
+            <div class="ocr-split">
+              <div class="ocr-pane">
+                <div class="field-label">Скан</div>
+                <img id="ocrPageImg" class="ocr-page-img" alt="Страница">
+              </div>
+              <div class="ocr-pane">
+                <div class="field-label">Распознанный текст</div>
+                <textarea id="ocrPageText" class="textarea ocr-page-text" spellcheck="true"></textarea>
+              </div>
+            </div>
+            <div class="ocr-studio__actions">
+              <button type="button" class="btn-secondary" id="ocrSanitizeBtn">Повторить индексацию</button>
+              <button type="button" class="btn-save" id="ocrCommitBtn">Отправить на чанкинг</button>
+            </div>
+          </div>
+          <div id="regsChunksWrap">
+            <div id="regsDocs" class="chunk-list"></div>
+          </div>
+        </main>
+      </div>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <input type="file" id="regsFileInput" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/png,image/jpeg,image/tiff,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
+
+  <ul id="regsCtxMenu" class="ctx-menu" hidden role="menu"></ul>
+
+  <div id="regsNameModal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="form-title" id="regsNameTitle">Новая папка</div>
+      <input id="regsNameInput" class="input" type="text" maxlength="80" placeholder="Название">
+      <div class="btn-row" style="margin-top:12px; justify-content:flex-end;">
+        <button type="button" class="btn-secondary" id="regsNameCancel">Отмена</button>
+        <button type="button" class="btn-save" id="regsNameOk">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="regsMarquee" class="fs-marquee" hidden></div>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-19",
+  "folders": [
+    {
+      "id": "fld_reglamenty",
+      "name": "Регламенты",
+      "parentId": null,
+      "order": 0
+    },
+    {
+      "id": "fld_mszuz1uc_kc13g",
+      "name": "Аварийные карты",
+      "parentId": null,
+      "order": 2
+    }
+  ],
+  "docs": [
+    {
+      "id": "doc_msw3pa7y_nwczg",
+      "title": "Регламент_работы_локомотивных_бригад_с_измен_от_03_02_2026.pdf",
+      "folderId": "fld_reglamenty",
+      "pageCount": 83,
+      "hasText": true,
+      "sourcePdf": "data/instructions/pdf/doc_msw3pa7y_nwczg.pdf",
+      "kind": "pdf"
+    },
+    {
+      "id": "doc_mszuushw_pz4l4",
+      "title": "№_27790_СЗ_от_16_06_2026_О_применении_временного_пароля_для_шунтирования.pdf",
+      "folderId": "fld_mszuz1uc_kc13g",
+      "pageCount": 2,
+      "hasText": true,
+      "sourcePdf": "data/instructions/pdf/doc_mszuushw_pz4l4.pdf",
+      "kind": "pdf"
+    },
+    {
+      "id": "doc_mszv519l_g0shd",
+      "title": "Аварийные карты ЭП2Д и ЭП2ДМ.pdf",
+      "folderId": "fld_mszuz1uc_kc13g",
+      "pageCount": 32,
+      "hasText": true,
+      "sourcePdf": "data/instructions/pdf/doc_mszv519l_g0shd.pdf",
+      "kind": "pdf"
+    },
+    {
+      "id": "doc_mszv51e6_l6hds",
+      "title": "Аварийные карты ЭГЭ2Тв.pdf",
+      "folderId": "fld_mszuz1uc_kc13g",
+      "pageCount": 43,
+      "hasText": true,
+      "sourcePdf": "data/instructions/pdf/doc_mszv51e6_l6hds.pdf",
+      "kind": "pdf"
+    }
+  ],
+  "chunkCount": 1185
+}

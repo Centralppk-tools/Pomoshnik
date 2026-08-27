@@ -691,9 +691,18 @@
     const APP_CFG = window.APP_CONFIG || {};
 
     const DASH_CHAR = String.fromCharCode(45);
-    const API_KEY = APP_CFG.yandexApiKey || '';
+    const API_KEY = ''; // ключ Rasp только на сервере (Yandex Cloud Function)
     const API_BASE = 'https://api.rasp.yandex.net/v3.0';
     const MY_CLOUDFLARE_PROXY = APP_CFG.yandexProxy || '';
+    const APP_DATA_API = String(MY_CLOUDFLARE_PROXY || '').replace(/\/?$/, '');
+    function appDataApiUrl(apiName, params = {}) {
+        const u = new URL(APP_DATA_API || 'https://invalid.local');
+        u.searchParams.set('api', apiName);
+        Object.entries(params).forEach(([k, v]) => {
+            if (v != null && v !== '') u.searchParams.set(k, String(v));
+        });
+        return u.toString();
+    }
     const ANCHOR_STATION = 's2000002';
     const EXTRA_SCHEDULE_STATIONS = ['s9600701'];
     /** Яндекс API — только 6000-я нумерация; 7000+ строго через trains-local.json */
@@ -3494,8 +3503,10 @@
     }
 
     async function loadReferenceData() {
-        const basePaths = ['./spr.json', 'spr.json', 'app/spr.json'];
-        const trainPaths = ['./trains-local.json', 'trains-local.json', 'app/trains-local.json'];
+        const sprApi = APP_DATA_API ? [appDataApiUrl('spr')] : [];
+        const trainsApi = APP_DATA_API ? [appDataApiUrl('trains-local')] : [];
+        const basePaths = [...sprApi, './spr.json', 'spr.json'];
+        const trainPaths = [...trainsApi, './trains-local.json', 'trains-local.json'];
 
         try {
             sprDataCache = await fetchJsonAsset(basePaths, REFERENCE_SPR_STORAGE_KEY);
@@ -3504,15 +3515,15 @@
             const cachedSpr = loadReferenceJsonCache(REFERENCE_SPR_STORAGE_KEY);
             if (cachedSpr) {
                 sprDataCache = cachedSpr;
-                console.warn('Справочник из автономного кэша (spr.json недоступен)');
+                console.warn('Справочник из автономного кэша (spr недоступен)');
             } else if (window.location.protocol === 'file:') {
-                alert('Не удалось загрузить spr.json. Открой приложение через локальный сервер: npm run serve (http://127.0.0.1:8765/)');
+                alert('Не удалось загрузить справочник. Открой приложение через локальный сервер: npm run serve (http://127.0.0.1:8765/)');
                 throw err;
             } else if (err?.name === 'SyntaxError') {
-                alert('Файл spr.json содержит ошибку (невалидный JSON). Проверь и сохрани файл (Ctrl+S).');
+                alert('Справочник содержит ошибку (невалидный JSON).');
                 throw err;
             } else {
-                alert('Не удалось загрузить spr.json. Нужен интернет для первого входа или перезагрузите после работы онлайн.');
+                alert('Не удалось загрузить справочник. Нужен интернет для первого входа.');
                 throw err;
             }
         }
@@ -3847,7 +3858,7 @@
         let offset = 0;
 
         while (offset <= 8000) {
-            const url = `${API_BASE}/schedule/?apikey=${API_KEY}&station=${stationCode}&transport_types=suburban&direction=all&limit=${limit}&offset=${offset}&date=${date}&lang=ru_RU`;
+            const url = `${API_BASE}/schedule/?station=${stationCode}&transport_types=suburban&direction=all&limit=${limit}&offset=${offset}&date=${date}&lang=ru_RU`;
             const response = await fetchYandexViaWorker(url, `schedule ${stationCode} ${date} offset=${offset}`);
             if (!response.ok) {
                 throw new Error(`Ошибка сервера код ${response.status}`);
@@ -4002,7 +4013,7 @@
 
     async function fetchThreadDetails(trainData, scheduleDate) {
         const date = scheduleDate || getSelectedDate();
-        const threadUrl = `${API_BASE}/thread/?apikey=${API_KEY}&uid=${trainData.thread.uid}&date=${date}&lang=ru_RU`;
+        const threadUrl = `${API_BASE}/thread/?uid=${trainData.thread.uid}&date=${date}&lang=ru_RU`;
         const threadResponse = await fetchYandexViaWorker(threadUrl, `thread ${trainData.thread.number} ${date}`);
         let threadData;
         try {
@@ -9134,9 +9145,22 @@
 
         localShiftTemplatesPromise = (async () => {
             try {
-                const res = await fetch(LOCAL_SHIFT_TEMPLATES_URL, { cache: 'no-store' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
+                const urls = [];
+                if (APP_DATA_API) urls.push(appDataApiUrl('shift-templates'));
+                urls.push(LOCAL_SHIFT_TEMPLATES_URL);
+                let data = null;
+                let lastErr = null;
+                for (const url of urls) {
+                    try {
+                        const res = await fetch(url, { cache: 'no-store' });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        data = await res.json();
+                        break;
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                if (!data) throw lastErr || new Error('shift-templates unavailable');
                 localShiftNormatives = Array.isArray(data?.normatives)
                     ? data.normatives.filter(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)
                     : [];
@@ -9197,9 +9221,23 @@
 
         calendarLocalRoutesPromise = (async () => {
             try {
-                const res = await fetch('./data/calendar-local-routes.json');
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                calendarLocalRoutesData = await res.json();
+                const urls = [];
+                if (APP_DATA_API) urls.push(appDataApiUrl('calendar-local-routes'));
+                urls.push('./data/calendar-local-routes.json');
+                let data = null;
+                let lastErr = null;
+                for (const url of urls) {
+                    try {
+                        const res = await fetch(url, { cache: 'no-store' });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        data = await res.json();
+                        break;
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                if (!data) throw lastErr || new Error('calendar-local-routes unavailable');
+                calendarLocalRoutesData = data;
                 persistReferenceJsonCache(CALENDAR_LOCAL_ROUTES_STORAGE_KEY, calendarLocalRoutesData);
             } catch (err) {
                 console.warn('[calendarLocalRoutes]', err);

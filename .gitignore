@@ -1,0 +1,19 @@
+node_modules/
+yandex-cloud/function/node_modules/
+yandex-cloud/*.zip
+!Version/snapshots/**/da-function.zip
+.deploy/
+.wrangler/
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+
+secrets.local.json
+
+# Устарело — не создавать (деплой напрямую из app/)
+Release/
+
+# Временные дампы парсера xlsx (исходники .xlsx хранятся локально)
+Часы смен/_*.json
+Часы смен/~$*.xlsx

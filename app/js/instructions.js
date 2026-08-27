@@ -271,12 +271,24 @@
     async function loadStaticInstructionsPack() {
         staticPack = { ready: false, folders: [], documents: [], chunks: [] };
         try {
-            const res = await fetch('./data/instructions/catalog.json', { cache: 'no-store' });
-            if (!res.ok) {
+            const proxy = String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
+            const catalogUrls = [];
+            if (proxy) catalogUrls.push(`${proxy}?api=instructions-catalog`);
+            catalogUrls.push('./data/instructions/catalog.json');
+
+            let catalog = null;
+            for (const url of catalogUrls) {
+                try {
+                    const res = await fetch(url, { cache: 'no-store' });
+                    if (!res.ok) continue;
+                    catalog = await res.json();
+                    break;
+                } catch (_) { /* next */ }
+            }
+            if (!catalog) {
                 staticPack.ready = true;
                 return;
             }
-            const catalog = await res.json();
             staticPack.folders = (catalog.folders || []).map((f, idx) => ({
                 id: `static_${f.id}`,
                 staticId: f.id,
@@ -314,9 +326,19 @@
                 staticPack.documents.push(doc);
                 if (!doc.hasText) continue;
                 try {
-                    const chunkRes = await fetch(`./data/instructions/chunks/${d.id}.json`, { cache: 'no-store' });
-                    if (!chunkRes.ok) continue;
-                    const pack = await chunkRes.json();
+                    const chunkUrls = [];
+                    if (proxy) chunkUrls.push(`${proxy}?api=instructions-chunk&id=${encodeURIComponent(d.id)}`);
+                    chunkUrls.push(`./data/instructions/chunks/${d.id}.json`);
+                    let pack = null;
+                    for (const curl of chunkUrls) {
+                        try {
+                            const chunkRes = await fetch(curl, { cache: 'no-store' });
+                            if (!chunkRes.ok) continue;
+                            pack = await chunkRes.json();
+                            break;
+                        } catch (_) { /* next */ }
+                    }
+                    if (!pack) continue;
                     (pack.chunks || []).forEach((ch) => {
                         staticPack.chunks.push({
                             ...ch,
@@ -570,6 +592,42 @@
     async function keywordSearch(query, limit = 5) {
         const q = String(query || '').trim();
         if (!q) return [];
+
+        const proxy = String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
+        if (proxy && q.length >= 2) {
+            try {
+                const res = await fetch(
+                    `${proxy}?api=instructions-search&q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`,
+                    { cache: 'no-store' }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.ok && Array.isArray(data.results) && data.results.length) {
+                        return data.results.map((row) => ({
+                            chunk: {
+                                id: row.chunk?.id,
+                                section: row.chunk?.section || '',
+                                text: row.chunk?.text || '',
+                                cleanText: row.chunk?.text || '',
+                                page: row.chunk?.page || 0,
+                                docId: `static_${row.doc?.id}`
+                            },
+                            doc: {
+                                id: `static_${row.doc?.id}`,
+                                staticId: row.doc?.id,
+                                title: row.doc?.title || row.doc?.id,
+                                source: 'static',
+                                hasText: true
+                            },
+                            score: row.score || 0
+                        })).slice(0, limit);
+                    }
+                }
+            } catch (err) {
+                console.warn('[instructions] server search', err);
+            }
+        }
+
         const chunks = [...(await getAll('chunks')), ...staticPack.chunks];
         const docs = [...(await getAll('documents')), ...staticPack.documents];
         const docMap = Object.fromEntries(docs.map((d) => [d.id, d]));

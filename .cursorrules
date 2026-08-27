@@ -1,0 +1,43 @@
+# Правила Cursor — Цифровой помощник
+
+## Расписание (Yandex Cloud Function + кэш)
+
+Все обращения к Яндекс.Rasp — **только** через сервер в `yandex-cloud/function/` (Cloud Function). Описание: `app/data/trains-api/README.md`, деплой: `yandex-cloud/README.md`.
+
+- **Табло Ярославского:** ночью в 00:05 МСК таймер дергает `?preload_boards=1&secret=` → кэш `board:s2000002:YYYY-MM-DD`. Приложение только читает `GET ?board=1&date=`. Если ключа нет — 404, без Яндекса. Клиентский `?url=` `/schedule/?station=s2000002` **запрещён**.
+- **Нитки 6000–6999:** UID с табло этой даты → `?url=` `/thread/` (кэш, иначе Яндекс). Пушкино — запасной `?url=` `/schedule/`.
+- **7000+:** только `trains-local.json`, без сервера Rasp.
+
+Кэш сгорает в **полночь МСК даты+2**. Пустое табло не пишем. Минутный таймер — `?run_push=1&secret=`; ночной — только табло.
+
+Публичный URL: в `app/js/app-config.js` → `yandexProxy` (`functions.yandexcloud.net/...`).
+
+**Устарело:** `worker.js` / `wrangler.toml` (Cloudflare) — не деплоить.
+
+## Снимок (обязательно)
+
+`npm run snapshot` **обязан** сохранять:
+
+- `Version/snapshots/index X.Y.Z.html`
+- `Version/snapshots/styles X.Y.Z/`
+- `Version/snapshots/app-config X.Y.Z.js`
+- **`Version/snapshots/yandex-cloud X.Y.Z/`** — **вся серверная часть**: `function/` (index, lib, package.json, lock), README, `.env.example`, `da-function.zip`, `SNAPSHOT.json`
+
+Без снимка `yandex-cloud X.Y.Z/` релиз **не готов**.
+
+## Общие правила проекта
+
+См. `.cursor/rules/workflow-app-only.mdc` — UI/PWA в `app/`, без `Release/`.  
+Сервер Rasp/push — `yandex-cloud/`.  
+Контекст: `PROJECT_MAP.md`.
+
+## Деплой сервера (Yandex Cloud)
+
+После правок в `yandex-cloud/function/`:
+
+1. `npm run pack:yc` → `yandex-cloud/da-function.zip` (пути с `/`)
+2. Залить ZIP в консоль Cloud Function, entrypoint `index.handler`
+3. Env: `YANDEX_API_KEY`, `STATS_SECRET`, `VAPID_*`, желательно S3
+4. Таймеры: preload_boards / run_push
+
+Секреты только в env функции, не в клиентском `app/` (кроме публичного `yandexProxy` и VAPID public на клиенте).

@@ -1,0 +1,13 @@
+occular-ocr
+onnxruntime-gpu==1.18.0
+nvidia-cublas-cu12
+nvidia-cudnn-cu12
+nvidia-cuda-runtime-cu12
+nvidia-cublas-cu11
+nvidia-cuda-runtime-cu11
+nvidia-cuda-nvrtc-cu11
+nvidia-cudnn-cu11==8.9.5.29
+nvidia-cufft-cu11
+nvidia-curand-cu11
+pypdfium2
+pillow

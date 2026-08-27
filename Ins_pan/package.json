@@ -1,0 +1,17 @@
+{
+  "name": "cppk-admin",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Локальная админ-панель Цифрового помощника",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "admin": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3"
+  }
+}
