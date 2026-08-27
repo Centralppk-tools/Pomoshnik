@@ -25,7 +25,7 @@
 - Данные: статические JSON + `localStorage` (per-user)
 - Сборка/деплой: **нет bundler** — на GitHub Pages заливается папка `app/` как есть
 - Dev-сервер: `npm run serve` → `python -m http.server 8765 --directory app`
-- Backend-интеграции: Google Apps Script, Яндекс.Rasp API (через Cloudflare Worker), CloudTips, Telegram
+- Backend-интеграции: Google Apps Script, Яндекс.Rasp API (через **Yandex Cloud Function** в `yandex-cloud/`), CloudTips, Telegram
 
 **Точки входа:**
 | Файл | Роль |
@@ -82,7 +82,11 @@ Digital Assistant/
 ├── google-script/
 │   └── Код.js                    # Google Apps Script Web App (депо API)
 │
-├── worker.js                     # ★ ночное табло Ярославского + прокси ниток/Пушкино + KV
+├── yandex-cloud/                 # ★ SERVER — Yandex Cloud Function (Rasp, push, кэш)
+│   ├── function/                 # index.handler, lib/core.js, store, webpush
+│   └── README.md                 # деплой, таймеры, env
+│
+├── worker.js                     # устарело (Cloudflare), см. yandex-cloud/
 │
 ├── tools/                        # dev/build утилиты (не в деплое)
 │   ├── snapshot.mjs              # npm run snapshot → Version/snapshots/

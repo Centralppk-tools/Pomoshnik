@@ -1,7 +1,13 @@
 node_modules/
+yandex-cloud/function/node_modules/
+yandex-cloud/*.zip
+!Version/snapshots/**/da-function.zip
+.deploy/
+.wrangler/
 .DS_Store
 Thumbs.db
 *.log
+*.bak
 
 secrets.local.json
 

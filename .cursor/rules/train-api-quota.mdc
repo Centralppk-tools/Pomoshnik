@@ -1,67 +1,39 @@
 ---
-description: Лимит API поездов (500/сутки) — обязательно при правках trains/route/schedule/worker
-globs: app/index.html,app/trains-local.json,app/data/trains-uids.json,app/data/trains-api/**,tools/enrich-train-uids.py,worker.js
+description: Расписание поездов — табло ночью, нитки по кнопке, квота Яндекса
+globs: app/index.html,app/trains-local.json,app/data/trains-uids.json,app/data/trains-api/**,tools/enrich-train-uids.py,yandex-cloud/**,worker.js
 alwaysApply: false
 ---
 
-# Поезда и квота API
+# Расписание поездов
 
-**Перед любыми правками прочитай:** `app/data/trains-api/README.md`
+Полный рассказ: `app/data/trains-api/README.md`. Сервер: `yandex-cloud/`. Ниже — то, что нельзя сломать.
 
-## Правило кэширования API (Cloudflare Worker + KV)
+## Картина целиком
 
-**Все запросы к Яндекс API выполняются через Cloudflare Worker (`worker.js`) с сохранением в KV (`CACHE_KV` → namespace `TRAIN_CACHE`).**
+Яндекс ~500 запросов в сутки. Табло Ярославского (`s2000002`) качает **только сервер в 00:05 МСК** (таймер → `?preload_boards=1`) на четыре даты: сегодня, +1, +2, +6. Пишет кэш `board:s2000002:YYYY-MM-DD`. Пустое табло не сохраняет.
 
-Срок жизни кэша для **табло** (`/schedule/`) и **ниток** (`/thread/`) привязан к окончанию суток **D+1** и сгорает **строго в 00:00:00 MSK** дня **после D+1** (полночь **D+2**).  
-**Запрещён** фиксированный TTL 24 часа — только `expiration` по полуночи в `worker.js`.
+Приложение табло **не качает**. Оно делает `GET ?board=1&date=`. Нет ключа — 404 `BOARD_NOT_READY`, без Яндекса. Прокси `?url=` `/schedule/?station=s2000002` **запрещён**.
 
-Заголовки ответа Worker: `X-Cache-Status: HIT_WORKER_KV | MISS_YANDEX_API`.
+Нитка — отдельная история: UID с табло этой даты → `?url=` `/thread/` через функцию (кэш, при промахе Яндекс). Пушкино — запасной `?url=` `/schedule/`. Поезда не 6000–6999 — только `trains-local.json`, без HTTP.
 
-## Единый серверный прокси
+Кэш живёт до **полуночи МСК даты+2**, не «24 часа». Минутный таймер — только push (`?run_push=1`). Ночной — только табло.
 
-| Слой | Роль |
-|------|------|
-| `worker.js` | CORS-прокси, KV read/write, expiration D+2 midnight MSK |
-| `app/index.html` | Клиент: табло D+D+1 → UID → `/thread/` через Worker |
-| localStorage | `trainThreadsCache`, `stationScheduleCache` — доп. клиентский кэш |
+## Когда сеть
 
-## ВНИМАНИЕ — нумерация и API
+Только «Показать маршруты», «Маршрут» из календаря/профиля, «Обновить». Не из таймера, полночи, visibility, чипа смены.
 
-**Запросы к Яндекс API разрешены ТОЛЬКО для поездов 6000-й нумерации (6000–6999).**
+Поиск 6000–6999: кэш `номер@дата` → табло (`?board=1`) → нитка → Пушкино → локальный файл. Обычный поиск без `forceRefresh` табло.
 
-Поезда **7000-й нумерации (7000–7999)** и любые другие **обязаны** обрабатываться **строго через `trains-local.json`** — без HTTP к Worker / Яндекс.
+«Обновить» коротко — только нитки. Удержание — ещё раз `?board=1` (чтение кэша), не Яндекс `/schedule/`.
 
-Проверка: `isYandexApiEligibleTrainNumber()`. Локальный путь: `resolveTrainFromLocalOnly()`.
+## Нельзя
 
-## Жёсткие правила
-
-1. **Три триггера API:** «Показать маршруты», «Маршрут» из календаря, «Обновить» — только 6000–6999, только через Worker.
-2. **Двухдневное табло:** база UID — табло Ярославского на **D** и **D+1** (`collectBoardDatesForShift`).
-3. **Нитка:** UID с табло → `/thread/?uid=…&date=…` через Worker; **не** повторять forceRefresh табло при промахе.
-4. **7000+:** сразу `trains-local.json`, **0** HTTP.
-5. **Cache-first клиент:** `trainThreadsCache[номер@дата]` → табло в памяти → Worker/KV → thread.
-6. **Табло** — один fetch на `станция+дата`, dedupe `stationScheduleLoaders`; без каскада forceRefresh.
-7. **Не сбрасывать** `stationScheduleCache.boards` при коротком «Обновить».
-8. **Long-press «Обновить»** (~0,6 с) → `forceBoardRefresh` (явный сброс, не автоматический retry).
-9. **Никакого fetch** из таймеров, полночи, visibility.
-10. **UID только с табло** выбранной даты — не из статических файлов.
-
-## Антипаттерны (запрещено)
-
-- фиксированный TTL 24 ч в Worker KV
-- `forceRefresh: true` при обычном поиске поезда (retry-каскад табло/Пушкино)
+- клиентский `/schedule/` на Ярославский
+- TTL 24 ч в кэше
 - `/schedule/` или `/thread/` для 7000+
-- прямой fetch к `api.rasp.yandex.net` из браузера (минуя Worker)
-- `getRouteData({ forceRefresh })` из таймера
+- прямой fetch на `api.rasp.yandex.net`
+- UID «навсегда» из `trains-uids.json`
+- мешать ночной preload с минутным push
+- писать пустое табло в кэш или localStorage
 
-## Деплой Worker
-
-1. Cloudflare Dashboard → Workers → KV → создать **TRAIN_CACHE**.
-2. Worker → Settings → Variables → KV binding **CACHE_KV** → TRAIN_CACHE.
-3. Вставить `worker.js` → Save and Deploy.
-4. URL Worker — в `app/js/app-config.js` → `yandexProxy`.
-
-## Новые поезда
-
-- **6000–6999:** номер на табло D/D+1; опционально `trains-local.json`.
-- **7000+:** **обязательна** запись в `trains-local.json`.
+После правок `yandex-cloud/function/` — обновить код функции в Yandex Cloud (см. `yandex-cloud/README.md`). `worker.js` / Cloudflare — устарели.

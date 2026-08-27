@@ -1,10 +1,7 @@
-/**
- * @deprecated Cloudflare Worker. Логика перенесена в yandex-cloud/function/.
- * Не деплоить через wrangler. Оставлен для истории / сравнения.
+﻿/**
+ * Yandex Cloud Function (ported from Cloudflare Worker) — прокси Яндекс.Rasp + KV-кэш + метрики использования (DAU / регистрации) + Web Push.
  *
- * Cloudflare Worker — прокси Яндекс.Rasp + KV-кэш + метрики использования (DAU / регистрации) + Web Push.
- *
- * Bindings: env.CACHE_KV → TRAIN_CACHE, env.STATS_SECRET → секрет /stats
+ * env.CACHE_KV → Object Storage / MemoryStore; secrets from process.env, env.STATS_SECRET → секрет /stats
  *
  * Эндпоинты:
  *   GET ?board=1&date=YYYY-MM-DD — табло Ярославского из KV (без Яндекса)
@@ -23,7 +20,7 @@
  * Пуш-джобы: без delete, только put + expirationTtl; одинаковый набор алертов — без put.
  */
 
-import { sendNotification, isExpired } from 'edgepush';
+const { sendNotification, isExpired } = require('./webpush-send');
 
 const MSK_OFFSET_SEC = 3 * 60 * 60;
 const PUSH_DELIVERY_WINDOW_SEC = 240;
@@ -882,8 +879,8 @@ async function processScheduledPushes(env) {
     }
 }
 
-export default {
-    async fetch(request, env) {
+module.exports = {
+    async handleRequest(request, env) {
         if (request.method === 'OPTIONS') {
             return corsResponse(null, 204);
         }
@@ -922,6 +919,18 @@ export default {
 
         if (reqUrl.searchParams.get('preload_boards') === '1') {
             return handlePreloadBoards(reqUrl, env);
+        }
+
+        if (reqUrl.searchParams.get('run_push') === '1') {
+            const secret = reqUrl.searchParams.get('secret') || '';
+            const expected = String(env.STATS_SECRET || '').trim();
+            if (!expected || secret !== expected) {
+                return corsResponse('Forbidden', 403);
+            }
+            await processScheduledPushes(env);
+            return corsResponse(JSON.stringify({ ok: true }), 200, {
+                'Content-Type': 'application/json; charset=utf-8',
+            });
         }
 
         return handleYandexProxy(request, reqUrl, env);

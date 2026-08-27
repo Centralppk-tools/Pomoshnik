@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 3.2.1 STABLE)
-const CACHE_VERSION = 'da_v3_2_1';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.1 STABLE)
+const CACHE_VERSION = 'da_v4_0_1';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -145,7 +145,6 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => precacheAssets(cache))
-            .then(() => self.skipWaiting())
             .catch((err) => console.warn('[sw] прекэш отклонён из-за отсутствия файлов:', err))
     );
 });

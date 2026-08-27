@@ -1,0 +1,14 @@
+{
+  "name": "da-yandex-cloud-function",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Цифровой помощник — сервер (табло, прокси Rasp, Web Push) для Yandex Cloud Functions",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
+    "web-push": "^3.6.7"
+  }
+}

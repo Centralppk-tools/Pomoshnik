@@ -902,3 +902,20 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 
 Не для приложения (release-notes / UI):
 - Ins_pan, схема ключей KV, wrangler deploy
+
+4.0.1
+- Обновленная серверная часть
+- Новый ключ апи (яндекс)
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- Сервер: yandex-cloud/function (Cloud Function) вместо Cloudflare Worker; кэш Object Storage/Memory; Web Push; фикс queryStringParameters.
+- Клиент: yandexProxy → functions.yandexcloud.net/d4etmp7m8cfgrv283027; новый YANDEX_API_KEY в env функции.
+- Service Worker: da_v4_0_1.
+- Деплой PWA: залить app/ на GitHub.
+- Деплой сервера: da-function.zip → YC Function (index.handler).
+- Снимок HTML: Version/snapshots/index 4.0.1.html
+- Снимок стилей: Version/snapshots/styles 4.0.1/
+- Снимок конфига: Version/snapshots/app-config 4.0.1.js
+- Снимок сервера: Version/snapshots/yandex-cloud 4.0.1/ (код + ZIP + README)
