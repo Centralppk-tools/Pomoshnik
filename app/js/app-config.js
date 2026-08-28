@@ -8,3 +8,23 @@ window.APP_CONFIG = {
     cloudtipsPaymentUrl: 'https://pay.cloudtips.ru/p/0c990fdb',
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee'
 };
+
+/** Базовый URL Cloud Function без хвостового слэша */
+window.daYandexProxyBase = function daYandexProxyBase() {
+    return String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
+};
+
+/** Заголовок X-DA-Client для всех запросов к Cloud Function */
+window.daBuildProxyFetchInit = function daBuildProxyFetchInit(init = {}) {
+    const token = String(window.APP_CONFIG?.yandexClientToken || '').trim();
+    const headers = new Headers(init.headers || undefined);
+    if (token && !headers.has('X-DA-Client')) {
+        headers.set('X-DA-Client', token);
+    }
+    return { ...init, headers };
+};
+
+window.daIsYandexProxyUrl = function daIsYandexProxyUrl(url) {
+    const base = window.daYandexProxyBase();
+    return Boolean(base && String(url || '').startsWith(base));
+};

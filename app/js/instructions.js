@@ -279,7 +279,10 @@
             let catalog = null;
             for (const url of catalogUrls) {
                 try {
-                    const res = await fetch(url, { cache: 'no-store' });
+                    const init = url.includes('functions.yandexcloud.net') && typeof window.daBuildProxyFetchInit === 'function'
+                        ? window.daBuildProxyFetchInit({ cache: 'no-store' })
+                        : { cache: 'no-store' };
+                    const res = await fetch(url, init);
                     if (!res.ok) continue;
                     catalog = await res.json();
                     break;
@@ -596,9 +599,12 @@
         const proxy = String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
         if (proxy && q.length >= 2) {
             try {
+                const searchInit = typeof window.daBuildProxyFetchInit === 'function'
+                    ? window.daBuildProxyFetchInit({ cache: 'no-store' })
+                    : { cache: 'no-store' };
                 const res = await fetch(
                     `${proxy}?api=instructions-search&q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`,
-                    { cache: 'no-store' }
+                    searchInit
                 );
                 if (res.ok) {
                     const data = await res.json();

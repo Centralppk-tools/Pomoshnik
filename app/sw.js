@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.2)
-const CACHE_VERSION = 'da_v4_0_2';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.3)
+const CACHE_VERSION = 'da_v4_0_3';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -94,6 +94,11 @@ function isReleaseNotesRequest(pathname) {
 
 function isTrainUidsRequest(pathname) {
     return pathname.endsWith('/data/trains-uids.json') || pathname.endsWith('trains-uids.json');
+}
+
+/** Конфиг прокси — всегда из сети (не cache-first), иначе залипает старый workers.dev */
+function isAppConfigRequest(pathname) {
+    return pathname.endsWith('/js/app-config.js') || pathname.endsWith('app-config.js');
 }
 
 async function networkFirst(request) {
@@ -256,6 +261,11 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
+
+    if (isAppConfigRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
 
     if (isReleaseNotesRequest(url.pathname) || isTrainUidsRequest(url.pathname)) {
         event.respondWith(networkFirst(request));

@@ -698,8 +698,21 @@
     const YANDEX_CLIENT_TOKEN = String(APP_CFG.yandexClientToken || '').trim();
     const YANDEX_PROXY_PREFIX = APP_DATA_API;
 
+    if (MY_CLOUDFLARE_PROXY.includes('workers.dev')) {
+        console.error('[config] yandexProxy указывает на Cloudflare Worker — нужен functions.yandexcloud.net');
+    }
+    if (MY_CLOUDFLARE_PROXY && !YANDEX_CLIENT_TOKEN) {
+        console.error('[config] Нет yandexClientToken — запросы к Cloud Function получат 403');
+    }
+
     /** Все запросы к Cloud Function — с заголовком X-DA-Client */
     (function patchFetchForYandexProxy() {
+        const buildInit = typeof window.daBuildProxyFetchInit === 'function'
+            ? window.daBuildProxyFetchInit
+            : null;
+        const isProxyUrl = typeof window.daIsYandexProxyUrl === 'function'
+            ? window.daIsYandexProxyUrl
+            : (url) => Boolean(YANDEX_PROXY_PREFIX && String(url || '').startsWith(YANDEX_PROXY_PREFIX));
         if (!YANDEX_PROXY_PREFIX || !YANDEX_CLIENT_TOKEN || typeof window.fetch !== 'function') return;
         const nativeFetch = window.fetch.bind(window);
         window.fetch = function daFetch(input, init) {
@@ -707,21 +720,34 @@
                 const url = typeof input === 'string'
                     ? input
                     : (input && typeof input.url === 'string' ? input.url : '');
-                if (url && url.startsWith(YANDEX_PROXY_PREFIX)) {
-                    const headers = new Headers(
-                        (init && init.headers)
-                        || (input && typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined)
-                    );
-                    if (!headers.has('X-DA-Client')) headers.set('X-DA-Client', YANDEX_CLIENT_TOKEN);
+                if (url && isProxyUrl(url)) {
+                    const mergedInit = buildInit
+                        ? buildInit(init || {})
+                        : (() => {
+                            const headers = new Headers((init && init.headers) || undefined);
+                            if (!headers.has('X-DA-Client')) headers.set('X-DA-Client', YANDEX_CLIENT_TOKEN);
+                            return { ...(init || {}), headers };
+                        })();
                     if (input && typeof Request !== 'undefined' && input instanceof Request) {
-                        return nativeFetch(new Request(input, { ...(init || {}), headers }));
+                        return nativeFetch(new Request(input, { ...(init || {}), ...mergedInit }));
                     }
-                    return nativeFetch(url, { ...(init || {}), headers });
+                    return nativeFetch(url, mergedInit);
                 }
             } catch (_) { /* fall through */ }
             return nativeFetch(input, init);
         };
     })();
+
+    function yandexProxyFetchInit(init = {}) {
+        if (typeof window.daBuildProxyFetchInit === 'function') {
+            return window.daBuildProxyFetchInit(init);
+        }
+        const headers = new Headers(init.headers || undefined);
+        if (YANDEX_CLIENT_TOKEN && !headers.has('X-DA-Client')) {
+            headers.set('X-DA-Client', YANDEX_CLIENT_TOKEN);
+        }
+        return { ...init, headers };
+    }
 
     function appDataApiUrl(apiName, params = {}) {
         const u = new URL(APP_DATA_API || 'https://invalid.local');
@@ -767,7 +793,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.2';
+    const APP_RELEASE_VERSION = '4.0.3';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -3039,12 +3065,12 @@
         });
 
         try {
-            const res = await fetch(`${proxyBase}?${params.toString()}`, {
+            const res = await fetch(`${proxyBase}?${params.toString()}`, yandexProxyFetchInit({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ subscription: subscription.toJSON() }),
                 keepalive: true
-            });
+            }));
             return res.ok;
         } catch (error) {
             console.warn('[web-push] register failed:', error);
@@ -3108,12 +3134,12 @@
         });
 
         try {
-            const res = await fetch(`${proxyBase}?${params.toString()}`, {
+            const res = await fetch(`${proxyBase}?${params.toString()}`, yandexProxyFetchInit({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ jobs }),
                 keepalive: true
-            });
+            }));
             if (!res.ok) {
                 console.warn('[web-push] sync_alerts failed:', res.status);
                 return false;
@@ -3142,12 +3168,12 @@
                 device_uuid: deviceUuid
             });
             try {
-                await fetch(`${proxyBase}?${params.toString()}`, {
+                await fetch(`${proxyBase}?${params.toString()}`, yandexProxyFetchInit({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ endpoint: subscription.endpoint }),
                     keepalive: true
-                });
+                }));
             } catch (error) {
                 console.warn('[web-push] unregister failed:', error);
             }
@@ -3331,12 +3357,21 @@
 
     function logWorkerCacheStatus(response, context) {
         const status = response?.headers?.get('X-Cache-Status');
-        if (status) console.log('[trains] worker KV:', status, context || '');
+        const orig = response?.headers?.get('X-Original-Status');
+        if (response?.status === 403) {
+            console.warn('[trains] Cloud Function 403 — проверьте yandexClientToken и CLIENT_GATE_TOKEN:', context || '');
+        }
+        if (status || orig) {
+            console.log('[trains] proxy:', status || '—', context || '', orig ? `(orig ${orig})` : '');
+        }
     }
 
     async function fetchYandexViaWorker(yandexUrl, context) {
         void checkAndSendPendingPing();
-        const response = await fetchWithTimeout(`${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(yandexUrl)}`);
+        const response = await fetchWithTimeout(
+            `${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(yandexUrl)}`,
+            yandexProxyFetchInit()
+        );
         logWorkerCacheStatus(response, context);
         return response;
     }
@@ -3862,7 +3897,10 @@
         }
         const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
         const params = new URLSearchParams({ board: '1', date });
-        const response = await fetchWithTimeout(`${proxyBase}?${params.toString()}`);
+        const response = await fetchWithTimeout(
+            `${proxyBase}?${params.toString()}`,
+            yandexProxyFetchInit({ cache: 'no-store' })
+        );
         logWorkerCacheStatus(response, `board ${date}`);
         let payload = null;
         try {
@@ -3870,7 +3908,7 @@
         } catch {
             throw createBoardNotReadyError(null, `Некорректный ответ табло (${response.status})`);
         }
-        if (response.ok && Array.isArray(payload?.schedule) && payload.schedule.length) {
+        if (Array.isArray(payload?.schedule) && payload.schedule.length) {
             return payload.schedule;
         }
         throw createBoardNotReadyError(payload, `Табло ${date} недоступно`);
@@ -8530,7 +8568,11 @@
 
         analyticsPingInFlightUuids.add(deviceUuid);
         try {
-            const res = await fetch(url, { method: 'GET', keepalive: true, cache: 'no-store' });
+            const res = await fetch(url, yandexProxyFetchInit({
+                method: 'GET',
+                keepalive: true,
+                cache: 'no-store'
+            }));
             if (res.ok) {
                 if (hasAnalyticsPingPending() && getAnalyticsPendingUuid() === deviceUuid) {
                     clearAnalyticsPingPending();
