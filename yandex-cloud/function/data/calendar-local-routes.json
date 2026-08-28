@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "description": "Быстрые локальные маршруты календаря (ТО, И). Основные маршруты — из app/data/shift-templates.json.",
+  "presets": [
+    {
+      "id": "d99",
+      "route": "Д99",
+      "label": "Д99",
+      "kind": "day",
+      "hours": 11,
+      "hint": "День · 11 ч"
+    },
+    {
+      "id": "n99",
+      "route": "Н99",
+      "label": "Н99",
+      "kind": "night",
+      "hours": 11,
+      "nightHours": 6,
+      "morningRoute": "У99",
+      "hint": "6+5 ч · У99"
+    },
+    {
+      "id": "u99",
+      "route": "У99",
+      "label": "У99",
+      "kind": "morning",
+      "hours": 11,
+      "hint": "Утро · 11 ч"
+    },
+    {
+      "id": "to",
+      "route": "ТО",
+      "label": "ТО",
+      "kind": "tech",
+      "hours": 8,
+      "hint": "Тех. обучение · 8 ч"
+    },
+    {
+      "id": "i",
+      "route": "И",
+      "label": "И",
+      "kind": "tech",
+      "hoursEditable": true,
+      "defaultHours": 8,
+      "hint": "Инструктаж"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "scripts": {
+    "serve": "python -m http.server 8765 --directory app",
+    "export:shifts": "python tools/export-shifts.py",
+    "enrich:train-uids": "python tools/enrich-train-uids.py",
+    "snapshot": "node tools/snapshot.mjs",
+    "prepare-deploy": "node tools/snapshot.mjs",
+    "deploy:github": "node tools/deploy-github.mjs",
+    "deploy:github:dry": "node tools/deploy-github.mjs --dry-run",
+    "pack:yc": "node tools/pack-yandex-function.mjs",
+    "yc:pack": "node tools/pack-yandex-function.mjs",
+    "yc:preload-boards": "node tools/yc-preload-boards.mjs",
+    "yc:deploy": "node tools/yc-deploy-function.mjs",
+    "clasp:push": "clasp push --force",
+    "clasp:deploy": "node -e \"console.error('Use manual Web App deploy in script.google.com — clasp deploy breaks /exec. See google-script/README-DEPLOY.txt'); process.exit(1)\"",
+    "clasp:cleanup-deployments": "node tools/clasp-cleanup-deployments.mjs",
+    "clasp:release": "npm run clasp:push",
+    "worker:deploy": "node -e \"console.error('Cloudflare Worker deprecated. Use yandex-cloud/ (npm run pack:yc). See yandex-cloud/README.md'); process.exit(1)\""
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.3.0",
+    "wrangler": "^4.14.0"
+  }
+}

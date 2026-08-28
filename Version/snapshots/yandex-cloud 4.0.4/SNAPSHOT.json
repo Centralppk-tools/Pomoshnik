@@ -1,0 +1,15 @@
+{
+  "version": "4.0.4",
+  "capturedAt": "2026-08-28T21:49:25.814Z",
+  "proxyUrlHint": "см. app-config.js → yandexProxy",
+  "entrypoint": "index.handler",
+  "contents": [
+    "function/index.js",
+    "function/lib/*",
+    "function/package.json",
+    "function/package-lock.json",
+    "README.md",
+    ".env.example",
+    "da-function.zip"
+  ]
+}
