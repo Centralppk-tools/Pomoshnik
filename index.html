@@ -2,7 +2,21 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <script>
+    (function () {
+        var blockOpts = { passive: false };
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (name) {
+            document.addEventListener(name, function (e) { e.preventDefault(); }, blockOpts);
+        });
+        document.addEventListener('touchmove', function (e) {
+            if (e.touches.length > 1) e.preventDefault();
+        }, blockOpts);
+        document.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) e.preventDefault();
+        }, blockOpts);
+    })();
+    </script>
     <title>Цифровой помощник</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/app-icon.png" type="image/png">
@@ -793,7 +807,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.5';
+    const APP_RELEASE_VERSION = '4.0.6';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -2499,10 +2513,20 @@
     }
 
     function getSchedulePushSessionId() {
+        const tab = getAuthSessionTab() || '';
         const trains = getTrainNumbersFromDom().join(',');
         const date = getSelectedDate() || userStorageGet('selectedDate') || '';
         const single = userStorageGet('lastSingleTrain') || '';
-        return `${date}|${trains}|${single}`;
+        return `${tab}|${date}|${trains}|${single}`;
+    }
+
+    function buildScheduleAlertKey(localKey) {
+        return `${getSchedulePushSessionId()}::${String(localKey || '').trim()}`;
+    }
+
+    function isRelevantScheduleAlertKey(key) {
+        if (!key) return false;
+        return String(key).startsWith(`${getSchedulePushSessionId()}::`);
     }
 
     function loadSchedulePushFiredKeys() {
@@ -2758,8 +2782,8 @@
 
             (warningsByStation[index] || []).forEach((text, warnIndex) => {
                 if (!/скорост/i.test(text)) return;
-                targets.push({
-                    key: `sched_speed_1m_${index}_${warnIndex}`,
+                    targets.push({
+                        key: buildScheduleAlertKey(`sched_speed_1m_${index}_${warnIndex}`),
                     tone: 'speed',
                     leadMinutes: 1,
                     triggerMinutes: approachMinutes,
@@ -2777,7 +2801,7 @@
                     const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
                     const detail = `Тупик ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}`;
                     targets.push({
-                        key: `sched_deadend_10m_${index}`,
+                        key: buildScheduleAlertKey(`sched_deadend_10m_${index}`),
                         tone: 'deadend',
                         leadMinutes: 10,
                         triggerMinutes: approachMinutes,
@@ -2871,7 +2895,7 @@
 
                 if (depMinutes !== null) {
                     tryFireSchedulePushNotification(
-                        `route_brake10_${train.index}`,
+                        buildScheduleAlertKey(`route_brake10_${train.index}`),
                         train.departureDate,
                         depMinutes,
                         10,
@@ -2885,7 +2909,7 @@
                     );
 
                     tryFireSchedulePushNotification(
-                        `route_ready3_${train.index}`,
+                        buildScheduleAlertKey(`route_ready3_${train.index}`),
                         train.departureDate,
                         depMinutes,
                         3,
@@ -2901,7 +2925,7 @@
 
                 if (arrMinutes !== null && train.turnaroundMinutes !== null && train.turnaroundMinutes > 30) {
                     tryFireSchedulePushNotification(
-                        `route_to1_${train.index}`,
+                        buildScheduleAlertKey(`route_to1_${train.index}`),
                         train.arrivalDate,
                         arrMinutes,
                         0,
@@ -2990,7 +3014,7 @@
 
                 if (depMinutes !== null) {
                     addJob(
-                        `route_brake10_${train.index}`,
+                        buildScheduleAlertKey(`route_brake10_${train.index}`),
                         train.departureDate,
                         depMinutes,
                         10,
@@ -3002,7 +3026,7 @@
                         }
                     );
                     addJob(
-                        `route_ready3_${train.index}`,
+                        buildScheduleAlertKey(`route_ready3_${train.index}`),
                         train.departureDate,
                         depMinutes,
                         3,
@@ -3017,7 +3041,7 @@
 
                 if (arrMinutes !== null && train.turnaroundMinutes !== null && train.turnaroundMinutes > 30) {
                     addJob(
-                        `route_to1_${train.index}`,
+                        buildScheduleAlertKey(`route_to1_${train.index}`),
                         train.arrivalDate,
                         arrMinutes,
                         0,
@@ -3116,6 +3140,7 @@
     async function syncScheduleAlertsToWorker() {
         if (!MY_CLOUDFLARE_PROXY) return false;
         if (userStorageGet(WEB_PUSH_ENABLED_KEY) !== '1') return false;
+        if (!getAuthSessionTab()) return false;
 
         const registration = await navigator.serviceWorker?.ready?.catch(() => null);
         const subscription = registration
@@ -3124,13 +3149,13 @@
         if (!subscription) return false;
 
         const jobs = collectScheduleAlertJobsForWorker();
-        if (!jobs.length) return true;
 
         const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
         const params = new URLSearchParams({
             sync_alerts: '1',
             device_uuid: getOrCreateAnonymousDeviceUuid(),
-            session_id: getSchedulePushSessionId()
+            session_id: getSchedulePushSessionId(),
+            tab_number: getAuthSessionTab() || ''
         });
 
         try {
@@ -3161,28 +3186,30 @@
             ? await registration.pushManager.getSubscription().catch(() => null)
             : null;
 
+        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
+        const params = new URLSearchParams({
+            unregister_push: '1',
+            device_uuid: deviceUuid
+        });
+        try {
+            await fetch(`${proxyBase}?${params.toString()}`, yandexProxyFetchInit({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+                keepalive: true
+            }));
+        } catch (error) {
+            console.warn('[web-push] unregister failed:', error);
+        }
+
         if (subscription) {
-            const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
-            const params = new URLSearchParams({
-                unregister_push: '1',
-                device_uuid: deviceUuid
-            });
-            try {
-                await fetch(`${proxyBase}?${params.toString()}`, yandexProxyFetchInit({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ endpoint: subscription.endpoint }),
-                    keepalive: true
-                }));
-            } catch (error) {
-                console.warn('[web-push] unregister failed:', error);
-            }
             await subscription.unsubscribe().catch(() => {});
         }
     }
 
     function handleRemoteScheduleNotification(payload = {}) {
         const key = payload.key || payload.tag || '';
+        if (key && !isRelevantScheduleAlertKey(key)) return;
         if (key && schedulePushFiredKeys.has(key)) return;
         if (key) {
             schedulePushFiredKeys.add(key);
@@ -5127,6 +5154,7 @@
         setRouteSummaryVisible(false);
         stopScheduleLiveClock();
         resetScheduleResults();
+        void syncScheduleAlertsToWorker();
         updateScheduleDateHint();
         updateScheduleEmptyState();
     }
@@ -6074,6 +6102,12 @@
             }
         } else if (screen === 'profile') {
             updateProfileScreen();
+        }
+
+        if (screen !== 'schedule') {
+            routeNotificationTrains = null;
+            scheduleNotificationTargets = null;
+            void syncScheduleAlertsToWorker();
         }
 
         resumeScheduleLiveClockIfNeeded();
@@ -7091,12 +7125,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Фикс часов смен (ночные)',
-            'Добавление В и логики ×2'
+            'Финальные корректировки'
         ],
         highlights: [
-            'Фикс часов смен (ночные)',
-            'Добавление В и логики ×2'
+            'Финальные корректировки'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

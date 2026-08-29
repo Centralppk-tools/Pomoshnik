@@ -9,6 +9,18 @@ html {
     font-family: var(--font-family);
     scrollbar-color: rgba(255, 255, 255, 0.14) rgba(10, 16, 24, 0.6);
     scrollbar-width: thin;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* iOS: фокус на полях <16px даёт авто-зум — держим минимум 16px на тач-устройствах */
+@media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="color"]):not([type="file"]),
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
 }
 
 html::-webkit-scrollbar,
@@ -94,6 +106,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 body {
+    touch-action: manipulation;
     background-color: var(--app-bg);
     background-image:
         radial-gradient(ellipse 80% 50% at 50% -10%, rgba(23, 128, 56, 0.12), transparent),
