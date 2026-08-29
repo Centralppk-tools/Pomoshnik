@@ -11,11 +11,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 NARYAD_ROOT = Path(__file__).resolve().parents[1]
 TMP_DIR = NARYAD_ROOT / "_tmp"
+CANONICAL_SHIFTS_DIR = ROOT / "Часы смен"
 OUT_PRIMARY = ROOT / "yandex-cloud" / "function" / "data" / "shift-templates.json"
 OUT_LOCAL = ROOT / "app" / "data" / "shift-templates.json"
 
+CANONICAL_DATE_FILES: list[tuple[str, str]] = [
+    ("2026-08-27", "27 августа часы смен МЯЭД.pdf"),
+    ("2026-08-28", "28 августа часы смен МЯЭД.pdf"),
+    ("2026-08-29", "29 августа часы смен МЯЭД.pdf"),
+    ("2026-08-30", "30 августа часы смен МЯЭД.pdf"),
+    ("2026-08-31", "31 августа часы смен МЯЭД.pdf"),
+    ("2026-09-01", "1 сентября часы смен МЯЭД.pdf"),
+    ("2026-09-02", "2 сентября часы смен МЯЭД.pdf"),
+    ("2026-09-03", "3 сентября часы смен МЯЭД.pdf"),
+]
+
 from lib.pdf_to_xlsx import pdf_to_xlsx  # noqa: E402
-from lib.bundle import describe_bundle_meta, finalize_bundle, merge_plan, pick_active_normative  # noqa: E402
+from lib.bundle import (  # noqa: E402
+    DATE_MARKER_RE,
+    WEEKDAY_MARKERS,
+    app_date_to_iso,
+    collect_one_time_dates,
+    compute_loaded_until_iso,
+    describe_bundle_meta,
+    finalize_bundle,
+    get_rows_for_tag,
+    list_bundle_tags,
+    merge_plan,
+    pick_active_normative,
+)
 
 
 def _load_export_shifts():
@@ -142,7 +166,106 @@ def add_days_iso(iso: str, days: int) -> str:
     return nd.isoformat()
 
 
+DATE_MARKER_RE = DATE_MARKER_RE
+WEEKDAY_MARKERS = WEEKDAY_MARKERS
+
+
+def parse_russian_date_from_name(name: str) -> str | None:
+    lower = name.lower()
+    for month_word, month_num in (("августа", 8), ("сентября", 9)):
+        m = re.search(rf"(\d{{1,2}})\s+{month_word}", lower)
+        if m:
+            day = int(m.group(1))
+            return f"2026-{month_num:02d}-{day:02d}"
+    return None
+
+
+def is_date_only_rows(rows: list[dict]) -> bool:
+    markers = {str(r.get("date") or "").strip() for r in rows}
+    markers.discard("")
+    return bool(markers) and all(DATE_MARKER_RE.match(m) for m in markers)
+
+
+def seed_recurring_rows(existing: dict | None, merged_rows: list[dict]) -> list[dict]:
+    """Разовые даты не заменяют повторяющийся норматив пн–чт / пт / сб / вс."""
+    if not is_date_only_rows(merged_rows):
+        return merged_rows
+    normatives = (existing or {}).get("normatives") or []
+    prev = pick_active_normative(normatives) if normatives else None
+    if not prev:
+        return merged_rows
+    recurring = [
+        dict(r) for r in (prev.get("shiftDetails") or [])
+        if str(r.get("date") or "").strip() in WEEKDAY_MARKERS
+    ]
+    if not recurring:
+        return merged_rows
+    return ES.sort_rows(ES.dedupe_rows(recurring + list(merged_rows)))
+
+
+def merge_date_upload(existing: dict | None, files_meta: list, merged_rows: list) -> dict:
+    """Разовые даты — в активный норматив, без нового блока «с 1.09»."""
+    normatives = []
+    if existing and isinstance(existing.get("normatives"), list):
+        normatives = [dict(n) for n in existing["normatives"]]
+
+    active = pick_active_normative(normatives)
+    if not active:
+        raise ValueError("Нет активного норматива — сначала залейте норматив (пн–чт / пт / сб / вс)")
+
+    upload_dates = collect_one_time_dates(merged_rows)
+    if not upload_dates:
+        raise ValueError("В загрузке нет разовых дат")
+
+    upload_id = datetime.now(timezone.utc).strftime("upload-%Y%m%d-%H%M%SZ")
+    upload_record = {
+        "id": upload_id,
+        "kind": "dates",
+        "uploadedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "sourceFiles": [f["name"] for f in files_meta],
+        "dates": upload_dates,
+        "rows": len(merged_rows),
+    }
+
+    date_set = set(upload_dates)
+    kept = [
+        r for r in (active.get("shiftDetails") or [])
+        if str(r.get("date") or "").strip() not in date_set
+    ]
+    block_rows = ES.sort_rows(ES.dedupe_rows(kept + list(merged_rows)))
+
+    uploads = list(active.get("uploads") or [])
+    uploads.append(upload_record)
+
+    active_idx = next(i for i, n in enumerate(normatives) if n.get("id") == active.get("id"))
+    normatives[active_idx] = {
+        **active,
+        "uploads": uploads,
+        "shiftDetails": block_rows,
+        "stats": {
+            "rows": len(block_rows),
+            "routes": len({r["route"] for r in block_rows}),
+            "markers": sorted({r["date"] for r in block_rows}),
+        },
+    }
+
+    version = str(active.get("id") or datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    bundle = {
+        "version": version,
+        "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "source": {
+            "type": "naryad-pan",
+            "exporter": "Naryad_pan/lib/process.py",
+        },
+        "normatives": normatives,
+    }
+    return finalize_bundle(bundle, ES)
+
+
 def merge_normative(existing: dict | None, normative_from: str, close_previous: bool, files_meta: list, merged_rows: list) -> dict:
+    if is_date_only_rows(merged_rows):
+        return merge_date_upload(existing, files_meta, merged_rows)
+
     normatives = []
     if existing and isinstance(existing.get("normatives"), list):
         normatives = [dict(n) for n in existing["normatives"]]
@@ -154,12 +277,13 @@ def merge_normative(existing: dict | None, normative_from: str, close_previous: 
                 n["normativeTo"] = prev_to
                 break
 
-    block_rows = ES.sort_rows(ES.dedupe_rows(list(merged_rows)))
+    block_rows = ES.sort_rows(ES.dedupe_rows(seed_recurring_rows(existing, list(merged_rows))))
     new_block = {
         "id": normative_from,
         "normativeFrom": normative_from,
         "normativeTo": None,
         "sourceFiles": [f["name"] for f in files_meta],
+        "uploads": [],
         "shiftDetails": block_rows,
         "stats": {
             "rows": len(block_rows),
@@ -202,16 +326,185 @@ def read_bundle_info() -> dict:
     return info
 
 
+def inspect_bundle_tag(tag_id: str) -> dict:
+    data = load_existing_bundle()
+    if not data:
+        raise ValueError("файл shift-templates.json не найден")
+    rows = get_rows_for_tag(data, tag_id, ES)
+    tag = next((t for t in list_bundle_tags(data) if t.get("id") == tag_id), None)
+    return {"ok": True, "tag": tag, "rows": rows, "stats": {"rows": len(rows), "routes": len({r.get("route") for r in rows})}}
+
+
+def pick_best_tmp_file(candidates: list[Path]) -> Path:
+    xlsx = [p for p in candidates if p.suffix.lower() == ".xlsx"]
+    pool = xlsx or candidates
+    return max(pool, key=lambda p: p.stat().st_mtime)
+
+
+def parse_pdf_for_iso(src: Path, iso: str) -> list[dict]:
+    output_date = iso_to_app_date(iso)
+    parse_marker = ES.iso_to_weekday_marker(iso)
+    xlsx_path = TMP_DIR / f"_rebuild_{iso}.xlsx"
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    prepare_xlsx(src, xlsx_path)
+    rows = ES.parse_workbook_with_marker(xlsx_path, parse_marker)
+    return [{**r, "date": output_date} for r in rows]
+
+
+def rebuild_bundle_from_tmp() -> dict:
+    """Пересборка: нормативы до 05.08 + разовые 27.08–03.09 из «Часы смен/», без блока 2026-09-01."""
+    existing = load_existing_bundle()
+    if not existing:
+        raise ValueError("shift-templates.json не найден")
+
+    keep_ids = {"2026-06-24", "2026-07-17", "2026-08-05"}
+    normatives = [dict(n) for n in (existing.get("normatives") or []) if str(n.get("id")) in keep_ids]
+    active = next((n for n in normatives if n.get("id") == "2026-08-05"), None)
+    if not active:
+        raise ValueError("В базе нет норматива 2026-08-05")
+
+    weekday_rows = [
+        dict(r) for r in (active.get("shiftDetails") or [])
+        if str(r.get("date") or "").strip() in WEEKDAY_MARKERS
+    ]
+
+    parsed_batches: list[dict] = []
+    merged_one_time: list[dict] = []
+    for iso, filename in CANONICAL_DATE_FILES:
+        src = CANONICAL_SHIFTS_DIR / filename
+        if not src.is_file():
+            raise ValueError(f"Нет исходного PDF: {src}")
+        rows = parse_pdf_for_iso(src, iso)
+        merged_one_time.extend(rows)
+        parsed_batches.append({
+            "iso": iso,
+            "file": filename,
+            "path": str(src),
+            "rows": len(rows),
+            "routes": len({r["route"] for r in rows}),
+        })
+
+    upload_id = datetime.now(timezone.utc).strftime("upload-%Y%m%d-%H%M%SZ")
+    upload_record = {
+        "id": upload_id,
+        "kind": "dates",
+        "uploadedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "sourceFiles": [b["file"] for b in parsed_batches],
+        "sourceDir": str(CANONICAL_SHIFTS_DIR),
+        "dates": collect_one_time_dates(merged_one_time),
+        "rows": len(merged_one_time),
+    }
+
+    block_rows = ES.sort_rows(ES.dedupe_rows(weekday_rows + merged_one_time))
+    active_idx = next(i for i, n in enumerate(normatives) if n.get("id") == "2026-08-05")
+    normatives[active_idx] = {
+        **active,
+        "normativeTo": None,
+        "uploads": [upload_record],
+        "shiftDetails": block_rows,
+        "stats": {
+            "rows": len(block_rows),
+            "routes": len({r["route"] for r in block_rows}),
+            "markers": sorted({r["date"] for r in block_rows}),
+        },
+    }
+
+    bundle = {
+        "version": "2026-08-05",
+        "generatedAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "source": {"type": "naryad-pan", "exporter": "Naryad_pan/lib/process.py", "sourceDir": str(CANONICAL_SHIFTS_DIR)},
+        "normatives": normatives,
+    }
+    bundle = finalize_bundle(bundle, ES)
+    text = json.dumps(bundle, ensure_ascii=False, indent=2) + "\n"
+    OUT_PRIMARY.write_text(text, encoding="utf-8")
+    if OUT_LOCAL.parent.exists():
+        OUT_LOCAL.write_text(text, encoding="utf-8")
+
+    return {
+        "ok": True,
+        "parsedDates": parsed_batches,
+        "loadedUntilIso": compute_loaded_until_iso(normatives),
+        "meta": describe_bundle_meta(bundle),
+        "stats": bundle.get("stats"),
+    }
+
+
 def repair_bundle_file() -> dict:
     data = load_existing_bundle()
     if not data:
         raise ValueError("файл shift-templates.json не найден")
-    fixed = finalize_bundle(data, ES)
+    fixed = repair_missing_nights_and_recurring(data)
+    fixed = finalize_bundle(fixed, ES)
     text = json.dumps(fixed, ensure_ascii=False, indent=2) + "\n"
     OUT_PRIMARY.write_text(text, encoding="utf-8")
     if OUT_LOCAL.parent.exists():
         OUT_LOCAL.write_text(text, encoding="utf-8")
     return {"ok": True, "meta": describe_bundle_meta(fixed), "stats": fixed.get("stats")}
+
+
+def repair_missing_nights_and_recurring(data: dict) -> dict:
+    """Починка: разовые PDF без ночи + блок без пн–чт/пт/сб/вс."""
+    normatives = [dict(n) for n in (data.get("normatives") or [])]
+    if not normatives:
+        return data
+
+    active = pick_active_normative(normatives)
+    if not active:
+        return data
+
+    prev = None
+    for n in reversed(normatives):
+        if n.get("id") != active.get("id"):
+            prev = n
+            break
+
+    block_id = active.get("id")
+    idx = next(i for i, n in enumerate(normatives) if n.get("id") == block_id)
+
+    rows: list[dict] = []
+    if prev:
+        rows.extend(
+            dict(r) for r in (prev.get("shiftDetails") or [])
+            if str(r.get("date") or "").strip() in WEEKDAY_MARKERS
+        )
+
+    # Переразбор PDF/xlsx из _tmp для разовых дат
+    if TMP_DIR.is_dir():
+        for xlsx in sorted(TMP_DIR.glob("*.xlsx")):
+            name = xlsx.name.lower()
+            # имя содержит «28 августа» и т.п. — пропускаем, дату берём из содержимого через mode=date ниже
+            m = re.search(r"(\d{1,2})\s*(?:августа|сентября)", name)
+            if not m:
+                continue
+            day = int(m.group(1))
+            month = 8 if "августа" in name else 9
+            iso = f"2026-{month:02d}-{day:02d}"
+            output_date = iso_to_app_date(iso)
+            parse_marker = ES.iso_to_weekday_marker(iso)
+            try:
+                parsed = ES.parse_workbook_with_marker(xlsx, parse_marker)
+            except Exception:
+                continue
+            rows.extend({**r, "date": output_date} for r in parsed)
+
+    if not rows:
+        rows = list(active.get("shiftDetails") or [])
+
+    block_rows = ES.sort_rows(ES.dedupe_rows(rows))
+    normatives[idx] = {
+        **active,
+        "shiftDetails": block_rows,
+        "stats": {
+            "rows": len(block_rows),
+            "routes": len({r["route"] for r in block_rows}),
+            "markers": sorted({r["date"] for r in block_rows}),
+        },
+    }
+    data = dict(data)
+    data["normatives"] = normatives
+    data["generatedAt"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return data
 
 
 def run_preview(files: list[dict], normative_from: str, close_previous: bool) -> dict:
@@ -240,8 +533,15 @@ def run_preview(files: list[dict], normative_from: str, close_previous: bool) ->
 
     merged = ES.sort_rows(ES.dedupe_rows(merged))
     existing = load_existing_bundle()
-    plan = merge_plan(existing, normative_from, len(merged))
-    if close_previous and plan["previousActiveId"]:
+    upload_kind = "dates" if is_date_only_rows(merged) else "normative"
+    if upload_kind == "dates" and not normative_from:
+        active = pick_active_normative((existing or {}).get("normatives") or [])
+        normative_from = str(active.get("id") if active else datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    if upload_kind == "normative" and not normative_from:
+        raise ValueError("Укажите дату начала норматива для маркерных файлов")
+
+    plan = merge_plan(existing, normative_from, len(merged), upload_kind)
+    if close_previous and plan["previousActiveId"] and upload_kind == "normative":
         plan["willClosePreviousTo"] = add_days_iso(normative_from, -1)
     bundle = merge_normative(existing, normative_from, close_previous, parsed_files, merged)
 

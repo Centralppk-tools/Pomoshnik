@@ -17,11 +17,11 @@ if str(NARYAD_ROOT) not in sys.path:
     sys.path.insert(0, str(NARYAD_ROOT))
 
 from lib.multipart import parse_preview_form  # noqa: E402
-from lib.process import guess_marker, read_bundle_info, run_apply, run_preview  # noqa: E402
+from lib.process import guess_marker, inspect_bundle_tag, read_bundle_info, rebuild_bundle_from_tmp, run_apply, run_preview  # noqa: E402
 
 HOST = "127.0.0.1"
 PORT = 8791
-BUILD = "2026-08-29-bundle-fix"
+BUILD = "2026-08-29-upload-tags"
 TMP = NARYAD_ROOT / "_tmp"
 PREVIEW_CACHE: dict[str, dict] = {}
 
@@ -44,6 +44,17 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/bundle-info":
             self._json(200, {"ok": True, **read_bundle_info()})
             return
+        if self.path.startswith("/api/bundle-inspect?"):
+            tag = ""
+            if "?" in self.path:
+                from urllib.parse import parse_qs, urlparse
+                qs = parse_qs(urlparse(self.path).query)
+                tag = (qs.get("tag") or [""])[0]
+            try:
+                self._json(200, inspect_bundle_tag(tag))
+            except Exception as err:
+                self._json(400, {"ok": False, "error": str(err)})
+            return
         if self.path in ("/", "/index.html"):
             self.path = "/Index.html"
         return super().do_GET()
@@ -54,6 +65,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self.path == "/api/apply":
             self._handle_apply()
+            return
+        if self.path == "/api/rebuild-from-tmp":
+            self._handle_rebuild()
             return
         self._json(404, {"ok": False, "error": "not found"})
 
@@ -115,6 +129,14 @@ class Handler(SimpleHTTPRequestHandler):
             out = dict(result)
             out["previewToken"] = token
             out.pop("_bundle", None)
+            self._json(200, out)
+        except Exception as err:
+            traceback.print_exc()
+            self._json(400, {"ok": False, "error": str(err)})
+
+    def _handle_rebuild(self):
+        try:
+            out = rebuild_bundle_from_tmp()
             self._json(200, out)
         except Exception as err:
             traceback.print_exc()

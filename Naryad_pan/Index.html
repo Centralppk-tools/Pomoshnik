@@ -508,6 +508,37 @@
     .bundle-periods li { padding: 2px 0; }
     .bundle-periods li.is-active { color: var(--accent); }
 
+    .bundle-tags {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .bundle-tag {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .bundle-tag:hover { border-color: rgba(6, 199, 133, 0.35); }
+    .bundle-tag.is-active {
+      border-color: rgba(6, 199, 133, 0.55);
+      background: rgba(6, 199, 133, 0.08);
+    }
+
+    .bundle-tag__label { font-size: 11px; font-weight: 600; color: var(--text); }
+    .bundle-tag__meta { font-size: 10px; color: var(--text-dim); }
+    .bundle-tag--upload .bundle-tag__label { color: #ffb4a8; }
+
     input[type="file"] { display: none; }
   </style>
 </head>
@@ -523,13 +554,13 @@
     <div class="col-left">
       <section class="panel">
         <div class="section-title">Период норматива</div>
-        <label class="field-label" for="normFrom">Дата начала действия</label>
-        <input class="input" type="date" id="normFrom" value="2026-09-01">
+        <label class="field-label" for="normFrom">Дата начала норматива</label>
+        <input class="input" type="date" id="normFrom" value="2026-08-05">
         <label class="check-row">
           <input type="checkbox" id="closePrev" checked>
           <span>Закрыть предыдущий норматив накануне</span>
         </label>
-        <p class="field-hint">Точная дата — разовые часы (только этот день). Маркер — повторяющийся норматив по дню недели.</p>
+        <p class="field-hint">Маркер (пн–чт / пт / сб / вс) — новый норматив с этой даты. Календарь (разово) — дописывается в активный норматив, без нового периода.</p>
       </section>
 
       <section class="panel">
@@ -550,8 +581,9 @@
       <section class="panel">
         <div class="section-title">Запись</div>
         <div class="bundle-box" id="bundleBox">
-          <div class="bundle-box__title">Текущая база</div>
+          <div class="bundle-box__title">Текущая база (JSON)</div>
           <div id="bundleSummary" class="dim">загрузка…</div>
+          <div class="bundle-tags" id="bundleTags" hidden></div>
         </div>
         <div class="out-path">
           → <strong>yandex-cloud/function/data/shift-templates.json</strong><br>
@@ -560,6 +592,7 @@
         <div class="actions">
           <button type="button" class="btn" id="btnPreview">Предпросмотр</button>
           <button type="button" class="btn btn-primary" id="btnApply" disabled>Записать</button>
+          <button type="button" class="btn" id="btnRebuild" title="Пересобрать разовые 27.08–03.09 из _tmp">Пересобрать _tmp</button>
         </div>
       </section>
     </div>

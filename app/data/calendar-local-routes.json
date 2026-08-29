@@ -1,49 +1,128 @@
 {
-  "version": "1.0.0",
-  "description": "Быстрые локальные маршруты календаря (ТО, И). Основные маршруты — из app/data/shift-templates.json.",
+
+  "version": "1.1.0",
+
+  "description": "Быстрые локальные маршруты календаря. Основные маршруты — из shift-templates.json.",
+
   "presets": [
+
     {
+
       "id": "d99",
+
       "route": "Д99",
+
       "label": "Д99",
+
       "kind": "day",
+
       "hours": 11,
-      "hint": "День · 11 ч"
+
+      "startTime": "7:00",
+
+      "endTime": "18:00",
+
+      "hint": "День · 7:00–18:00 · 11 ч"
+
     },
+
     {
+
       "id": "n99",
+
       "route": "Н99",
+
       "label": "Н99",
+
       "kind": "night",
-      "hours": 11,
-      "nightHours": 6,
+
+      "hours": 5,
+
+      "nightHours": 5,
+
+      "startTime": "19:00",
+
+      "endTime": "1:00",
+
       "morningRoute": "У99",
-      "hint": "6+5 ч · У99"
+
+      "hint": "Ночь · 19:00–1:00 · 5 ч"
+
     },
+
     {
+
       "id": "u99",
+
       "route": "У99",
+
       "label": "У99",
+
       "kind": "morning",
-      "hours": 11,
-      "hint": "Утро · 11 ч"
+
+      "hours": 6,
+
+      "startTime": "1:00",
+
+      "endTime": "7:00",
+
+      "hint": "Утро · 1:00–7:00 · 6 ч"
+
     },
+
     {
+
       "id": "to",
+
       "route": "ТО",
+
       "label": "ТО",
+
       "kind": "tech",
+
       "hours": 8,
-      "hint": "Тех. обучение · 8 ч"
+
+      "payHours": 6,
+
+      "hint": "ТО · 8 ч по графику, к оплате 6 ч"
+
     },
+
     {
+
       "id": "i",
+
       "route": "И",
+
       "label": "И",
+
       "kind": "tech",
+
       "hoursEditable": true,
+
       "defaultHours": 8,
-      "hint": "Инструктаж"
+
+      "hint": "Инструктаж · часы вручную"
+
+    },
+
+    {
+
+      "id": "v",
+
+      "route": "В",
+
+      "label": "В",
+
+      "kind": "rest",
+
+      "hours": 0,
+
+      "hint": "Выходной · замена на смену — оплата ×2 за этот день"
+
     }
+
   ]
+
 }
+

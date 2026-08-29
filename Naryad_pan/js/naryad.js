@@ -17,6 +17,9 @@
   let activeRowId = null;
   let previewToken = null;
   let warnIndex = new Map();
+  let bundleTags = [];
+  let selectedTagId = null;
+  let lastRows = [];
 
   function log(msg, cls = '') {
     const line = document.createElement('div');
@@ -63,24 +66,84 @@
 
   function renderBundleInfo(info) {
     const el = document.getElementById('bundleSummary');
+    const tagsEl = document.getElementById('bundleTags');
     if (!info?.exists) {
       el.innerHTML = '<span class="dim">Файл ещё не создан</span>';
+      if (tagsEl) { tagsEl.hidden = true; tagsEl.innerHTML = ''; }
       return;
     }
-    const periods = (info.normativePeriods || []).map((p) => {
-      const to = p.to || '…';
-      const cls = p.active ? 'is-active' : '';
-      return `<li class="${cls}">${escapeHtml(p.id)}: ${escapeHtml(String(p.from))} – ${escapeHtml(String(to))} · ${p.rows} строк, ${p.files} файлов${p.active ? ' · <span class="active">активный</span>' : ''}</li>`;
-    }).join('');
+
+    const loaded = info.loadedUntilLabel
+      ? `Загружено до <strong>${escapeHtml(info.loadedUntilLabel)}</strong>`
+      : 'Разовые даты не найдены';
+    const lastUpload = info.lastUploadLabel
+      ? `<div>Последняя заливка: <span class="active">${escapeHtml(info.lastUploadLabel)}</span> · ${escapeHtml(formatMsk(info.lastUploadAt))}</div>`
+      : '';
+
     el.innerHTML = `
-      <div>Последняя запись: <strong>${escapeHtml(formatMsk(info.lastWriteAt || info.fileModifiedAt))}</strong></div>
-      <div>Активный норматив: <span class="active">${escapeHtml(info.activeNormativeId || '—')}</span> · в корне JSON ${info.rootShiftDetailsRows ?? '—'} строк</div>
-      <div class="dim">Периодов: ${info.normativesCount ?? 0}</div>
-      <ul class="bundle-periods">${periods}</ul>
+      <div>Запись в JSON: <strong>${escapeHtml(formatMsk(info.lastWriteAt || info.fileModifiedAt))}</strong></div>
+      <div>Активный норматив: <span class="active">${escapeHtml(info.activeNormativeId || '—')}</span> · ${loaded}</div>
+      <div class="dim">В корне JSON ${info.rootShiftDetailsRows ?? '—'} строк · периодов ${info.normativesCount ?? 0}</div>
+      ${lastUpload}
     `;
-    if (info.activeNormativeFrom && !document.getElementById('normFrom').dataset.userTouched) {
-      document.getElementById('normFrom').value = info.activeNormativeFrom;
-      updateStats();
+
+    bundleTags = info.tags || [];
+    if (!tagsEl) return;
+    if (!bundleTags.length) {
+      tagsEl.hidden = true;
+      tagsEl.innerHTML = '';
+      return;
+    }
+
+    tagsEl.hidden = false;
+    tagsEl.innerHTML = bundleTags.map((tag) => {
+      const cls = [
+        'bundle-tag',
+        tag.kind === 'upload' ? 'bundle-tag--upload' : '',
+        selectedTagId === tag.id ? 'is-active' : '',
+      ].filter(Boolean).join(' ');
+      const meta = tag.kind === 'upload'
+        ? `${tag.rows} строк · ${tag.files} файлов · ${escapeHtml(formatMsk(tag.uploadedAt))}`
+        : `${tag.rows} маркерных · ${tag.totalRows} всего · ${tag.files} файлов${tag.active ? ' · активный' : ''}`;
+      return `<button type="button" class="${cls}" data-tag-id="${escapeAttr(tag.id)}">
+        <span class="bundle-tag__label">${escapeHtml(tag.label)}</span>
+        <span class="bundle-tag__meta">${meta}</span>
+      </button>`;
+    }).join('');
+
+    tagsEl.querySelectorAll('[data-tag-id]').forEach((btn) => {
+      btn.addEventListener('click', () => inspectBundleTag(btn.getAttribute('data-tag-id')));
+    });
+
+    if (!selectedTagId && info.lastUploadId) {
+      inspectBundleTag(`upload:${info.lastUploadId}`);
+    } else if (!selectedTagId && bundleTags[0]) {
+      inspectBundleTag(bundleTags[0].id);
+    }
+  }
+
+  function escapeAttr(s) {
+    return String(s || '').replace(/"/g, '&quot;');
+  }
+
+  async function inspectBundleTag(tagId) {
+    if (!tagId) return;
+    selectedTagId = tagId;
+    document.querySelectorAll('.bundle-tag').forEach((el) => {
+      el.classList.toggle('is-active', el.getAttribute('data-tag-id') === tagId);
+    });
+    try {
+      const res = await fetch(`/api/bundle-inspect?tag=${encodeURIComponent(tagId)}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      lastRows = data.rows || [];
+      buildWarnIndex([]);
+      renderWarnings([]);
+      renderPreviewTable(lastRows);
+      updateStats({ rows: data.stats?.rows, routes: data.stats?.routes });
+      log(`просмотр: ${data.tag?.label || tagId} — ${data.stats?.rows || 0} строк`);
+    } catch (err) {
+      log(String(err.message || err), 'warn');
     }
   }
 
@@ -96,7 +159,9 @@
 
   function logMergePlan(plan) {
     if (!plan) return;
-    if (plan.action === 'replace') {
+    if (plan.action === 'append_dates') {
+      log(`разовые даты → в активный норматив (${plan.newBlockRows} строк)`);
+    } else if (plan.action === 'replace') {
       log(`запись заменит блок ${plan.normativeFrom} (${plan.newBlockRows} строк)`);
     } else {
       log(`запись добавит блок ${plan.normativeFrom} (${plan.newBlockRows} строк)`);
@@ -362,15 +427,16 @@
     }
     if (!validateRows(ready)) return;
 
+    const allDates = ready.every((r) => r.mode === 'date');
     const normativeFrom = document.getElementById('normFrom').value;
-    if (!normativeFrom) {
-      log('укажите дату начала норматива', 'warn');
+    if (!allDates && !normativeFrom) {
+      log('укажите дату начала норматива для маркерных файлов', 'warn');
       return;
     }
 
     const form = new FormData();
     form.append('meta', JSON.stringify({
-      normativeFrom,
+      normativeFrom: allDates ? '' : normativeFrom,
       closePrevious: document.getElementById('closePrev').checked,
       rows: ready.map((r) => ({
         mode: r.mode,
@@ -432,6 +498,19 @@
 
   document.getElementById('btnPreview').addEventListener('click', apiPreview);
   document.getElementById('btnApply').addEventListener('click', apiApply);
+  document.getElementById('btnRebuild')?.addEventListener('click', async () => {
+    if (!confirm('Пересобрать разовые 27.08–03.09 из _tmp в shift-templates.json?')) return;
+    try {
+      const res = await fetch('/api/rebuild-from-tmp', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      log(`пересборка OK · до ${data.loadedUntilIso || '?'}`);
+      selectedTagId = null;
+      loadBundleInfo();
+    } catch (err) {
+      log(String(err.message || err), 'warn');
+    }
+  });
   document.getElementById('normFrom').addEventListener('change', () => {
     document.getElementById('normFrom').dataset.userTouched = '1';
     updateStats();

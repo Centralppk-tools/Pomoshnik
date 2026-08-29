@@ -54,6 +54,53 @@ NORMATIVE_PERIODS = [
 HEADER_ROW = 6
 DATA_START_ROW = 7
 
+# Нативный xlsx: ночь с col 11. PDF (pdfplumber): обед дня в одной ячейке → сдвиг −1.
+LAYOUT_NATIVE = {
+    "night_route_col": 11,
+    "morning_route_col": 22,
+    "night_fields": {
+        "startPlace": 12,
+        "startTime": 13,
+        "trains": 14,
+        "endTime": 15,
+        "workHours": 16,
+        "nightHours": 17,
+        "morningRoute": 21,
+    },
+    "night_lunch": (19, 20),
+    "morning_fields": {
+        "startPlace": 23,
+        "startTime": 24,
+        "trains": 25,
+        "endTime": 26,
+        "workHours": 27,
+        "nightHours": 28,
+    },
+}
+
+LAYOUT_PDF = {
+    "night_route_col": 10,
+    "morning_route_col": 21,
+    "night_fields": {
+        "startPlace": 11,
+        "startTime": 12,
+        "trains": 13,
+        "endTime": 14,
+        "workHours": 15,
+        "nightHours": 16,
+        "morningRoute": 20,
+    },
+    "night_lunch": (17, 18),
+    "morning_fields": {
+        "startPlace": 22,
+        "startTime": 23,
+        "trains": 24,
+        "endTime": 25,
+        "workHours": 26,
+        "nightHours": 27,
+    },
+}
+
 
 def cell_str(value) -> str:
     if value is None:
@@ -192,6 +239,22 @@ def normalize_day_marker(value: str) -> str:
     raise ValueError(f"Неизвестный маркер дня: {marker}")
 
 
+def detect_workbook_layout(ws, data_start_row: int, max_row: int) -> dict:
+    """PDF-таблица сдвигает ночной блок на 1 колонку влево (col 10 вместо 11)."""
+    native_hits = 0
+    pdf_hits = 0
+    for row in range(data_start_row, max_row + 1):
+        if not DAY_ROUTE_RE.match(cell_str(ws.cell(row, 1).value)):
+            continue
+        if NIGHT_ROUTE_RE.match(cell_str(ws.cell(row, LAYOUT_NATIVE["night_route_col"]).value)):
+            native_hits += 1
+        if NIGHT_ROUTE_RE.match(cell_str(ws.cell(row, LAYOUT_PDF["night_route_col"]).value)):
+            pdf_hits += 1
+    if pdf_hits > native_hits:
+        return LAYOUT_PDF
+    return LAYOUT_NATIVE
+
+
 def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
     marker = normalize_day_marker(marker)
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
@@ -203,14 +266,17 @@ def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
 
     data_start_row = find_first_data_row(ws)
     max_row = ws.max_row or data_start_row
+    layout = detect_workbook_layout(ws, data_start_row, max_row)
+    morning_col = layout["morning_route_col"]
+
     for row in range(data_start_row, max_row + 1):
         day_route = cell_str(ws.cell(row, 1).value)
         if not DAY_ROUTE_RE.match(day_route):
             continue
 
-        morning_route_col22 = cell_str(ws.cell(row, 22).value)
-        if MORNING_ROUTE_RE.match(morning_route_col22):
-            morning_index[normalize_route(morning_route_col22)] = row
+        morning_route_col = cell_str(ws.cell(row, morning_col).value)
+        if MORNING_ROUTE_RE.match(morning_route_col):
+            morning_index[normalize_route(morning_route_col)] = row
 
         day_fields = read_row_segment(
             ws,
@@ -227,24 +293,16 @@ def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
         day_fields["lunch"] = format_break_lunch(ws.cell(row, 7).value, ws.cell(row, 8).value)
         flat_rows.append(flat_row(marker, day_route, day_fields))
 
-        night_route = cell_str(ws.cell(row, 11).value)
+        night_route = cell_str(ws.cell(row, layout["night_route_col"]).value)
         if not NIGHT_ROUTE_RE.match(night_route):
             continue
 
-        night_fields = read_row_segment(
-            ws,
-            row,
-            {
-                "startPlace": 12,
-                "startTime": 13,
-                "trains": 14,
-                "endTime": 15,
-                "workHours": 16,
-                "nightHours": 17,
-                "morningRoute": 21,
-            },
+        night_fields = read_row_segment(ws, row, layout["night_fields"])
+        lunch_cols = layout["night_lunch"]
+        night_fields["lunch"] = format_break_lunch(
+            ws.cell(row, lunch_cols[0]).value,
+            ws.cell(row, lunch_cols[1]).value,
         )
-        night_fields["lunch"] = format_break_lunch(ws.cell(row, 19).value, ws.cell(row, 20).value)
         flat_rows.append(flat_row(marker, night_route, night_fields))
 
         morning_route = cell_str(night_fields.get("morningRoute", ""))
@@ -256,19 +314,7 @@ def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
         if not target_row:
             continue
 
-        morning_fields = read_row_segment(
-            ws,
-            target_row,
-            {
-                "startPlace": 23,
-                "startTime": 24,
-                "trains": 25,
-                "endTime": 26,
-                "workHours": 27,
-                "nightHours": 28,
-            },
-        )
-        # Утренние маршруты (84У, 61У…): обед только у ночи (cols 19–20), утром перерыва нет.
+        morning_fields = read_row_segment(ws, target_row, layout["morning_fields"])
         flat_rows.append(flat_row(marker, morning_route, morning_fields))
 
     wb.close()

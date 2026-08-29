@@ -793,7 +793,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.4';
+    const APP_RELEASE_VERSION = '4.0.5';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -3293,6 +3293,11 @@
         }
 
         return { lunch: remainder, dutyPoint };
+    }
+
+    function isShiftLunchFieldEmpty(raw) {
+        const source = String(raw ?? '').trim();
+        return !source || source === '—' || source === '-';
     }
 
     function formatStopsCount(count) {
@@ -7086,12 +7091,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Обновлены часы смен с 1 сентября',
-            'Разовые часы на отдельные дни конца августа'
+            'Фикс часов смен (ночные)',
+            'Добавление В и логики ×2'
         ],
         highlights: [
-            'Обновлены часы смен с 1 сентября',
-            'Разовые часы на отдельные дни конца августа'
+            'Фикс часов смен (ночные)',
+            'Добавление В и логики ×2'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -9062,15 +9067,102 @@
             const to = bundle.normativeTo || '9999-12-31';
             if (from && isoDate >= from && isoDate <= to) return bundle;
         }
-        return localShiftNormatives[localShiftNormatives.length - 1] || null;
+        return null;
+    }
+
+    function findOneTimeShiftRowsForIso(isoDate) {
+        if (!isoDate || !hasLocalShiftTemplates()) return null;
+        for (let i = localShiftNormatives.length - 1; i >= 0; i--) {
+            const bundle = localShiftNormatives[i];
+            const rows = (bundle.shiftDetails || []).filter(row => {
+                const rowIso = normalizedDateToIso(row.date);
+                return rowIso && rowIso === isoDate;
+            });
+            if (rows.length) return { rows, bundle };
+        }
+        return null;
+    }
+
+    function formatIsoToRuDateLabel(isoDate) {
+        const parts = String(isoDate || '').split('-');
+        if (parts.length !== 3) return isoDate || '';
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+
+    function formatWeekdayMarkerLabel(weekdayInfo) {
+        if (!weekdayInfo) return '';
+        if (weekdayInfo.group === 'пн-чт') return 'пн–чт';
+        const names = { пн: 'пн', вт: 'вт', ср: 'ср', чт: 'чт', пт: 'пт', сб: 'сб', вс: 'вс' };
+        return names[weekdayInfo.single] || weekdayInfo.group || '';
+    }
+
+    function getShiftDataLoadedUntilIso() {
+        let maxIso = null;
+        for (const bundle of localShiftNormatives) {
+            for (const row of bundle.shiftDetails || []) {
+                const rowIso = normalizedDateToIso(row.date);
+                if (rowIso && (!maxIso || rowIso > maxIso)) maxIso = rowIso;
+            }
+        }
+        return maxIso;
+    }
+
+    function getShiftTemplatePoolForDate(dateKey) {
+        const isoDate = calendarKeyToIso(dateKey);
+        if (!isoDate || !hasLocalShiftTemplates()) return [];
+
+        const loadedUntil = getShiftDataLoadedUntilIso();
+        if (loadedUntil && isoDate > loadedUntil) return [];
+
+        const oneTime = findOneTimeShiftRowsForIso(isoDate);
+        if (oneTime?.rows?.length) {
+            return normalizeShiftsArray(oneTime.rows);
+        }
+
+        const bundle = resolveNormativeBundleForIso(isoDate);
+        if (!bundle?.shiftDetails?.length) return [];
+
+        const weekdayInfo = getWeekdayMarkerForCalendarDate(dateKey);
+        const rows = bundle.shiftDetails.filter(row => {
+            if (normalizedDateToIso(row.date)) return false;
+            return shiftDateMatchesWeekday(row.date, weekdayInfo);
+        });
+        return normalizeShiftsArray(rows);
+    }
+
+    function formatShiftHoursSourceLabel(dateKey) {
+        if (!hasLocalShiftTemplates()) return 'Часы смен не загружены';
+
+        const isoDate = calendarKeyToIso(dateKey);
+        if (!isoDate) return 'Часы смен не загружены';
+
+        const loadedUntil = getShiftDataLoadedUntilIso();
+        if (loadedUntil && isoDate > loadedUntil) return 'Часы смен не загружены';
+
+        const pool = getShiftTemplatePoolForDate(dateKey);
+        if (!pool.length) return 'Часы смен не загружены';
+
+        const oneTime = findOneTimeShiftRowsForIso(isoDate);
+        if (oneTime?.rows?.length) {
+            return `Разовая смена · ${formatIsoToRuDateLabel(isoDate)}`;
+        }
+
+        const bundle = resolveNormativeBundleForIso(isoDate);
+        if (!bundle) return 'Часы смен не загружены';
+
+        const weekdayInfo = getWeekdayMarkerForCalendarDate(dateKey);
+        const markerLabel = formatWeekdayMarkerLabel(weekdayInfo);
+        const fromLabel = formatIsoToRuDateLabel(bundle.normativeFrom);
+        if (!bundle.normativeTo) {
+            return `Норматив · ${markerLabel} · с ${fromLabel}`;
+        }
+        const toLabel = formatIsoToRuDateLabel(bundle.normativeTo);
+        return `Норматив · ${markerLabel} · ${fromLabel} – ${toLabel}`;
     }
 
     function getActiveShiftTemplates(dateKey) {
-        const isoDate = calendarKeyToIso(dateKey);
-        const bundle = resolveNormativeBundleForIso(isoDate);
-        if (bundle?.shiftDetails?.length) {
-            return normalizeShiftsArray(bundle.shiftDetails);
-        }
+        const pool = getShiftTemplatePoolForDate(dateKey || getShiftContextDateKey());
+        if (pool.length) return pool;
         return depotShiftTemplates;
     }
 
@@ -9082,19 +9174,12 @@
     }
 
     function formatNormativePeriodLabel(bundle) {
-        if (!bundle) return '';
-        const fromParts = String(bundle.normativeFrom || '').split('-');
-        const fromLabel = fromParts.length === 3
-            ? `${fromParts[2]}.${fromParts[1]}.${fromParts[0]}`
-            : (bundle.normativeFrom || '');
+        if (!bundle) return 'Часы смен не загружены';
+        const fromLabel = formatIsoToRuDateLabel(bundle.normativeFrom);
         if (!bundle.normativeTo) {
             return `Норматив с ${fromLabel}`;
         }
-        const toParts = String(bundle.normativeTo).split('-');
-        const toLabel = toParts.length === 3
-            ? `${toParts[2]}.${toParts[1]}.${toParts[0]}`
-            : bundle.normativeTo;
-        return `Норматив ${fromLabel} – ${toLabel}`;
+        return `Норматив ${fromLabel} – ${formatIsoToRuDateLabel(bundle.normativeTo)}`;
     }
 
     function applyNormativeForDateKey(dateKey) {
@@ -9112,14 +9197,7 @@
     }
 
     function getTemplatesForCalendarDate(dateKey) {
-        const templates = getActiveShiftTemplates(dateKey);
-        const weekdayInfo = getWeekdayMarkerForCalendarDate(dateKey);
-        const isoDate = calendarKeyToIso(dateKey);
-        return templates.filter(row => {
-            const rowIso = normalizedDateToIso(row.date);
-            if (rowIso && isoDate && rowIso === isoDate) return true;
-            return shiftDateMatchesWeekday(row.date, weekdayInfo);
-        });
+        return getShiftTemplatePoolForDate(dateKey);
     }
 
     function buildRouteIdentitySignature(row) {
@@ -9231,6 +9309,12 @@
                     }
                 }
                 if (!data) throw lastErr || new Error('shift-templates unavailable');
+                const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
+                if (cachedBundle?.version && data?.version && cachedBundle.version !== data.version) {
+                    activeNormativeId = null;
+                    constructorRouteOptions = new Map();
+                    depotShiftTemplates = [];
+                }
                 localShiftNormatives = Array.isArray(data?.normatives)
                     ? data.normatives.filter(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)
                     : [];
@@ -9259,16 +9343,17 @@
 
     const CALENDAR_LOCAL_ROUTES_FALLBACK = {
         presets: [
-            { id: 'd99', route: 'Д99', label: 'Д99', kind: 'day', hours: 11, hint: 'День · 11 ч' },
-            { id: 'n99', route: 'Н99', label: 'Н99', kind: 'night', hours: 11, nightHours: 6, morningRoute: 'У99', hint: '6+5 ч · У99' },
-            { id: 'u99', route: 'У99', label: 'У99', kind: 'morning', hours: 11, hint: 'Утро · 11 ч' },
-            { id: 'to', route: 'ТО', label: 'ТО', kind: 'tech', hours: 8, hint: 'Тех. обучение · 8 ч' },
-            { id: 'i', route: 'И', label: 'И', kind: 'tech', hoursEditable: true, defaultHours: 8, hint: 'Инструктаж' }
+            { id: 'd99', route: 'Д99', label: 'Д99', kind: 'day', hours: 11, startTime: '7:00', endTime: '18:00', hint: 'День · 7:00–18:00 · 11 ч' },
+            { id: 'n99', route: 'Н99', label: 'Н99', kind: 'night', hours: 5, nightHours: 5, startTime: '19:00', endTime: '1:00', morningRoute: 'У99', hint: 'Ночь · 19:00–1:00 · 5 ч' },
+            { id: 'u99', route: 'У99', label: 'У99', kind: 'morning', hours: 6, startTime: '1:00', endTime: '7:00', hint: 'Утро · 1:00–7:00 · 6 ч' },
+            { id: 'to', route: 'ТО', label: 'ТО', kind: 'tech', hours: 8, payHours: 6, hint: 'ТО · 8 ч по графику, к оплате 6 ч' },
+            { id: 'i', route: 'И', label: 'И', kind: 'tech', hoursEditable: true, defaultHours: 8, hint: 'Инструктаж · часы вручную' },
+            { id: 'v', route: 'В', label: 'В', kind: 'rest', hours: 0, hint: 'Выходной · замена на смену — оплата ×2 за этот день' }
         ]
     };
 
-    function getShiftPanelQuickPresets(shift = null) {
-        return getCalendarLocalPresets().filter(preset => {
+    function getQuickPresetGroups(shift = null) {
+        const filtered = getCalendarLocalPresets().filter(preset => {
             const id = String(preset.id || '').toLowerCase();
             const kind = String(preset.kind || '').toLowerCase();
             if (id === 'u99' || kind === 'morning') return false;
@@ -9277,6 +9362,92 @@
             }
             return true;
         });
+        return {
+            work: filtered.filter(preset => String(preset.kind || '').toLowerCase() !== 'rest'),
+            rest: filtered.filter(preset => String(preset.kind || '').toLowerCase() === 'rest')
+        };
+    }
+
+    function getShiftPanelQuickPresets(shift = null) {
+        return [...getQuickPresetGroups(shift).work, ...getQuickPresetGroups(shift).rest];
+    }
+
+    function buildQuickPresetButtonHtml(preset, selectedPresetId = '', btnClass = 'shift-card__quick-btn') {
+        const active = preset.id === selectedPresetId ? ' is-active' : '';
+        const kind = String(preset.kind || '').toLowerCase();
+        const kindClass = kind ? ` ${btnClass}--${kind}` : '';
+        const label = formatQuickPresetButtonLabel(preset);
+        return `<button type="button" class="${btnClass}${kindClass}${active}"
+            data-local-preset="${escapeAttr(preset.id)}"
+            aria-pressed="${preset.id === selectedPresetId ? 'true' : 'false'}"
+            aria-label="${escapeAttr(preset.hint || preset.label || preset.route)}">${escapeHtml(label)}</button>`;
+    }
+
+    function getRestDayReplacePresets() {
+        return getQuickPresetGroups(null).work.filter(preset => {
+            const kind = String(preset.kind || '').toLowerCase();
+            return kind === 'day' || kind === 'night';
+        });
+    }
+
+    function buildShiftPanelQuickRoutesInline(selectedPresetId = '', shift = null, options = {}) {
+        const mode = options.mode || (shift && isRestDayRoute(shift.route) ? 'replace' : 'default');
+        const workPresets = mode === 'replace' ? getRestDayReplacePresets() : getQuickPresetGroups(shift).work;
+        const workBtns = workPresets.map(preset => buildQuickPresetButtonHtml(preset, selectedPresetId)).join('');
+
+        if (mode === 'replace') {
+            return `
+            <div class="shift-card__quick-routes shift-card__quick-routes--replace">
+                <div class="shift-card__quick-btns">${workBtns}</div>
+            </div>`;
+        }
+
+        const { rest } = getQuickPresetGroups(shift);
+        const restBtns = rest.map(preset => buildQuickPresetButtonHtml(preset, selectedPresetId)).join('');
+
+        return `
+            <div class="shift-card__quick-routes">
+                <span class="shift-card__quick-label">Быстрые маршруты</span>
+                <div class="shift-card__quick-btns">${workBtns}${restBtns}</div>
+            </div>`;
+    }
+
+    function buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable) {
+        const routePickerHtml = editable
+            ? `<div class="shift-card__row shift-card__row--route shift-rest-panel__route">
+                <span class="shift-card__label">Маршрут</span>
+                <div class="shift-card__field">
+                    <div class="shift-card__route-area">
+                        <div class="shift-card__route-picker">
+                            <div class="shift-card__route-pill">
+                                <div class="route-combobox shift-summary__route" data-summary-route-combobox>
+                                    <input type="text" class="route-combobox-input shift-summary__route-input shift-card__route-input" data-summary-route-input
+                                        value="" placeholder="Н59" autocomplete="off"
+                                        aria-label="Маршрут" aria-expanded="false" role="combobox">
+                                    <input type="hidden" data-summary-route-value value="">
+                                    <input type="hidden" data-summary-route-signature value="">
+                                </div>
+                                <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+                            </div>
+                            <ul class="route-combobox-list shift-summary__route-list" data-summary-route-list role="listbox" hidden></ul>
+                        </div>
+                        ${buildShiftPanelQuickRoutesInline('', null, { mode: 'replace' })}
+                    </div>
+                </div>
+            </div>`
+            : '';
+
+        return `
+            <div class="shift-card__panel shift-rest-panel" data-shift-rest-panel data-shift-summary-panel>
+                <div class="shift-rest-hero">
+                    <span class="shift-rest-hero__badge" aria-hidden="true">В</span>
+                    <div class="shift-rest-hero__copy">
+                        <span class="shift-rest-hero__title">Выходной</span>
+                        <span class="shift-rest-hero__hint">Смена в этот день — оплата ×2</span>
+                    </div>
+                </div>
+                ${routePickerHtml}
+            </div>`;
     }
 
     function getCalendarLocalPresets() {
@@ -9398,13 +9569,17 @@
     window.calendarApplyQuickPreset = calendarApplyQuickPreset;
 
     function buildLocalRoutesPickerBlock(selectedPresetId = '', customHoursValue = '') {
-        const presets = getCalendarLocalPresets();
-        const buttons = presets.map(preset => {
+        const { work, rest } = getQuickPresetGroups(null);
+        const renderBtn = (preset) => {
             const active = preset.id === selectedPresetId ? ' is-active' : '';
             const kindClass = preset.kind ? ` calendar-local-route-btn--${preset.kind}` : '';
             const ariaLabel = preset.hint ? `${preset.label || preset.route}, ${preset.hint}` : (preset.label || preset.route);
             return `<button type="button" class="calendar-local-route-btn${kindClass}${active}" data-local-preset="${escapeAttr(preset.id)}" aria-label="${escapeAttr(ariaLabel)}" aria-pressed="${preset.id === selectedPresetId ? 'true' : 'false'}">${escapeHtml(preset.label || preset.route)}</button>`;
-        }).join('');
+        };
+        const workButtons = work.map(renderBtn).join('');
+        const restButtons = rest.length
+            ? `<div class="calendar-local-routes-rest">${rest.map(renderBtn).join('')}</div>`
+            : '';
 
         const selectedPreset = selectedPresetId ? getLocalRoutePresetById(selectedPresetId) : null;
         const showHours = Boolean(selectedPreset?.hoursEditable);
@@ -9413,7 +9588,8 @@
         return `
             <div class="calendar-local-routes" id="constructorLocalRoutes">
                 <p class="calendar-local-routes-label">Быстрые маршруты</p>
-                <div class="calendar-local-routes-grid" role="group" aria-label="Локальные маршруты">${buttons}</div>
+                <div class="calendar-local-routes-grid" role="group" aria-label="Локальные маршруты">${workButtons}</div>
+                ${restButtons}
                 <div class="calendar-local-hours" id="constructorCustomHoursWrap"${showHours ? '' : ' hidden'}>
                     <label for="constructorCustomHours">Часов для «И»</label>
                     <input type="number" id="constructorCustomHours" class="calendar-local-hours-input shift-constructor-input" min="1" max="12" step="0.5" value="${escapeAttr(String(hoursValue))}">
@@ -9591,8 +9767,17 @@
         if (typeof calendarUserShifts !== 'object' || Array.isArray(calendarUserShifts)) {
             calendarUserShifts = {};
         }
+        let presetMigration = false;
+        Object.keys(calendarUserShifts).forEach(dateKey => {
+            const shifts = getStoredDayShifts(dateKey).map(shift => {
+                const next = applyLocalPresetDefaults(shift);
+                if (JSON.stringify(next) !== JSON.stringify(shift)) presetMigration = true;
+                return next;
+            });
+            setStoredDayShifts(dateKey, shifts);
+        });
         loadGlobalShiftTemplates();
-        if (syncMaterializedMorningShifts()) {
+        if (presetMigration || syncMaterializedMorningShifts()) {
             persistUserShifts();
         }
     }
@@ -9885,6 +10070,7 @@
         if (isRoute99Variant(routeStr)) {
             return `has-route99-${getRoute99Kind(routeStr)}`;
         }
+        if (routeLower === 'в' || routeLower === 'выходной') return 'has-rest-shift';
         if (routeLower === 'и' || routeLower.includes('то') || routeLower === 'то') return 'has-tech-shift';
         if (routeLower.includes('н')) return 'has-night-shift';
         if (routeLower.includes('д')) return 'has-day-shift';
@@ -9912,7 +10098,7 @@
         if (routeLower.includes('н')) return { label: 'Ночь', color: 'var(--night-shift)' };
         if (routeLower.includes('у') && routeLower !== 'отпуск') return { label: 'Утро', color: 'var(--study-shift)' };
         if (routeLower === 'о' || routeLower === 'отпуск') return { label: 'Отпуск', color: 'var(--vacation-shift)' };
-        if (routeLower === 'в' || routeLower === 'выходной') return { label: 'Выходной', color: 'var(--app-muted)' };
+        if (routeLower === 'в' || routeLower === 'выходной') return { label: 'Выходной', color: '#dc5050' };
         const cls = getShiftColorClass(shift);
         if (cls.includes('has-route99-night') || cls.includes('has-night-shift')) return { label: 'Ночь', color: 'var(--night-shift)' };
         if (cls.includes('has-route99-morning') || cls.includes('has-study-shift')) return { label: 'Утро', color: 'var(--study-shift)' };
@@ -10109,7 +10295,13 @@
         return /U$/i.test(r) && /\d/.test(r);
     }
 
+    function isRestDayRoute(route) {
+        const routeLower = String(route || '').trim().toLowerCase();
+        return routeLower === 'в' || routeLower === 'выходной';
+    }
+
     function getShiftRouteKind(route) {
+        if (isRestDayRoute(route)) return 'rest';
         if (isNightRoute(route)) return 'night';
         if (isMorningRoute(route)) return 'morning';
         const r = String(route || '').trim().toLowerCase();
@@ -10522,23 +10714,48 @@
         return Math.max(0, spanMin - lunchMin) / 60;
     }
 
+    function applyLocalPresetDefaults(shift) {
+        if (!shift?.route) return shift;
+        const preset = shift.localPresetId
+            ? getLocalRoutePresetById(shift.localPresetId)
+            : getLocalRoutePresetByRoute(shift.route);
+        if (!preset) return shift;
+
+        const merged = { ...shift };
+        if (!merged.startTime && !merged.reportTime && preset.startTime) {
+            merged.startTime = preset.startTime;
+            merged.reportTime = preset.startTime;
+        }
+        if (!merged.endTime && preset.endTime) merged.endTime = preset.endTime;
+        if ((merged.hours == null || String(merged.hours).trim() === '') && preset.hours != null) {
+            merged.hours = String(preset.hours);
+        }
+        if (!merged.nightHours && preset.nightHours != null) merged.nightHours = String(preset.nightHours);
+        if (!merged.morningRoute && preset.morningRoute) merged.morningRoute = preset.morningRoute;
+        if (!merged.localPresetId && preset.id) merged.localPresetId = preset.id;
+        return merged;
+    }
+
     function enrichShiftFromDepotTemplate(shift, dateKey) {
         if (!shift?.route || !dateKey) return shift;
 
+        let merged = applyLocalPresetDefaults(shift);
+
         loadGlobalShiftTemplates();
         const tmpl = findShiftTemplate(depotShiftTemplates, shift.route, dateKey);
-        if (!tmpl) return shift;
+        if (!tmpl) return merged;
 
-        const merged = { ...shift };
+        merged = { ...merged };
         if (!merged.startTime && !merged.reportTime) {
             merged.startTime = tmpl.startTime || '';
             merged.reportTime = tmpl.startTime || '';
         }
         if (!merged.endTime) merged.endTime = tmpl.endTime || '';
         if (!isMorningRoute(merged.route)) {
-            if (merged.lunch == null || String(merged.lunch).trim() === '') {
+            const lunchRaw = String(merged.lunch ?? '').trim();
+            if (isShiftLunchFieldEmpty(lunchRaw)) {
                 merged.lunch = tmpl.lunch || '';
-            } else if (tmpl.lunch && /^\*{1,3}\s*$/.test(String(merged.lunch).trim())) {
+            } else if (tmpl.lunch && /^\*{1,3}\s*$/.test(lunchRaw)) {
                 merged.lunch = tmpl.lunch;
             }
         } else {
@@ -10555,10 +10772,25 @@
         return merged;
     }
 
+    function getLocalPresetFixedHours(shift) {
+        if (!shift) return null;
+        const preset = shift.localPresetId
+            ? getLocalRoutePresetById(shift.localPresetId)
+            : getLocalRoutePresetByRoute(shift.route);
+        if (!preset || preset.hoursEditable) return null;
+        if (preset.hours == null || preset.hours === '') return null;
+        return parseShiftHours(preset.hours);
+    }
+
     function resolveCalendarShiftHours(shift, dateKey) {
         if (!shift) return 0;
 
         const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
+        if (isRestDayRoute(enriched.route)) return 0;
+
+        const presetHours = getLocalPresetFixedHours(enriched);
+        if (presetHours != null && presetHours >= 0) return presetHours;
+
         const normativeHours = parseShiftHours(enriched.hours || enriched.workHours);
         const lunchMarker = getLunchExclusionMarker(enriched.lunch);
         const calculated = calculateShiftWorkHoursFromTimes(enriched);
@@ -10610,8 +10842,43 @@
         return timeInputValueFromShift(enriched?.startTime || enriched?.reportTime || '');
     }
 
+    function getShiftHoursOnCalendarDay(shift, dateKey) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const startRaw = enriched.startTime || enriched.reportTime || '';
+        const endRaw = enriched.endTime || '';
+        const startMin = parseTimeToMinutes(normalizeShiftTimeToken(startRaw));
+        const endMin = parseTimeToMinutes(normalizeShiftTimeToken(endRaw));
+
+        if (startMin == null) return resolveCalendarShiftHours(shift, dateKey);
+        if (endMin == null || endMin > startMin) return resolveCalendarShiftHours(shift, dateKey);
+
+        let minutesOnDay = 1440 - startMin;
+        const shouldSubtractLunch = lunchBreakOverlapsShift(startRaw, endRaw, enriched.lunch);
+        if (shouldSubtractLunch) minutesOnDay -= parseLunchDurationMinutes(enriched.lunch);
+        return Math.max(0, minutesOnDay) / 60;
+    }
+
+    function getCalendarShiftPayHours(shift, dateKey) {
+        if (!shift) return 0;
+        if (isRestDayRoute(shift.route)) return 0;
+
+        const preset = shift.localPresetId
+            ? getLocalRoutePresetById(shift.localPresetId)
+            : getLocalRoutePresetByRoute(shift.route);
+        if (preset?.payHours != null) return parseShiftHours(preset.payHours);
+
+        if (shift.restDayDoublePay && dateKey) {
+            return getShiftHoursOnCalendarDay(shift, dateKey);
+        }
+
+        return resolveCalendarShiftHours(shift, dateKey);
+    }
+
     function getCalendarShiftPayment(shift, dateKey) {
-        return getCalendarShiftHours(shift, dateKey) * calendarGetShiftRate(shift);
+        const payHours = getCalendarShiftPayHours(shift, dateKey);
+        let payment = payHours * calendarGetShiftRate(shift);
+        if (shift.restDayDoublePay && payHours > 0) payment *= 2;
+        return payment;
     }
 
     function calendarKeyAddDays(dateKey, days) {
@@ -10795,6 +11062,8 @@
     }
 
     function canAddSecondShiftToDay(existingShifts, newRoute) {
+        if (existingShifts.some(s => isRestDayRoute(s.route))) return false;
+        if (isRestDayRoute(newRoute)) return false;
         if (existingShifts.length !== 1) return false;
         if (!isMorningRoute(existingShifts[0].route)) return false;
         return isNightRoute(newRoute);
@@ -10825,6 +11094,10 @@
     }
 
     function prepareShiftForCalendar(dateKey, shift) {
+        if (isRestDayRoute(shift.route)) {
+            return enrichShiftWithCalculatedHours({ ...shift, hours: '0' }, dateKey);
+        }
+
         shift = enrichShiftWithCalculatedHours(shift, dateKey);
 
         if (isNightRoute(shift.route)) {
@@ -10840,9 +11113,27 @@
     }
 
     function applyShiftToCalendarDay(dateKey, shift) {
+        let shifts = getStoredDayShifts(dateKey);
+        const hadRestDay = shifts.some(s => isRestDayRoute(s.route));
+
+        if (isRestDayRoute(shift.route)) {
+            shifts.forEach(s => {
+                if (isNightRoute(s.route)) removeMaterializedMorningForNight(dateKey, s);
+            });
+            const restShift = prepareShiftForCalendar(dateKey, shift);
+            delete restShift.restDayDoublePay;
+            setStoredDayShifts(dateKey, [restShift]);
+            return;
+        }
+
         shift = prepareShiftForCalendar(dateKey, shift);
 
-        let shifts = getStoredDayShifts(dateKey);
+        if (hadRestDay && isWorkShiftRoute(shift)) {
+            shift.restDayDoublePay = true;
+        } else {
+            delete shift.restDayDoublePay;
+        }
+
         const newKind = getShiftRouteKind(shift.route);
         const replaceIndex = shifts.findIndex(s => getShiftRouteKind(s.route) === newKind);
 
@@ -10896,6 +11187,9 @@
     function formatCalendarShiftLabel(route) {
         const raw = String(route || '').trim();
         if (!raw) return '';
+
+        const rawLower = raw.toLowerCase();
+        if (rawLower === 'в' || rawLower === 'выходной') return 'В';
 
         if (isRoute99Variant(raw)) {
             const kind = getRoute99Kind(raw);
@@ -11008,9 +11302,9 @@
     }
 
     function formatTabDateShort(dateKey) {
-        const parts = parseCalendarDateKeyParts(dateKey);
-        if (!parts) return '';
-        return `${String(parts.day).padStart(2, '0')}.${String(parts.month + 1).padStart(2, '0')}`;
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return '';
+        return `${String(parts[0]).padStart(2, '0')}.${String(parts[1]).padStart(2, '0')}`;
     }
 
     function formatQuickPresetButtonLabel(preset) {
@@ -11989,12 +12283,14 @@
 
     function renderDayShiftChipHtml(shift, dateKey) {
         const routeDisplay = String(shift.route || '').trim();
-        const skipRouteText = ['выходной', 'в', 'отпуск', 'о'];
+        const skipRouteText = ['отпуск', 'о'];
         if (!routeDisplay || skipRouteText.includes(routeDisplay.toLowerCase())) return '';
 
         const colorClasses = getShiftColorClass(shift).split(/\s+/).filter(Boolean).join(' ');
         const label = formatCalendarShiftLabel(routeDisplay);
-        const workTime = getShiftWorkTimeDisplay(shift, dateKey);
+        const workTime = isRestDayRoute(routeDisplay)
+            ? ''
+            : getShiftWorkTimeDisplay(shift, dateKey);
         const timeHtml = workTime && workTime !== '—'
             ? `<span class="day-shift-time">${escapeHtml(workTime)}</span>`
             : '';
@@ -13425,24 +13721,6 @@
         </div>`;
     }
 
-    function buildShiftPanelQuickRoutesInline(selectedPresetId = '', shift = null) {
-        const presets = getShiftPanelQuickPresets(shift);
-        const buttons = presets.map(preset => {
-            const active = preset.id === selectedPresetId ? ' is-active' : '';
-            const label = formatQuickPresetButtonLabel(preset);
-            return `<button type="button" class="shift-card__quick-btn${active}"
-                data-local-preset="${escapeAttr(preset.id)}"
-                aria-pressed="${preset.id === selectedPresetId ? 'true' : 'false'}"
-                aria-label="${escapeAttr(preset.label || preset.route)}">${escapeHtml(label)}</button>`;
-        }).join('');
-
-        return `
-            <div class="shift-card__quick-routes">
-                <span class="shift-card__quick-label">Быстрые маршруты</span>
-                <div class="shift-card__quick-btns" role="group" aria-label="Быстрые маршруты">${buttons}</div>
-            </div>`;
-    }
-
     function buildShiftPanelQuickRoutesFooter(selectedPresetId = '') {
         return `<div class="shift-day-panel__quick" id="constructorLocalRoutes">
             ${buildShiftPanelQuickRoutesInline(selectedPresetId)}
@@ -13450,10 +13728,10 @@
         </div>`;
     }
 
-    function buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint) {
+    function buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, hintClass = '') {
         const dateLabel = `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
         const metaHtml = normativeHint
-            ? `<p class="shift-day-panel__meta-line">${escapeHtml(normativeHint)}</p>`
+            ? `<p class="shift-day-panel__meta-line${hintClass}">${escapeHtml(normativeHint)}</p>`
             : '';
         return `
             <div class="shift-day-panel shift-day-panel--design" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
@@ -13492,16 +13770,18 @@
     function syncShiftDayPanelFooterForTab(dayPanel, tab) {
         if (!dayPanel || !tab) return;
         const hideActions = tab.isPrevNight || tab.readonly || tab.shiftIndex < 0;
+        const isRestDay = isRestDayRoute(tab.shift?.route);
 
         const deleteBtn = dayPanel.querySelector('.shift-day-panel__delete-btn');
         if (deleteBtn) {
             deleteBtn.hidden = hideActions;
+            deleteBtn.textContent = isRestDay ? 'Убрать выходной' : 'Удалить смену';
             deleteBtn.onclick = () => calendarDeleteShift(tab.shiftIndex, tab.dateKey);
         }
 
         const resetBtn = dayPanel.querySelector('.shift-day-panel__reset-btn');
         if (resetBtn) {
-            const canReset = !hideActions && canResetShiftToTemplate(tab.shift, tab.dateKey);
+            const canReset = !hideActions && !isRestDay && canResetShiftToTemplate(tab.shift, tab.dateKey);
             resetBtn.hidden = !canReset;
             resetBtn.onclick = () => calendarResetShiftToTemplate(tab.shiftIndex, tab.dateKey);
         }
@@ -13510,8 +13790,9 @@
     function buildUnifiedShiftDayPanelHtml(dateKey, day, month, year, tabs, storedShifts, summaryContext, options = {}) {
         const metaHints = options.metaHints || [];
         const dateLabel = `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
+        const isRestOnlyDay = storedShifts.length === 1 && isRestDayRoute(storedShifts[0]?.route);
 
-        const tabsHtml = tabs.map((tab, index) => {
+        const tabsHtml = isRestOnlyDay ? '' : tabs.map((tab, index) => {
             const routeLabel = formatCalendarShiftLabel(tab.shift?.route || '');
             const dateShort = formatTabDateShort(tab.dateKey);
             return `<button type="button" class="shift-day-panel__tab-pill${index === calendarConstructorActiveTab ? ' is-active' : ''}"
@@ -13529,9 +13810,15 @@
             isVirtualMorning: tab.shift?.isVirtualMorning
         })).join('');
 
-        const metaHtml = metaHints.length
-            ? metaHints.map(h => `<p class="shift-day-panel__meta-line">${h}</p>`).join('')
-            : '';
+        const sourceHint = options.sourceHint || '';
+        const sourceHintClass = options.sourceHintClass || '';
+        let metaHtml = '';
+        if (sourceHint) {
+            metaHtml += `<p class="shift-day-panel__meta-line${sourceHintClass}">${escapeHtml(sourceHint)}</p>`;
+        }
+        if (metaHints.length) {
+            metaHtml += metaHints.map(h => `<p class="shift-day-panel__meta-line">${h}</p>`).join('');
+        }
 
         const footerActionsHtml = `<div class="shift-day-panel__footer-actions">
             <button type="button" class="shift-day-panel__reset-btn" hidden
@@ -13540,10 +13827,10 @@
         </div>`;
 
         return `
-            <div class="shift-day-panel shift-day-panel--design" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
+            <div class="shift-day-panel shift-day-panel--design${isRestOnlyDay ? ' shift-day-panel--rest-day' : ''}" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
                 <header class="shift-day-panel__head">
                     <h3 class="shift-day-panel__date">${escapeHtml(dateLabel)}</h3>
-                    <div class="shift-day-panel__tabs" role="tablist">${tabsHtml}</div>
+                    ${isRestOnlyDay ? '' : `<div class="shift-day-panel__tabs" role="tablist">${tabsHtml}</div>`}
                     <div class="shift-day-panel__head-divider" aria-hidden="true"></div>
                 </header>
                 <div class="shift-day-panel__body">${panelsHtml}</div>
@@ -13871,8 +14158,16 @@
         const editable = options.editable === true;
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         const route = String(enriched.route || '').trim();
+
+        if (isRestDayRoute(route)) {
+            return buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable);
+        }
+
         const totalHours = getCalendarShiftHours(enriched, dateKey);
         const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+        const doublePayBadge = enriched.restDayDoublePay
+            ? `<span class="shift-rest-double-badge" title="Оплата ×2 за рабочий выходной">×2</span>`
+            : '';
 
         const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable);
 
@@ -13902,7 +14197,7 @@
                     </div>
                     <div class="shift-card__summary-row">
                         <span class="shift-card__summary-label">Заработано</span>
-                        <span class="shift-card__summary-value shift-card__summary-value--pay" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}</span>
+                        <span class="shift-card__summary-value shift-card__summary-value--pay" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}${doublePayBadge}</span>
                     </div>
                 </div>
                 ${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}
@@ -13928,6 +14223,10 @@
         const lunchStart = lunchRange?.querySelector('[data-summary-lunch-start]')?.value || '';
         const lunchEnd = lunchRange?.querySelector('[data-summary-lunch-end]')?.value || '';
         const existingLunch = extractLunchTimesForEditor(storedShift, dateKey);
+        const hasTimeEditor = Boolean(
+            panel.querySelector('[data-summary-start]') || panel.querySelector('[data-shift-time-range]')
+        );
+        const hasLunchEditor = Boolean(lunchWrap || lunchRange);
 
         let nextShift = { ...storedShift };
         const routeChanged = normalizeCalendarRouteKey(storedShift.route) !== normalizeCalendarRouteKey(route);
@@ -13940,24 +14239,39 @@
                 nextShift = buildCalendarShiftFromTemplate(template);
                 copyShiftNotesFromSource(nextShift, storedShift);
             } else {
-                nextShift.route = route;
+                nextShift = { ...storedShift, route };
+                delete nextShift.localPresetId;
+            }
+            if (isRestDayRoute(storedShift.route) && !isRestDayRoute(route)) {
+                nextShift.restDayDoublePay = true;
             }
         } else if (route) {
             nextShift.route = route;
         }
 
-        const startTime = startRaw ? normalizeShiftTimeToken(startRaw) : '';
-        const endTime = endRaw ? normalizeShiftTimeToken(endRaw) : '';
-        nextShift.startTime = startTime;
-        nextShift.reportTime = startTime;
-        nextShift.endTime = endTime;
-        nextShift.lunch = composeLunchFieldFromEditor(
-            lunchStart,
-            lunchEnd,
-            !lunchWrap,
-            existingLunch.dutyPoint,
-            nextShift.route
-        );
+        if (hasTimeEditor) {
+            const startTime = startRaw ? normalizeShiftTimeToken(startRaw) : '';
+            const endTime = endRaw ? normalizeShiftTimeToken(endRaw) : '';
+            nextShift.startTime = startTime;
+            nextShift.reportTime = startTime;
+            nextShift.endTime = endTime;
+        }
+
+        if (hasLunchEditor) {
+            nextShift.lunch = composeLunchFieldFromEditor(
+                lunchStart,
+                lunchEnd,
+                false,
+                existingLunch.dutyPoint,
+                nextShift.route
+            );
+        } else if (isMorningRoute(nextShift.route)) {
+            nextShift.lunch = '';
+        } else if (isShiftLunchFieldEmpty(nextShift.lunch) && routeChanged && route) {
+            loadGlobalShiftTemplates();
+            const tmpl = findShiftTemplate(depotShiftTemplates, nextShift.route, dateKey);
+            if (tmpl?.lunch) nextShift.lunch = tmpl.lunch;
+        }
         copyShiftNotesFromSource(nextShift, storedShift);
 
         return nextShift;
@@ -13969,7 +14283,12 @@
         const hoursEl = panelRoot.querySelector('[data-summary-hours]');
         const payEl = panelRoot.querySelector('[data-summary-pay]');
         if (hoursEl) hoursEl.textContent = formatShiftSummaryHoursValue(getCalendarShiftHours(enriched, dateKey));
-        if (payEl) payEl.textContent = formatShiftSummaryPayValue(getCalendarShiftPayment(enriched, dateKey));
+        if (payEl) {
+            const badge = enriched.restDayDoublePay
+                ? '<span class="shift-rest-double-badge" title="Оплата ×2 за рабочий выходной">×2</span>'
+                : '';
+            payEl.innerHTML = `${escapeHtml(formatShiftSummaryPayValue(getCalendarShiftPayment(enriched, dateKey)))}${badge}`;
+        }
     }
 
     function fillShiftSummaryPanelFromShift(panelRoot, shift, dateKey) {
@@ -14174,6 +14493,31 @@
 
             const shift = getStoredDayShifts(tabDateKey)[shiftIndex];
             if (!shift) return;
+
+            if (panelEl.querySelector('[data-shift-rest-panel]')) {
+                panelEl.querySelectorAll('.shift-card__route-picker').forEach(picker => {
+                    bindSummaryRoutePicker(picker, tabDateKey);
+                });
+
+                const combobox = panelEl.querySelector('[data-summary-route-combobox]');
+                const routeInput = combobox?.querySelector('[data-summary-route-input]');
+                const routeList = panelEl.querySelector('[data-summary-route-list]');
+
+                routeInput?.addEventListener('change', () => {
+                    scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
+                });
+
+                routeList?.addEventListener('click', (e) => {
+                    const option = e.target.closest('.route-combobox-option');
+                    if (!option) return;
+                    setSummaryRouteComboboxValue(combobox, option.dataset.route || '', option.dataset.signature || '');
+                    renderSummaryRouteComboboxList(combobox, tabDateKey, routeInput?.value || '');
+                    routeList.hidden = true;
+                    routeInput?.setAttribute('aria-expanded', 'false');
+                    scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
+                });
+                return;
+            }
 
             bindShiftSummaryPanelLiveCalc(panelEl, dayPanel, dateKey, shiftIndex, tabDateKey);
             bindShiftSummaryTimeInputs(panelEl);
@@ -14538,6 +14882,7 @@
                 div.innerHTML = `<span class="day-number">${d}</span>`;
             } else {
                 div.classList.add('day--has-shift');
+                if (shifts.some(s => isRestDayRoute(s.route))) div.classList.add('day--has-rest');
                 if (shifts.length >= 2) div.classList.add('day--multi');
                 div.innerHTML = renderDayCellContent(d, shifts, dateKey);
             }
@@ -14792,7 +15137,10 @@
 
         loadGlobalShiftTemplates();
         applyNormativeForDateKey(dateKey);
-        const normativeHint = formatNormativePeriodLabel(resolveNormativeBundleForIso(calendarKeyToIso(dateKey)));
+        const normativeHint = formatShiftHoursSourceLabel(dateKey);
+        const sourceHintClass = normativeHint === 'Часы смен не загружены'
+            ? ' shift-day-panel__meta-line--empty'
+            : '';
 
         let linkedMorningMaterialized = false;
         storedShifts.filter(s => isNightRoute(s.route)).forEach(nightShift => {
@@ -14805,7 +15153,7 @@
         }
 
         if (!effectiveShifts.length) {
-            content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint);
+            content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, sourceHintClass);
             initCalendarRoutePicker(storedShifts, dateKey);
             return;
         }
@@ -14813,7 +15161,7 @@
         const summaryContext = { isVirtualMorning, prevShift, prevDateKey };
         const tabs = buildConstructorShiftTabs(dateKey, storedShifts, effectiveShifts, prevShift, prevDateKey);
         if (!tabs.length) {
-            content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint);
+            content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, sourceHintClass);
             initCalendarRoutePicker(storedShifts, dateKey);
             calendarConstructorOpenedDateKey = dateKey;
             return;
@@ -14857,12 +15205,13 @@
             if (linkedMorning?.linkedFromNightDateKey) {
                 metaHints.push(`Утро от ночной ${escapeHtml(linkedMorning.linkedFromNightRoute || '')} (${escapeHtml(formatCalendarKeyLabel(linkedMorning.linkedFromNightDateKey))}).`);
             }
-            if (normativeHint) metaHints.push(escapeHtml(normativeHint));
         }
 
         content.innerHTML = buildUnifiedShiftDayPanelHtml(
             dateKey, day, month, year, tabs, storedShifts, summaryContext, {
-                metaHints
+                metaHints,
+                sourceHint: isVirtualMorning ? '' : normativeHint,
+                sourceHintClass: isVirtualMorning ? '' : sourceHintClass
             }
         );
 

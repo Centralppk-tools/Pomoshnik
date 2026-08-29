@@ -1,24 +1,46 @@
-4.0.4 STABLE ★
-
-Дата: 2026-08-29
-
-Статус: готово к выкладке — клиент (app/) и сервер (yandex-cloud/da-function.zip).
-
-Service Worker: da_v4_0_4
-
-Деплой PWA: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
-Деплой сервера: yandex-cloud/da-function.zip → Cloud Function d4etmp7m8cfgrv283027, entrypoint index.handler
-
-Снимок HTML: Version/snapshots/index 4.0.4.html
-Снимок стилей: Version/snapshots/styles 4.0.4/
-Снимок конфига: Version/snapshots/app-config 4.0.4.js
-Снимок сервера: Version/snapshots/yandex-cloud 4.0.4/
-
-Основное:
-- Обновлены часы смен с 1 сентября
-- Разовые часы на отдельные дни конца августа (27.08–03.09)
-- Naryad_pan — загрузка нормативов из PDF в базу на сервере
-
-Сервер:
-- shift-templates.json: норматив 2026-09-01, разовые даты в shiftDetails
-- корневой shiftDetails — только активный норматив (без дубля истории)
+4.0.5 STABLE ★
+
+
+
+Дата: 2026-08-29
+
+
+
+Статус: готово к выкладке — клиент (app/) и сервер (yandex-cloud/da-function.zip).
+
+
+
+Service Worker: da_v4_0_5
+
+
+
+Деплой PWA: содержимое папки app/ → GitHub (см. Version/DEPLOY-GITHUB.md)
+
+Деплой сервера: yandex-cloud/da-function.zip → Cloud Function d4etmp7m8cfgrv283027, entrypoint index.handler
+
+
+
+Снимок HTML: Version/snapshots/index 4.0.5.html
+
+Снимок стилей: Version/snapshots/styles 4.0.5/
+
+Снимок конфига: Version/snapshots/app-config 4.0.5.js
+
+Снимок сервера: Version/snapshots/yandex-cloud 4.0.5/
+
+
+
+Основное:
+
+- Фикс часов смен (ночные)
+
+- Добавление В и логики ×2
+
+
+
+Сервер:
+
+- shift-templates.json: активный норматив 2026-08-05 + разовые 27.08–03.09 (512 строк), без ошибочного блока 2026-09-01
+
+- calendar-local-routes.json: пресеты быстрых маршрутов календаря
+

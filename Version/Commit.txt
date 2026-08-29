@@ -938,3 +938,24 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 - Снимок стилей: Version/snapshots/styles 4.0.4/
 - Снимок конфига: Version/snapshots/app-config 4.0.4.js
 - Снимок сервера: Version/snapshots/yandex-cloud 4.0.4/
+
+4.0.5 STABLE ★
+
+Основное:
+- Фикс часов смен (ночные)
+- Добавление В и логики ×2
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- app/index.html — выходной «В», быстрые маршруты, оплата ×2 за замену; фикс обеда при замене с панели выходного; подписи разовых смен в календаре.
+- app/data/calendar-local-routes.json + yandex-cloud/function/data/ — пресеты Д99, Н99, ТО, И, В.
+- shift-templates.json: пересборка из PDF 27.08–03.09 в активный норматив 2026-08-05 (без блока 2026-09-01).
+- Naryad_pan: загрузка разовых дат в активный норматив, пересборка из «Часы смен/».
+- Service Worker: da_v4_0_5.
+- Деплой PWA: npm run deploy:github → GitHub Pages.
+- Деплой сервера: npm run pack:yc → da-function.zip → Yandex Cloud Function.
+- Снимок HTML: Version/snapshots/index 4.0.5.html
+- Снимок стилей: Version/snapshots/styles 4.0.5/
+- Снимок конфига: Version/snapshots/app-config 4.0.5.js
+- Снимок сервера: Version/snapshots/yandex-cloud 4.0.5/
