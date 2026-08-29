@@ -1,26 +1,25 @@
 #!/usr/bin/env node
 /**
- * Деплой da-function.zip в Yandex Cloud Function через REST API.
+ * Деплой da-function.zip в Yandex Cloud Function.
  *
- * Нужен IAM-токен (живёт ~12 ч):
- *   yc iam create-token
- *   или OAuth: https://yandex.cloud/ru/docs/iam/operations/iam-token/create
+ * ВАЖНО: переменные окружения (YANDEX_API_KEY, CLIENT_GATE_TOKEN, …) обязательны.
+ * Скрипт подтягивает env из последней версии функции, где они заданы, либо из yandex-cloud/.env
  *
  * Usage:
- *   set YC_IAM_TOKEN=...
- *   set YC_FUNCTION_ID=d4etmp7m8cfgrv283027
- *   node tools/yc-deploy-function.mjs
+ *   npm run pack:yc
+ *   npm run yc:deploy
  *
- * Без токена — печатает шаги для консоли YC.
+ * Нужен yc CLI (yc iam create-token / авторизация).
  */
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const zipPath = join(root, 'yandex-cloud', 'da-function.zip');
+const envFilePath = join(root, 'yandex-cloud', '.env');
 const functionId = String(process.env.YC_FUNCTION_ID || 'd4etmp7m8cfgrv283027').trim();
-const iamToken = String(process.env.YC_IAM_TOKEN || process.env.YC_TOKEN || '').trim();
 
 function printManualSteps() {
     const size = existsSync(zipPath) ? statSync(zipPath).size : 0;
@@ -34,78 +33,140 @@ function printManualSteps() {
    Размер: ${mb} MB
 4. Runtime: nodejs18 (или nodejs20)
 5. Entrypoint: index.handler
-6. Таймаут: 30 с, память: 256 MB
-7. Переменные окружения (не менять значения, только проверить):
+6. Таймаут: 30 s, память: 256 MB
+7. **Обязательно** скопировать переменные окружения с предыдущей версии:
    YANDEX_API_KEY, STATS_SECRET, CLIENT_GATE_TOKEN, VAPID_*
    S3_BUCKET + AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (рекомендуется)
 
-8. Триггер «Таймер»:
-   Cron: 5 21 * * *
-   (00:05 МСК) — нативный таймер достаточен, secret не нужен.
-   Альтернатива HTTP: ?preload_boards=1&secret=<STATS_SECRET>
-
-9. После деплоя:
+8. После деплоя:
    npm run yc:preload-boards -- --secret=<STATS_SECRET>
-   curl board → HIT_WORKER_KV или MISS_ON_DEMAND_YANDEX
 `);
 }
 
-async function deployViaApi() {
+function runYc(args) {
+    return execFileSync('yc', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+function parseDotEnv(text) {
+    const env = {};
+    for (const line of String(text || '').split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq <= 0) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let val = trimmed.slice(eq + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+        }
+        if (key) env[key] = val;
+    }
+    return env;
+}
+
+function loadEnvFromFile() {
+    if (!existsSync(envFilePath)) return null;
+    const parsed = parseDotEnv(readFileSync(envFilePath, 'utf8'));
+    return Object.keys(parsed).length ? parsed : null;
+}
+
+function loadEnvFromLastVersion() {
+    try {
+        const raw = runYc([
+            'serverless', 'function', 'version', 'list',
+            '--function-id', functionId,
+            '--limit', '20',
+            '--format', 'json',
+        ]);
+        const versions = JSON.parse(raw);
+        for (const version of versions) {
+            const env = version?.environment;
+            if (env && typeof env === 'object' && Object.keys(env).length) {
+                return { env, versionId: version.id };
+            }
+        }
+    } catch (err) {
+        console.warn('[yc:deploy] Не удалось прочитать env из версий:', err.message || err);
+    }
+    return null;
+}
+
+function formatEnvironmentArg(env) {
+    return Object.entries(env)
+        .filter(([k, v]) => k && v != null && String(v).trim() !== '')
+        .map(([k, v]) => `${k}=${String(v).trim()}`)
+        .join(',');
+}
+
+function deployViaYc() {
     if (!existsSync(zipPath)) {
         console.error('Нет ZIP. Запустите: npm run pack:yc');
         process.exit(1);
     }
 
-    const zipBase64 = readFileSync(zipPath).toString('base64');
-    const url = `https://serverless-functions.api.cloud.yandex.net/functions/v1/versions?functionId=${encodeURIComponent(functionId)}`;
+    const fromFile = loadEnvFromFile();
+    const fromVersion = loadEnvFromLastVersion();
+    const environment = fromFile || fromVersion?.env;
 
-    const body = {
-        functionId,
-        runtime: 'nodejs18',
-        entrypoint: 'index.handler',
-        resources: { memory: '268435456' },
-        executionTimeout: '30s',
-        content: zipBase64,
-    };
-
-    console.log('POST', url);
-    console.log('ZIP size:', (statSync(zipPath).size / (1024 * 1024)).toFixed(2), 'MB');
-
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${iamToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-    });
-
-    const text = await res.text();
-    if (!res.ok) {
-        console.error('Deploy failed HTTP', res.status);
-        console.error(text.slice(0, 2000));
+    if (!environment || !Object.keys(environment).length) {
+        console.error('Не найдены переменные окружения для деплоя.');
+        console.error('Создайте yandex-cloud/.env (из .env.example) или задеплойте версию с env вручную в консоли YC.');
         printManualSteps();
         process.exit(1);
     }
 
-    try {
-        console.log(JSON.stringify(JSON.parse(text), null, 2));
-    } catch {
-        console.log(text);
+    if (fromFile) {
+        console.log('Env: yandex-cloud/.env');
+    } else {
+        console.log(`Env: скопировано с версии ${fromVersion.versionId}`);
     }
-    console.log('\nOK. Запустите: npm run yc:preload-boards -- --secret=...');
+
+    const envArg = formatEnvironmentArg(environment);
+    const required = ['YANDEX_API_KEY', 'CLIENT_GATE_TOKEN', 'STATS_SECRET'];
+    const missing = required.filter((key) => !environment[key]);
+    if (missing.length) {
+        console.error('В env не хватает ключей:', missing.join(', '));
+        process.exit(1);
+    }
+
+    console.log('ZIP:', zipPath, `(${(statSync(zipPath).size / (1024 * 1024)).toFixed(2)} MB)`);
+    console.log('Deploy via yc serverless function version create …');
+
+    const args = [
+        'serverless', 'function', 'version', 'create',
+        '--function-id', functionId,
+        '--source-path', zipPath,
+        '--runtime', 'nodejs18',
+        '--entrypoint', 'index.handler',
+        '--memory', '256MB',
+        '--execution-timeout', '30s',
+        '--environment', envArg,
+    ];
+
+    const out = runYc(args);
+    console.log(out);
+    console.log('\nOK. Проверка: curl с Origin GitHub Pages + X-DA-Client → ?api=trains-local');
+    console.log('Табло: npm run yc:preload-boards -- --secret=...');
 }
 
-async function main() {
-    if (!iamToken) {
-        console.log('YC_IAM_TOKEN не задан — только инструкция.\n');
+function main() {
+    try {
+        runYc(['--version']);
+    } catch {
+        console.log('yc CLI не найден — только инструкция.\n');
         printManualSteps();
         process.exit(0);
     }
-    await deployViaApi();
+
+    try {
+        deployViaYc();
+    } catch (err) {
+        const stderr = err.stderr?.toString?.() || '';
+        const stdout = err.stdout?.toString?.() || '';
+        console.error(stderr || stdout || err.message || err);
+        printManualSteps();
+        process.exit(1);
+    }
 }
 
-main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-});
+main();
