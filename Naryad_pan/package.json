@@ -1,9 +1,0 @@
-{
-  "name": "naryad-pan",
-  "private": true,
-  "version": "0.1.0",
-  "description": "Naryad_pan — нормативы маршрутов из PDF",
-  "scripts": {
-    "start": "python serve.py"
-  }
-}
