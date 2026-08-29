@@ -54,10 +54,20 @@ NORMATIVE_PERIODS = [
 HEADER_ROW = 6
 DATA_START_ROW = 7
 
-# Нативный xlsx: ночь с col 11. PDF (pdfplumber): обед дня в одной ячейке → сдвиг −1.
+# Нативный xlsx: ночь с col 11. PDF (pdfplumber): блок сдвинут на −1, обед — одна ячейка.
+# Перерыв (обед): у Д — правее «Рабочее время смены» (cols 7–8); у Н — левее «№ марш. утром» (cols 19–20).
 LAYOUT_NATIVE = {
     "night_route_col": 11,
     "morning_route_col": 22,
+    "day_fields": {
+        "startPlace": 2,
+        "startTime": 3,
+        "trains": 4,
+        "endTime": 5,
+        "workHours": 6,
+        "nightHours": 9,
+    },
+    "day_lunch": (7, 8),
     "night_fields": {
         "startPlace": 12,
         "startTime": 13,
@@ -80,7 +90,16 @@ LAYOUT_NATIVE = {
 
 LAYOUT_PDF = {
     "night_route_col": 10,
-    "morning_route_col": 21,
+    "morning_route_col": 20,
+    "day_fields": {
+        "startPlace": 2,
+        "startTime": 3,
+        "trains": 4,
+        "endTime": 5,
+        "workHours": 6,
+        "nightHours": 8,
+    },
+    "day_lunch": (7,),
     "night_fields": {
         "startPlace": 11,
         "startTime": 12,
@@ -88,16 +107,16 @@ LAYOUT_PDF = {
         "endTime": 14,
         "workHours": 15,
         "nightHours": 16,
-        "morningRoute": 20,
+        "morningRoute": 19,
     },
-    "night_lunch": (17, 18),
+    "night_lunch": (18,),
     "morning_fields": {
-        "startPlace": 22,
-        "startTime": 23,
-        "trains": 24,
-        "endTime": 25,
-        "workHours": 26,
-        "nightHours": 27,
+        "startPlace": 21,
+        "startTime": 22,
+        "trains": 23,
+        "endTime": 24,
+        "workHours": 25,
+        "nightHours": 26,
     },
 }
 
@@ -145,20 +164,36 @@ def extract_lunch_marker(*values) -> str:
     return ""
 
 
-def format_break_lunch(start_cell, end_cell) -> str:
-    start_times = extract_times_from_cell(start_cell)
-    end_times = extract_times_from_cell(end_cell)
-    marker = extract_lunch_marker(start_cell, end_cell)
-    marker = marker or normalize_lunch(end_cell) or normalize_lunch(start_cell)
+def format_break_lunch(*cells) -> str:
+    """Перерыв: две ячейки (нативный xlsx) или одна (PDF: «15:00 16:00 **»)."""
+    if not cells:
+        return ""
 
-    if start_times and end_times:
-        lunch = f"{start_times[0]}-{end_times[0]}"
+    all_times: list[str] = []
+    marker = ""
+    for cell in cells:
+        all_times.extend(extract_times_from_cell(cell))
+        marker = marker or extract_lunch_marker(cell) or normalize_lunch(cell)
+
+    if len(all_times) >= 2:
+        lunch = f"{all_times[0]}-{all_times[1]}"
         if marker:
             lunch = f"{lunch} {marker}"
         return lunch
 
+    if len(cells) >= 2:
+        start_times = extract_times_from_cell(cells[0])
+        end_times = extract_times_from_cell(cells[1])
+        if start_times and end_times:
+            lunch = f"{start_times[0]}-{end_times[0]}"
+            if marker:
+                lunch = f"{lunch} {marker}"
+            return lunch
+
     if marker:
         return marker
+    if len(all_times) == 1:
+        return all_times[0]
     return ""
 
 
@@ -278,19 +313,11 @@ def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
         if MORNING_ROUTE_RE.match(morning_route_col):
             morning_index[normalize_route(morning_route_col)] = row
 
-        day_fields = read_row_segment(
-            ws,
-            row,
-            {
-                "startPlace": 2,
-                "startTime": 3,
-                "trains": 4,
-                "endTime": 5,
-                "workHours": 6,
-                "nightHours": 9,
-            },
+        day_fields = read_row_segment(ws, row, layout["day_fields"])
+        day_lunch_cols = layout["day_lunch"]
+        day_fields["lunch"] = format_break_lunch(
+            *[ws.cell(row, col).value for col in day_lunch_cols]
         )
-        day_fields["lunch"] = format_break_lunch(ws.cell(row, 7).value, ws.cell(row, 8).value)
         flat_rows.append(flat_row(marker, day_route, day_fields))
 
         night_route = cell_str(ws.cell(row, layout["night_route_col"]).value)
@@ -298,10 +325,9 @@ def parse_workbook_with_marker(path: Path, marker: str) -> list[dict[str, str]]:
             continue
 
         night_fields = read_row_segment(ws, row, layout["night_fields"])
-        lunch_cols = layout["night_lunch"]
+        night_lunch_cols = layout["night_lunch"]
         night_fields["lunch"] = format_break_lunch(
-            ws.cell(row, lunch_cols[0]).value,
-            ws.cell(row, lunch_cols[1]).value,
+            *[ws.cell(row, col).value for col in night_lunch_cols]
         )
         flat_rows.append(flat_row(marker, night_route, night_fields))
 

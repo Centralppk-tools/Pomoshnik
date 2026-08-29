@@ -959,3 +959,23 @@ fix: свайпы вкладок «Маршрут» / «Расписание»; 
 - Снимок стилей: Version/snapshots/styles 4.0.5/
 - Снимок конфига: Version/snapshots/app-config 4.0.5.js
 - Снимок сервера: Version/snapshots/yandex-cloud 4.0.5/
+
+4.0.6 STABLE ★
+
+Основное:
+- Финальные корректировки
+
+★ СТАБИЛЬНАЯ ВЕРСИЯ — рекомендуется к выкладке.
+
+Описание (что внутри):
+- tools/export-shifts.py — колонка «№ марш. утром» (PDF), обед дня/ночи (перерыв); shift-templates.json пересобран.
+- app/index.html — блокировка pinch-zoom на телефоне; Web Push: ключи алертов по табель+маршрут, сброс чужих задач при выходе/уходе с экрана.
+- app/styles/base.css — font-size 16px на полях ввода (iOS без авто-зума).
+- yandex-cloud/function/lib/core.js — push_sent per device+key; unregister очищает все алерты устройства.
+- Service Worker: da_v4_0_6.
+- Деплой PWA: npm run deploy:github → GitHub Pages.
+- Деплой сервера: npm run pack:yc → da-function.zip → Yandex Cloud Function.
+- Снимок HTML: Version/snapshots/index 4.0.6.html
+- Снимок стилей: Version/snapshots/styles 4.0.6/
+- Снимок конфига: Version/snapshots/app-config 4.0.6.js
+- Снимок сервера: Version/snapshots/yandex-cloud 4.0.6/

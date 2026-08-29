@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.5)
-const CACHE_VERSION = 'da_v4_0_5';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.6)
+const CACHE_VERSION = 'da_v4_0_6';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 

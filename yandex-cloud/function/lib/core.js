@@ -846,9 +846,10 @@ async function handleSyncAlerts(request, reqUrl, env) {
     const body = await readJsonBody(request);
     const jobs = Array.isArray(body?.jobs) ? body.jobs : [];
     const sessionId = String(reqUrl.searchParams.get('session_id') || body?.session_id || '').trim().slice(0, 256);
+    const tabNumber = String(reqUrl.searchParams.get('tab_number') || body?.tab_number || '').trim().slice(0, 32);
     const sanitizedJobs = jobs
         .map((job) => {
-            const key = String(job?.key || '').trim().slice(0, 128);
+            const key = String(job?.key || '').trim().slice(0, 192);
             const fireAtUnix = Number(job?.fireAtUnix);
             if (!key || !Number.isFinite(fireAtUnix)) return null;
             return {
@@ -860,6 +861,7 @@ async function handleSyncAlerts(request, reqUrl, env) {
                 body: String(job?.body || '').slice(0, 240),
                 tone: String(job?.tone || 'default').slice(0, 32),
                 session_id: sessionId,
+                tab_number: tabNumber,
             };
         })
         .filter(Boolean);
@@ -916,8 +918,9 @@ async function handleUnregisterPush(request, reqUrl, env) {
         await writeDeviceSubscriptions(kv, deviceUuid, next, expiration);
     } else {
         await kv.delete(pushSubsIndexKey(deviceUuid));
-        await removeJobsForDevice(kv, deviceUuid);
     }
+
+    await removeJobsForDevice(kv, deviceUuid);
 
     return corsResponse(JSON.stringify({ ok: true, device_uuid: deviceUuid }), 200, {
         'Content-Type': 'application/json; charset=utf-8',
@@ -960,7 +963,7 @@ async function processScheduledPushes(env) {
             continue;
         }
 
-        const sentKey = `push_sent:${job.key}`;
+        const sentKey = `push_sent:${deviceUuid}:${job.key}`;
         if (await kv.get(sentKey)) {
             continue;
         }
