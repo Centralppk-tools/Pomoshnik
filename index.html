@@ -55,6 +55,16 @@
     </div>
 </div>
 
+<div id="shiftHoursUpdateOverlay" class="app-release-overlay shift-hours-update-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="shiftHoursUpdateTitle">
+    <div class="app-release-box">
+        <p class="app-release-kicker">Справочник смен</p>
+        <h2 id="shiftHoursUpdateTitle" class="app-release-title">Обновлены часы смен</h2>
+        <p class="app-release-version" id="shiftHoursUpdateUntil"></p>
+        <ul class="app-release-list" id="shiftHoursUpdateList"></ul>
+        <button type="button" class="app-release-btn" id="shiftHoursUpdateDismissBtn">Понятно, проверю</button>
+    </div>
+</div>
+
 <div id="donateSheet" class="donate-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="donateSheetTitle">
     <div class="donate-sheet">
         <div class="donate-sheet-header">
@@ -803,11 +813,12 @@
     const CALENDAR_LOCAL_ROUTES_STORAGE_KEY = 'cppk_calendar_local_routes';
     const LOCAL_SHIFT_TEMPLATES_URL = './data/shift-templates.json';
     const LOCAL_SHIFT_TEMPLATES_STORAGE_KEY = 'cppk_shift_templates_bundle';
+    const SHIFT_HOURS_SEEN_UNTIL_KEY = 'cppk_shift_hours_seen_until';
     const DEPOT_FIO_KEY = 'depotFio';
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.6';
+    const APP_RELEASE_VERSION = '4.0.7';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -7125,10 +7136,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Финальные корректировки'
+            'Обновление часов смен 1-6.09',
+            'Локальные правки по маршрутам'
         ],
         highlights: [
-            'Финальные корректировки'
+            'Обновление часов смен 1-6.09',
+            'Локальные правки по маршрутам'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -7727,6 +7740,7 @@
 
     async function initReleaseNotesUi() {
         bindReleaseNotesUi();
+        bindShiftHoursUpdateUi();
         mountAppCommunityFooters(RELEASE_NOTES_FALLBACK);
         await maybeShowReleaseNotesOverlay();
     }
@@ -9072,6 +9086,7 @@
     let calendarLocalRoutesData = null;
     let calendarLocalRoutesPromise = null;
     let localShiftNormatives = [];
+    let localShiftTemplatesMeta = null;
     let localShiftTemplatesPromise = null;
     let activeNormativeId = null;
     let constructorRouteOptions = new Map();
@@ -9129,6 +9144,7 @@
     }
 
     function getShiftDataLoadedUntilIso() {
+        if (localShiftTemplatesMeta?.loadedUntilIso) return localShiftTemplatesMeta.loadedUntilIso;
         let maxIso = null;
         for (const bundle of localShiftNormatives) {
             for (const row of bundle.shiftDetails || []) {
@@ -9319,53 +9335,199 @@
         return options.find(option => normalizeCalendarRouteKey(option.route) === routeKey) || null;
     }
 
+    function computeShiftBundleLoadedUntilIso(data) {
+        if (data?.meta?.loadedUntilIso) return data.meta.loadedUntilIso;
+        const normatives = Array.isArray(data?.normatives) ? data.normatives : [];
+        let maxIso = null;
+        for (const bundle of normatives) {
+            for (const row of bundle.shiftDetails || []) {
+                const rowIso = normalizedDateToIso(row.date);
+                if (rowIso && (!maxIso || rowIso > maxIso)) maxIso = rowIso;
+            }
+        }
+        if (!maxIso && Array.isArray(data?.shiftDetails)) {
+            for (const row of data.shiftDetails) {
+                const rowIso = normalizedDateToIso(row.date);
+                if (rowIso && (!maxIso || rowIso > maxIso)) maxIso = rowIso;
+            }
+        }
+        return maxIso;
+    }
+
+    function shiftBundleCacheStamp(data) {
+        return [
+            computeShiftBundleLoadedUntilIso(data) || '',
+            data?.meta?.lastWriteAt || data?.generatedAt || '',
+            data?.version || ''
+        ].join('|');
+    }
+
+    function normalizeShiftBundleData(data) {
+        if (!data) return { normatives: [], meta: null, version: null, generatedAt: null };
+        let normatives = Array.isArray(data.normatives)
+            ? data.normatives.filter(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)
+            : [];
+        if (!normatives.length && Array.isArray(data.shiftDetails) && data.shiftDetails.length) {
+            normatives = [{
+                id: data.version || 'local',
+                normativeFrom: data.source?.normativeFrom || '1970-01-01',
+                normativeTo: null,
+                shiftDetails: data.shiftDetails
+            }];
+        }
+        return {
+            normatives,
+            meta: data.meta || null,
+            version: data.version || null,
+            generatedAt: data.generatedAt || null
+        };
+    }
+
+    function pickNewestShiftBundle(candidates) {
+        const valid = candidates.filter(item => item?.normatives?.length);
+        if (!valid.length) return null;
+        return valid.sort((a, b) => {
+            const au = computeShiftBundleLoadedUntilIso(a) || '';
+            const bu = computeShiftBundleLoadedUntilIso(b) || '';
+            if (au !== bu) return au < bu ? 1 : -1;
+            const as = a?.meta?.lastWriteAt || a?.generatedAt || '';
+            const bs = b?.meta?.lastWriteAt || b?.generatedAt || '';
+            return as < bs ? 1 : -1;
+        })[0];
+    }
+
+    async function fetchShiftTemplatesJson(url) {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return normalizeShiftBundleData(await res.json());
+    }
+
+    function buildShiftHoursUpdateHighlights(meta) {
+        const untilLabel = meta?.loadedUntilLabel
+            || formatIsoToRuDateLabel(meta?.loadedUntilIso || getShiftDataLoadedUntilIso());
+        const bullets = [
+            `Загружено разовых дат до ${untilLabel}.`,
+            'На новых днях в календаре должна быть подпись «Разовая смена · дата».',
+            'Проверьте ночные Н58/Н59 и утренние 59У/60У, если выходите на эти маршруты.',
+            'В конструкторе смены откройте день и убедитесь, что маршрут и поезда подтянулись.',
+        ];
+        if (meta?.lastUploadLabel) {
+            bullets.splice(1, 0, `Последняя заливка: ${meta.lastUploadLabel}.`);
+        }
+        return bullets;
+    }
+
+    function showShiftHoursUpdateOverlay(meta) {
+        const overlay = document.getElementById('shiftHoursUpdateOverlay');
+        const untilEl = document.getElementById('shiftHoursUpdateUntil');
+        const listEl = document.getElementById('shiftHoursUpdateList');
+        if (!overlay || !listEl) return;
+        const untilLabel = meta?.loadedUntilLabel
+            || formatIsoToRuDateLabel(meta?.loadedUntilIso || getShiftDataLoadedUntilIso());
+        if (untilEl) untilEl.textContent = `Актуально до ${untilLabel}`;
+        listEl.innerHTML = buildShiftHoursUpdateHighlights(meta)
+            .map(item => `<li>${escapeHtml(item)}</li>`)
+            .join('');
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideShiftHoursUpdateOverlay() {
+        const overlay = document.getElementById('shiftHoursUpdateOverlay');
+        if (!overlay) return;
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    function maybeShowShiftHoursUpdateOverlay(meta) {
+        const untilIso = meta?.loadedUntilIso || computeShiftBundleLoadedUntilIso({ meta, normatives: localShiftNormatives });
+        if (!untilIso) return;
+        const seenUntil = String(localStorage.getItem(SHIFT_HOURS_SEEN_UNTIL_KEY) || '').trim();
+        if (seenUntil && untilIso <= seenUntil) return;
+        showShiftHoursUpdateOverlay(meta);
+    }
+
+    function markShiftHoursUpdateSeen(untilIso) {
+        const iso = untilIso || getShiftDataLoadedUntilIso();
+        if (iso) localStorage.setItem(SHIFT_HOURS_SEEN_UNTIL_KEY, iso);
+        hideShiftHoursUpdateOverlay();
+    }
+
+    function bindShiftHoursUpdateUi() {
+        document.getElementById('shiftHoursUpdateDismissBtn')?.addEventListener('click', () => {
+            markShiftHoursUpdateSeen(localShiftTemplatesMeta?.loadedUntilIso);
+        });
+    }
+
     async function loadLocalShiftTemplatesBundle() {
         if (hasLocalShiftTemplates()) return localShiftNormatives;
         if (localShiftTemplatesPromise) return localShiftTemplatesPromise;
 
         localShiftTemplatesPromise = (async () => {
             try {
-                const urls = [];
-                if (APP_DATA_API) urls.push(appDataApiUrl('shift-templates'));
-                urls.push(LOCAL_SHIFT_TEMPLATES_URL);
-                let data = null;
-                let lastErr = null;
-                for (const url of urls) {
-                    try {
-                        const res = await fetch(url, { cache: 'no-store' });
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                        data = await res.json();
-                        break;
-                    } catch (e) {
-                        lastErr = e;
-                    }
+                const fetchers = [];
+                if (APP_DATA_API) {
+                    fetchers.push(fetchShiftTemplatesJson(appDataApiUrl('shift-templates')).catch(() => null));
                 }
-                if (!data) throw lastErr || new Error('shift-templates unavailable');
+                fetchers.push(fetchShiftTemplatesJson(LOCAL_SHIFT_TEMPLATES_URL).catch(() => null));
+
+                const candidates = (await Promise.all(fetchers)).filter(Boolean);
                 const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
-                if (cachedBundle?.version && data?.version && cachedBundle.version !== data.version) {
+                if (cachedBundle?.normatives?.length) {
+                    candidates.push({
+                        normatives: cachedBundle.normatives,
+                        meta: {
+                            loadedUntilIso: cachedBundle.loadedUntilIso || null,
+                            loadedUntilLabel: cachedBundle.loadedUntilLabel || null,
+                            lastWriteAt: cachedBundle.lastWriteAt || null,
+                            lastUploadLabel: cachedBundle.lastUploadLabel || null,
+                        },
+                        version: cachedBundle.version || null,
+                        generatedAt: cachedBundle.lastWriteAt || null,
+                    });
+                }
+
+                const picked = pickNewestShiftBundle(candidates);
+                if (!picked) throw new Error('shift-templates unavailable');
+
+                const cachedStamp = cachedBundle ? shiftBundleCacheStamp({
+                    meta: { loadedUntilIso: cachedBundle.loadedUntilIso, lastWriteAt: cachedBundle.lastWriteAt },
+                    version: cachedBundle.version,
+                }) : '';
+                const newStamp = shiftBundleCacheStamp(picked);
+                if (cachedStamp && newStamp !== cachedStamp) {
                     activeNormativeId = null;
                     constructorRouteOptions = new Map();
                     depotShiftTemplates = [];
                 }
-                localShiftNormatives = Array.isArray(data?.normatives)
-                    ? data.normatives.filter(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)
-                    : [];
-                if (!localShiftNormatives.length && Array.isArray(data?.shiftDetails) && data.shiftDetails.length) {
-                    localShiftNormatives = [{
-                        id: data.version || 'local',
-                        normativeFrom: data.source?.normativeFrom || '1970-01-01',
-                        normativeTo: null,
-                        shiftDetails: data.shiftDetails
-                    }];
-                }
+
+                localShiftNormatives = picked.normatives;
+                localShiftTemplatesMeta = picked.meta || {
+                    loadedUntilIso: computeShiftBundleLoadedUntilIso(picked),
+                    loadedUntilLabel: formatIsoToRuDateLabel(computeShiftBundleLoadedUntilIso(picked)),
+                };
+
                 persistReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY, {
                     normatives: localShiftNormatives,
-                    version: data?.version || null
+                    version: picked.version || null,
+                    loadedUntilIso: localShiftTemplatesMeta?.loadedUntilIso || computeShiftBundleLoadedUntilIso(picked),
+                    loadedUntilLabel: localShiftTemplatesMeta?.loadedUntilLabel || null,
+                    lastWriteAt: localShiftTemplatesMeta?.lastWriteAt || picked.generatedAt || null,
+                    lastUploadLabel: localShiftTemplatesMeta?.lastUploadLabel || null,
                 });
+
+                maybeShowShiftHoursUpdateOverlay(localShiftTemplatesMeta);
             } catch (err) {
                 console.warn('[shift-templates]', err);
                 const cached = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
                 localShiftNormatives = Array.isArray(cached?.normatives) ? cached.normatives : [];
+                if (cached?.loadedUntilIso) {
+                    localShiftTemplatesMeta = {
+                        loadedUntilIso: cached.loadedUntilIso,
+                        loadedUntilLabel: cached.loadedUntilLabel || null,
+                        lastUploadLabel: cached.lastUploadLabel || null,
+                    };
+                }
             }
             return localShiftNormatives;
         })();
