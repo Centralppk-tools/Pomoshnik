@@ -9542,7 +9542,8 @@
             { id: 'u99', route: 'У99', label: 'У99', kind: 'morning', hours: 6, startTime: '1:00', endTime: '7:00', hint: 'Утро · 1:00–7:00 · 6 ч' },
             { id: 'to', route: 'ТО', label: 'ТО', kind: 'tech', hours: 8, payHours: 6, hint: 'ТО · 8 ч по графику, к оплате 6 ч' },
             { id: 'i', route: 'И', label: 'И', kind: 'tech', hoursEditable: true, defaultHours: 8, hint: 'Инструктаж · часы вручную' },
-            { id: 'v', route: 'В', label: 'В', kind: 'rest', hours: 0, hint: 'Выходной · замена на смену — оплата ×2 за этот день' }
+            { id: 'v', route: 'В', label: 'В', kind: 'rest', hours: 0, hint: 'Выходной · замена на смену — оплата ×2 за этот день' },
+            { id: 'bl', route: 'БЛ', label: 'БЛ', kind: 'rest', hours: 0, hint: 'Больничный лист' }
         ]
     };
 
@@ -9645,9 +9646,14 @@
     }
 
     function getCalendarLocalPresets() {
-        return calendarLocalRoutesData?.presets?.length
+        const list = calendarLocalRoutesData?.presets?.length
             ? calendarLocalRoutesData.presets
             : CALENDAR_LOCAL_ROUTES_FALLBACK.presets;
+        const arr = Array.isArray(list) ? [...list] : [];
+        if (!arr.some(p => String(p?.id || "").toLowerCase() === "bl" || p?.route === "БЛ")) {
+            arr.push({ id: "bl", route: "БЛ", label: "БЛ", kind: "rest", hours: 0, hint: "Больничный лист" });
+        }
+        return arr;
     }
 
     async function loadCalendarLocalRoutes() {
@@ -10264,7 +10270,7 @@
         if (isRoute99Variant(routeStr)) {
             return `has-route99-${getRoute99Kind(routeStr)}`;
         }
-        if (routeLower === 'в' || routeLower === 'выходной') return 'has-rest-shift';
+        if (routeLower === 'в' || routeLower === 'выходной' || routeLower === 'бл' || routeLower === 'больничный') return 'has-rest-shift';
         if (routeLower === 'и' || routeLower.includes('то') || routeLower === 'то') return 'has-tech-shift';
         if (routeLower.includes('н')) return 'has-night-shift';
         if (routeLower.includes('д')) return 'has-day-shift';
@@ -10292,6 +10298,7 @@
         if (routeLower.includes('н')) return { label: 'Ночь', color: 'var(--night-shift)' };
         if (routeLower.includes('у') && routeLower !== 'отпуск') return { label: 'Утро', color: 'var(--study-shift)' };
         if (routeLower === 'о' || routeLower === 'отпуск') return { label: 'Отпуск', color: 'var(--vacation-shift)' };
+        if (routeLower === 'бл' || routeLower === 'больничный') return { label: 'Больничный', color: '#dc5050' };
         if (routeLower === 'в' || routeLower === 'выходной') return { label: 'Выходной', color: '#dc5050' };
         const cls = getShiftColorClass(shift);
         if (cls.includes('has-route99-night') || cls.includes('has-night-shift')) return { label: 'Ночь', color: 'var(--night-shift)' };
@@ -10304,7 +10311,7 @@
     function isWorkShiftRoute(shift) {
         const routeLower = String(shift?.route || shift?.name || '').trim().toLowerCase();
         if (!routeLower) return false;
-        return !['в', 'выходной', 'о', 'отпуск'].includes(routeLower);
+        return !['в', 'выходной', 'о', 'отпуск', 'бл', 'больничный'].includes(routeLower);
     }
 
     function getShiftReportMinutes(shift) {
@@ -10505,7 +10512,7 @@
 
     function isNightShiftRoute(route) {
         const routeLower = String(route || '').trim().toLowerCase();
-        if (!routeLower || routeLower === 'отпуск' || routeLower === 'о' || routeLower === 'в' || routeLower === 'выходной') {
+        if (!routeLower || routeLower === 'отпуск' || routeLower === 'о' || routeLower === 'в' || routeLower === 'выходной' || routeLower === 'бл' || routeLower === 'больничный') {
             return false;
         }
         if (/^[нn]/.test(routeLower)) return true;
@@ -11383,6 +11390,7 @@
         if (!raw) return '';
 
         const rawLower = raw.toLowerCase();
+        if (rawLower === 'бл' || rawLower === 'больничный') return 'БЛ';
         if (rawLower === 'в' || rawLower === 'выходной') return 'В';
 
         if (isRoute99Variant(raw)) {
