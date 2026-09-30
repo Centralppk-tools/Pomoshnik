@@ -9092,9 +9092,8 @@
     let constructorRouteOptions = new Map();
 
     function hasLocalShiftTemplates() {
-        return Array.isArray(localShiftNormatives) && localShiftNormatives.some(item =>
-            Array.isArray(item?.shiftDetails) && item.shiftDetails.length
-        );
+        return (Array.isArray(localShiftNormatives) && localShiftNormatives.some(item => Array.isArray(item?.shiftDetails) && item.shiftDetails.length)) ||
+               (window._globalGlobalShiftDetails && Array.isArray(window._globalGlobalShiftDetails) && window._globalGlobalShiftDetails.length > 0);
     }
 
     function getShiftContextDateKey() {
