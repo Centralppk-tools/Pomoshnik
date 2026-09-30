@@ -135,6 +135,7 @@
     background: var(--surface-card-inner);
     overflow: hidden;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 #screen-calendar .calendar-header {

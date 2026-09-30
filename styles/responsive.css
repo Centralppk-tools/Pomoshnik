@@ -186,6 +186,20 @@
         box-sizing: border-box;
     }
 
+    #screen-calendar .calendar-top-block {
+        overflow: visible;
+        flex-shrink: 0;
+    }
+
+    #screen-calendar .calendar-header {
+        position: sticky;
+        top: calc(96px + env(safe-area-inset-top, 0px));
+        z-index: 40;
+        flex-shrink: 0;
+        min-height: 48px;
+        background: var(--surface-card-inner);
+    }
+
     #screen-calendar .shift-constructor {
         padding-bottom: 18px;
         margin-bottom: 2px;
@@ -247,10 +261,19 @@
 
     #screen-calendar .calendar-top-block {
         margin-bottom: 6px;
+        overflow: visible;
+        flex-shrink: 0;
     }
 
     #screen-calendar .calendar-header {
+        position: sticky;
+        top: calc(96px + env(safe-area-inset-top, 0px));
+        z-index: 40;
+        flex-shrink: 0;
+        min-height: 48px;
         padding: 10px 8px 8px;
+        background: var(--surface-card-inner);
+        border-radius: var(--card-radius) var(--card-radius) 0 0;
     }
 
     #screen-calendar .calendar-export-row {
