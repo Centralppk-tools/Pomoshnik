@@ -818,7 +818,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.7';
+    const APP_RELEASE_VERSION = '4.0.8';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -9144,6 +9144,8 @@
     }
 
     function getShiftDataLoadedUntilIso() {
+        const hasOpenEnded = Array.isArray(localShiftNormatives) && localShiftNormatives.some(b => b && b.normativeFrom && !b.normativeTo);
+        if (hasOpenEnded) return null;
         if (localShiftTemplatesMeta?.loadedUntilIso) return localShiftTemplatesMeta.loadedUntilIso;
         let maxIso = null;
         for (const bundle of localShiftNormatives) {
