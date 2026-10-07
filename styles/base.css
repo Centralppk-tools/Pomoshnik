@@ -552,7 +552,7 @@ transform: translateX(20px);
 
 #screen-schedule .screen-card--schedule .app-community-footer {
     margin-top: 4px;
-    margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: var(--bottom-tabbar-clearance);
     padding: 0 12px;
     box-sizing: border-box;
 }
@@ -605,12 +605,17 @@ transform: translateX(20px);
     backdrop-filter: none;
 }
 
+#tab-route {
+    padding-bottom: 24px;
+}
+
 #tab-schedule {
     width: 100%;
     min-width: 0;
     overflow: visible;
     --schedule-pad-x: 24px;
     gap: 8px;
+    padding-bottom: 24px;
 }
 
 #scheduleHeader .schedule-route-card {
@@ -805,6 +810,7 @@ transform: translateX(20px);
 .schedule-results-wrap {
     animation: fadeInScale 0.3s ease-out;
     overflow: visible;
+    padding-bottom: 20px;
 }
 
 .schedule-loader {

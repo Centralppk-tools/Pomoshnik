@@ -1,15 +1,13 @@
 /* ===== РАСПИСАНИЕ: Контейнер с вертикальной шкалой времени ===== */
 .timeline {
     position: relative;
-    padding-left: 6px;
+    padding-left: 4px;
     overflow: visible;
-    --km-marker-width: 44px;
-    /* Зазор: линия + точка только у станций (ОП без кружка) */
-    --km-marker-gap: 18px;
+    --km-marker-width: 48px;
+    --km-marker-gap: 32px;
     --timeline-mark-station: 10px;
     --timeline-line-width: 2.5px;
-    /* Линия между км-квадратом и карточкой — сюда же точка station */
-    --timeline-left: calc(6px + var(--km-marker-width) + var(--km-marker-gap) / 2);
+    --timeline-left: calc(4px + var(--km-marker-width) + var(--km-marker-gap) / 2);
     --station-fill: #141b27;
     --station-stroke: rgba(255, 255, 255, 0.05);
     --station-brakes-fill: linear-gradient(135deg, #30291d, #171925);
@@ -26,11 +24,17 @@
 .timeline-line {
     position: absolute;
     left: var(--timeline-left);
-    top: 24px;
-    bottom: 24px;
+    top: 10px;
+    bottom: 32px;
     width: var(--timeline-line-width);
     margin-left: calc(var(--timeline-line-width) / -2);
-    background: rgba(255, 255, 255, 0.28);
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.06),
+        rgba(255, 255, 255, 0.32) 6%,
+        rgba(255, 255, 255, 0.32) 94%,
+        rgba(255, 255, 255, 0.06)
+    );
     border-radius: 2px;
     z-index: 1;
     pointer-events: none;
@@ -39,25 +43,52 @@
 .station-node {
     position: relative;
     padding-left: calc(var(--km-marker-width) + var(--km-marker-gap));
-    margin-bottom: 14px;
+    margin-bottom: 8px;
     width: 100%;
     overflow: visible;
 }
 
+.station-node:last-child {
+    margin-bottom: 8px;
+    padding-bottom: 28px;
+}
+
+.station-node--halt {
+    margin-bottom: 5px;
+}
+
+.station-node.is-major,
+.station-node.terminal {
+    margin-bottom: 10px;
+}
+
 .station-card {
-    background: var(--station-fill);
-    border: var(--card-border);
-    border-radius: 14px;
-    padding: 12px 16px;
+    background: rgba(20, 27, 39, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 10px 16px 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     width: 100%;
-    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
+}
+
+.station-node--halt .station-card {
+    padding: 7px 16px 7px 10px;
+    background: rgba(16, 22, 32, 0.38);
+    border-color: transparent;
+}
+
+.station-node.is-major .station-card,
+.station-node.terminal .station-card {
+    padding: 11px 16px 11px 12px;
+    background: #1a2230;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .station-card.has-brakes {
@@ -77,10 +108,10 @@
 }
 
 .station-node.active .station-card {
-    border-color: var(--station-active-stroke);
-    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.35), 0 0 10px rgba(20, 90, 46, 0.45);
-    transition: none;
-    animation: schedule-station-active-pulse 1s ease-in-out infinite;
+    border-color: rgba(6, 199, 133, 0.55);
+    background: linear-gradient(180deg, rgba(6, 199, 133, 0.14), rgba(20, 27, 39, 0.72));
+    box-shadow: inset 0 0 0 1px rgba(6, 199, 133, 0.22), 0 0 16px rgba(6, 199, 133, 0.18);
+    animation: none;
 }
 
 .station-node.is-selected .station-card {
@@ -90,8 +121,13 @@
 }
 
 .station-node.is-selected .station-dot {
-    border-color: rgba(96, 165, 250, 0.88);
-    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.45);
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+.station-node.is-selected .station-dot::after {
+    color: #bfdbfe;
 }
 
 .station-node.is-selected.pass-through .station-card {
@@ -312,26 +348,158 @@
 .card-row-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 10px;
     width: 100%;
+    min-width: 0;
+}
+
+.station-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    flex: 1;
     min-width: 0;
 }
 
 /* Название станции */
 .station-name {
-    font-size: clamp(14px, 3.8vw, 16px);
-    font-weight: 700;
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
     color: var(--app-text-bright);
     white-space: nowrap;
     overflow: hidden;
     word-break: keep-all;
     overflow-wrap: normal;
-    flex: 1;
+    width: 100%;
     min-width: 0;
 }
 
-/* Точка только у станций; у ОП линия идёт без кружка */
+.station-name-text {
+    display: inline-block;
+    white-space: nowrap;
+    font: inherit;
+    color: inherit;
+    vertical-align: bottom;
+}
+
+.station-name.is-marquee .station-name-text {
+    animation: station-name-rtl var(--station-name-duration, 3.2s) linear infinite alternate;
+}
+
+@keyframes station-name-rtl {
+    from { transform: translateX(0); }
+    to { transform: translateX(var(--station-name-shift, 0)); }
+}
+
+.station-node.is-major .station-name,
+.station-node.terminal .station-name {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.station-node--halt:not(.is-major) .station-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #d5dce8;
+}
+
+.station-times {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 1px;
+    flex-shrink: 0;
+    min-width: 3.6em;
+    padding: 1px 4px 0 0;
+}
+
+.station-time-pair {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.station-time-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(139, 151, 171, 0.85);
+    line-height: 1;
+    transform: translateY(-0.5px);
+}
+
+.station-times--single {
+    padding-top: 2px;
+}
+
+.station-times--single .station-time-value {
+    line-height: 1;
+}
+
+.station-time-value {
+    color: var(--app-text-bright);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.station-time-dep {
+    color: rgba(248, 250, 255, 0.72);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.station-times--skip {
+    gap: 0;
+    align-items: flex-end;
+}
+
+.station-time-pass {
+    font-size: 12px;
+    font-weight: 650;
+    color: rgba(139, 151, 171, 0.9);
+}
+
+.station-time-skip {
+    color: rgba(139, 151, 171, 0.72);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+}
+
+.station-dwell {
+    margin-top: 1px;
+    padding: 0 5px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(139, 151, 171, 0.22);
+    color: #c5cedb;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.station-dwell--long {
+    background: rgba(234, 179, 8, 0.22);
+    color: #fbbf24;
+}
+
+/* Точка на нитке: ОП меньше, станции/узлы крупнее */
 .station-mark {
     position: absolute;
     left: calc(var(--km-marker-width) + var(--km-marker-gap) / 2);
@@ -341,156 +509,155 @@
     box-sizing: border-box;
     pointer-events: none;
     z-index: 3;
-    display: none;
-}
-
-.station-node--station .station-mark {
     display: block;
-    width: var(--timeline-mark-station);
-    height: var(--timeline-mark-station);
-    background: rgba(255, 255, 255, 0.92);
-    border: none;
+    width: 7px;
+    height: 7px;
+    background: rgba(255, 255, 255, 0.55);
     box-shadow: 0 0 0 3px var(--app-bg);
 }
 
-.station-node.pass-through.station-node--station .station-mark {
-    background: rgba(255, 255, 255, 0.45);
+.station-node--station .station-mark,
+.station-node.is-major .station-mark,
+.station-node.terminal .station-mark {
+    width: var(--timeline-mark-station);
+    height: var(--timeline-mark-station);
+    background: rgba(255, 255, 255, 0.94);
 }
 
-.station-node.active.station-node--station .station-mark {
-    background: #ffffff;
-    box-shadow: 0 0 0 3px var(--app-bg), 0 0 0 5px rgba(23, 128, 56, 0.32);
+.station-node.pass-through .station-mark,
+.station-node.is-skip .station-mark {
+    width: 5px;
+    height: 5px;
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.38);
+    box-shadow: 0 0 0 2px var(--app-bg);
+}
+
+.station-node.active .station-mark {
+    width: 12px;
+    height: 12px;
+    background: #5eead4;
+    box-shadow: 0 0 0 3px var(--app-bg), 0 0 0 6px rgba(6, 199, 133, 0.35), 0 0 14px rgba(6, 199, 133, 0.55);
 }
 
 /* Время остановки (вверху справа) */
 .time-badge {
     color: var(--app-text-bright);
-    font-size: clamp(13px, 3.6vw, 18px);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    flex-shrink: 0;
-    white-space: nowrap;
     background: transparent;
     padding: 0;
-    font-variant-numeric: tabular-nums;
 }
 
 /* ===== РАСПИСАНИЕ: Нижняя строка карточки — пробы тормозов ===== */
 .card-row-bottom {
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
-    padding-top: 8px;
+    border-top: none;
+    padding-top: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
 }
 
-/* Квадратик км/пикет — по высоте как карточка станции */
+.station-node .route-tags-container {
+    justify-content: flex-start;
+    width: 100%;
+}
+
+/* Километраж рядом с линией, без серой коробки */
 .station-dot {
     position: absolute;
     left: 0;
-    top: 0;
-    bottom: 0;
+    top: 50%;
+    transform: translateY(-50%);
     width: var(--km-marker-width);
     min-width: var(--km-marker-width);
-    min-height: 48px;
     height: auto;
-    border-radius: 12px;
-    background: var(--station-fill);
-    border: 1px solid var(--station-stroke);
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     z-index: 2;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     box-sizing: border-box;
-    padding: 8px 4px;
-    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    padding: 0;
+    pointer-events: none;
 }
 
 .station-dot::after {
     content: attr(data-km);
-    color: var(--app-text-bright);
-    font-size: 12px;
+    display: block;
+    width: 100%;
+    color: var(--app-muted);
+    font-size: 10px;
     font-weight: 700;
-    line-height: 1.15;
+    line-height: 1.1;
     white-space: nowrap;
-    text-align: center;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
-.station-node.has-brakes .station-dot {
-    background: var(--station-brakes-fill);
-    border-color: rgba(245, 158, 11, 0.72);
-    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45), inset 0 0 14px rgba(245, 158, 11, 0.28);
-}
-
-.station-node.has-brakes .station-dot::after {
-    color: var(--app-text-bright);
-}
-
-@keyframes schedule-station-dot-active-pulse {
-    0%, 100% {
-        border-color: rgba(23, 128, 56, 0.72);
-        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.55), inset 0 0 8px rgba(23, 128, 56, 0.22);
-    }
-    50% {
-        border-color: var(--station-active-stroke);
-        box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.95), inset 0 0 16px rgba(23, 128, 56, 0.48);
-    }
-}
-
-.station-node.active .station-dot {
-    border-color: var(--station-active-stroke);
-    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.85), inset 0 0 12px rgba(23, 128, 56, 0.38);
-    transition: none;
-    animation: schedule-station-dot-active-pulse 1s ease-in-out infinite;
-}
-
-@keyframes schedule-station-dot-brakes-active-pulse {
-    0%, 100% {
-        border-color: rgba(23, 128, 56, 0.72);
-        box-shadow:
-            inset 0 0 0 1px rgba(23, 128, 56, 0.55),
-            inset 0 0 8px rgba(23, 128, 56, 0.2),
-            inset 0 0 12px rgba(245, 158, 11, 0.14);
-    }
-    50% {
-        border-color: var(--station-active-stroke);
-        box-shadow:
-            inset 0 0 0 1px rgba(23, 128, 56, 0.95),
-            inset 0 0 16px rgba(23, 128, 56, 0.42),
-            inset 0 0 22px rgba(245, 158, 11, 0.28);
-    }
-}
-
+.station-node.has-brakes .station-dot,
+.station-node.active .station-dot,
 .station-node.active.has-brakes .station-dot {
-    border-color: var(--station-active-stroke);
-    box-shadow:
-        inset 0 0 0 1px rgba(23, 128, 56, 0.85),
-        inset 0 0 12px rgba(23, 128, 56, 0.34),
-        inset 0 0 18px rgba(245, 158, 11, 0.22);
-    animation: schedule-station-dot-brakes-active-pulse 1s ease-in-out infinite;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    animation: none;
 }
 
+.station-node.has-brakes .station-dot::after,
+.station-node.active .station-dot::after,
 .station-node.active.has-brakes .station-dot::after {
-    color: #ffffff;
+    color: #9db0cf;
 }
 
-.station-node.pass-through .station-card {
-    background: rgba(20, 27, 39, 0.62);
-    border-color: rgba(255, 255, 255, 0.05);
+.station-node.is-major .station-dot::after,
+.station-node.terminal .station-dot::after {
+    color: #d5dce8;
+    font-weight: 800;
 }
 
-.station-node.pass-through .station-name {
-    color: var(--app-muted-soft);
+.station-node.is-passed {
+    opacity: 0.42;
 }
 
-.station-node.pass-through .time-badge {
+.station-node.is-passed .station-mark {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.station-node.pass-through,
+.station-node.is-skip {
+    margin-bottom: 4px;
+}
+
+.station-node.pass-through .station-card,
+.station-node.is-skip .station-card {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: rgba(16, 22, 32, 0.28);
+    border-color: transparent;
+}
+
+.station-node.pass-through .station-name,
+.station-node.is-skip .station-name {
+    font-size: 14px;
+    color: #8b97ab;
+    font-weight: 500;
+}
+
+.station-node.pass-through .time-badge,
+.station-node.pass-through .station-time-value {
     color: var(--app-muted-soft);
 }
 
 .station-node.pass-through .station-dot {
-    background: rgba(20, 27, 39, 0.62);
-    border-color: rgba(255, 255, 255, 0.05);
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .station-node.pass-through .station-dot::after {
@@ -512,9 +679,9 @@
 }
 
 .station-node.pass-through.has-brakes .station-dot {
-    background: var(--station-pass-brakes-fill);
-    border-color: rgba(245, 158, 11, 0.22);
-    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.1);
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .station-node.pass-through.has-brakes .station-dot::after {
@@ -605,15 +772,21 @@
     }
 
     .timeline {
-        --km-marker-width: 40px;
-        --km-marker-gap: 18px;
+        --km-marker-width: 46px;
+        --km-marker-gap: 28px;
         --timeline-mark-station: 11px;
         --timeline-line-width: 2.5px;
-        --timeline-left: calc(6px + var(--km-marker-width) + var(--km-marker-gap) / 2);
+        --timeline-left: calc(4px + var(--km-marker-width) + var(--km-marker-gap) / 2);
     }
 
     .timeline-line {
-        background: rgba(255, 255, 255, 0.32);
+        background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.34) 8%,
+            rgba(255, 255, 255, 0.34) 92%,
+            rgba(255, 255, 255, 0.08)
+        );
     }
 }
 
@@ -833,7 +1006,7 @@
 .screen.screen-fade { opacity: 0; }
 
 body {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--bottom-tabbar-clearance);
 }
 
 body.auth-locked {
@@ -842,26 +1015,46 @@ body.auth-locked {
 
 .bottom-tabbar {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: var(--bottom-tabbar-inset);
+    right: var(--bottom-tabbar-inset);
     bottom: 0;
-    transform: none;
-    width: 100%;
+    width: auto;
     min-width: 0;
     max-width: none;
+    margin: 0;
+    transform: none;
+    box-sizing: border-box;
     z-index: 2000;
+    isolation: isolate;
     display: flex;
-    justify-content: space-between;
+    justify-content: stretch;
     align-items: stretch;
     gap: 4px;
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+    border: none;
     border-radius: 16px 16px 0 0;
-    border: 1px solid var(--glass-border);
-    border-bottom: none;
-    background: rgba(14, 18, 26, 0.94);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(10, 16, 24, 0.88);
+    background: color-mix(in srgb, var(--app-bg) 78%, #161b22);
+    backdrop-filter: saturate(1.5) blur(22px);
+    -webkit-backdrop-filter: saturate(1.5) blur(22px);
+    box-shadow:
+        0 -1px 0 rgba(255, 255, 255, 0.06),
+        0 -10px 28px rgba(0, 0, 0, 0.42);
+}
+
+.bottom-tabbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(
+        180deg,
+        rgba(22, 28, 38, 0.72) 0%,
+        rgba(10, 16, 24, 0.92) 100%
+    );
 }
 
 body.is-swipe-dragging .bottom-tabbar,
@@ -873,6 +1066,8 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
 }
 
 .bottom-tab-btn {
+    position: relative;
+    z-index: 1;
     flex: 1;
     display: flex;
     flex-direction: column;

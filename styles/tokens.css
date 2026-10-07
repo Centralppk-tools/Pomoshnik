@@ -23,6 +23,9 @@
     --card-radius: 16px;
     --tabbar-radius: 24px;
     --tabbar-active-radius: 12px;
+    --bottom-tabbar-height: 78px;
+    --bottom-tabbar-inset: 10px;
+    --bottom-tabbar-clearance: calc(var(--bottom-tabbar-height) + 20px + env(safe-area-inset-bottom, 0px));
     --card-border: 1px solid rgba(255, 255, 255, 0.05);
     --card-padding: 24px;
     --surface-card: #1c1c1e;

@@ -818,7 +818,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.9';
+    const APP_RELEASE_VERSION = '4.0.11';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -2165,11 +2165,49 @@
         }
     }
 
+    function stopStationNameMarquee(nameEl) {
+        if (!nameEl) return;
+        nameEl.classList.remove('is-marquee');
+        nameEl.style.removeProperty('--station-name-shift');
+        nameEl.style.removeProperty('--station-name-duration');
+    }
+
+    function startStationNameMarquee(nameEl) {
+        if (!nameEl) return;
+        const inner = nameEl.querySelector('.station-name-text') || nameEl;
+        nameEl.classList.remove('is-marquee');
+        const overflow = inner.scrollWidth - nameEl.clientWidth;
+        if (overflow <= 4) {
+            stopStationNameMarquee(nameEl);
+            return;
+        }
+        const duration = Math.max(2.2, Math.min(6.5, overflow / 32));
+        nameEl.style.setProperty('--station-name-shift', `-${overflow}px`);
+        nameEl.style.setProperty('--station-name-duration', `${duration}s`);
+        void nameEl.offsetWidth;
+        nameEl.classList.add('is-marquee');
+    }
+
+    function handleStationNameMarqueeOver(e) {
+        const hit = getStationCardFromEventTarget(e.target);
+        if (!hit) return;
+        startStationNameMarquee(hit.card.querySelector('.station-name'));
+    }
+
+    function handleStationNameMarqueeOut(e) {
+        const hit = getStationCardFromEventTarget(e.target);
+        if (!hit) return;
+        const related = e.relatedTarget instanceof Element ? e.relatedTarget : null;
+        if (related && hit.card.contains(related)) return;
+        stopStationNameMarquee(hit.card.querySelector('.station-name'));
+    }
+
     function handleStationPointerDown(e) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (e.target instanceof Element && e.target.closest('.station-note-delete')) return;
         const hit = getStationCardFromEventTarget(e.target);
         if (!hit) return;
+        startStationNameMarquee(hit.card.querySelector('.station-name'));
 
         stationLongPressTriggered = false;
         stationLongPressPointerId = e.pointerId;
@@ -2244,6 +2282,8 @@
         list.addEventListener('pointerdown', handleStationPointerDown);
         list.addEventListener('pointerup', handleStationPointerUp);
         list.addEventListener('pointercancel', handleStationPointerUp);
+        list.addEventListener('pointerover', handleStationNameMarqueeOver);
+        list.addEventListener('pointerout', handleStationNameMarqueeOut);
         list.addEventListener('click', handleStationClick);
         list.addEventListener('contextmenu', handleStationContextMenu);
 
@@ -2272,8 +2312,8 @@
     }
 
     function clearScheduleActiveStationHighlight() {
-        document.querySelectorAll('#stationsList .station-node.active').forEach(node => {
-            node.classList.remove('active');
+        document.querySelectorAll('#stationsList .station-node.active, #stationsList .station-node.is-passed').forEach(node => {
+            node.classList.remove('active', 'is-passed');
         });
     }
 
@@ -2346,7 +2386,9 @@
         );
         const nodes = document.querySelectorAll('#stationsList .station-node');
         nodes.forEach((node, index) => {
-            node.classList.toggle('active', index === nextIndex && nextIndex !== -1);
+            const isActive = index === nextIndex && nextIndex !== -1;
+            node.classList.toggle('active', isActive);
+            node.classList.toggle('is-passed', nextIndex !== -1 && index < nextIndex);
         });
     }
 
@@ -5449,6 +5491,60 @@
         return dwell;
     }
 
+    function isMajorTimelineStation(title, { isTerminal, infraKind } = {}) {
+        if (isTerminal) return true;
+        if (infraKind === 'station') return true;
+        const key = String(title || '').toLowerCase().replace(/ё/g, 'е');
+        return /мытищ|монино|ярославск|фрязево|пушкино|болшево|щелков|александров|сергиев|хотьков|софрино|лосиноостров|фрязино|москва/.test(key);
+    }
+
+    function isUsableClock(value) {
+        const t = String(value || '').trim();
+        return Boolean(t) && t !== '...' && t !== '—';
+    }
+
+    function renderStationTimesHtml({ isFirst, isLast, isPassThrough, isNoStop, arrivalTime, departureTime, dwellMin }) {
+        if (isPassThrough || isNoStop) {
+            const passTime = isUsableClock(arrivalTime)
+                ? arrivalTime
+                : (isUsableClock(departureTime) ? departureTime : '');
+            if (passTime) {
+                return `<div class="station-times time-badge station-times--skip">
+                    <span class="station-time-value station-time-pass">${escapeHtml(passTime)}</span>
+                    <span class="station-time-skip">без ост.</span>
+                </div>`;
+            }
+            return `<div class="station-times time-badge station-times--skip">
+                <span class="station-time-skip">без ост.</span>
+            </div>`;
+        }
+        if (isFirst) {
+            return `<div class="station-times time-badge station-times--single">
+                <span class="station-time-pair">
+                    <span class="station-time-label">отпр</span>
+                    <span class="station-time-value">${escapeHtml(departureTime || '—')}</span>
+                </span>
+            </div>`;
+        }
+        if (isLast) {
+            return `<div class="station-times time-badge station-times--single">
+                <span class="station-time-pair">
+                    <span class="station-time-label">приб</span>
+                    <span class="station-time-value">${escapeHtml(arrivalTime || '—')}</span>
+                </span>
+            </div>`;
+        }
+        const dwell = Number(dwellMin);
+        const dwellHtml = Number.isFinite(dwell) && dwell >= 1
+            ? `<span class="station-dwell${dwell >= 4 ? ' station-dwell--long' : ''}">${dwell} мин</span>`
+            : '';
+        return `<div class="station-times time-badge">
+            <span class="station-time-value station-time-arr">${escapeHtml(arrivalTime || '—')}</span>
+            <span class="station-time-value station-time-dep">${escapeHtml(departureTime || '—')}</span>
+            ${dwellHtml}
+        </div>`;
+    }
+
     function collectStationOpsPlaques(stationTitle, direction, stop) {
         const entry = findStationOpsEntry(stationTitle);
         if (!entry) return { tags: [], notes: [] };
@@ -6744,19 +6840,24 @@
                 const selectedClass = isStationSelected(index) ? ' is-selected' : '';
                 const noteHtml = renderStationNoteBadgeHtml(index);
                 const infraKind = resolveStationInfraKind(stationTitleRaw);
+                const isMajor = isMajorTimelineStation(stationTitleRaw, { infraKind });
                 const kindClass = ` station${D}node--${infraKind}`;
+                const majorClass = isMajor ? ' is-major' : '';
+                const timesHtml = renderStationTimesHtml({ isPassThrough: true });
 
                 return `
-                    <div class="station${D}node pass-through${kindClass}${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
+                    <div class="station${D}node pass-through is-skip${kindClass}${majorClass}${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
                         <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
                         <span class="station${D}mark" aria-hidden="true"></span>
                         <div class="station${D}card${stationWarningTexts.length ? ' has-brakes' : ''}">
                             <div class="card${D}row${D}top">
-                                <span class="station${D}name">${stationTitle}</span>
-                                <span class="time${D}badge">---</span>
+                                <div class="station${D}head">
+                                    <span class="station${D}name"><span class="station${D}name${D}text">${stationTitle}</span></span>
+                                    ${noteHtml}
+                                    ${warningHtml}
+                                </div>
+                                ${timesHtml}
                             </div>
-                            ${noteHtml}
-                            ${warningHtml}
                         </div>
                     </div>
                 `;
@@ -6769,14 +6870,16 @@
             const isLast = index === lastBoardingIndex;
             const isTerminal = isFirst || isLast;
 
-            let timeText = '';
-            if (isFirst) {
-                timeText = departureTime;
-            } else if (isLast) {
-                timeText = arrivalTime;
-            } else {
-                timeText = `${arrivalTime} ${D} ${departureTime}`;
-            }
+            const dwellMin = getStopDwellMinutes(stop);
+            const isNoStop = !isTerminal && dwellMin === 0;
+            const timesHtml = renderStationTimesHtml({
+                isFirst,
+                isLast,
+                isNoStop,
+                arrivalTime,
+                departureTime,
+                dwellMin
+            });
 
             let brakeHtml = '';
             let hasBrakes = false;
@@ -6862,19 +6965,24 @@
             const selectedClass = isStationSelected(index) ? ' is-selected' : '';
             const noteHtml = renderStationNoteBadgeHtml(index);
             const infraKind = resolveStationInfraKind(stationTitleRaw, { forceStation: isTerminal });
+            const isMajor = isMajorTimelineStation(stationTitleRaw, { isTerminal, infraKind });
             const kindClass = ` station${D}node--${infraKind}`;
+            const majorClass = isMajor ? ' is-major' : '';
+            const skipClass = isNoStop ? ' is-skip' : '';
 
             return `
-                <div class="station${D}node${kindClass}${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
+                <div class="station${D}node${kindClass}${majorClass}${skipClass}${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
                     <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
                     <span class="station${D}mark" aria-hidden="true"></span>
                     <div class="station${D}card${hasBrakes ? ' has-brakes' : ''}">
                         <div class="card${D}row${D}top">
-                            <span class="station${D}name">${stationTitle}</span>
-                            <span class="time${D}badge">${escapeHtml(timeText)}</span>
+                            <div class="station${D}head">
+                                <span class="station${D}name"><span class="station${D}name${D}text">${stationTitle}</span></span>
+                                ${noteHtml}
+                                ${brakeHtml ? `<div class="card${D}row${D}bottom">${brakeHtml}</div>` : ''}
+                            </div>
+                            ${timesHtml}
                         </div>
-                        ${noteHtml}
-                        ${brakeHtml ? `<div class="card${D}row${D}bottom">${brakeHtml}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -7136,12 +7244,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Обновление часов смен 1-6.09',
-            'Локальные правки по маршрутам'
+            'Доработка экономии запросов',
+            'Визуальные доработки расписания'
         ],
         highlights: [
-            'Обновление часов смен 1-6.09',
-            'Локальные правки по маршрутам'
+            'Доработка экономии запросов',
+            'Визуальные доработки расписания'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -15883,7 +15991,7 @@
             fitTextToSingleLine(el, 11, 16);
         });
         document.querySelectorAll('#stationsList .station-name').forEach(el => {
-            fitTextToSingleLine(el, 11, 16);
+            el.style.fontSize = '';
         });
         document.querySelectorAll('.shift-warnings-trigger-title').forEach(el => {
             fitTextToSingleLine(el, 12, 15);

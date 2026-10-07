@@ -2,7 +2,7 @@
 .app-community-footer {
     width: 100%;
     margin-top: 14px;
-    margin-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    margin-bottom: var(--bottom-tabbar-clearance);
     padding: 0;
     box-sizing: border-box;
 }

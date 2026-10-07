@@ -9,7 +9,7 @@
 
     body {
         padding: 0;
-        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: var(--bottom-tabbar-clearance);
         align-items: stretch;
         width: 100%;
         overflow-x: hidden;
@@ -158,7 +158,7 @@
 
     #tab-route,
     #tab-schedule {
-        padding: 0 12px 12px;
+        padding: 0 12px 28px;
         box-sizing: border-box;
     }
 
@@ -233,11 +233,13 @@
     }
 
     .bottom-tabbar {
+        left: var(--bottom-tabbar-inset);
+        right: var(--bottom-tabbar-inset);
+        width: auto;
         max-width: none;
-        width: 100%;
-        left: 0;
-        right: 0;
+        margin: 0;
         transform: none;
+        border-radius: 16px 16px 0 0;
     }
 }
 
@@ -657,35 +659,39 @@
     }
 
     .timeline.schedule-results-wrap {
-        --km-marker-width: 36px;
-        --km-marker-gap: 6px;
-        --timeline-left: calc(4px + var(--km-marker-width) / 2);
+        --km-marker-width: 42px;
+        --km-marker-gap: 26px;
+        --timeline-left: calc(4px + var(--km-marker-width) + var(--km-marker-gap) / 2);
         padding-left: 4px;
     }
 
     .station-node {
-        margin-bottom: 10px;
+        margin-bottom: 6px;
     }
 
     .station-card {
-        padding: 10px 12px;
-        gap: 8px;
-        border-radius: 12px;
+        padding: 8px 14px 8px 10px;
+        gap: 6px;
+        border-radius: 11px;
     }
 
     .station-dot {
-        min-height: 44px;
-        padding: 6px 3px;
-        border-radius: 10px;
+        min-height: 0;
+        padding: 0;
+        border-radius: 0;
     }
 
     .station-dot::after {
-        font-size: 11px;
+        font-size: 9px;
+    }
+
+    .station-time-value {
+        font-size: 13px;
     }
 
     .card-row-bottom {
-        padding-top: 6px;
-        gap: 6px;
+        padding-top: 0;
+        gap: 5px;
     }
 
     .route-brake-box {
