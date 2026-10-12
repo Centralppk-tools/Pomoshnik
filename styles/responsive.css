@@ -659,20 +659,26 @@
     }
 
     .timeline.schedule-results-wrap {
-        --km-marker-width: 42px;
-        --km-marker-gap: 26px;
-        --timeline-left: calc(4px + var(--km-marker-width) + var(--km-marker-gap) / 2);
+        --km-marker-width: 40px;
+        --axis-x: calc(var(--km-marker-width) + 5px);
+        --timeline-left: calc(4px + var(--axis-x));
         padding-left: 4px;
     }
 
     .station-node {
-        margin-bottom: 6px;
+        margin-bottom: 0;
     }
 
     .station-card {
-        padding: 8px 14px 8px 10px;
-        gap: 6px;
-        border-radius: 11px;
+        padding: 8px 2px;
+        gap: 8px;
+    }
+
+    .station-node.is-card .station-card,
+    .station-node.is-selected .station-card {
+        border: 1px solid #4a5d78;
+        border-radius: 8px;
+        padding: 8px 10px;
     }
 
     .station-dot {

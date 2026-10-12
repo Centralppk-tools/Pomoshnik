@@ -267,7 +267,7 @@
     </div>
 
     <div id="tab-schedule" class="tab-content">
-        <div id="scheduleLoader" class="loader schedule-loader">Сборка нитки...</div>
+        <div id="scheduleLoader" class="loader schedule-loader">Загрузка остановок...</div>
 
         <div id="scheduleResults" class="timeline schedule-results-wrap" style="display: none;">
             <div class="timeline-line"></div>
@@ -710,54 +710,29 @@
 </div>
 
 <script src="js/app-config.js"></script>
+<script src="js/shedule-max-source.js"></script>
 <script src="js/instructions.js"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
 
     const DASH_CHAR = String.fromCharCode(45);
     const API_KEY = ''; // ключ Rasp только на сервере (Yandex Cloud Function)
-    const API_BASE = 'https://api.rasp.yandex.net/v3.0';
-    const MY_CLOUDFLARE_PROXY = APP_CFG.yandexProxy || '';
-    const APP_DATA_API = String(MY_CLOUDFLARE_PROXY || '').replace(/\/?$/, '');
-    const YANDEX_CLIENT_TOKEN = String(APP_CFG.yandexClientToken || '').trim();
-    const YANDEX_PROXY_PREFIX = APP_DATA_API;
+    const API_BASE = 'https://api.rasp.yandex-net.ru/v3.0';
+    const MY_CLOUDFLARE_PROXY = '';
+    const APP_DATA_API = '';
+    const YANDEX_CLIENT_TOKEN = '';
+    const YANDEX_PROXY_PREFIX = '';
 
-    if (MY_CLOUDFLARE_PROXY.includes('workers.dev')) {
-        console.error('[config] yandexProxy указывает на Cloudflare Worker — нужен functions.yandexcloud.net');
-    }
-    if (MY_CLOUDFLARE_PROXY && !YANDEX_CLIENT_TOKEN) {
-        console.error('[config] Нет yandexClientToken — запросы к Cloud Function получат 403');
-    }
-
-    /** Все запросы к Cloud Function — с заголовком X-DA-Client */
-    (function patchFetchForYandexProxy() {
-        const buildInit = typeof window.daBuildProxyFetchInit === 'function'
-            ? window.daBuildProxyFetchInit
-            : null;
-        const isProxyUrl = typeof window.daIsYandexProxyUrl === 'function'
-            ? window.daIsYandexProxyUrl
-            : (url) => Boolean(YANDEX_PROXY_PREFIX && String(url || '').startsWith(YANDEX_PROXY_PREFIX));
-        if (!YANDEX_PROXY_PREFIX || !YANDEX_CLIENT_TOKEN || typeof window.fetch !== 'function') return;
+    (function blockYandexCloudFetch() {
+        if (typeof window.fetch !== 'function') return;
         const nativeFetch = window.fetch.bind(window);
         window.fetch = function daFetch(input, init) {
-            try {
-                const url = typeof input === 'string'
-                    ? input
-                    : (input && typeof input.url === 'string' ? input.url : '');
-                if (url && isProxyUrl(url)) {
-                    const mergedInit = buildInit
-                        ? buildInit(init || {})
-                        : (() => {
-                            const headers = new Headers((init && init.headers) || undefined);
-                            if (!headers.has('X-DA-Client')) headers.set('X-DA-Client', YANDEX_CLIENT_TOKEN);
-                            return { ...(init || {}), headers };
-                        })();
-                    if (input && typeof Request !== 'undefined' && input instanceof Request) {
-                        return nativeFetch(new Request(input, { ...(init || {}), ...mergedInit }));
-                    }
-                    return nativeFetch(url, mergedInit);
-                }
-            } catch (_) { /* fall through */ }
+            const url = typeof input === 'string'
+                ? input
+                : (input && typeof input.url === 'string' ? input.url : '');
+            if (/functions\.yandexcloud\.net|d4etmp7m8cfgrv283027/i.test(url)) {
+                return Promise.reject(new TypeError('Yandex Cloud отключён'));
+            }
             return nativeFetch(input, init);
         };
     })();
@@ -773,19 +748,14 @@
         return { ...init, headers };
     }
 
-    function appDataApiUrl(apiName, params = {}) {
-        const u = new URL(APP_DATA_API || 'https://invalid.local');
-        u.searchParams.set('api', apiName);
-        Object.entries(params).forEach(([k, v]) => {
-            if (v != null && v !== '') u.searchParams.set(k, String(v));
-        });
-        return u.toString();
+    function appDataApiUrl() {
+        return '';
     }
     const ANCHOR_STATION = 's2000002';
     const EXTRA_SCHEDULE_STATIONS = ['s9600701'];
-    /** Яндекс API — только 6000-я нумерация; 7000+ строго через trains-local.json */
+    /** Shedule_Max / табло: 6000–7999. 7000+ без табло — запасной trains-local.json */
     const YANDEX_API_TRAIN_SERIES_MIN = 6000;
-    const YANDEX_API_TRAIN_SERIES_MAX = 6999;
+    const YANDEX_API_TRAIN_SERIES_MAX = 7999;
     // Логика запросов поездов: app/data/trains-api/README.md (лимит ~500/сутки)
     const stationScheduleByKey = {};
     const stationUidIndexByDate = {};
@@ -798,6 +768,7 @@
     let stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
     let trainThreadsCache = {};
     let sprDataCache = null;
+    let sprLookups = null;
     let localTrainsCache = null;
 
     const USERS_DB_KEY = 'rzd_users';
@@ -818,7 +789,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.11';
+    const APP_RELEASE_VERSION = '4.0.12';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_12';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -832,22 +804,13 @@
         };
     }
 
-    const ROUTE_FETCH_TIMEOUT_MS = 22000;
     let routeDataRequestId = 0;
 
-    async function fetchWithTimeout(url, options = {}, timeoutMs = ROUTE_FETCH_TIMEOUT_MS) {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-        try {
-            return await fetch(url, { ...options, signal: controller.signal });
-        } catch (error) {
-            if (error?.name === 'AbortError') {
-                throw new Error(`Превышено время ожидания (${Math.round(timeoutMs / 1000)} с)`);
-            }
-            throw error;
-        } finally {
-            window.clearTimeout(timer);
+    async function fetchWithTimeout(url, options = {}) {
+        if (/functions\.yandexcloud\.net|d4etmp7m8cfgrv283027/i.test(String(url || ''))) {
+            throw new Error('Yandex Cloud отключён');
         }
+        return fetch(url, options);
     }
 
     function hasLocalUserData(tabNumber) {
@@ -1868,7 +1831,6 @@
 
         initUserAuth();
         getOrCreateAnonymousDeviceUuid();
-        trackAppUsagePing();
         initSwipeNavigation();
         initScheduleLiveClockResume();
         initServiceWorker();
@@ -1878,7 +1840,6 @@
         syncOfflineModeUi();
         window.addEventListener('online', () => {
             syncOfflineModeUi();
-            void checkAndSendPendingPing();
         });
         window.addEventListener('offline', () => {
             syncOfflineModeUi();
@@ -1906,15 +1867,23 @@
                 console.error('Связь со справочником утеряна:', err);
             })
             .finally(() => {
-                const hasTrains = getTrainNumbersFromDom().length > 0;
-                if (hasTrains && activeTab === 'tab-route') {
-                    getRouteData({ fromCacheOnly: true });
-                    if (lastSingle) {
+                const warmDate = getSelectedDate();
+                const finish = () => {
+                    const hasTrains = getTrainNumbersFromDom().length > 0;
+                    if (hasTrains && activeTab === 'tab-route') {
+                        getRouteData({ fromCacheOnly: true });
+                        if (lastSingle) {
+                            getScheduleData(lastSingle, { fromCacheOnly: true });
+                        }
+                    } else if (lastSingle && activeTab === 'tab-schedule') {
                         getScheduleData(lastSingle, { fromCacheOnly: true });
                     }
-                } else if (lastSingle && activeTab === 'tab-schedule') {
-                    getScheduleData(lastSingle, { fromCacheOnly: true });
+                };
+                if (warmDate && window.SheduleMaxSource?.hydrateDayStopsCacheOnly) {
+                    void window.SheduleMaxSource.hydrateDayStopsCacheOnly(warmDate).finally(finish);
+                    return;
                 }
+                finish();
             });
     });
 
@@ -2146,16 +2115,13 @@
         const node = document.querySelector(`#stationsList .station-node[data-station-index="${stationIndex}"]`);
         if (!node) return;
         const card = node.querySelector('.station-card');
-        const topRow = card?.querySelector('.card-row-top');
-        if (!topRow) return;
-
-        const existing = card.querySelector('.station-note-badge');
+        const main = card?.querySelector('.station-main');
+        if (!main) return;
+        main.querySelector('.station-note-badge')?.remove();
         const noteHtml = renderStationNoteBadgeHtml(stationIndex);
-
-        if (existing) existing.remove();
-        if (noteHtml) {
-            topRow.insertAdjacentHTML('afterend', noteHtml);
-        }
+        if (noteHtml) main.insertAdjacentHTML('beforeend', noteHtml);
+        const hasCardBody = Boolean(node.querySelector('.station-chips, .station-note-badge'));
+        node.classList.toggle('is-card', hasCardBody || node.classList.contains('is-selected'));
     }
 
     function clearStationLongPressTimer() {
@@ -2173,19 +2139,7 @@
     }
 
     function startStationNameMarquee(nameEl) {
-        if (!nameEl) return;
-        const inner = nameEl.querySelector('.station-name-text') || nameEl;
-        nameEl.classList.remove('is-marquee');
-        const overflow = inner.scrollWidth - nameEl.clientWidth;
-        if (overflow <= 4) {
-            stopStationNameMarquee(nameEl);
-            return;
-        }
-        const duration = Math.max(2.2, Math.min(6.5, overflow / 32));
-        nameEl.style.setProperty('--station-name-shift', `-${overflow}px`);
-        nameEl.style.setProperty('--station-name-duration', `${duration}s`);
-        void nameEl.offsetWidth;
-        nameEl.classList.add('is-marquee');
+        stopStationNameMarquee(nameEl);
     }
 
     function handleStationNameMarqueeOver(e) {
@@ -3428,6 +3382,10 @@
         return Array.isArray(schedule) && schedule.length > 0;
     }
 
+    function stationBoardIsReady(date) {
+        return Boolean(date) && isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`]);
+    }
+
     async function ensureBoardReadyForTrainSearch(date, options = {}) {
         if (!date) return false;
         const forceRefresh = options.forceRefresh === true;
@@ -3451,14 +3409,8 @@
         }
     }
 
-    async function fetchYandexViaWorker(yandexUrl, context) {
-        void checkAndSendPendingPing();
-        const response = await fetchWithTimeout(
-            `${MY_CLOUDFLARE_PROXY}?url=${encodeURIComponent(yandexUrl)}`,
-            yandexProxyFetchInit()
-        );
-        logWorkerCacheStatus(response, context);
-        return response;
+    async function fetchYandexViaWorker() {
+        throw new Error('Yandex Cloud отключён');
     }
 
     function isApiTrainCacheEntry(entry) {
@@ -3505,12 +3457,136 @@
         }
     }
 
+    function clockFromBoardValue(value) {
+        const clock = getTime(value);
+        return isUsableClock(clock) ? clock : '';
+    }
+
+    function buildTrainResultFromBoardHit(trainData, trainNumber, scheduleDate) {
+        if (!trainData) return null;
+        const number = String(trainNumber || trainData.thread?.number || '').trim();
+        const departureTime = clockFromBoardValue(
+            trainData.departure || trainData.depTime || trainData.thread?.departure
+        );
+        const arrivalTime = clockFromBoardValue(
+            trainData.arrival || trainData.arrTime || trainData.thread?.arrival
+        );
+        if (!number && !departureTime && !arrivalTime) return null;
+
+        const title = String(trainData.thread?.title || '').trim();
+        const parts = title.split(/\s+[—–−-]\s+/).map((part) => part.trim()).filter(Boolean);
+        const origin = parts[0] || '';
+        const dest = parts.length > 1 ? parts[parts.length - 1] : '';
+
+        let durationMins = null;
+        const dMin = parseTimeToMinutes(departureTime);
+        const aMin = parseTimeToMinutes(arrivalTime);
+        if (dMin !== null && aMin !== null) {
+            durationMins = aMin >= dMin ? aMin - dMin : (aMin + 1440) - dMin;
+        }
+
+        const boardStops = Array.isArray(trainData.stops) && trainData.stops.length >= 2
+            && trainData.stops[0]?.station
+            ? trainData.stops
+            : null;
+        if (boardStops) {
+            return {
+                number,
+                uid: String(trainData.thread?.uid || trainData._sheduleMax?.voyageCode || '').trim(),
+                title: title || (origin && dest ? `${origin} ${DASH_CHAR} ${dest}` : ''),
+                transport_type: trainData.thread?.express_type === 'express' ? 'РЭКС / Экспресс' : 'Пригородный',
+                departure: clockFromBoardValue(boardStops[0]?.departure) || departureTime,
+                arrival: clockFromBoardValue(boardStops[boardStops.length - 1]?.arrival) || arrivalTime,
+                depTime: departureTime,
+                arrTime: arrivalTime,
+                duration: durationMins,
+                stops: boardStops,
+                stops_text: resolveStopsText('', boardStops),
+                scheduleDate,
+                source: 'shedule-max',
+                runsOnSelectedDate: true,
+                scheduleDayWarning: '',
+                partial: false
+            };
+        }
+
+        const stops = [];
+        if (origin || departureTime) {
+            stops.push({
+                station: { title: origin || 'Станция отправления' },
+                arrival: null,
+                departure: departureTime || null,
+                stop_time: 0,
+                skip: false,
+                is_stop: true
+            });
+        }
+        if (dest || arrivalTime) {
+            stops.push({
+                station: { title: dest || 'Станция назначения' },
+                arrival: arrivalTime || null,
+                departure: null,
+                stop_time: 0,
+                skip: false,
+                is_stop: true
+            });
+        }
+
+        return {
+            number,
+            uid: String(trainData.thread?.uid || trainData._sheduleMax?.voyageCode || '').trim(),
+            title: title || (origin && dest ? `${origin} ${DASH_CHAR} ${dest}` : ''),
+            transport_type: trainData.thread?.express_type === 'express' ? 'РЭКС / Экспресс' : 'Пригородный',
+            departure: departureTime,
+            arrival: arrivalTime,
+            depTime: departureTime,
+            arrTime: arrivalTime,
+            duration: durationMins,
+            stops,
+            stops_text: resolveStopsText('', stops),
+            scheduleDate,
+            source: 'shedule-max',
+            runsOnSelectedDate: true,
+            scheduleDayWarning: '',
+            partial: true
+        };
+    }
+
     async function fetchTrainFromBoardHit(trainData, trainNumber, scheduleDate, registryEntry) {
         if (!trainData) return null;
-        let result = await fetchThreadDetails(trainData, scheduleDate);
+        let result = null;
+        try {
+            result = await fetchThreadDetails(trainData, scheduleDate);
+        } catch (err) {
+            console.warn('[trains] thread details failed:', trainNumber, err);
+        }
+        const threadResult = result;
+        const boardFallback = buildTrainResultFromBoardHit(trainData, trainNumber, scheduleDate);
+        if (result && (!Array.isArray(result.stops) || !result.stops.length || !clockFromBoardValue(result.departure))) {
+            if (boardFallback) {
+                result = {
+                    ...boardFallback,
+                    ...result,
+                    departure: clockFromBoardValue(result.departure) || boardFallback.departure,
+                    arrival: clockFromBoardValue(result.arrival) || boardFallback.arrival,
+                    depTime: clockFromBoardValue(result.depTime) || boardFallback.depTime,
+                    arrTime: clockFromBoardValue(result.arrTime) || boardFallback.arrTime,
+                    stops: (Array.isArray(result.stops) && result.stops.length) ? result.stops : boardFallback.stops,
+                    source: result.source || boardFallback.source
+                };
+                result.stops_text = resolveStopsText(result.stops_text || '', result.stops);
+            }
+        }
+        if (!result) result = boardFallback;
         if (result) {
+            if (threadResult && !result.apiOffDay) {
+                result.partial = false;
+                result.stops_text = resolveStopsText(result.stops_text || '', result.stops);
+            }
             const decorated = decorateTrainSearchResult(result, trainNumber, scheduleDate, registryEntry);
-            cacheTrainThread(trainNumber, decorated, scheduleDate);
+            if (!decorated.partial) {
+                cacheTrainThread(trainNumber, decorated, scheduleDate);
+            }
             return decorated;
         }
         return null;
@@ -3617,8 +3693,14 @@
         };
     }
 
-    async function fetchJsonAsset(paths, storageKey = null) {
-        const candidates = Array.isArray(paths) ? paths : [paths];
+    function isLocalAssetPath(path) {
+        const s = String(path || '').trim();
+        if (!s || /^https?:\/\//i.test(s)) return false;
+        return s.startsWith('./') || s.startsWith('/') || !s.includes('://');
+    }
+
+    async function fetchJsonAsset(paths, storageKey = null, emptyValue = null) {
+        const candidates = (Array.isArray(paths) ? paths : [paths]).filter(isLocalAssetPath);
         let lastError = null;
 
         for (const path of candidates) {
@@ -3647,48 +3729,23 @@
             return cached;
         }
 
+        if (emptyValue !== null) return emptyValue;
         throw lastError || new Error('Не удалось загрузить JSON');
     }
 
     async function loadReferenceData() {
-        const sprApi = APP_DATA_API ? [appDataApiUrl('spr')] : [];
-        const trainsApi = APP_DATA_API ? [appDataApiUrl('trains-local')] : [];
-        const basePaths = [...sprApi, './spr.json', 'spr.json'];
-        const trainPaths = [...trainsApi, './trains-local.json', 'trains-local.json'];
+        sprDataCache = await fetchJsonAsset(
+            ['./spr.json', 'spr.json'],
+            REFERENCE_SPR_STORAGE_KEY,
+            {}
+        );
+        rebuildSprLookups();
 
-        try {
-            sprDataCache = await fetchJsonAsset(basePaths, REFERENCE_SPR_STORAGE_KEY);
-            console.log('Справочник успешно загружен:', sprDataCache);
-        } catch (err) {
-            const cachedSpr = loadReferenceJsonCache(REFERENCE_SPR_STORAGE_KEY);
-            if (cachedSpr) {
-                sprDataCache = cachedSpr;
-                console.warn('Справочник из автономного кэша (spr недоступен)');
-            } else if (window.location.protocol === 'file:') {
-                alert('Не удалось загрузить справочник. Открой приложение через локальный сервер: npm run serve (http://127.0.0.1:8765/)');
-                throw err;
-            } else if (err?.name === 'SyntaxError') {
-                alert('Справочник содержит ошибку (невалидный JSON).');
-                throw err;
-            } else {
-                alert('Не удалось загрузить справочник. Нужен интернет для первого входа.');
-                throw err;
-            }
-        }
-
-        try {
-            localTrainsCache = await fetchJsonAsset(trainPaths, REFERENCE_TRAINS_STORAGE_KEY);
-            console.log('Локальная база поездов загружена:', localTrainsCache?.trains?.length || 0);
-        } catch (err) {
-            const cachedTrains = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY);
-            if (cachedTrains) {
-                localTrainsCache = cachedTrains;
-                console.warn('Локальная база поездов из автономного кэша');
-            } else {
-                console.warn('Локальная база поездов недоступна:', err);
-                localTrainsCache = null;
-            }
-        }
+        localTrainsCache = await fetchJsonAsset(
+            ['./trains-local.json', 'trains-local.json'],
+            REFERENCE_TRAINS_STORAGE_KEY,
+            { trains: [] }
+        );
     }
 
     function getWeekdayInfoForIsoDate(isoDate) {
@@ -3725,7 +3782,9 @@
         const date = scheduleDate || getSelectedDate();
         const localEntry = findLocalTrainEntry(trainNumber, date);
         if (!localEntry) {
-            console.warn('[trains] local-only, not in trains-local.json:', trainNumber, date);
+            if (isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`])) {
+                console.warn('[trains] local-only, not in trains-local.json:', trainNumber, date);
+            }
             return null;
         }
         console.log('[trains] local-only:', trainNumber, date);
@@ -3977,31 +4036,26 @@
     }
 
     async function fetchYaroslavlBoardFromWorker(date) {
-        if (!MY_CLOUDFLARE_PROXY) {
-            throw createBoardNotReadyError(null, 'Прокси табло не настроен');
+        if (window.SheduleMaxSource?.enabled?.()) {
+            try {
+                const schedule = await window.SheduleMaxSource.fetchYaroslavlBoard(date);
+                if (Array.isArray(schedule) && schedule.length) {
+                    console.log('[trains] shedule-max board:', date, schedule.length);
+                    return schedule;
+                }
+            } catch (err) {
+                console.warn('[trains] shedule-max board failed:', date, err);
+            }
         }
-        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
-        const params = new URLSearchParams({ board: '1', date });
-        const response = await fetchWithTimeout(
-            `${proxyBase}?${params.toString()}`,
-            yandexProxyFetchInit({ cache: 'no-store' })
-        );
-        logWorkerCacheStatus(response, `board ${date}`);
-        let payload = null;
-        try {
-            payload = await response.json();
-        } catch {
-            throw createBoardNotReadyError(null, `Некорректный ответ табло (${response.status})`);
-        }
-        if (Array.isArray(payload?.schedule) && payload.schedule.length) {
-            return payload.schedule;
-        }
-        throw createBoardNotReadyError(payload, `Табло ${date} недоступно`);
+        throw createBoardNotReadyError(null, 'Прокси табло не настроен');
     }
 
     async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION) {
         if (stationCode === ANCHOR_STATION) {
             return fetchYaroslavlBoardFromWorker(date);
+        }
+        if (window.SheduleMaxSource?.enabled?.()) {
+            return [];
         }
 
         const all = [];
@@ -4141,6 +4195,7 @@
         if (primaryHit) return primaryHit;
 
         if (threadsOnly && !allowBoardFetch) return null;
+        if (window.SheduleMaxSource?.enabled?.()) return null;
 
         for (const stationCode of EXTRA_SCHEDULE_STATIONS) {
             const schedule = await getStationSchedule(stationCode, date, forceRefresh);
@@ -4162,61 +4217,31 @@
         }, scheduleDate);
     }
 
-    async function fetchThreadDetails(trainData, scheduleDate) {
+    function fetchThreadDetails(trainData, scheduleDate) {
         const date = scheduleDate || getSelectedDate();
-        const threadUrl = `${API_BASE}/thread/?uid=${trainData.thread.uid}&date=${date}&lang=ru_RU`;
-        const threadResponse = await fetchYandexViaWorker(threadUrl, `thread ${trainData.thread.number} ${date}`);
-        let threadData;
-        try {
-            threadData = await threadResponse.json();
-        } catch (parseErr) {
-            if (!threadResponse.ok) {
-                throw new Error(`Не удалось загрузить детали маршрута: ${threadResponse.status}`);
+        if (window.SheduleMaxSource?.lookupThreadSync) {
+            try {
+                const mapped = window.SheduleMaxSource.lookupThreadSync(trainData, date);
+                const hasStops = Array.isArray(mapped?.stops) && mapped.stops.length > 0;
+                const hasTimes = Boolean(clockFromBoardValue(mapped?.departure) || clockFromBoardValue(mapped?.arrival)
+                    || clockFromBoardValue(mapped?.depTime) || clockFromBoardValue(mapped?.arrTime));
+                if (!mapped || (!hasStops && !hasTimes)) return null;
+                const stops = hasStops ? mapped.stops : [];
+                return {
+                    ...mapped,
+                    stops,
+                    departure: clockFromBoardValue(mapped.departure || mapped.depTime) || mapped.departure || '',
+                    arrival: clockFromBoardValue(mapped.arrival || mapped.arrTime) || mapped.arrival || '',
+                    depTime: clockFromBoardValue(mapped.depTime || mapped.departure) || mapped.depTime || '',
+                    arrTime: clockFromBoardValue(mapped.arrTime || mapped.arrival) || mapped.arrTime || '',
+                    stops_text: resolveStopsText('', stops),
+                };
+            } catch (err) {
+                console.warn('[trains] shedule-max thread failed:', trainData?.thread?.number, err);
+                return null;
             }
-            throw parseErr;
         }
-
-        if (!threadResponse.ok || threadData?.error) {
-            const offDay = parseThreadOffDayError(threadData, trainData, date);
-            if (offDay) {
-                console.log('[trains] off-day:', trainData.thread.number, date, offDay.scheduleDayWarning);
-                return offDay;
-            }
-            const errText = typeof threadData?.error === 'string'
-                ? threadData.error
-                : (threadData?.error?.text || `HTTP ${threadResponse.status}`);
-            throw new Error(errText);
-        }
-
-        const stops = threadData.stops || [];
-        if (stops.length === 0) return null;
-
-        const first = stops[0];
-        const last = stops[stops.length - 1];
-        const departureTime = getTime(first.departure);
-        const arrivalTime = getTime(last.arrival);
-
-        let durationMins = null;
-        const dMin = parseTimeToMinutes(departureTime);
-        const aMin = parseTimeToMinutes(arrivalTime);
-        if (dMin !== null && aMin !== null) {
-            durationMins = aMin >= dMin ? aMin - dMin : (aMin + 1440) - dMin;
-        }
-
-        return {
-            number: trainData.thread.number,
-            uid: trainData.thread.uid,
-            title: `${first.station.title} ${DASH_CHAR} ${last.station.title}`,
-            transport_type: trainData.thread.express_type === 'express' ? 'РЭКС / Экспресс' : 'Пригородный',
-            departure: departureTime,
-            arrival: arrivalTime,
-            duration: durationMins,
-            stops,
-            stops_text: resolveStopsText('', stops),
-            scheduleDate: date,
-            serviceDays: threadData.days || threadData.thread?.days || null,
-            source: 'api'
-        };
+        return null;
     }
 
     function cacheTrainThread(trainNumber, result, scheduleDate = null) {
@@ -4291,6 +4316,9 @@
 
     function decorateTrainSearchResult(result, trainNumber, scheduleDate, registryEntry) {
         if (!result) return null;
+        if (Array.isArray(result.stops)) {
+            result.stops_text = resolveStopsText(result.stops_text, result.stops);
+        }
         if (result.apiOffDay) {
             result.runsOnSelectedDate = false;
             return result;
@@ -4298,8 +4326,8 @@
 
         // Нитка с остановками на выбранную дату уже подтверждена API/табло
         const hasLiveStops = Array.isArray(result.stops) && result.stops.length > 0
-            && (result.source === 'api' || result.source === 'cache');
-        if (hasLiveStops) {
+            && (result.source === 'api' || result.source === 'cache' || result.source === 'shedule-max');
+        if (hasLiveStops || result.source === 'shedule-max') {
             result.runsOnSelectedDate = true;
             result.scheduleDayWarning = '';
             return result;
@@ -4318,7 +4346,7 @@
 
     function formatStopsTextDisplay(text) {
         const raw = String(text || '').trim();
-        if (!raw) return '—';
+        if (!raw || raw === '—' || raw === DASH_CHAR) return 'Без остановок';
         const lower = raw.toLowerCase();
         if (lower === 'со всеми' || lower === 'везде') return 'Со всеми';
         if (lower === 'без остановок') return 'Без остановок';
@@ -4598,7 +4626,7 @@
         if (!stations.length) {
             // Fallback: km-overlap when stations list unavailable
             const chainages = stops
-                .map(stop => stationChainage(stop.station?.title || ''))
+                .map(stop => stationChainage(stop.station?.title || '', stop.station?.code))
                 .filter(v => v !== null);
             if (!chainages.length) return false;
             const trainMin = Math.min(...chainages);
@@ -5273,26 +5301,40 @@
         return arrMin < depMin;
     }
 
-    function formatTrainCardDate(scheduleDateIso, departure, arrival) {
-        if (!scheduleDateIso) return '—';
-        const parts = scheduleDateIso.split(DASH_CHAR);
+    function formatTrainCardDate(scheduleDateIso) {
+        const iso = getSelectedDate() || scheduleDateIso;
+        if (!iso) return '—';
+        const parts = iso.split(DASH_CHAR);
         if (parts.length !== 3) return '—';
         const day = parseInt(parts[2], 10);
         const month = parseInt(parts[1], 10);
         if (!day || month < 1 || month > 12) return '—';
-
-        if (tripCrossesMidnight(departure, arrival)) {
-            const nextIso = addDaysToDateStr(scheduleDateIso, 1);
-            const nextDay = parseInt(nextIso.split(DASH_CHAR)[2], 10);
-            return `${day}${DASH_CHAR}${nextDay} ${MONTHS_RU_GENITIVE[month - 1]}`;
-        }
         return `${day} ${MONTHS_RU_GENITIVE[month - 1]}`;
     }
 
     function getTime(tStr) {
         if (!tStr) return '...';
-        const m = tStr.match(/(\d{2}:\d{2})/);
-        return m ? m[1] : tStr;
+        const m = String(tStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return tStr;
+        const hour = String(Number(m[1])).padStart(2, '0');
+        return m[3] != null ? `${hour}:${m[2]}:${m[3]}` : `${hour}:${m[2]}`;
+    }
+
+    function formatStopClock(tStr) {
+        if (!isUsableClock(tStr)) return tStr || '';
+        const m = String(tStr).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return String(tStr);
+        const hour = String(Number(m[1])).padStart(2, '0');
+        const sec = m[3];
+        if (sec && sec !== '00') return `${hour}:${m[2]}:${sec}`;
+        return `${hour}:${m[2]}`;
+    }
+
+    function formatClockHm(tStr) {
+        if (!isUsableClock(tStr)) return tStr || '';
+        const m = String(tStr).match(/(\d{1,2}):(\d{2})/);
+        if (!m) return String(tStr);
+        return `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`;
     }
 
     function formatMinutesToHoursAndMinutes(totalMinutes) {
@@ -5310,9 +5352,19 @@
     }
 
     function parseTimeToMinutes(timeString) {
+        const seconds = parseTimeToSeconds(timeString);
+        return seconds == null ? null : Math.floor(seconds / 60);
+    }
+
+    function parseTimeToSeconds(timeString) {
         if (!timeString || timeString === '...') return null;
-        const [hours, minutes] = timeString.split(':').map(Number);
-        return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+        const match = String(timeString).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!match) return null;
+        const hours = Number(match[1]);
+        const minutes = Number(match[2]);
+        const seconds = Number(match[3] || 0);
+        if (![hours, minutes, seconds].every(Number.isFinite)) return null;
+        return hours * 3600 + minutes * 60 + seconds;
     }
 
     function normalizeStationName(name) {
@@ -5343,13 +5395,101 @@
     }
 
     function stationSearchKeys(stationTitle) {
-        const primary = applyStationAliases(normalizeStationKey(stationTitle));
-        const keys = [primary];
-        const noParens = primary.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
-        if (noParens && noParens !== primary) keys.push(noParens);
-        const firstWord = primary.split(' ')[0];
-        if (firstWord && firstWord.length >= 3 && !keys.includes(firstWord)) keys.push(firstWord);
+        return stationLookupKeys(stationTitle);
+    }
+
+    function squeezeStationKey(key) {
+        return String(key || '')
+            .replace(/\s*\([^)]*\)\s*/g, ' ')
+            .replace(/\bвокзал\b/g, ' ')
+            .replace(/\bнаправление\b/g, ' ')
+            .replace(/[\-–—−]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function stationLookupKeys(stationTitle) {
+        const primary = normalizeStationKey(stationTitle);
+        const keys = [];
+        const push = (key) => {
+            if (key && !keys.includes(key)) keys.push(key);
+        };
+        push(primary);
+        const aliased = typeof ALIASES === 'object' && ALIASES ? ALIASES[primary] : '';
+        if (aliased) push(normalizeStationKey(aliased));
+        const stripped = squeezeStationKey(primary);
+        push(stripped);
+        const strippedAlias = typeof ALIASES === 'object' && ALIASES ? ALIASES[stripped] : '';
+        if (strippedAlias) push(normalizeStationKey(strippedAlias));
         return keys;
+    }
+
+    function addSprLookup(map, key, value, asList) {
+        if (!key || !value) return;
+        if (asList) {
+            if (!map[key]) map[key] = [];
+            if (!map[key].includes(value)) map[key].push(value);
+            return;
+        }
+        if (!map[key]) map[key] = value;
+    }
+
+    function rebuildSprLookups() {
+        const pathByKey = Object.create(null);
+        const pathByCode = Object.create(null);
+        const brakesFrom = Object.create(null);
+        const brakesTo = Object.create(null);
+        const deadEnds = Object.create(null);
+        const ops = Object.create(null);
+
+        const indexNamed = (name, rec, map, asList) => {
+            stationLookupKeys(name).forEach((key) => addSprLookup(map, key, rec, asList));
+        };
+
+        (sprDataCache?.stations_path || []).forEach((rec) => {
+            if (!rec) return;
+            indexNamed(rec.station, rec, pathByKey, false);
+            const code = String(rec.nnst || rec.code || '').replace(/\D/g, '');
+            if (code) pathByCode[code] = rec;
+        });
+
+        if (typeof ESR_TO_SPR_STATION === 'object' && ESR_TO_SPR_STATION) {
+            Object.entries(ESR_TO_SPR_STATION).forEach(([code, name]) => {
+                const rec = pathByKey[normalizeStationKey(name)] || pathByCode[String(code).replace(/\D/g, '')];
+                if (!rec) return;
+                indexNamed(name, rec, pathByKey, false);
+                const digits = String(code).replace(/\D/g, '');
+                if (digits) pathByCode[digits] = rec;
+            });
+        }
+
+        if (typeof ALIASES === 'object' && ALIASES) {
+            Object.entries(ALIASES).forEach(([alias, canonical]) => {
+                const rec = pathByKey[normalizeStationKey(canonical)] || pathByKey[normalizeStationKey(alias)];
+                if (rec) addSprLookup(pathByKey, normalizeStationKey(alias), rec, false);
+            });
+        }
+
+        (sprDataCache?.brakes?.from_moscow || []).forEach((rec) => indexNamed(rec.station, rec, brakesFrom, true));
+        (sprDataCache?.brakes?.to_moscow || []).forEach((rec) => indexNamed(rec.station, rec, brakesTo, true));
+        (sprDataCache?.brakes?.dead_ends || []).forEach((rec) => indexNamed(rec.station, rec, deadEnds, false));
+
+        if (sprDataCache?.station_ops && typeof sprDataCache.station_ops === 'object') {
+            Object.entries(sprDataCache.station_ops).forEach(([name, rec]) => {
+                indexNamed(name, rec, ops, false);
+            });
+        }
+
+        sprLookups = { pathByKey, pathByCode, brakesFrom, brakesTo, deadEnds, ops };
+    }
+
+    function lookupSprMap(map, stationTitle) {
+        if (!map) return null;
+        for (const key of stationLookupKeys(stationTitle)) {
+            const hit = map[key];
+            if (hit) return hit;
+        }
+        return null;
     }
 
     function stationMatchScore(searchKey, candidateKey) {
@@ -5402,93 +5542,136 @@
         return bestScore >= minScore ? bestKey : null;
     }
 
-    function findStationPathMatch(stationTitle) {
-        if (!sprDataCache?.stations_path) return null;
-
-        for (const key of stationSearchKeys(stationTitle)) {
-            const exact = sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === key);
-            if (exact) return exact;
-        }
-
-        const matchedKey = findBestMatchingStationKey(stationTitle, sprDataCache.stations_path);
-        if (!matchedKey) return null;
-        return sprDataCache.stations_path.find(s => normalizeStationKey(s.station) === matchedKey) || null;
+    function findStationPathMatchByCode(stationCode) {
+        const code = String(stationCode || '').replace(/\D/g, '');
+        if (!code) return null;
+        if (!sprLookups) rebuildSprLookups();
+        if (sprLookups?.pathByCode?.[code]) return sprLookups.pathByCode[code];
+        const named = typeof ESR_TO_SPR_STATION === 'object' ? ESR_TO_SPR_STATION[code] : '';
+        if (named) return lookupSprMap(sprLookups?.pathByKey, named);
+        return null;
     }
 
-    /** @returns {'station'|'halt'} */
+    function findStationPathMatch(stationTitle, stationCode) {
+        if (!sprLookups) rebuildSprLookups();
+        const byName = lookupSprMap(sprLookups?.pathByKey, stationTitle);
+        if (byName) return byName;
+        const codeHint = String(stationCode || '').trim()
+            || (/^\d{4,6}$/.test(String(stationTitle || '').trim()) ? String(stationTitle).trim() : '');
+        return findStationPathMatchByCode(codeHint);
+    }
+
+    /** @returns {'station'|'halt'|'unknown'} */
     function resolveStationInfraKind(stationTitle, { forceStation = false } = {}) {
         if (forceStation) return 'station';
         const match = findStationPathMatch(stationTitle);
         if (match?.kind === 'station' || match?.kind === 'halt') return match.kind;
-        return 'halt';
+        return 'unknown';
+    }
+
+    function timelineRowState(infraKind, isPass) {
+        if (isPass) {
+            if (infraKind === 'station') return 'item--station-pass';
+            if (infraKind === 'halt') return 'item--platform-pass';
+            return 'item--pass';
+        }
+        return infraKind === 'station' ? 'item--station' : 'item--platform';
+    }
+
+    function displayTimelineStationTitle(title) {
+        let text = String(title || '').trim();
+        text = text.replace(/\s*\(\s*ярославск(?:ий(?:\s+вокзал)?|ое(?:\s+направление)?)\s*\)/gi, '');
+        text = text.replace(/\s{2,}/g, ' ').trim();
+        return text || String(title || 'Станция').trim();
     }
 
     function findStationBrakes(stationTitle, preferredDirection) {
-        if (!sprDataCache?.brakes) return [];
-
-        const directions = preferredDirection
-            ? [preferredDirection, preferredDirection === 'from_moscow' ? 'to_moscow' : 'from_moscow']
-            : ['from_moscow', 'to_moscow'];
-
-        for (const direction of directions) {
-            const list = sprDataCache.brakes[direction];
-            if (!list?.length) continue;
-
-            for (const key of stationSearchKeys(stationTitle)) {
-                const exact = list.filter(b => normalizeStationKey(b.station) === key);
-                if (exact.length) return exact;
-            }
-
-            const matchedKey = findBestMatchingStationKey(stationTitle, list);
-            if (!matchedKey) continue;
-
-            const fuzzy = list.filter(b => normalizeStationKey(b.station) === matchedKey);
-            if (fuzzy.length) return fuzzy;
+        if (!sprLookups) rebuildSprLookups();
+        const order = preferredDirection === 'to_moscow'
+            ? ['brakesTo', 'brakesFrom']
+            : ['brakesFrom', 'brakesTo'];
+        for (const field of order) {
+            const hit = lookupSprMap(sprLookups?.[field], stationTitle);
+            if (Array.isArray(hit) && hit.length) return hit;
         }
-
         return [];
     }
 
     function findDeadEndBrake(stationTitle) {
-        const list = sprDataCache?.brakes?.dead_ends;
-        if (!list?.length) return null;
-
-        for (const key of stationSearchKeys(stationTitle)) {
-            const exact = list.find(b => normalizeStationKey(b.station) === key);
-            if (exact) return exact;
-        }
-
-        const matchedKey = findBestMatchingStationKey(stationTitle, list);
-        if (!matchedKey) return null;
-        return list.find(b => normalizeStationKey(b.station) === matchedKey) || null;
+        if (!sprLookups) rebuildSprLookups();
+        return lookupSprMap(sprLookups?.deadEnds, stationTitle) || null;
     }
 
     function findStationOpsEntry(stationTitle) {
-        const map = sprDataCache?.station_ops;
-        if (!map || typeof map !== 'object') return null;
-        const entries = Object.entries(map);
-        if (!entries.length) return null;
-
-        for (const key of stationSearchKeys(stationTitle)) {
-            const hit = entries.find(([name]) => normalizeStationKey(name) === key);
-            if (hit) return hit[1];
-        }
-
-        const asList = entries.map(([station]) => ({ station }));
-        const matchedKey = findBestMatchingStationKey(stationTitle, asList);
-        if (!matchedKey) return null;
-        const hit = entries.find(([name]) => normalizeStationKey(name) === matchedKey);
-        return hit ? hit[1] : null;
+        if (!sprLookups) rebuildSprLookups();
+        return lookupSprMap(sprLookups?.ops, stationTitle) || null;
     }
 
-    function getStopDwellMinutes(stop) {
+    function expandRepeatedHaltClocks(arrival, departure, isTerminal) {
+        if (isTerminal) return { arrival, departure, dwellSec: null };
+        const start = parseTimeToSeconds(arrival);
+        const end = parseTimeToSeconds(departure);
+        if (start == null || end == null) return { arrival, departure, dwellSec: null };
+        if (start === end) {
+            const match = String(arrival).match(/(\d{1,2}):(\d{2})/);
+            if (!match) return { arrival, departure, dwellSec: 30 };
+            const hour = String(Number(match[1])).padStart(2, '0');
+            return {
+                arrival: `${hour}:${match[2]}:00`,
+                departure: `${hour}:${match[2]}:30`,
+                dwellSec: 30
+            };
+        }
+        let dwellSec = end - start;
+        if (dwellSec < 0) dwellSec += 24 * 3600;
+        return { arrival, departure, dwellSec };
+    }
+
+    function getStopDwellMinutes(stop, isTerminal) {
         if (!stop) return null;
-        const arr = parseTimeToMinutes(getTime(stop.arrival));
-        const dep = parseTimeToMinutes(getTime(stop.departure));
-        if (arr == null || dep == null) return null;
-        let dwell = dep - arr;
-        if (dwell < 0) dwell += 1440;
-        return dwell;
+        const sec = Number(stop.stop_seconds || stop.stop_time);
+        if (Number.isFinite(sec) && sec > 0) return sec / 60;
+        const expanded = expandRepeatedHaltClocks(
+            pickStopArrival(stop) || stop.arrival,
+            pickStopDeparture(stop) || stop.departure,
+            isTerminal
+        );
+        if (expanded.dwellSec != null) return expanded.dwellSec / 60;
+        return null;
+    }
+
+    function pickStopArrival(stop) {
+        if (!stop) return '';
+        const values = [stop.arrival, stop.arr, stop.arrTime, stop.arrival_time];
+        return values.find((value) => isUsableClock(value)) || '';
+    }
+
+    function pickStopDeparture(stop) {
+        if (!stop) return '';
+        const values = [stop.departure, stop.dep, stop.depTime, stop.departure_time, stop.time];
+        return values.find((value) => isUsableClock(value)) || '';
+    }
+
+    function stopHasValidClock(stop) {
+        return Boolean(pickStopArrival(stop) || pickStopDeparture(stop));
+    }
+
+    function threadStopTitle(stop) {
+        if (!stop) return '';
+        return String(
+            stop.station?.title
+            || stop.station?.name
+            || stop.name
+            || stop.title
+            || ''
+        ).trim();
+    }
+
+    function isThreadSkipStop(stop, isTerminal) {
+        if (!stop || isTerminal) return false;
+        if (stopHasValidClock(stop)) return false;
+        if (stop.skip || stop.isPass || stop.pass || stop.is_stop === false) return true;
+        return true;
     }
 
     function isMajorTimelineStation(title, { isTerminal, infraKind } = {}) {
@@ -5503,45 +5686,44 @@
         return Boolean(t) && t !== '...' && t !== '—';
     }
 
-    function renderStationTimesHtml({ isFirst, isLast, isPassThrough, isNoStop, arrivalTime, departureTime, dwellMin }) {
-        if (isPassThrough || isNoStop) {
-            const passTime = isUsableClock(arrivalTime)
-                ? arrivalTime
-                : (isUsableClock(departureTime) ? departureTime : '');
-            if (passTime) {
-                return `<div class="station-times time-badge station-times--skip">
-                    <span class="station-time-value station-time-pass">${escapeHtml(passTime)}</span>
-                    <span class="station-time-skip">без ост.</span>
-                </div>`;
-            }
-            return `<div class="station-times time-badge station-times--skip">
-                <span class="station-time-skip">без ост.</span>
+    function formatDwellChip(dwellMin) {
+        const totalSec = Math.round(Number(dwellMin) * 60);
+        if (!Number.isFinite(totalSec) || totalSec <= 0) return '';
+        const mins = Math.floor(totalSec / 60);
+        const secs = totalSec % 60;
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function formatBrakeChipValue(brake) {
+        const km = Number(brake?.km);
+        const pk = Number(brake?.piket);
+        if (!Number.isFinite(km)) return '';
+        const chain = km + (Number.isFinite(pk) ? pk / 10 : 0);
+        return (Math.round(chain * 10) / 10).toFixed(1);
+    }
+
+    function renderStationTimesHtml({ isFirst, isLast, isPassThrough, arrivalTime, departureTime, dwellMin }) {
+        const arr = formatClockHm(arrivalTime);
+        const dep = formatClockHm(departureTime);
+        const dwell = formatDwellChip(dwellMin);
+        if (isPassThrough && !arr && !dep) {
+            return `<div class="station-times"><span class="station-time-empty">—</span></div>`;
+        }
+        if (isFirst && !isLast) {
+            return `<div class="station-times station-times--origin">
+                <span class="station-dep-chip">Отпр</span>
+                <span class="station-time-value station-time-dep">${escapeHtml(dep || '—')}</span>
             </div>`;
         }
-        if (isFirst) {
-            return `<div class="station-times time-badge station-times--single">
-                <span class="station-time-pair">
-                    <span class="station-time-label">отпр</span>
-                    <span class="station-time-value">${escapeHtml(departureTime || '—')}</span>
-                </span>
+        if (isLast && !dep) {
+            return `<div class="station-times">
+                <span class="station-time-value station-time-arr">${escapeHtml(arr || '—')}</span>
             </div>`;
         }
-        if (isLast) {
-            return `<div class="station-times time-badge station-times--single">
-                <span class="station-time-pair">
-                    <span class="station-time-label">приб</span>
-                    <span class="station-time-value">${escapeHtml(arrivalTime || '—')}</span>
-                </span>
-            </div>`;
-        }
-        const dwell = Number(dwellMin);
-        const dwellHtml = Number.isFinite(dwell) && dwell >= 1
-            ? `<span class="station-dwell${dwell >= 4 ? ' station-dwell--long' : ''}">${dwell} мин</span>`
-            : '';
-        return `<div class="station-times time-badge">
-            <span class="station-time-value station-time-arr">${escapeHtml(arrivalTime || '—')}</span>
-            <span class="station-time-value station-time-dep">${escapeHtml(departureTime || '—')}</span>
-            ${dwellHtml}
+        return `<div class="station-times">
+            <span class="station-time-value station-time-arr">${escapeHtml(arr || '—')}</span>
+            <span class="station-dwell">${dwell || '0:00'}</span>
+            <span class="station-time-value station-time-dep">${escapeHtml(dep || '—')}</span>
         </div>`;
     }
 
@@ -5590,15 +5772,17 @@
 
     function formatStationKmLabel(match) {
         if (!match) return '';
-        const km = match.km;
+        const km = Number(match.km);
+        if (!Number.isFinite(km)) return '';
         const piket = match.piket;
-        if (km === undefined || km === null || km === '') return '';
-        const pk = (piket === undefined || piket === null || piket === '') ? 0 : piket;
-        return `${km}.${pk}`;
+        const pk = (piket === undefined || piket === null || piket === '') ? 0 : Number(piket);
+        const chain = km + (Number.isFinite(pk) ? pk / 10 : 0);
+        if (!Number.isFinite(chain)) return '';
+        return (Math.round(chain * 10) / 10).toFixed(1);
     }
 
-    function stationChainage(stationTitle) {
-        const match = findStationPathMatch(stationTitle);
+    function stationChainage(stationTitle, stationCode) {
+        const match = findStationPathMatch(stationTitle, stationCode);
         if (!match || match.km === undefined || match.km === null) return null;
         const pk = Number(match.piket);
         return Number(match.km) + ((Number.isNaN(pk) ? 0 : pk) / 10);
@@ -5633,8 +5817,29 @@
         return false;
     }
 
+    const STATION_MATCH_EXTRA_TOKENS = new Set([
+        'ярославская', 'ярославский', 'ярославское',
+        'вокзал', 'пассажирская', 'пасс', 'направление'
+    ]);
+
+    function stationsMatchSoft(titleA, titleB) {
+        if (stationsMatchStrict(titleA, titleB)) return true;
+        const a = squeezeStationKey(normalizeStationKey(displayTimelineStationTitle(titleA)));
+        const b = squeezeStationKey(normalizeStationKey(displayTimelineStationTitle(titleB)));
+        if (!a || !b) return false;
+        if (a === b) return true;
+        const tokensA = a.split(' ').filter(Boolean);
+        const tokensB = b.split(' ').filter(Boolean);
+        if (!tokensA.length || !tokensB.length) return false;
+        const [shorter, longer] = tokensA.length <= tokensB.length
+            ? [tokensA, tokensB]
+            : [tokensB, tokensA];
+        if (!shorter.every((tok, idx) => longer[idx] === tok)) return false;
+        return longer.slice(shorter.length).every((tok) => STATION_MATCH_EXTRA_TOKENS.has(tok));
+    }
+
     function stationsMatch(titleA, titleB) {
-        return stationsMatchStrict(titleA, titleB);
+        return stationsMatchSoft(titleA, titleB);
     }
 
     function scoreSectionStops(stops, sectionStations) {
@@ -5718,7 +5923,7 @@
 
     function referenceIndexForStation(referenceList, stationTitle) {
         for (let i = 0; i < referenceList.length; i++) {
-            if (stationsMatchStrict(referenceList[i], stationTitle)) return i;
+            if (stationsMatchSoft(referenceList[i], stationTitle)) return i;
         }
         return -1;
     }
@@ -5729,59 +5934,77 @@
         const referenceList = getRouteReferenceList(threadStops);
         if (!referenceList?.length) {
             return threadStops.map(stop => ({
-                referenceTitle: stop.station?.title || 'Станция',
+                referenceTitle: threadStopTitle(stop) || 'Станция',
                 threadStop: stop,
-                passThrough: false
+                passThrough: isSkippedThreadStop(stop)
             }));
         }
 
-        const firstTitle = threadStops[0]?.station?.title || '';
-        const lastTitle = threadStops[threadStops.length - 1]?.station?.title || '';
+        const terminals = routeTerminalStops({ stops: threadStops });
+        const firstTitle = threadStopTitle(terminals.first) || threadStopTitle(threadStops[0]);
+        const lastTitle = threadStopTitle(terminals.last) || threadStopTitle(threadStops[threadStops.length - 1]);
         const firstIdx = referenceIndexForStation(referenceList, firstTitle);
         const lastIdx = referenceIndexForStation(referenceList, lastTitle);
 
         if (firstIdx === -1 || lastIdx === -1) {
             return threadStops.map(stop => ({
-                referenceTitle: stop.station?.title || 'Станция',
+                referenceTitle: threadStopTitle(stop) || 'Станция',
                 threadStop: stop,
-                passThrough: false
+                passThrough: isSkippedThreadStop(stop)
             }));
         }
 
         const start = Math.min(firstIdx, lastIdx);
         const end = Math.max(firstIdx, lastIdx);
         const usedThreadIndices = new Set();
-        let threadCursor = 0;
+        const threadHasExplicitSkips = threadStops.slice(1, -1).some((stop) => {
+            return isSkippedThreadStop(stop) && !stopHasValidClock(stop);
+        });
 
         return referenceList.slice(start, end + 1).map(refTitle => {
             let threadStop = null;
+            let matchedIndex = -1;
 
-            for (let i = threadCursor; i < threadStops.length; i++) {
+            for (let i = 0; i < threadStops.length; i++) {
                 if (usedThreadIndices.has(i)) continue;
-
-                const threadTitle = threadStops[i].station?.title || '';
-                if (!stationsMatchStrict(refTitle, threadTitle)) continue;
-
+                if (!stationsMatchSoft(refTitle, threadStopTitle(threadStops[i]))) continue;
+                matchedIndex = i;
                 threadStop = threadStops[i];
-                usedThreadIndices.add(i);
-                threadCursor = i + 1;
                 break;
             }
 
+            if (matchedIndex >= 0) usedThreadIndices.add(matchedIndex);
+
+            const skipped = threadStop
+                ? isSkippedThreadStop(threadStop)
+                : threadHasExplicitSkips;
             return {
                 referenceTitle: refTitle,
                 threadStop: threadStop || null,
-                passThrough: !threadStop
+                passThrough: Boolean(skipped && !stopHasValidClock(threadStop))
             };
         });
     }
 
-    function deriveStopsLabelFromReference(threadStops) {
-        const displayStops = buildScheduleDisplayStops(threadStops);
-        if (!displayStops.length) return 'Без остановок';
+    function isSkippedThreadStop(stop) {
+        if (!stop) return true;
+        if (stopHasValidClock(stop)) return false;
+        return Boolean(stop.skip || stop.isPass || stop.pass || stop.is_stop === false);
+    }
 
-        const allPresent = displayStops.every(item => !item.passThrough);
-        return allPresent ? 'Со всеми' : 'Без остановок';
+    function deriveStopsLabelFromReference(threadStops) {
+        const stops = Array.isArray(threadStops) ? threadStops : [];
+        if (stops.length < 2) return 'Без остановок';
+
+        const middles = stops.slice(1, -1);
+        const skippedMiddles = middles.filter(isSkippedThreadStop);
+        const haltMiddles = middles.filter((stop) => !isSkippedThreadStop(stop));
+        if (haltMiddles.length && !skippedMiddles.length) return 'Со всеми';
+        if (skippedMiddles.length && !haltMiddles.length) return 'Без остановок';
+        if (haltMiddles.length) return 'Со всеми';
+
+        const displayStops = buildScheduleDisplayStops(stops);
+        return displayStops.length > 2 ? 'Со всеми' : 'Без остановок';
     }
 
     function warningKmToFloat(warn) {
@@ -5818,7 +6041,7 @@
     }
 
     function buildWarningsByStationIndex(stops, trainDir) {
-        const stopChainages = stops.map(stop => stationChainage(stop.station?.title || ''));
+        const stopChainages = stops.map(stop => stationChainage(stop.station?.title || '', stop.station?.code));
         const warningsByStation = {};
         const sectionMap = getWarningRouteSectionMap();
 
@@ -5843,16 +6066,24 @@
         return warningsByStation;
     }
 
-    function calcRouteMileageKm(firstTitle, lastTitle) {
-        const start = stationChainage(firstTitle);
-        const end = stationChainage(lastTitle);
+    function routeTerminalStops(train) {
+        const stops = Array.isArray(train?.stops) ? train.stops : [];
+        const halts = stops.filter((stop) => !stop?.skip && stop?.is_stop !== false);
+        const first = halts[0] || stops[0] || null;
+        const last = halts[halts.length - 1] || stops[stops.length - 1] || null;
+        return { first, last };
+    }
+
+    function calcRouteMileageKm(firstTitle, lastTitle, firstCode, lastCode) {
+        const start = stationChainage(firstTitle, firstCode);
+        const end = stationChainage(lastTitle, lastCode);
         if (start === null || end === null) return null;
         return Math.round(Math.abs(end - start));
     }
 
-    function calcTurnaroundMileageKm(endTitle, nextStartTitle) {
-        const endPos = stationChainage(endTitle);
-        const startPos = stationChainage(nextStartTitle);
+    function calcTurnaroundMileageKm(endTitle, nextStartTitle, endCode, nextCode) {
+        const endPos = stationChainage(endTitle, endCode);
+        const startPos = stationChainage(nextStartTitle, nextCode);
         if (endPos === null || startPos === null) return null;
         return Math.round(Math.abs(startPos - endPos));
     }
@@ -5900,95 +6131,87 @@
         "москва ярославская": "москва (ярославский вокзал)",
         "ростокино": "ростокино (ярославское направление)",
         "александров": "александров-1",
+        "нагорное": "нагорное (43 км)",
+        "топорково": "топорково (76 км)",
+        "шубино": "шубино (90 км)",
         "43 км": "нагорное (43 км)",
         "76 км": "топорково (76 км)",
         "90 км": "шубино (90 км)",
         "64 км": "лесная (64 км)",
+        "пл 83 км": "83 км",
+        "пл. 83 км": "83 км",
+        "дубининское": "81 км",
+        "фрязино пассажирская": "фрязино-пасс.",
+        "фрязино-пассажирская": "фрязино-пасс.",
         "фрязино (пассажирская)": "фрязино-пасс.",
+        "фрязино пасс": "фрязино-пасс.",
         "фрязино-пасс": "фрязино-пасс.",
         "фрязино-товарная": "фрязино-тов.",
         "зеленый бор": "зелёный бор",
         "фабрика 1 мая": "фабрика 1 мая"
     };
 
-    async function searchTrainByNumber(trainNumber, scheduleDate, options = {}) {
-        const forceRefresh = options.forceRefresh === true;
-        const fromCacheOnly = options.fromCacheOnly === true;
-        const threadsOnly = options.threadsOnly === true;
-        const registryEntry = findLocalTrainRegistryEntry(trainNumber);
-        const date = scheduleDate || getSelectedDate();
+    const ESR_TO_SPR_STATION = {
+        '45807': 'Москва (Ярославский вокзал)',
+        '45907': 'Москва-3',
+        '46007': 'Маленковская',
+        '46107': 'Яуза',
+        '46207': 'Ростокино (Ярославское направление)',
+        '46307': 'Лосиноостровская',
+        '46407': 'Лось',
+        '46507': 'Перловская',
+        '46607': 'Тайнинская',
+        '46707': 'Мытищи',
+        '46807': 'Строитель',
+        '46907': 'Челюскинская',
+        '47007': 'Тарасовская',
+        '47107': 'Клязьма',
+        '47207': 'Мамонтовская',
+        '47307': 'Пушкино',
+        '47407': 'Заветы Ильича',
+        '47507': 'Правда',
+        '47607': 'Зеленоградская',
+        '47707': 'Нагорное (43 км)',
+        '47807': 'Софрино',
+        '47907': 'Ашукинская',
+        '48007': 'Калистово',
+        '48107': 'Радонеж',
+        '48207': 'Абрамцево',
+        '48307': 'Хотьково',
+        '48407': 'Семхоз',
+        '48507': 'Сергиев Посад',
+        '49907': 'Топорково (76 км)',
+        '51207': '81 км',
+        '51307': '83 км',
+        '51407': 'Бужаниново',
+        '51507': 'Шубино (90 км)',
+        '51607': 'Арсаки',
+        '51707': 'Струнино',
+        '51807': 'Александров-1',
+        '48607': 'Подлипки-Дачные',
+        '48707': 'Болшево',
+        '48807': 'Валентиновка',
+        '48907': 'Загорянская',
+        '49007': 'Соколовская',
+        '49107': 'Воронок',
+        '49207': 'Щёлково',
+        '49307': 'Гагаринская',
+        '49407': 'Чкаловская',
+        '49507': 'Бахчиванджи',
+        '49607': 'Циолковская',
+        '49707': 'Осеевская',
+        '49807': 'Монино',
+        '45107': 'Фабрика 1 мая',
+        '45207': 'Зелёный Бор',
+        '45307': 'Ивантеевка-2',
+        '45407': 'Ивантеевка',
+        '45507': 'Детская',
+        '45607': 'Фрязино-Тов.',
+        '45707': 'Фрязино-Пасс.'
+    };
 
-        try {
-            if (!forceRefresh) {
-                const cachedEntry = findCachedTrainResult(trainNumber, date);
-                if (cachedEntry && !cachedEntry.apiOffDay && Array.isArray(cachedEntry.stops) && cachedEntry.stops.length) {
-                    console.log('[trains] cache hit:', trainNumber, date);
-                    const cached = decorateTrainSearchResult(
-                        { ...cachedEntry },
-                        trainNumber,
-                        date,
-                        registryEntry
-                    );
-                    return {
-                        ...cached,
-                        scheduleDate: date,
-                        stops_text: resolveStopsText('', cached.stops)
-                    };
-                }
-            }
-
-            if (!isYandexApiEligibleTrainNumber(trainNumber)) {
-                return resolveTrainFromLocalOnly(trainNumber, date, registryEntry);
-            }
-
-            if (fromCacheOnly) {
-                return null;
-            }
-
-            // 1) Табло на дату → актуальный UID → /thread/
-            const boardAlreadyUsable = isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`]);
-            const needsBoardLoad = !threadsOnly || !boardAlreadyUsable || !lookupTrainOnStationBoard(trainNumber, date);
-            if (needsBoardLoad) {
-                await ensureBoardReadyForTrainSearch(date, { forceRefresh });
-            }
-
-            const boardOptions = {
-                ...options,
-                forceRefresh,
-                allowBoardFetch: !threadsOnly || needsBoardLoad
-            };
-
-            let trainData = await findTrainOnStationBoards(trainNumber, date, boardOptions);
-            if (trainData) {
-                const boardUid = String(trainData?.thread?.uid || '').trim();
-                console.log('[trains] board → uid:', trainNumber, boardUid || '—', date);
-                const fromBoard = await fetchTrainFromBoardHit(trainData, trainNumber, date, registryEntry);
-                if (fromBoard && !fromBoard.apiOffDay) return fromBoard;
-                if (fromBoard?.apiOffDay) {
-                    console.warn('[trains] board uid off-day, skip stale thread:', trainNumber, boardUid, date);
-                } else if (!fromBoard) {
-                    console.warn('[trains] thread empty for board uid:', trainNumber, boardUid, date);
-                }
-            }
-
-            // 2) Офлайн-резерв без API
-            const localEntry = findLocalTrainEntry(trainNumber, date);
-            if (localEntry) {
-                console.log('[trains] local fallback:', trainNumber, date);
-                return decorateTrainSearchResult(
-                    buildTrainResultFromLocalEntry(localEntry, date),
-                    trainNumber,
-                    date,
-                    registryEntry
-                );
-            }
-
-            console.warn(`[trains] not found on board: ${trainNumber} @ ${date}`);
-            return null;
-        } catch (error) {
-            console.error('[trains]', error);
-            return null;
-        }
+    function searchTrainByNumber(trainNumber, scheduleDate, options = {}) {
+        return resolveTrainLocalSync(trainNumber, options);
     }
 
     function resolveShiftTrainPlanForInputs(inputs) {
@@ -6030,42 +6253,8 @@
         return [...dates];
     }
 
-    async function searchTrainByNumberSmart(trainNumber, options = {}) {
-        const planEntry = Array.isArray(options.trainPlan)
-            ? options.trainPlan.find(item => normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber))
-            : null;
-
-        if (planEntry?.scheduleDate) {
-            if (planEntry.morningScheduleDate && planEntry.segment === 'both') {
-                const eveningTrain = await searchTrainByNumber(trainNumber, planEntry.scheduleDate, options);
-                const morningTrain = await searchTrainByNumber(trainNumber, planEntry.morningScheduleDate, options);
-                if (morningTrain && isMorningNextShiftDeparture(morningTrain.departure)) {
-                    return morningTrain;
-                }
-                if (eveningTrain && !isMorningNextShiftDeparture(eveningTrain.departure)) {
-                    return eveningTrain;
-                }
-                return morningTrain || eveningTrain;
-            }
-            return searchTrainByNumber(trainNumber, planEntry.scheduleDate, options);
-        }
-
-        const baseDate = getSelectedDate();
-        if (!isNightMode()) {
-            return searchTrainByNumber(trainNumber, baseDate, options);
-        }
-
-        const trainBase = await searchTrainByNumber(trainNumber, baseDate, options);
-        if (trainBase) {
-            const effectiveDate = resolveEffectiveDate(baseDate, trainBase.departure);
-            if (effectiveDate !== baseDate) {
-                const trainNext = await searchTrainByNumber(trainNumber, effectiveDate, options);
-                if (trainNext) return trainNext;
-            }
-            return trainBase;
-        }
-
-        return searchTrainByNumber(trainNumber, addDaysToDateStr(baseDate, 1), options);
+    function searchTrainByNumberSmart(trainNumber, options = {}) {
+        return resolveTrainLocalSync(trainNumber, options);
     }
 
     const SCREEN_ORDER = { calendar: 0, schedule: 1, instructions: 2, profile: 3 };
@@ -6219,7 +6408,6 @@
 
         resumeScheduleLiveClockIfNeeded();
         bootstrapScheduleAlertsIfReady();
-        void checkAndSendPendingPing();
     }
 
     function cleanupSlideClasses(el) {
@@ -6281,7 +6469,6 @@
             updateScheduleLiveClockDisplay();
         }
         syncScheduleGlassStack(tabId);
-        void checkAndSendPendingPing();
     }
 
     function switchTab(tabId, btn, options = {}) {
@@ -6312,7 +6499,6 @@
                 requestAnimationFrame(applyScheduleTextFit);
             }
             syncScheduleGlassStack(tabId);
-            void checkAndSendPendingPing();
             return true;
         }
 
@@ -6345,225 +6531,338 @@
         return true;
     }
 
-    async function getRouteData(options = {}) {
-        const inputs = getTrainNumbersFromDom();
-        const forceRefresh = options.forceRefresh === true;
-        const fromCacheOnly = options.fromCacheOnly === true;
-        const threadsOnly = options.threadsOnly === true;
-        const forceBoardRefresh = options.forceBoardRefresh === true;
-        const trainPlan = resolveShiftTrainPlanForInputs(inputs);
-        const searchOptions = { forceRefresh, fromCacheOnly, threadsOnly, forceBoardRefresh, trainPlan };
+    function collectRoutePreviewDates() {
         const baseDate = getSelectedDate();
+        return baseDate ? [baseDate] : [];
+    }
 
-        if (inputs.length === 0) {
-            alert('Введите хотя бы один номер поезда.');
-            return;
-        }
+    function isUsableCachedRouteTrain(entry) {
+        if (!entry || entry.apiOffDay || entry.partial) return false;
+        return Array.isArray(entry.stops) && entry.stops.length > 0;
+    }
 
-        if (!getSelectedDate()) {
-            alert('Укажите дату смены.');
-            return;
-        }
+    function previewRouteTrainFromBoards(trainNumber, options = {}) {
+        const registryEntry = findLocalTrainRegistryEntry(trainNumber);
+        const dates = collectRoutePreviewDates(trainNumber, options);
 
-        if (!fromCacheOnly) {
-            void checkAndSendPendingPing();
-        }
-
-        const loader = document.getElementById('routeLoader');
-        const grid = document.getElementById('routeGrid');
-        const refreshBtn = document.getElementById('routeRefreshBtn');
-        if (!loader || !grid) return;
-
-        const requestId = ++routeDataRequestId;
-
-        if (!fromCacheOnly || forceRefresh) {
-            resetSchedulePushState();
-        } else if (schedulePushFiredKeys.size === 0) {
-            loadSchedulePushFiredKeys();
-        }
-
-        ensureScheduleNotificationPermission();
-        userStorageSet('trainNumbers', inputs);
-        syncScheduleLiveClock();
-
-        if (!fromCacheOnly) {
-            loader.style.display = 'flex';
-            grid.style.display = 'none';
-            refreshBtn?.classList.add('is-loading');
-        }
-        setRouteToolbarVisible(false);
-        setRouteSummaryVisible(false);
-
-        try {
-            let boardWarningHtml = '';
-            let boardPendingMeta = null;
-
-            const boardDates = collectBoardDatesForShift(trainPlan, baseDate, inputs);
-
-            if (!fromCacheOnly && boardDates.length) {
-                if (!threadsOnly) {
-                    const boardResults = await ensureStationBoardsForDates(boardDates, {
-                        forceRefresh: forceRefresh || forceBoardRefresh
-                    });
-                    if (requestId !== routeDataRequestId) return;
-
-                    const failedBoards = boardResults.filter(item => !item.ok);
-                    if (failedBoards.length) {
-                        boardPendingMeta = collectBoardFailureMeta(failedBoards);
-                        boardWarningHtml = buildBoardHorizonWarningHtml(boardPendingMeta);
-                    }
-                } else {
-                    await Promise.all(boardDates.map(async date => {
-                        if (!isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`])) {
-                            await ensureBoardReadyForTrainSearch(date, { forceRefresh: false });
-                        }
-                    }));
-                    if (requestId !== routeDataRequestId) return;
-                    const stillPending = boardDates.some(date => (
-                        !isUsableStationBoard(stationScheduleByKey[`${ANCHOR_STATION}_${date}`])
-                    ));
-                    if (stillPending && lastBoardNotReadyMeta) {
-                        boardPendingMeta = collectBoardFailureMeta([{
-                            error: { boardMeta: lastBoardNotReadyMeta },
-                        }]);
-                        boardWarningHtml = buildBoardHorizonWarningHtml(boardPendingMeta);
-                    }
+        if (!options.forceRefresh) {
+            for (const date of dates) {
+                const cached = findCachedTrainResult(trainNumber, date);
+                if (isUsableCachedRouteTrain(cached)) {
+                    return decorateTrainSearchResult({ ...cached }, trainNumber, date, registryEntry);
                 }
             }
+        }
 
-            const trainPromises = inputs.map(async trainNumber => {
-                try {
-                    return await searchTrainByNumberSmart(trainNumber, searchOptions);
-                } catch (err) {
-                    console.error('[getRouteData] train failed:', trainNumber, err);
-                    return null;
-                }
-            });
-            const allTrainsData = await Promise.all(trainPromises);
+        if (!isYandexApiEligibleTrainNumber(trainNumber)) {
+            for (const date of dates) {
+                const local = resolveTrainFromLocalOnly(trainNumber, date, registryEntry);
+                if (local) return local;
+            }
+            return null;
+        }
 
-            if (requestId !== routeDataRequestId) return;
+        let firstHit = null;
+        for (const date of dates) {
+            const hit = lookupTrainOnStationBoard(trainNumber, date);
+            if (!hit) continue;
+            const built = buildTrainResultFromBoardHit(hit, trainNumber, date);
+            if (!built) continue;
+            const decorated = decorateTrainSearchResult({
+                ...built,
+                partial: true,
+                stops_text: ''
+            }, trainNumber, date, registryEntry);
+            if (dates.length > 1 && isMorningNextShiftDeparture(decorated.departure)) {
+                return decorated;
+            }
+            if (!firstHit) firstHit = decorated;
+        }
+        return firstHit;
+    }
 
-            const trainEntries = inputs.map((trainNumber, originalIndex) => {
-                let train = allTrainsData[originalIndex];
-                const planEntry = Array.isArray(trainPlan)
-                    ? trainPlan.find(item => normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber))
-                    : null;
-                if (train && planEntry) {
-                    train = applyTrainPlanTimeOverrides(train, planEntry);
-                }
-                return { trainNumber, train, originalIndex };
-            });
-            const sortedTrainsData = trainEntries.map(entry => entry.train);
-        
-        const cards = [];
+    function planEntryForNumber(trainPlan, trainNumber) {
+        if (!Array.isArray(trainPlan)) return null;
+        return trainPlan.find(item => (
+            normalizeTrainCacheKey(item.number) === normalizeTrainCacheKey(trainNumber)
+        )) || null;
+    }
+
+    function buildSkeletonRouteTrain(trainNumber, planEntry, date) {
+        const scheduleDate = planEntry?.scheduleDate || date || getSelectedDate();
+        const departure = planEntry?.departure || '';
+        const arrival = planEntry?.arrival || '';
+        const depMin = parseTimeToMinutes(departure);
+        const arrMin = parseTimeToMinutes(arrival);
+        let duration = null;
+        if (depMin !== null && arrMin !== null) {
+            duration = arrMin - depMin;
+            if (duration < 0) duration += 1440;
+        }
+        const registry = findLocalTrainRegistryEntry(trainNumber);
+        const firstTitle = String(registry?.from || registry?.origin || registry?.start || '').trim();
+        const lastTitle = String(registry?.to || registry?.destination || registry?.end || '').trim();
+        const title = firstTitle && lastTitle
+            ? `${firstTitle} ${DASH_CHAR} ${lastTitle}`
+            : `Поезд ${trainNumber}`;
+        const stops = [
+            { station: { title: firstTitle || 'Станция отправления', code: '' }, departure, arrival: departure },
+            { station: { title: lastTitle || 'Станция назначения', code: '' }, departure: arrival, arrival }
+        ];
+        return decorateTrainSearchResult({
+            number: trainNumber,
+            title,
+            uid: '',
+            departure,
+            arrival,
+            duration,
+            stops,
+            stops_text: resolveStopsText('', stops),
+            partial: true,
+            scheduleDate
+        }, trainNumber, scheduleDate, registry);
+    }
+
+    function stampTrainSelectedDate(train, date) {
+        if (!train) return null;
+        return { ...train, scheduleDate: date, runsOnSelectedDate: true };
+    }
+
+    function trainFromLocalBoard(trainNumber, date, registryEntry) {
+        const hit = lookupTrainOnStationBoard(trainNumber, date);
+        if (!hit) return null;
+        const ramThread = window.SheduleMaxSource?.lookupThreadSync?.(hit, date);
+        if (ramThread && Array.isArray(ramThread.stops) && ramThread.stops.length) {
+            return decorateTrainSearchResult({
+                ...ramThread,
+                number: trainNumber,
+                uid: ramThread.uid || hit.thread?.uid || '',
+                scheduleDate: date,
+                partial: false,
+                source: ramThread.source || 'shedule-max',
+                runsOnSelectedDate: true,
+                stops_text: resolveStopsText('', ramThread.stops)
+            }, trainNumber, date, registryEntry);
+        }
+        const built = buildTrainResultFromBoardHit(hit, trainNumber, date);
+        if (!built) return null;
+        return decorateTrainSearchResult(built, trainNumber, date, registryEntry);
+    }
+
+    function resolveTrainLocalSync(trainNumber, options = {}) {
+        const date = getSelectedDate();
+        const planEntry = planEntryForNumber(options.trainPlan, trainNumber);
+        const registryEntry = findLocalTrainRegistryEntry(trainNumber);
+
+        let train = null;
+        const cached = findCachedTrainResult(trainNumber, date);
+        const cachedMiddles = Array.isArray(cached?.stops) ? cached.stops.slice(1, -1) : [];
+        const cachedHasClocks = !cachedMiddles.length || cachedMiddles.some((stop) => stopHasValidClock(stop));
+        if (cached && !cached.apiOffDay && Array.isArray(cached.stops) && cached.stops.length > 2 && cachedHasClocks) {
+            train = decorateTrainSearchResult({ ...cached }, trainNumber, date, registryEntry);
+        }
+        if (!train) {
+            train = trainFromLocalBoard(trainNumber, date, registryEntry);
+        }
+        if (!train) {
+            const local = resolveTrainFromLocalOnly(trainNumber, date, registryEntry)
+                || (findLocalTrainEntry(trainNumber, date)
+                    ? decorateTrainSearchResult(
+                        buildTrainResultFromLocalEntry(findLocalTrainEntry(trainNumber, date), date),
+                        trainNumber,
+                        date,
+                        registryEntry
+                    )
+                    : null);
+            if (local) train = local;
+        }
+        if (!train) {
+            train = buildSkeletonRouteTrain(trainNumber, planEntry, date);
+        }
+        if (planEntry) train = applyTrainPlanTimeOverrides(train, planEntry);
+        if (train && Array.isArray(train.stops)) {
+            train.stops_text = resolveStopsText(train.stops_text, train.stops);
+        }
+        return stampTrainSelectedDate(train, date);
+    }
+
+    function instantRouteTrain(trainNumber, searchOptions, trainPlan) {
+        return resolveTrainLocalSync(trainNumber, { ...searchOptions, trainPlan });
+    }
+
+    function buildRouteTrainEntries(inputs, trains, trainPlan) {
+        return inputs.map((trainNumber, originalIndex) => {
+            let train = trains[originalIndex] || null;
+            const planEntry = planEntryForNumber(trainPlan, trainNumber);
+            if (train && planEntry) {
+                train = applyTrainPlanTimeOverrides(train, planEntry);
+            }
+            return { trainNumber, train, originalIndex };
+        });
+    }
+
+    function computeRouteCardTotals(trainEntries) {
         const totals = {
             travelMinutes: 0,
             turnaroundMinutes: 0,
             trainCount: 0,
             totalMileageKm: 0
         };
-        
         for (let i = 0; i < trainEntries.length; i++) {
-            const { trainNumber, train } = trainEntries[i];
-            
-            if (train) {
-                totals.trainCount += 1;
-                if (train.duration !== null && !isNaN(train.duration)) {
-                    totals.travelMinutes += train.duration;
-                }
+            const train = trainEntries[i].train;
+            if (!train) continue;
+            totals.trainCount += 1;
+            if (train.duration !== null && !isNaN(train.duration)) {
+                totals.travelMinutes += train.duration;
+            }
+            const terminals = routeTerminalStops(train);
+            const firstTitle = terminals.first?.station?.title || '';
+            const lastTitle = terminals.last?.station?.title || '';
+            const firstCode = terminals.first?.station?.code || '';
+            const lastCode = terminals.last?.station?.code || '';
+            const mileageKm = calcRouteMileageKm(firstTitle, lastTitle, firstCode, lastCode);
+            if (mileageKm !== null) totals.totalMileageKm += mileageKm;
+            if (i >= trainEntries.length - 1) continue;
+            const nextTrain = trainEntries[i + 1].train;
+            if (!nextTrain) continue;
+            const arrCurrentMinutes = parseTimeToMinutes(train.arrival);
+            const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
+            if (arrCurrentMinutes === null || depNextMinutes === null) continue;
+            let turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
+            if (turnaroundMinutes < 0) turnaroundMinutes += 1440;
+            totals.turnaroundMinutes += turnaroundMinutes;
+            const nextTerminals = routeTerminalStops(nextTrain);
+            const turnaroundKm = calcTurnaroundMileageKm(
+                lastTitle,
+                nextTerminals.first?.station?.title || '',
+                lastCode,
+                nextTerminals.first?.station?.code || ''
+            );
+            if (turnaroundKm !== null) totals.totalMileageKm += turnaroundKm;
+        }
+        return totals;
+    }
 
-                const firstTitle = train.stops[0]?.station?.title || '';
-                const lastTitle = train.stops[train.stops.length - 1]?.station?.title || '';
-                const mileageKm = calcRouteMileageKm(firstTitle, lastTitle);
-                if (mileageKm !== null) {
-                    totals.totalMileageKm += mileageKm;
-                }
+    function applyRouteSummary(totals) {
+        const summaryWrap = document.getElementById('routeSummary');
+        if (totals.trainCount > 0) {
+            if (summaryWrap) {
+                summaryWrap.innerHTML = buildRouteSummaryHtml(totals);
+                summaryWrap.style.display = 'flex';
+            }
+            updateShiftWarningsHint();
+        } else if (summaryWrap) {
+            summaryWrap.innerHTML = '';
+            summaryWrap.style.display = 'none';
+        }
+        setRouteToolbarVisible(true);
+        setShiftWarningsVisible(totals.trainCount > 0);
+    }
 
-                let durationHtml = `В пути: ${formatMinutesToHoursAndMinutes(train.duration)}`;
-                let turnaroundHtml = '';
+    function buildRouteCardHtml(i, trainEntries, options = {}) {
+        const { allowMissing = true, boardPendingMeta = null } = options;
+        const { trainNumber, train } = trainEntries[i];
+        if (!train) {
+            if (allowMissing && !boardPendingMeta) {
+                return `
+                    <div class="route-card" data-train-index="${i}" style="opacity: 0.5;">
+                        <div class="route-card-section route-card-top">
+                            <div class="route-card-title" style="color: #ff6b6b;">Рейс не найден</div>
+                            <div class="route-card-subtitle">
+                                ${renderTrainNumChip(trainNumber, true)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        }
 
-                if (i < trainEntries.length - 1) {
-                    const nextTrain = trainEntries[i + 1].train;
-                    if (nextTrain) {
-                        const arrCurrentMinutes = parseTimeToMinutes(train.arrival);
-                        const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
+        const terminals = routeTerminalStops(train);
+        const firstTitle = terminals.first?.station?.title || '';
+        const lastTitle = terminals.last?.station?.title || '';
+        const firstCode = terminals.first?.station?.code || '';
+        const lastCode = terminals.last?.station?.code || '';
+        const mileageKm = calcRouteMileageKm(firstTitle, lastTitle, firstCode, lastCode);
+        let durationHtml = `В пути: ${formatMinutesToHoursAndMinutes(train.duration)}`;
+        let turnaroundHtml = '';
 
-                        if (arrCurrentMinutes !== null && depNextMinutes !== null) {
-                            let turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
-                            if (turnaroundMinutes < 0) {
-                                turnaroundMinutes += 1440;
-                            }
-                            totals.turnaroundMinutes += turnaroundMinutes;
-                            turnaroundHtml = `Оборот: ${formatMinutesToHoursAndMinutes(turnaroundMinutes)}`;
-
-                            const nextFirstTitle = nextTrain.stops[0]?.station?.title || '';
-                            const turnaroundKm = calcTurnaroundMileageKm(lastTitle, nextFirstTitle);
-                            if (turnaroundKm !== null) {
-                                totals.totalMileageKm += turnaroundKm;
-                                if (turnaroundKm > 0) {
-                                    turnaroundHtml += ` · ${formatMileage(turnaroundKm)}`;
-                                }
-                            }
-                        }
+        if (i < trainEntries.length - 1) {
+            const nextTrain = trainEntries[i + 1].train;
+            if (nextTrain) {
+                const arrCurrentMinutes = parseTimeToMinutes(train.arrival);
+                const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
+                if (arrCurrentMinutes !== null && depNextMinutes !== null) {
+                    let turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
+                    if (turnaroundMinutes < 0) turnaroundMinutes += 1440;
+                    turnaroundHtml = `Оборот: ${formatMinutesToHoursAndMinutes(turnaroundMinutes)}`;
+                    const nextTerminals = routeTerminalStops(nextTrain);
+                    const turnaroundKm = calcTurnaroundMileageKm(
+                        lastTitle,
+                        nextTerminals.first?.station?.title || '',
+                        lastCode,
+                        nextTerminals.first?.station?.code || ''
+                    );
+                    if (turnaroundKm !== null && turnaroundKm > 0) {
+                        turnaroundHtml += ` · ${formatMileage(turnaroundKm)}`;
                     }
                 }
-                let currentDirection = 'to_moscow';
-                if (firstTitle.toLowerCase().includes('москва')) {
-                    currentDirection = 'from_moscow';
-                }
+            }
+        }
 
-                const mileageHtml = formatMileage(mileageKm);
-                const cardDateLabel = formatTrainCardDate(train.scheduleDate, train.departure, train.arrival);
-                const timeRangeHtml = train.apiOffDay
-                    ? `<div class="route-time">—</div>`
-                    : `<div class="route-time">${train.departure} ${DASH_CHAR} ${train.arrival}</div>`;
-                const durationBlockHtml = train.apiOffDay
-                    ? `<span>Нет рейса в этот день</span>`
-                    : `<span>${durationHtml}</span>`;
+        let currentDirection = 'to_moscow';
+        if (firstTitle.toLowerCase().includes('москва')) {
+            currentDirection = 'from_moscow';
+        }
 
-                let brakeHtml = '';
-                if (sprDataCache) {
-                    let startBrakesHtml = '';
-                    let endBrakesHtml = '';
+        const mileageHtml = formatMileage(mileageKm);
+        const cardDateLabel = formatTrainCardDate(train.scheduleDate, train.departure, train.arrival);
+        const timeRangeHtml = train.apiOffDay
+            ? `<div class="route-time">—</div>`
+            : `<div class="route-time">${formatClockHm(train.departure)} ${DASH_CHAR} ${formatClockHm(train.arrival)}</div>`;
+        const durationBlockHtml = train.apiOffDay
+            ? `<span>Нет рейса в этот день</span>`
+            : `<span>${durationHtml}</span>`;
 
-                    const startBrakesList = findStationBrakes(firstTitle, currentDirection);
-                    const ptBrake = startBrakesList.find(b => b.type === "PT_1");
-                    const eptBrake = startBrakesList.find(b => b.type === "EPT_2");
+        let brakeHtml = '';
+        if (sprDataCache) {
+            let startBrakesHtml = '';
+            let endBrakesHtml = '';
+            const startBrakesList = findStationBrakes(firstTitle, currentDirection);
+            const ptBrake = startBrakesList.find(b => b.type === "PT_1");
+            const eptBrake = startBrakesList.find(b => b.type === "EPT_2");
+            const startTags = [];
+            if (ptBrake) startTags.push(`ПТ ${DASH_CHAR} ${ptBrake.km}пк${ptBrake.piket}`);
+            if (eptBrake) startTags.push(`ЭПТ ${DASH_CHAR} ${eptBrake.km}пк${eptBrake.piket}`);
+            if (startTags.length > 0) {
+                startBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box">` + startTags.map(t => `<span class="route${DASH_CHAR}brake${DASH_CHAR}text">${t}</span>`).join('') + `</div>`;
+            }
+            const deadEndMatch = findDeadEndBrake(lastTitle);
+            if (deadEndMatch) {
+                const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
+                endBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box"><span class="route${DASH_CHAR}brake${DASH_CHAR}text">Тупик ${DASH_CHAR} ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}</span></div>`;
+            }
+            if (startBrakesHtml || endBrakesHtml) {
+                brakeHtml = `<div class="route${DASH_CHAR}tags${DASH_CHAR}container">${startBrakesHtml}${endBrakesHtml}</div>`;
+            }
+        }
 
-                    let startTags = [];
-                    if (ptBrake) startTags.push(`ПТ ${DASH_CHAR} ${ptBrake.km}пк${ptBrake.piket}`);
-                    if (eptBrake) startTags.push(`ЭПТ ${DASH_CHAR} ${eptBrake.km}пк${eptBrake.piket}`);
-                    
-                    if (startTags.length > 0) {
-                        startBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box">` + startTags.map(t => `<span class="route${DASH_CHAR}brake${DASH_CHAR}text">${t}</span>`).join('') + `</div>`;
-                    }
+        const dayWarningHtml = train.scheduleDayWarning
+            ? `<div class="route-day-warning">${escapeHtml(train.scheduleDayWarning)}</div>`
+            : '';
+        const offDayClass = train.runsOnSelectedDate === false ? ' route-card--off-day' : '';
+        const stationNotesClass = trainHasStationNotes(train.number, getSelectedDate())
+            ? ' has-station-notes'
+            : '';
+        const partialClass = train.partial ? ' route-card--partial' : '';
 
-                    const deadEndMatch = findDeadEndBrake(lastTitle);
-                    if (deadEndMatch) {
-                        const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
-                        endBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box"><span class="route${DASH_CHAR}brake${DASH_CHAR}text">Тупик ${DASH_CHAR} ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}</span></div>`;
-                    }
-
-                    if (startBrakesHtml || endBrakesHtml) {
-                        brakeHtml = `<div class="route${DASH_CHAR}tags${DASH_CHAR}container">${startBrakesHtml}${endBrakesHtml}</div>`;
-                    }
-                }
-
-                const dayWarningHtml = train.scheduleDayWarning
-                    ? `<div class="route-day-warning">${escapeHtml(train.scheduleDayWarning)}</div>`
-                    : '';
-                const offDayClass = train.runsOnSelectedDate === false ? ' route-card--off-day' : '';
-                const stationNotesClass = trainHasStationNotes(train.number, getSelectedDate())
-                    ? ' has-station-notes'
-                    : '';
-
-                cards.push(`
-                    <div class="route-card clickable${offDayClass}${stationNotesClass}" data-train-index="${i}" data-uid="${train.uid}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
+        return `
+                    <div class="route-card clickable${offDayClass}${stationNotesClass}${partialClass}" data-train-index="${i}" data-uid="${train.uid || ''}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
                         <div class="route-card-section route-card-top">
                             <div class="route-card-title">${train.title}</div>
                             <div class="route-card-subtitle">
                                 ${renderTrainNumChip(train.number, true)}
-                                <span>${escapeHtml(formatStopsTextDisplay(train.stops_text))}</span>
+                                <span>${escapeHtml(formatStopsTextDisplay(resolveStopsText(train.stops_text, train.stops)))}</span>
                             </div>
                         </div>
                         <div class="route-card-section route-card-middle">
@@ -6580,63 +6879,162 @@
                             <span>${turnaroundHtml}</span>
                         </div>
                     </div>
-                `);
-            } else if (!boardPendingMeta) {
-                cards.push(`
-                    <div class="route-card" style="opacity: 0.5;">
-                        <div class="route-card-section route-card-top">
-                            <div class="route-card-title" style="color: #ff6b6b;">Рейс не найден</div>
-                            <div class="route-card-subtitle">
-                                ${renderTrainNumChip(trainNumber, true)}
-                            </div>
-                        </div>
-                    </div>
-                `);
-            }
+                `;
+    }
+
+    function paintRouteGrid(trainEntries, options = {}) {
+        const {
+            requestId,
+            boardWarningHtml = '',
+            boardPendingMeta = null,
+            fromCacheOnly = false,
+            finalize = false
+        } = options;
+        const grid = document.getElementById('routeGrid');
+        if (!grid) return false;
+        if (requestId != null && requestId !== routeDataRequestId) return false;
+
+        const cards = [];
+        const totals = computeRouteCardTotals(trainEntries);
+        const sortedTrainsData = trainEntries.map(entry => entry.train);
+
+        for (let i = 0; i < trainEntries.length; i++) {
+            cards.push(buildRouteCardHtml(i, trainEntries, options));
         }
 
         if (boardPendingMeta && trainEntries.some(entry => !entry.train)) {
             cards.push(buildBoardFormingHintHtml());
         }
 
-        if (totals.trainCount > 0) {
-            const summaryWrap = document.getElementById('routeSummary');
-            if (summaryWrap) {
-                summaryWrap.innerHTML = buildRouteSummaryHtml(totals);
-                summaryWrap.style.display = 'flex';
-            }
-            updateShiftWarningsHint();
-        } else {
-            const summaryWrap = document.getElementById('routeSummary');
-            if (summaryWrap) {
-                summaryWrap.innerHTML = '';
-                summaryWrap.style.display = 'none';
-            }
-        }
+        applyRouteSummary(totals);
 
-        if (requestId !== routeDataRequestId) return;
-
+        if (finalize) {
             routeNotificationTrains = buildRouteNotificationTrains(sortedTrainsData, getSelectedDate());
             checkSchedulePushNotifications();
             if (!fromCacheOnly) {
                 void syncScheduleAlertsToWorker();
             }
+        }
 
-            grid.innerHTML = boardWarningHtml + cards.join('');
-            grid.style.display = 'flex';
-            updateRouteCardsHighlight();
-            setRouteToolbarVisible(true);
-            setShiftWarningsVisible(totals.trainCount > 0);
-        } catch (error) {
-            console.error('[getRouteData]', error);
-            if (requestId === routeDataRequestId && !fromCacheOnly) {
-                alert('Не удалось загрузить маршруты. Проверьте интернет и нажмите «Обновить» ещё раз.');
+        grid.innerHTML = boardWarningHtml + cards.join('');
+        grid.style.display = 'flex';
+        updateRouteCardsHighlight();
+        setRouteToolbarVisible(true);
+        setShiftWarningsVisible(totals.trainCount > 0);
+        return true;
+    }
+
+    function patchRouteCards(indices, trainEntries, options = {}) {
+        const {
+            requestId,
+            fromCacheOnly = false,
+            finalize = false
+        } = options;
+        const grid = document.getElementById('routeGrid');
+        if (!grid) return false;
+        if (requestId != null && requestId !== routeDataRequestId) return false;
+
+        const unique = [...new Set(indices.filter(i => i >= 0 && i < trainEntries.length))];
+        if (!unique.length) return false;
+
+        const existing = grid.querySelectorAll('.route-card[data-train-index]');
+        if (!existing.length) {
+            return paintRouteGrid(trainEntries, options);
+        }
+
+        for (const i of unique) {
+            const html = buildRouteCardHtml(i, trainEntries, options);
+            const node = grid.querySelector(`.route-card[data-train-index="${i}"]`);
+            if (!node || !html) {
+                return paintRouteGrid(trainEntries, options);
             }
-        } finally {
-            if (requestId === routeDataRequestId) {
-                loader.style.display = 'none';
-                refreshBtn?.classList.remove('is-loading');
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html.trim();
+            const next = wrap.firstElementChild;
+            if (!next) return paintRouteGrid(trainEntries, options);
+            node.replaceWith(next);
+        }
+
+        applyRouteSummary(computeRouteCardTotals(trainEntries));
+        if (finalize) {
+            routeNotificationTrains = buildRouteNotificationTrains(
+                trainEntries.map(entry => entry.train),
+                getSelectedDate()
+            );
+            checkSchedulePushNotifications();
+            if (!fromCacheOnly) {
+                void syncScheduleAlertsToWorker();
             }
+        }
+        updateRouteCardsHighlight();
+        return true;
+    }
+
+    function getRouteData(options = {}) {
+        const inputs = getTrainNumbersFromDom();
+        const forceRefresh = options.forceRefresh === true;
+        const fromCacheOnly = options.fromCacheOnly === true;
+        const threadsOnly = options.threadsOnly === true;
+        const forceBoardRefresh = options.forceBoardRefresh === true;
+        const trainPlan = resolveShiftTrainPlanForInputs(inputs);
+        const searchOptions = { forceRefresh, fromCacheOnly, threadsOnly, forceBoardRefresh, trainPlan };
+        const baseDate = getSelectedDate();
+
+        if (inputs.length === 0) {
+            alert('Введите хотя бы один номер поезда.');
+            return;
+        }
+
+        if (!baseDate) {
+            alert('Укажите дату смены.');
+            return;
+        }
+
+        const loader = document.getElementById('routeLoader');
+        const grid = document.getElementById('routeGrid');
+        const refreshBtn = document.getElementById('routeRefreshBtn');
+        if (!grid) return;
+
+        if (loader) loader.style.display = 'none';
+
+        const requestId = ++routeDataRequestId;
+
+        if (!fromCacheOnly || forceRefresh) {
+            resetSchedulePushState();
+        } else if (schedulePushFiredKeys.size === 0) {
+            loadSchedulePushFiredKeys();
+        }
+
+        ensureScheduleNotificationPermission();
+        userStorageSet('trainNumbers', inputs);
+        syncScheduleLiveClock();
+
+        const liveTrains = inputs.map((trainNumber) => resolveTrainLocalSync(trainNumber, searchOptions));
+        paintRouteGrid(buildRouteTrainEntries(inputs, liveTrains, trainPlan), {
+            requestId,
+            fromCacheOnly,
+            finalize: true,
+            allowMissing: true
+        });
+        refreshBtn?.classList.remove('is-loading');
+
+        if (!stationBoardIsReady(baseDate)) {
+            void ensureStationBoardLoaded(baseDate).then(() => {
+                if (requestId !== routeDataRequestId) return;
+                if (getSelectedDate() !== baseDate) return;
+                if (!stationBoardIsReady(baseDate)) return;
+                const refreshed = inputs.map((trainNumber) => resolveTrainLocalSync(trainNumber, searchOptions));
+                paintRouteGrid(buildRouteTrainEntries(inputs, refreshed, trainPlan), {
+                    requestId,
+                    fromCacheOnly,
+                    finalize: true,
+                    allowMissing: true
+                });
+                const open = String(userStorageGet('lastSingleTrain') || '').trim();
+                if (open) getScheduleData(open, { fromCacheOnly: true });
+            }).catch((err) => {
+                console.warn('[trains] board failed:', baseDate, err);
+            });
         }
     }
 
@@ -6678,11 +7076,12 @@
         return closestIndex;
     }
 
-    async function getScheduleData(trainNumber, options = {}) {
+    function getScheduleData(trainNumber, options = {}) {
         const input = String(trainNumber || userStorageGet('lastSingleTrain') || '').trim();
         if (!input) return;
 
-        if (!getSelectedDate()) {
+        const selectedDate = getSelectedDate();
+        if (!selectedDate) {
             alert('Укажите дату смены на вкладке «Маршрут».');
             return;
         }
@@ -6690,40 +7089,47 @@
         userStorageSet('lastSingleTrain', input);
 
         const loader = document.getElementById('scheduleLoader');
-        const results = document.getElementById('scheduleResults');
-        const header = document.getElementById('scheduleHeader');
-        const fromCacheOnly = options.fromCacheOnly === true;
+        if (loader) loader.style.display = 'none';
 
-        if (!fromCacheOnly) {
-            loader.style.display = 'flex';
-            results.style.display = 'none';
-            header.style.display = 'none';
-        }
-        updateScheduleEmptyState();
-
-        try {
-            const trainMeta = await searchTrainByNumberSmart(input, options);
-
-            if (!trainMeta) {
+        const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
+        const paint = (trainMeta) => {
+            if (!trainMeta || !Array.isArray(trainMeta.stops) || !trainMeta.stops.length) {
                 updateScheduleEmptyState();
-                if (!fromCacheOnly) {
-                    alert('Поезд не найден.');
-                }
                 return;
             }
+            renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate);
+            updateScheduleEmptyState();
+        };
 
-            const selectedDate = getSelectedDate();
-            const activeDate = trainMeta.scheduleDate
-                || resolveScheduleActiveDate(selectedDate, trainMeta.departure);
-            renderTimelineFromData(trainMeta.stops, trainMeta.number, activeDate);
-            updateScheduleEmptyState();
-        } catch (error) {
-            console.error('[getScheduleData]', error);
-            updateScheduleEmptyState();
-            alert('Не удалось загрузить расписание. Проверьте интернет и повторите.');
-        } finally {
-            loader.style.display = 'none';
+        const searchOpts = { ...options, trainPlan };
+        if (!stationBoardIsReady(selectedDate)) {
+            void ensureStationBoardLoaded(selectedDate).then(() => {
+                if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
+                if (getSelectedDate() !== selectedDate) return;
+                if (!stationBoardIsReady(selectedDate)) return;
+                getScheduleData(input, searchOpts);
+            }).catch((err) => {
+                console.warn('[trains] board failed:', selectedDate, err);
+            });
         }
+        let trainMeta = resolveTrainLocalSync(input, searchOpts);
+        paint(trainMeta);
+
+        const middles = Array.isArray(trainMeta?.stops) ? trainMeta.stops.slice(1, -1) : [];
+        const hasMiddleClocks = middles.some((stop) => stopHasValidClock(stop));
+        const stopUid = String(
+            trainMeta?.uid
+            || lookupTrainOnStationBoard(input, selectedDate)?.thread?.uid
+            || ''
+        ).trim();
+        if (hasMiddleClocks || !stopUid || !window.SheduleMaxSource?.loadTrainStops) return;
+
+        void window.SheduleMaxSource.loadTrainStops(selectedDate, input, stopUid).then((payload) => {
+            if (!payload) return;
+            if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
+            if (getSelectedDate() !== selectedDate) return;
+            paint(resolveTrainLocalSync(input, searchOpts));
+        }).catch(() => {});
     }
 
     function renderTimelineFromData(stops, trainNumber, selectedDate) {
@@ -6812,83 +7218,22 @@
 
         list.innerHTML = displayStops.map((item, index) => {
             const stationTitleRaw = item.referenceTitle || item.threadStop?.station?.title || 'Станция';
-            const stationTitle = escapeHtml(stationTitleRaw);
-
-            if (item.passThrough) {
-                let kmText = '';
-                if (sprDataCache) {
-                    const stationPathMatch = findStationPathMatch(stationTitleRaw);
-                    if (stationPathMatch) {
-                        kmText = formatStationKmLabel(stationPathMatch);
-                    } else {
-                        const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
-                        if (anyBrakeMatch) {
-                            kmText = formatStationKmLabel(anyBrakeMatch);
-                        }
-                    }
-                }
-
-                const stationWarningTexts = warningsByStation[index] || [];
-                let warningHtml = '';
-                if (stationWarningTexts.length) {
-                    const plaques = stationWarningTexts.map(text =>
-                        `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(text)}</span></div>`
-                    ).join('');
-                    warningHtml = `<div class="card${D}row${D}bottom"><div class="route${D}tags${D}container">${plaques}</div></div>`;
-                }
-
-                const selectedClass = isStationSelected(index) ? ' is-selected' : '';
-                const noteHtml = renderStationNoteBadgeHtml(index);
-                const infraKind = resolveStationInfraKind(stationTitleRaw);
-                const isMajor = isMajorTimelineStation(stationTitleRaw, { infraKind });
-                const kindClass = ` station${D}node--${infraKind}`;
-                const majorClass = isMajor ? ' is-major' : '';
-                const timesHtml = renderStationTimesHtml({ isPassThrough: true });
-
-                return `
-                    <div class="station${D}node pass-through is-skip${kindClass}${majorClass}${stationWarningTexts.length ? ' has-brakes' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
-                        <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
-                        <span class="station${D}mark" aria-hidden="true"></span>
-                        <div class="station${D}card${stationWarningTexts.length ? ' has-brakes' : ''}">
-                            <div class="card${D}row${D}top">
-                                <div class="station${D}head">
-                                    <span class="station${D}name"><span class="station${D}name${D}text">${stationTitle}</span></span>
-                                    ${noteHtml}
-                                    ${warningHtml}
-                                </div>
-                                ${timesHtml}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
+            const stationTitle = escapeHtml(displayTimelineStationTitle(stationTitleRaw));
             const stop = item.threadStop;
-            const arrivalTime = getTime(stop.arrival);
-            const departureTime = getTime(stop.departure);
             const isFirst = index === firstBoardingIndex;
             const isLast = index === lastBoardingIndex;
             const isTerminal = isFirst || isLast;
+            const arrivalRaw = pickStopArrival(stop);
+            const departureRaw = pickStopDeparture(stop);
+            const hasClock = Boolean(arrivalRaw || departureRaw);
+            let isPass = item.passThrough || isThreadSkipStop(stop, isTerminal);
+            if (hasClock) isPass = false;
+            const infraKind = resolveStationInfraKind(stationTitleRaw, { forceStation: isTerminal && !isPass });
+            const rowState = timelineRowState(infraKind, isPass);
 
-            const dwellMin = getStopDwellMinutes(stop);
-            const isNoStop = !isTerminal && dwellMin === 0;
-            const timesHtml = renderStationTimesHtml({
-                isFirst,
-                isLast,
-                isNoStop,
-                arrivalTime,
-                departureTime,
-                dwellMin
-            });
-
-            let brakeHtml = '';
-            let hasBrakes = false;
             let kmText = '';
-            let tags = [];
-
             if (sprDataCache) {
-                const stationPathMatch = findStationPathMatch(stationTitleRaw);
-
+                const stationPathMatch = findStationPathMatch(stationTitleRaw, stop?.station?.code);
                 if (stationPathMatch) {
                     kmText = formatStationKmLabel(stationPathMatch);
                 } else {
@@ -6897,92 +7242,96 @@
                         kmText = formatStationKmLabel(anyBrakeMatch);
                     }
                 }
+            }
 
+            let arrivalTime = '';
+            let departureTime = '';
+            let dwellMin = null;
+            if (stop) {
+                const clocks = expandRepeatedHaltClocks(
+                    arrivalRaw || stop.arrival,
+                    departureRaw || stop.departure,
+                    isTerminal && !isPass
+                );
+                arrivalTime = getTime(clocks.arrival);
+                departureTime = getTime(clocks.departure);
+                dwellMin = getStopDwellMinutes(stop, isTerminal && !isPass);
+            }
+
+            const timesHtml = renderStationTimesHtml({
+                isFirst: isFirst && !isPass,
+                isLast: isLast && !isPass,
+                isPassThrough: isPass,
+                arrivalTime,
+                departureTime,
+                dwellMin,
+                rowState
+            });
+
+            let hasBrakes = false;
+            let tags = [];
+
+            if (sprDataCache && !isPass) {
                 if (isFirst) {
                     const stationBrakes = findStationBrakes(stationTitleRaw, currentDirection);
-
                     const ptBrake = stationBrakes.find(b => b.type === "PT_1");
                     const eptBrake = stationBrakes.find(b => b.type === "EPT_2");
-
                     if (ptBrake) {
-                        tags.push(`ПТ ${ptBrake.km}пк${ptBrake.piket}`);
+                        tags.push(`ПТ - ${formatBrakeChipValue(ptBrake)}`);
                         hasBrakes = true;
                     }
                     if (eptBrake) {
-                        tags.push(`ЭПТ ${eptBrake.km}пк${eptBrake.piket}`);
+                        tags.push(`ЭПТ - ${formatBrakeChipValue(eptBrake)}`);
                         hasBrakes = true;
                     }
                 } else if (isLast) {
                     const deadEndMatch = findDeadEndBrake(stationTitleRaw);
-
                     if (deadEndMatch) {
                         const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
-                        tags.push(`Тупик ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}`);
+                        tags.push(`Тупик - ${formatBrakeChipValue(deadEndMatch)}${trackInfo}`);
                         hasBrakes = true;
                     }
                 }
             }
 
             const stationWarningTexts = warningsByStation[index] || [];
-            const bottomPlaques = [];
 
             const opsPlaques = collectStationOpsPlaques(
                 stationTitleRaw,
                 currentDirection,
-                item.passThrough ? null : item.threadStop
+                isPass ? null : stop
             );
             opsPlaques.tags.forEach((tag) => tags.push(tag));
 
-            tags.forEach(tag => {
-                bottomPlaques.push(
-                    `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(tag)}</span></div>`
-                );
-            });
-
-            opsPlaques.notes.forEach((note) => {
-                hasBrakes = true;
-                const cls = note.kind === 'passage' ? 'route-ops-box route-ops-box--passage' : 'route-ops-box route-ops-box--hint';
-                bottomPlaques.push(
-                    `<div class="${cls}"><span class="route-ops-text">${escapeHtml(note.text)}</span></div>`
-                );
-            });
-
-            if (stationWarningTexts.length) {
-                hasBrakes = true;
-                stationWarningTexts.forEach(text => {
-                    bottomPlaques.push(
-                        `<div class="route${D}brake${D}box"><span class="route${D}brake${D}text">${escapeHtml(text)}</span></div>`
-                    );
-                });
-            }
-
+            if (stationWarningTexts.length) hasBrakes = true;
             if (opsPlaques.tags.length) hasBrakes = true;
+            opsPlaques.notes.forEach(() => { hasBrakes = true; });
 
-            if (bottomPlaques.length > 0) {
-                brakeHtml = `<div class="route${D}tags${D}container">${bottomPlaques.join('')}</div>`;
-            }
-
-            const selectedClass = isStationSelected(index) ? ' is-selected' : '';
+            const chipHtml = [...tags, ...stationWarningTexts].map((tag) => (
+                `<span class="station-chip">${escapeHtml(tag)}</span>`
+            )).join('');
             const noteHtml = renderStationNoteBadgeHtml(index);
-            const infraKind = resolveStationInfraKind(stationTitleRaw, { forceStation: isTerminal });
-            const isMajor = isMajorTimelineStation(stationTitleRaw, { isTerminal, infraKind });
-            const kindClass = ` station${D}node--${infraKind}`;
-            const majorClass = isMajor ? ' is-major' : '';
-            const skipClass = isNoStop ? ' is-skip' : '';
+            const opsHtml = opsPlaques.notes.map((note) => (
+                `<div class="station-note-badge"><span class="station-note-text">${escapeHtml(note.text)}</span></div>`
+            )).join('');
+            const selected = isStationSelected(index);
+            const cardClass = (hasBrakes || noteHtml || selected) ? ' is-card' : '';
+            const selectedClass = selected ? ' is-selected' : '';
+            const kindClass = ` station-node--${infraKind}`;
+            const skipClass = isPass ? ' is-skip pass-through' : '';
 
             return `
-                <div class="station${D}node${kindClass}${majorClass}${skipClass}${hasBrakes ? ' has-brakes' : ''}${isTerminal ? ' terminal' : ''}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
-                    <div class="station${D}dot" data-km="${kmText ? escapeHtml(kmText) : '•'}"></div>
-                    <span class="station${D}mark" aria-hidden="true"></span>
-                    <div class="station${D}card${hasBrakes ? ' has-brakes' : ''}">
-                        <div class="card${D}row${D}top">
-                            <div class="station${D}head">
-                                <span class="station${D}name"><span class="station${D}name${D}text">${stationTitle}</span></span>
-                                ${noteHtml}
-                                ${brakeHtml ? `<div class="card${D}row${D}bottom">${brakeHtml}</div>` : ''}
-                            </div>
-                            ${timesHtml}
+                <div class="station-node ${rowState}${kindClass}${skipClass}${cardClass}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
+                    <span class="station-km">${kmText ? escapeHtml(kmText) : ''}</span>
+                    <span class="station-mark" aria-hidden="true"></span>
+                    <div class="station-card">
+                        <div class="station-main">
+                            <span class="station-name">${stationTitle}</span>
+                            ${chipHtml ? `<div class="station-chips">${chipHtml}</div>` : ''}
+                            ${noteHtml}
+                            ${opsHtml}
                         </div>
+                        ${timesHtml}
                     </div>
                 </div>
             `;
@@ -6999,12 +7348,12 @@
         requestAnimationFrame(applyScheduleTextFit);
     }
 
-    async function viewTrainSchedule(trainUid, trainNumber) {
+    function viewTrainSchedule(trainUid, trainNumber) {
         userStorageSet('lastSingleTrain', trainNumber);
         const scheduleBtn = document.querySelector('.tab-btn[data-tab="tab-schedule"]');
         if (scheduleBtn) switchTab('tab-schedule', scheduleBtn);
 
-        await getScheduleData(trainNumber);
+        getScheduleData(trainNumber);
     }
 
     function finishMainScreenTransition(fromEl, toEl, toScreen, options = {}) {
@@ -7244,12 +7593,14 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Доработка экономии запросов',
-            'Визуальные доработки расписания'
+            'Расписание с Cloud.ru, без Яндекса',
+            'Выгрузка остановок в бакет S3',
+            'Новый кэш PWA'
         ],
         highlights: [
-            'Доработка экономии запросов',
-            'Визуальные доработки расписания'
+            'Расписание с Cloud.ru, без Яндекса',
+            'Выгрузка остановок в бакет S3',
+            'Новый кэш PWA'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -7636,7 +7987,7 @@
         overlay.setAttribute('aria-hidden', 'false');
         document.body.classList.add('feedback-sheet-open');
         requestAnimationFrame(() => input?.focus());
-        void pingFeedbackApiHealth().then(setFeedbackApiAvailability);
+        setFeedbackApiAvailability(true);
     }
 
     function closeFeedbackSheet() {
@@ -7704,51 +8055,12 @@
         }
     }
 
-    async function probeFeedbackApiHealth(method) {
-        const opts = method === 'POST'
-            ? {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                body: new URLSearchParams({ check: 'version' }).toString()
-            }
-            : {};
-        const url = method === 'POST' ? DEPOT_API_URL : `${DEPOT_API_URL}?check=version`;
-        const res = await fetchWithTimeout(url, opts, 8000);
-        const raw = await res.text();
-        if (!isFeedbackApiResponseAlive(res, raw)) return false;
-        try {
-            const data = JSON.parse(raw);
-            return data?.ok !== false;
-        } catch {
-            return Boolean(res?.ok);
-        }
+    function probeFeedbackApiHealth() {
+        return Promise.resolve(true);
     }
 
-    async function pingFeedbackApiHealth() {
-        if (!DEPOT_API_URL) return false;
-
-        const probes = [
-            () => probeFeedbackApiHealth('GET'),
-            () => probeFeedbackApiHealth('POST'),
-            async () => {
-                const res = await fetchWithTimeout(DEPOT_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                    body: new URLSearchParams({ action: 'feedback' }).toString()
-                }, 8000);
-                const raw = await res.text();
-                return isFeedbackApiResponseAlive(res, raw);
-            }
-        ];
-
-        for (const probe of probes) {
-            try {
-                if (await probe()) return true;
-            } catch (err) {
-                console.warn('[feedback] health probe failed:', err);
-            }
-        }
-        return false;
+    function pingFeedbackApiHealth() {
+        return Promise.resolve(true);
     }
 
     function setFeedbackApiAvailability(isAvailable) {
@@ -7843,7 +8155,7 @@
             void handleFeedbackSend();
         });
 
-        void pingFeedbackApiHealth().then(setFeedbackApiAvailability);
+        setFeedbackApiAvailability(true);
     }
 
     async function initReleaseNotesUi() {
@@ -8708,66 +9020,15 @@
         return error?.name === 'AbortError';
     }
 
-    async function sendUsageAnalyticsPing() {
-        const deviceUuid = getOrCreateAnonymousDeviceUuid();
-        if (!deviceUuid || !MY_CLOUDFLARE_PROXY) return false;
-        if (analyticsPingInFlightUuids.has(deviceUuid)) return false;
-
-        if (!navigator.onLine) {
-            markAnalyticsPingPending(deviceUuid);
-            return false;
-        }
-
-        const proxyBase = MY_CLOUDFLARE_PROXY.replace(/\/?$/, '/');
-        const params = new URLSearchParams({
-            ping: '1',
-            device_uuid: deviceUuid
-        });
-        const url = `${proxyBase}?${params.toString()}`;
-
-        analyticsPingInFlightUuids.add(deviceUuid);
-        try {
-            const res = await fetch(url, yandexProxyFetchInit({
-                method: 'GET',
-                keepalive: true,
-                cache: 'no-store'
-            }));
-            if (res.ok) {
-                if (hasAnalyticsPingPending() && getAnalyticsPendingUuid() === deviceUuid) {
-                    clearAnalyticsPingPending();
-                }
-                return true;
-            }
-            console.warn('[analytics] ping failed:', res.status);
-            return false;
-        } catch (error) {
-            console.warn('[analytics] ping error:', error);
-            if (isAnalyticsNetworkError(error)) {
-                markAnalyticsPingPending(deviceUuid);
-            }
-            return false;
-        } finally {
-            analyticsPingInFlightUuids.delete(deviceUuid);
-        }
+    function sendUsageAnalyticsPing() {
+        return Promise.resolve(null);
     }
 
-    async function checkAndSendPendingPing() {
-        if (!hasAnalyticsPingPending()) return false;
-        if (!navigator.onLine) return false;
-
-        const deviceUuid = getAnalyticsPendingUuid();
-        if (!deviceUuid) {
-            clearAnalyticsPingPending();
-            return false;
-        }
-
-        return sendUsageAnalyticsPing();
+    function checkAndSendPendingPing() {
+        return Promise.resolve(null);
     }
 
-    function trackAppUsagePing() {
-        void checkAndSendPendingPing();
-        void sendUsageAnalyticsPing();
-    }
+    function trackAppUsagePing() {}
 
     function clearAuthSessionTab() {
         localStorage.removeItem(AUTH_SESSION_KEY);
@@ -9137,7 +9398,6 @@
 
             setAuthSessionTab(tabNumber);
             unlockAppAuth({ fromLogin: true });
-            trackAppUsagePing();
             void ensureWebPushSubscription(true);
         } catch (err) {
             console.error('Ошибка входа:', err);
@@ -9574,11 +9834,9 @@
 
         localShiftTemplatesPromise = (async () => {
             try {
-                const fetchers = [];
-                if (APP_DATA_API) {
-                    fetchers.push(fetchShiftTemplatesJson(appDataApiUrl('shift-templates')).catch(() => null));
-                }
-                fetchers.push(fetchShiftTemplatesJson(LOCAL_SHIFT_TEMPLATES_URL).catch(() => null));
+                const fetchers = [
+                    fetchShiftTemplatesJson(LOCAL_SHIFT_TEMPLATES_URL).catch(() => null)
+                ];
 
                 const candidates = (await Promise.all(fetchers)).filter(Boolean);
                 const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
@@ -9771,9 +10029,7 @@
 
         calendarLocalRoutesPromise = (async () => {
             try {
-                const urls = [];
-                if (APP_DATA_API) urls.push(appDataApiUrl('calendar-local-routes'));
-                urls.push('./data/calendar-local-routes.json');
+                const urls = ['./data/calendar-local-routes.json'];
                 let data = null;
                 let lastErr = null;
                 for (const url of urls) {

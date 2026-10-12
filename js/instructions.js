@@ -271,18 +271,12 @@
     async function loadStaticInstructionsPack() {
         staticPack = { ready: false, folders: [], documents: [], chunks: [] };
         try {
-            const proxy = String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
-            const catalogUrls = [];
-            if (proxy) catalogUrls.push(`${proxy}?api=instructions-catalog`);
-            catalogUrls.push('./data/instructions/catalog.json');
+            const catalogUrls = ['./data/instructions/catalog.json'];
 
             let catalog = null;
             for (const url of catalogUrls) {
                 try {
-                    const init = url.includes('functions.yandexcloud.net') && typeof window.daBuildProxyFetchInit === 'function'
-                        ? window.daBuildProxyFetchInit({ cache: 'no-store' })
-                        : { cache: 'no-store' };
-                    const res = await fetch(url, init);
+                    const res = await fetch(url, { cache: 'no-store' });
                     if (!res.ok) continue;
                     catalog = await res.json();
                     break;
@@ -329,9 +323,7 @@
                 staticPack.documents.push(doc);
                 if (!doc.hasText) continue;
                 try {
-                    const chunkUrls = [];
-                    if (proxy) chunkUrls.push(`${proxy}?api=instructions-chunk&id=${encodeURIComponent(d.id)}`);
-                    chunkUrls.push(`./data/instructions/chunks/${d.id}.json`);
+                    const chunkUrls = [`./data/instructions/chunks/${d.id}.json`];
                     let pack = null;
                     for (const curl of chunkUrls) {
                         try {
@@ -595,44 +587,6 @@
     async function keywordSearch(query, limit = 5) {
         const q = String(query || '').trim();
         if (!q) return [];
-
-        const proxy = String(window.APP_CONFIG?.yandexProxy || '').replace(/\/?$/, '');
-        if (proxy && q.length >= 2) {
-            try {
-                const searchInit = typeof window.daBuildProxyFetchInit === 'function'
-                    ? window.daBuildProxyFetchInit({ cache: 'no-store' })
-                    : { cache: 'no-store' };
-                const res = await fetch(
-                    `${proxy}?api=instructions-search&q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`,
-                    searchInit
-                );
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data?.ok && Array.isArray(data.results) && data.results.length) {
-                        return data.results.map((row) => ({
-                            chunk: {
-                                id: row.chunk?.id,
-                                section: row.chunk?.section || '',
-                                text: row.chunk?.text || '',
-                                cleanText: row.chunk?.text || '',
-                                page: row.chunk?.page || 0,
-                                docId: `static_${row.doc?.id}`
-                            },
-                            doc: {
-                                id: `static_${row.doc?.id}`,
-                                staticId: row.doc?.id,
-                                title: row.doc?.title || row.doc?.id,
-                                source: 'static',
-                                hasText: true
-                            },
-                            score: row.score || 0
-                        })).slice(0, limit);
-                    }
-                }
-            } catch (err) {
-                console.warn('[instructions] server search', err);
-            }
-        }
 
         const chunks = [...(await getAll('chunks')), ...staticPack.chunks];
         const docs = [...(await getAll('documents')), ...staticPack.documents];

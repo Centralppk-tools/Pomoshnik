@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.11)
-const CACHE_VERSION = 'da_v4_0_11';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.12)
+const CACHE_VERSION = 'da_v4_0_12';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -20,6 +20,7 @@ const PRECACHE_ASSETS = [
     './data/trains-uids.json',
     './data/release-notes.json',
     './js/app-config.js',
+    './js/shedule-max-source.js',
     './js/instructions.js',
     './vendor/pdfjs/pdf.min.mjs',
     './vendor/pdfjs/pdf.worker.min.mjs',
@@ -256,11 +257,22 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
+function isSheduleMaxDataRequest(url) {
+    const host = String(url.hostname || '');
+    const path = String(url.pathname || '');
+    if (host.endsWith('s3.cloud.ru') && /cache_(schedule|stops)/.test(path)) return true;
+    return false;
+}
+
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
+    if (isSheduleMaxDataRequest(url)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
     if (url.origin !== self.location.origin) return;
 
     if (isAppConfigRequest(url.pathname)) {
