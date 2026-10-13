@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.12)
-const CACHE_VERSION = 'da_v4_0_12';
+// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.19)
+const CACHE_VERSION = 'da_v4_0_19';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -21,6 +21,7 @@ const PRECACHE_ASSETS = [
     './data/release-notes.json',
     './js/app-config.js',
     './js/shedule-max-source.js',
+    './js/info-chip.js',
     './js/instructions.js',
     './vendor/pdfjs/pdf.min.mjs',
     './vendor/pdfjs/pdf.worker.min.mjs',

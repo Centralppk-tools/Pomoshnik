@@ -250,32 +250,15 @@
     border-left-color: #ff9840;
 }
 
-/* Контейнер для плашек с пробами (если есть) */
 .route-tags-container {
-    display: flex; /* Flex для расположения по горизонтали */
-    gap: 8px; /* Маленькое расстояние между плашками */
-    flex-wrap: wrap; /* Переносит плашки на новую строку, если много */
-    align-items: flex-start; /* Плашки выравниваются по верхнему краю */
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-/* Одна плашка с пробой (например "ПТ — 42пк3" или "Тупик — 156пк8") */
-.route-brake-box {
-    border: 1px solid rgba(234, 179, 8, 0.2);
-    background: rgba(234, 179, 8, 0.06);
-    border-radius: var(--app-radius);
-    padding: 4px 8px;
-    display: flex; /* Flex для вертикального содержимого */
-    flex-direction: column; /* Текст идёт вниз */
-    gap: 2px; /* Нет промежутков (для однострочных текстов) */
-    flex-shrink: 0; /* Не сжимается */
-}
-
-/* Текст внутри плашки с пробой */
-.route-brake-text {
-    color: #eab308; /* Мягкий жёлто-оранжевый цвет */
-    font-size: 12px; /* Маленький шрифт */
-    font-weight: 600; /* Полужирный */
-    white-space: nowrap; /* Не переносит текст */
+.route-card .info-chip-row {
+    margin-top: 6px;
 }
 
 /* Справочные операции / проход / подсказки из station_ops (админка) */
@@ -2347,9 +2330,9 @@
 
 .shift-warnings-card-details {
     margin: 0;
-    font-size: var(--font-base);
-    font-weight: 600;
-    color: var(--app-text);
-    line-height: 1.35;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
 }
 

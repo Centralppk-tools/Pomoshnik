@@ -52,4 +52,13 @@
     --glass-tabbar-width: 100%;
     --glass-tabbar-bottom: 0px;
     --schedule-glass-width: min(590px, calc(100% - 24px));
+
+    --info-chip-border: rgba(234, 179, 8, 0.8);
+    --info-chip-text: #facc15;
+    --info-chip-bg: rgba(234, 179, 8, 0.12);
+    --info-chip-prefix-bg: rgba(234, 179, 8, 0.28);
+    --info-chip-danger-border: rgba(248, 113, 113, 0.85);
+    --info-chip-danger-text: #f87171;
+    --info-chip-danger-bg: rgba(248, 113, 113, 0.12);
+    --info-chip-danger-prefix-bg: rgba(248, 113, 113, 0.28);
 }

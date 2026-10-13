@@ -5,7 +5,7 @@
     overflow: visible;
     --km-marker-width: 44px;
     --km-marker-gap: 18px;
-    --timeline-mark-station: 11px;
+    --timeline-mark-station: 10px;
     --timeline-line-width: 2px;
     --axis-x: calc(var(--km-marker-width) + 5px);
     --timeline-left: calc(4px + var(--axis-x));
@@ -520,21 +520,6 @@
     gap: 6px;
 }
 
-.station-chip {
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    padding: 0 7px;
-    border-radius: 6px;
-    background: #2a2416;
-    border: 1px solid #c6a15a;
-    color: #e6c36a;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-}
-
 .station-km {
     position: absolute;
     left: 0;
@@ -656,12 +641,100 @@
     box-shadow: 0 0 0 2px var(--app-bg);
 }
 
-.station-node.active .station-mark {
-    width: 12px;
-    height: 12px;
-    background: #5eead4;
+@keyframes blueBreathing {
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow:
+            0 0 0 1px rgba(14, 165, 233, 0.5),
+            0 0 6px rgba(14, 165, 233, 0.8),
+            0 0 16px rgba(14, 165, 233, 0.4);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.08);
+        box-shadow:
+            0 0 0 2px rgba(14, 165, 233, 0.35),
+            0 0 10px rgba(14, 165, 233, 0.95),
+            0 0 22px rgba(14, 165, 233, 0.55);
+    }
+}
+
+@keyframes greenBreathing {
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow:
+            0 0 0 1px rgba(16, 185, 129, 0.5),
+            0 0 6px rgba(16, 185, 129, 0.8),
+            0 0 16px rgba(16, 185, 129, 0.4);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.08);
+        box-shadow:
+            0 0 0 2px rgba(16, 185, 129, 0.35),
+            0 0 10px rgba(16, 185, 129, 0.95),
+            0 0 22px rgba(16, 185, 129, 0.55);
+    }
+}
+
+.station-mark.timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    z-index: 2;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.station-node.is-current .station-mark,
+.station-node.active .station-mark,
+.timeline-dot--current {
+    width: 10px;
+    height: 10px;
+    background-color: #0ea5e9;
+    border: 1.5px solid #0b0f19;
+    box-shadow:
+        0 0 0 1px rgba(14, 165, 233, 0.5),
+        0 0 6px rgba(14, 165, 233, 0.8),
+        0 0 16px rgba(14, 165, 233, 0.4);
+    animation: blueBreathing 3.5s infinite ease-in-out;
+    will-change: transform, box-shadow;
+}
+
+.station-node.is-next .station-mark,
+.timeline-dot--next {
+    width: 10px;
+    height: 10px;
+    background-color: #10b981;
+    border: 1.5px solid #0b0f19;
+    box-shadow:
+        0 0 0 1px rgba(16, 185, 129, 0.5),
+        0 0 6px rgba(16, 185, 129, 0.8),
+        0 0 16px rgba(16, 185, 129, 0.4);
+    animation: greenBreathing 3.5s infinite ease-in-out;
+    will-change: transform, box-shadow;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .station-node.is-current .station-mark,
+    .station-node.active .station-mark,
+    .timeline-dot--current,
+    .station-node.is-next .station-mark,
+    .timeline-dot--next {
+        animation: none;
+        will-change: auto;
+    }
+}
+
+.station-node.is-passed .station-mark,
+.timeline-dot--past {
+    background: #4b5563;
     border: none;
-    box-shadow: 0 0 0 3px var(--app-bg), 0 0 0 6px rgba(6, 199, 133, 0.35), 0 0 14px rgba(6, 199, 133, 0.55);
+    box-shadow: 0 0 0 2px var(--app-bg);
+}
+
+.station-node.is-future .station-mark,
+.timeline-dot--future {
+    box-shadow: 0 0 0 2px var(--app-bg);
 }
 
 /* ????? ????????? (?????? ??????) */
@@ -746,11 +819,12 @@
 }
 
 .station-node.is-passed {
-    opacity: 0.42;
+    opacity: 0.55;
 }
 
 .station-node.is-passed .station-mark {
-    background: rgba(255, 255, 255, 0.28);
+    background: #4b5563;
+    box-shadow: 0 0 0 2px var(--app-bg);
 }
 
 .station-node.item--pass .time-badge,
@@ -853,7 +927,7 @@
     .timeline {
         --km-marker-width: 46px;
         --km-marker-gap: 28px;
-        --timeline-mark-station: 11px;
+        --timeline-mark-station: 10px;
         --timeline-line-width: 2.5px;
         --timeline-left: calc(4px + var(--km-marker-width) + var(--km-marker-gap) / 2);
     }
@@ -1540,23 +1614,22 @@ body.app-offline::after {
     position: absolute !important;
     left: var(--axis-x) !important;
     top: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translate(-50%, -50%);
     border-radius: 50% !important;
     box-sizing: border-box !important;
     z-index: 3 !important;
 }
 
 /* ??????? ?? ????????: ??????? ????? ???? */
-.station-node.item--station .station-mark {
-    width: 11px !important;
-    height: 11px !important;
-    background: #ffffff !important;
+.station-node.item--station:not(.is-current):not(.is-next):not(.active) .station-mark {
+    width: 10px !important;
+    height: 10px !important;
+    background: #e5e7eb !important;
     border: none !important;
-    box-shadow: 0 0 0 3px var(--app-bg) !important;
+    box-shadow: 0 0 0 2px var(--app-bg) !important;
 }
 
-/* ????????? ?? ????????: ??????????? ???? */
-.station-node.item--platform .station-mark {
+.station-node.item--platform:not(.is-current):not(.is-next):not(.active) .station-mark {
     width: 8px !important;
     height: 8px !important;
     background: rgba(255, 255, 255, 0.85) !important;
@@ -1564,9 +1637,8 @@ body.app-offline::after {
     box-shadow: 0 0 0 2px var(--app-bg) !important;
 }
 
-/* ????????? ?????: ?????? ????? */
-.station-node.item--pass .station-mark,
-.station-node.item--platform-pass .station-mark {
+.station-node.item--pass:not(.is-current):not(.is-next):not(.active) .station-mark,
+.station-node.item--platform-pass:not(.is-current):not(.is-next):not(.active) .station-mark {
     width: 5px !important;
     height: 5px !important;
     background: #64748b !important;
@@ -1575,12 +1647,67 @@ body.app-offline::after {
 }
 
 /* ??????? ?????: ????????? ?????? */
-.station-node.item--station-pass .station-mark {
+.station-node.item--station-pass:not(.is-current):not(.is-next):not(.active) .station-mark {
     width: 10px !important;
     height: 10px !important;
     background: var(--app-bg) !important;
     border: 2px solid #94a3b8 !important;
     box-shadow: 0 0 0 2px var(--app-bg) !important;
+}
+
+.station-node.is-current .station-mark,
+.station-node.active .station-mark,
+.station-node .timeline-dot--current {
+    width: 10px !important;
+    height: 10px !important;
+    background-color: #0ea5e9 !important;
+    border: 1.5px solid #0b0f19 !important;
+    box-shadow:
+        0 0 0 1px rgba(14, 165, 233, 0.5),
+        0 0 6px rgba(14, 165, 233, 0.8),
+        0 0 16px rgba(14, 165, 233, 0.4);
+    animation: blueBreathing 3.5s infinite ease-in-out;
+    will-change: transform, box-shadow;
+}
+
+.station-node.is-next .station-mark,
+.station-node .timeline-dot--next {
+    width: 10px !important;
+    height: 10px !important;
+    background-color: #10b981 !important;
+    border: 1.5px solid #0b0f19 !important;
+    box-shadow:
+        0 0 0 1px rgba(16, 185, 129, 0.5),
+        0 0 6px rgba(16, 185, 129, 0.8),
+        0 0 16px rgba(16, 185, 129, 0.4);
+    animation: greenBreathing 3.5s infinite ease-in-out;
+    will-change: transform, box-shadow;
+}
+
+.station-node.is-passed .station-mark,
+.station-node .timeline-dot--past {
+    width: 8px !important;
+    height: 8px !important;
+    background: #4b5563 !important;
+    border: none !important;
+    box-shadow: 0 0 0 2px var(--app-bg) !important;
+}
+
+.station-node.is-future .station-mark,
+.station-node .timeline-dot--future {
+    box-shadow: 0 0 0 2px var(--app-bg) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .station-node.is-current .station-mark,
+    .station-node.active .station-mark,
+    .station-node .timeline-dot--current,
+    .station-node.is-next .station-mark,
+    .station-node .timeline-dot--next {
+        animation: none !important;
+        will-change: auto;
+        transform: translate(-50%, -50%);
+    }
 }
 
 /* ????????????? ??????? ?????????? */

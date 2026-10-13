@@ -711,6 +711,7 @@
 
 <script src="js/app-config.js"></script>
 <script src="js/shedule-max-source.js"></script>
+<script src="js/info-chip.js"></script>
 <script src="js/instructions.js"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
@@ -789,8 +790,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.12';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_12';
+    const APP_RELEASE_VERSION = '4.0.19';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_19';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -2120,7 +2121,7 @@
         main.querySelector('.station-note-badge')?.remove();
         const noteHtml = renderStationNoteBadgeHtml(stationIndex);
         if (noteHtml) main.insertAdjacentHTML('beforeend', noteHtml);
-        const hasCardBody = Boolean(node.querySelector('.station-chips, .station-note-badge'));
+        const hasCardBody = Boolean(node.querySelector('.info-chip-row, .station-chips, .station-note-badge'));
         node.classList.toggle('is-card', hasCardBody || node.classList.contains('is-selected'));
     }
 
@@ -2265,65 +2266,161 @@
             : null;
     }
 
+    const TIMELINE_DOT_PHASES = ['current', 'next', 'past', 'future'];
+
     function clearScheduleActiveStationHighlight() {
-        document.querySelectorAll('#stationsList .station-node.active, #stationsList .station-node.is-passed').forEach(node => {
-            node.classList.remove('active', 'is-passed');
+        document.querySelectorAll('#stationsList .station-node').forEach((node) => {
+            node.classList.remove('is-current', 'is-next', 'is-passed', 'is-future', 'active');
+            const mark = node.querySelector('.station-mark');
+            if (!mark) return;
+            mark.classList.remove('timeline-dot--current', 'timeline-dot--next', 'timeline-dot--past', 'timeline-dot--future');
         });
     }
 
-    function getBoardingStopBounds(displayStops) {
-        let firstBoardingIndex = -1;
-        let lastBoardingIndex = -1;
-
-        displayStops.forEach((item, index) => {
-            if (!item.passThrough) {
-                if (firstBoardingIndex === -1) firstBoardingIndex = index;
-                lastBoardingIndex = index;
-            }
-        });
-
-        return { firstBoardingIndex, lastBoardingIndex };
+    function buildClockDateTime(dateIso, timeString) {
+        if (!dateIso || !timeString) return null;
+        const seconds = parseTimeToSeconds(timeString);
+        if (seconds == null) return null;
+        const parts = String(dateIso).split(DASH_CHAR).map(Number);
+        if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null;
+        const [year, month, day] = parts;
+        return new Date(year, month - 1, day, 0, 0, seconds, 0);
     }
 
-    function getStopTimelineMinutes(item, index, firstBoardingIndex, lastBoardingIndex) {
-        if (item.passThrough || !item.threadStop) {
-            return null;
-        }
+    function extendClockInclusive(date, timeString) {
+        if (!date) return null;
+        if (/:\d{2}:\d{2}/.test(String(timeString || ''))) return date;
+        return new Date(date.getTime() + 59999);
+    }
 
+    function isTimelineLiveHalt(item) {
+        const stop = item?.threadStop;
+        if (!stop) return false;
+        return stopHasValidClock(stop);
+    }
+
+    function getTimelineLiveHaltBounds(displayStops) {
+        let firstIndex = -1;
+        let lastIndex = -1;
+        (displayStops || []).forEach((item, index) => {
+            if (!isTimelineLiveHalt(item)) return;
+            if (firstIndex === -1) firstIndex = index;
+            lastIndex = index;
+        });
+        return { firstIndex, lastIndex };
+    }
+
+    function buildStopLiveWindow(displayStops, index, selectedDate) {
+        const item = displayStops[index];
+        if (!isTimelineLiveHalt(item)) return null;
+
+        const { firstIndex, lastIndex } = getTimelineLiveHaltBounds(displayStops);
+        const isFirst = index === firstIndex;
+        const isLast = index === lastIndex;
         const stop = item.threadStop;
-        const isFirst = index === firstBoardingIndex;
-        const arrivalMinutes = parseTimeToMinutes(getTime(stop.arrival));
-        const departureMinutes = parseTimeToMinutes(getTime(stop.departure));
+        const clocks = expandRepeatedHaltClocks(
+            pickStopArrival(stop) || stop.arrival,
+            pickStopDeparture(stop) || stop.departure,
+            isFirst || isLast
+        );
+        const arrClock = isUsableClock(clocks.arrival) ? clocks.arrival : '';
+        const depClock = isUsableClock(clocks.departure) ? clocks.departure : '';
+        if (!arrClock && !depClock) return null;
 
-        return isFirst
-            ? (departureMinutes ?? arrivalMinutes)
-            : arrivalMinutes;
+        const firstStop = displayStops[firstIndex]?.threadStop;
+        const lastStop = displayStops[lastIndex]?.threadStop;
+        const trainDeparture = pickStopDeparture(firstStop) || pickStopArrival(firstStop);
+        const trainArrival = pickStopArrival(lastStop) || pickStopDeparture(lastStop);
+        const arrIso = arrClock
+            ? resolveStopEventDate(selectedDate, trainDeparture, trainArrival, arrClock)
+            : '';
+        const depIso = depClock
+            ? resolveStopEventDate(selectedDate, trainDeparture, trainArrival, depClock)
+            : '';
+        const arrDt = arrClock ? buildClockDateTime(arrIso, arrClock) : null;
+        const depDt = depClock ? buildClockDateTime(depIso, depClock) : null;
+        if (!arrDt && !depDt) return null;
+
+        let start = arrDt;
+        let end = depDt ? extendClockInclusive(depDt, depClock) : null;
+        if (isFirst && depDt) {
+            start = new Date(depDt.getTime());
+            start.setHours(0, 0, 0, 0);
+            end = depDt;
+        } else if (isLast && arrDt && !depDt) {
+            start = arrDt;
+            end = extendClockInclusive(arrDt, arrClock);
+        } else if (arrDt && depDt) {
+            start = arrDt;
+            end = extendClockInclusive(depDt, depClock);
+        } else if (arrDt && !depDt) {
+            start = arrDt;
+            end = extendClockInclusive(arrDt, arrClock);
+        } else if (depDt && !arrDt) {
+            start = depDt;
+            end = extendClockInclusive(depDt, depClock);
+        }
+        if (start && end && end.getTime() < start.getTime()) {
+            end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        }
+        return {
+            start,
+            end,
+            arrDt: arrDt || start,
+        };
     }
 
-    function findNextStationIndex(displayStops, selectedDate, nowDate) {
+    function findTimelineStationPhases(displayStops, selectedDate, nowDate) {
         const now = nowDate ?? getScheduleLiveDate();
-        if (!now) return -1;
-
-        if (selectedDate && !isScheduleContextActive(now, selectedDate)) return -1;
-
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const { firstBoardingIndex, lastBoardingIndex } = getBoardingStopBounds(displayStops);
-
-        for (let i = 0; i < displayStops.length; i++) {
-            const item = displayStops[i];
-            if (item.passThrough || !item.threadStop) continue;
-
-            const nextMinutes = getStopTimelineMinutes(
-                item,
-                i,
-                firstBoardingIndex,
-                lastBoardingIndex
-            );
-            if (nextMinutes === null) continue;
-            if (nextMinutes > currentMinutes) return i;
+        if (!now || !Array.isArray(displayStops) || !displayStops.length) {
+            return { currentIndex: -1, nextIndex: -1 };
+        }
+        if (selectedDate && !isScheduleContextActive(now, selectedDate)) {
+            return { currentIndex: -1, nextIndex: -1 };
         }
 
-        return -1;
+        const nowMs = now.getTime();
+        const windows = displayStops.map((_, index) => buildStopLiveWindow(displayStops, index, selectedDate));
+
+        let currentIndex = -1;
+        for (let i = 0; i < windows.length; i++) {
+            const win = windows[i];
+            if (!win?.start || !win?.end) continue;
+            if (nowMs >= win.start.getTime() && nowMs <= win.end.getTime()) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex !== -1) {
+            return { currentIndex, nextIndex: -1 };
+        }
+
+        let nextIndex = -1;
+        for (let i = 0; i < windows.length; i++) {
+            const win = windows[i];
+            const eventMs = win?.arrDt?.getTime();
+            if (eventMs == null) continue;
+            if (eventMs > nowMs) {
+                nextIndex = i;
+                break;
+            }
+        }
+
+        return { currentIndex: -1, nextIndex };
+    }
+
+    function applyTimelineDotPhase(node, phase) {
+        TIMELINE_DOT_PHASES.forEach((name) => {
+            node.classList.toggle(`is-${name === 'past' ? 'passed' : name}`, phase === name);
+        });
+        node.classList.toggle('active', phase === 'current');
+        const mark = node.querySelector('.station-mark');
+        if (!mark) return;
+        mark.classList.add('timeline-dot');
+        TIMELINE_DOT_PHASES.forEach((name) => {
+            mark.classList.toggle(`timeline-dot--${name}`, phase === name);
+        });
     }
 
     function updateScheduleActiveStation() {
@@ -2333,16 +2430,22 @@
             return;
         }
 
-        const nextIndex = findNextStationIndex(
+        const { currentIndex, nextIndex } = findTimelineStationPhases(
             scheduleDisplayStops,
             scheduleActiveDate,
             getScheduleLiveDate()
         );
         const nodes = document.querySelectorAll('#stationsList .station-node');
         nodes.forEach((node, index) => {
-            const isActive = index === nextIndex && nextIndex !== -1;
-            node.classList.toggle('active', isActive);
-            node.classList.toggle('is-passed', nextIndex !== -1 && index < nextIndex);
+            let phase = 'future';
+            if (currentIndex >= 0) {
+                if (index < currentIndex) phase = 'past';
+                else if (index === currentIndex) phase = 'current';
+            } else if (nextIndex >= 0) {
+                if (index < nextIndex) phase = 'past';
+                else if (index === nextIndex) phase = 'next';
+            }
+            applyTimelineDotPhase(node, phase);
         });
     }
 
@@ -2787,10 +2890,11 @@
 
             const approachDate = resolveStopEventDate(selectedDate, trainDeparture, trainArrival, approachTime);
 
-            (warningsByStation[index] || []).forEach((text, warnIndex) => {
-                if (!/скорост/i.test(text)) return;
-                    targets.push({
-                        key: buildScheduleAlertKey(`sched_speed_1m_${index}_${warnIndex}`),
+            (warningsByStation[index] || []).forEach((item, warnIndex) => {
+                const text = typeof item === 'string' ? item : window.InfoChip.toPlainText(item);
+                if (!text) return;
+                targets.push({
+                    key: buildScheduleAlertKey(`sched_speed_1m_${index}_${warnIndex}`),
                     tone: 'speed',
                     leadMinutes: 1,
                     triggerMinutes: approachMinutes,
@@ -2805,8 +2909,9 @@
             if (isLast && sprDataCache) {
                 const deadEndMatch = findDeadEndBrake(stationTitleRaw);
                 if (deadEndMatch) {
-                    const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
-                    const detail = `Тупик ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}`;
+                    const detail = window.InfoChip.toPlainText(
+                        window.InfoChip.fromBrake('ТП', deadEndMatch, deadEndMatch.track)
+                    );
                     targets.push({
                         key: buildScheduleAlertKey(`sched_deadend_10m_${index}`),
                         tone: 'deadend',
@@ -4350,6 +4455,7 @@
         const lower = raw.toLowerCase();
         if (lower === 'со всеми' || lower === 'везде') return 'Со всеми';
         if (lower === 'без остановок') return 'Без остановок';
+        if (lower === 'экспресс') return 'Экспресс';
         return raw;
     }
 
@@ -4714,14 +4820,7 @@
     }
 
     function formatShiftWarningCardDetails(warn) {
-        const km = String(warn.km || '').trim();
-        const pk = String(warn.pk || '').trim();
-        const speed = String(warn.speed || '').trim();
-        let location = '';
-        if (km) location += `${km} км`;
-        if (pk) location += location ? ` ${pk} пк` : `${pk} пк`;
-        if (!location) location = '—';
-        return `${location} — ${speed} км/ч`;
+        return window.InfoChip.formatSpeedValue(warn.km, warn.pk, warn.speed) || '—';
     }
 
     function updateShiftWarningsHint(count) {
@@ -4966,9 +5065,9 @@
             topRow.appendChild(tag);
             topRow.appendChild(removeBtn);
 
-            const details = document.createElement('p');
+            const details = document.createElement('div');
             details.className = 'shift-warnings-card-details';
-            details.textContent = formatShiftWarningCardDetails(warn);
+            details.innerHTML = window.InfoChip.render(window.InfoChip.fromWarning(warn));
 
             card.appendChild(topRow);
             card.appendChild(details);
@@ -5695,11 +5794,7 @@
     }
 
     function formatBrakeChipValue(brake) {
-        const km = Number(brake?.km);
-        const pk = Number(brake?.piket);
-        if (!Number.isFinite(km)) return '';
-        const chain = km + (Number.isFinite(pk) ? pk / 10 : 0);
-        return (Math.round(chain * 10) / 10).toFixed(1);
+        return window.InfoChip.formatKmPiket(brake?.km, brake?.piket);
     }
 
     function renderStationTimesHtml({ isFirst, isLast, isPassThrough, arrivalTime, departureTime, dwellMin }) {
@@ -5992,19 +6087,39 @@
         return Boolean(stop.skip || stop.isPass || stop.pass || stop.is_stop === false);
     }
 
+    function countTimelinePassStops(threadStops) {
+        const displayStops = buildScheduleDisplayStops(threadStops);
+        if (displayStops.length < 2) return 0;
+
+        const firstBoardingIndex = displayStops.findIndex((item) => !item.passThrough);
+        let lastBoardingIndex = -1;
+        for (let i = displayStops.length - 1; i >= 0; i--) {
+            if (!displayStops[i].passThrough) {
+                lastBoardingIndex = i;
+                break;
+            }
+        }
+
+        let gray = 0;
+        displayStops.forEach((item, index) => {
+            const isTerminal = index === firstBoardingIndex || index === lastBoardingIndex;
+            const stop = item.threadStop;
+            const hasClock = Boolean(pickStopArrival(stop) || pickStopDeparture(stop));
+            let isPass = item.passThrough || isThreadSkipStop(stop, isTerminal);
+            if (hasClock) isPass = false;
+            if (isPass) gray += 1;
+        });
+        return gray;
+    }
+
     function deriveStopsLabelFromReference(threadStops) {
         const stops = Array.isArray(threadStops) ? threadStops : [];
         if (stops.length < 2) return 'Без остановок';
 
-        const middles = stops.slice(1, -1);
-        const skippedMiddles = middles.filter(isSkippedThreadStop);
-        const haltMiddles = middles.filter((stop) => !isSkippedThreadStop(stop));
-        if (haltMiddles.length && !skippedMiddles.length) return 'Со всеми';
-        if (skippedMiddles.length && !haltMiddles.length) return 'Без остановок';
-        if (haltMiddles.length) return 'Со всеми';
-
-        const displayStops = buildScheduleDisplayStops(stops);
-        return displayStops.length > 2 ? 'Со всеми' : 'Без остановок';
+        const skipped = countTimelinePassStops(stops);
+        if (skipped === 0) return 'Со всеми';
+        if (skipped <= 3) return 'Без остановок';
+        return 'Экспресс';
     }
 
     function warningKmToFloat(warn) {
@@ -6030,14 +6145,7 @@
     }
 
     function formatShiftWarningPlaqueText(warn) {
-        const km = String(warn.km || '').trim();
-        const pk = String(warn.pk || '').trim();
-        const speed = String(warn.speed || '').trim();
-        let location = '';
-        if (km) location += `${km} км`;
-        if (pk) location += location ? ` ${pk} пк` : `${pk} пк`;
-        if (!location) location = '—';
-        return `⚠️ Скорость ${speed} км/ч на ${location}`;
+        return window.InfoChip.formatSpeedValue(warn.km, warn.pk, warn.speed);
     }
 
     function buildWarningsByStationIndex(stops, trainDir) {
@@ -6058,9 +6166,10 @@
                 const displayIdx = findWarningDisplayStationIndex(warnKmFloat, stopChainages, trainDir);
                 if (displayIdx < 0) return;
 
-                const text = formatShiftWarningPlaqueText(warn);
+                const chip = window.InfoChip.fromWarning(warn);
+                if (!chip) return;
                 if (!warningsByStation[displayIdx]) warningsByStation[displayIdx] = [];
-                warningsByStation[displayIdx].push(text);
+                warningsByStation[displayIdx].push(chip);
             });
 
         return warningsByStation;
@@ -6826,25 +6935,17 @@
 
         let brakeHtml = '';
         if (sprDataCache) {
-            let startBrakesHtml = '';
-            let endBrakesHtml = '';
             const startBrakesList = findStationBrakes(firstTitle, currentDirection);
             const ptBrake = startBrakesList.find(b => b.type === "PT_1");
             const eptBrake = startBrakesList.find(b => b.type === "EPT_2");
-            const startTags = [];
-            if (ptBrake) startTags.push(`ПТ ${DASH_CHAR} ${ptBrake.km}пк${ptBrake.piket}`);
-            if (eptBrake) startTags.push(`ЭПТ ${DASH_CHAR} ${eptBrake.km}пк${eptBrake.piket}`);
-            if (startTags.length > 0) {
-                startBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box">` + startTags.map(t => `<span class="route${DASH_CHAR}brake${DASH_CHAR}text">${t}</span>`).join('') + `</div>`;
-            }
             const deadEndMatch = findDeadEndBrake(lastTitle);
+            const chips = [];
+            if (ptBrake) chips.push(window.InfoChip.fromBrake('ПТ', ptBrake));
+            if (eptBrake) chips.push(window.InfoChip.fromBrake('ЭПТ', eptBrake));
             if (deadEndMatch) {
-                const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
-                endBrakesHtml = `<div class="route${DASH_CHAR}brake${DASH_CHAR}box"><span class="route${DASH_CHAR}brake${DASH_CHAR}text">Тупик ${DASH_CHAR} ${deadEndMatch.km}пк${deadEndMatch.piket}${trackInfo}</span></div>`;
+                chips.push(window.InfoChip.fromBrake('ТП', deadEndMatch, deadEndMatch.track));
             }
-            if (startBrakesHtml || endBrakesHtml) {
-                brakeHtml = `<div class="route${DASH_CHAR}tags${DASH_CHAR}container">${startBrakesHtml}${endBrakesHtml}</div>`;
-            }
+            brakeHtml = window.InfoChip.renderRow(chips, 'route-tags-container');
         }
 
         const dayWarningHtml = train.scheduleDayWarning
@@ -7018,23 +7119,46 @@
         });
         refreshBtn?.classList.remove('is-loading');
 
+        const repaintRoute = () => {
+            if (requestId !== routeDataRequestId) return;
+            if (getSelectedDate() !== baseDate) return;
+            const refreshed = inputs.map((trainNumber) => resolveTrainLocalSync(trainNumber, searchOptions));
+            paintRouteGrid(buildRouteTrainEntries(inputs, refreshed, trainPlan), {
+                requestId,
+                fromCacheOnly,
+                finalize: true,
+                allowMissing: true
+            });
+        };
+
+        const hydrateRouteStops = () => {
+            if (!window.SheduleMaxSource?.loadTrainStops) return Promise.resolve();
+            return Promise.all(inputs.map((trainNumber) => {
+                const train = resolveTrainLocalSync(trainNumber, searchOptions);
+                const uid = String(
+                    train?.uid
+                    || lookupTrainOnStationBoard(trainNumber, baseDate)?.thread?.uid
+                    || ''
+                ).trim();
+                if (!uid) return Promise.resolve();
+                return window.SheduleMaxSource.loadTrainStops(baseDate, trainNumber, uid).catch(() => null);
+            })).then(repaintRoute);
+        };
+
         if (!stationBoardIsReady(baseDate)) {
             void ensureStationBoardLoaded(baseDate).then(() => {
                 if (requestId !== routeDataRequestId) return;
                 if (getSelectedDate() !== baseDate) return;
                 if (!stationBoardIsReady(baseDate)) return;
-                const refreshed = inputs.map((trainNumber) => resolveTrainLocalSync(trainNumber, searchOptions));
-                paintRouteGrid(buildRouteTrainEntries(inputs, refreshed, trainPlan), {
-                    requestId,
-                    fromCacheOnly,
-                    finalize: true,
-                    allowMissing: true
-                });
+                repaintRoute();
                 const open = String(userStorageGet('lastSingleTrain') || '').trim();
                 if (open) getScheduleData(open, { fromCacheOnly: true });
+                return hydrateRouteStops();
             }).catch((err) => {
                 console.warn('[trains] board failed:', baseDate, err);
             });
+        } else {
+            void hydrateRouteStops();
         }
     }
 
@@ -7269,7 +7393,7 @@
             });
 
             let hasBrakes = false;
-            let tags = [];
+            const chips = [];
 
             if (sprDataCache && !isPass) {
                 if (isFirst) {
@@ -7277,39 +7401,37 @@
                     const ptBrake = stationBrakes.find(b => b.type === "PT_1");
                     const eptBrake = stationBrakes.find(b => b.type === "EPT_2");
                     if (ptBrake) {
-                        tags.push(`ПТ - ${formatBrakeChipValue(ptBrake)}`);
+                        chips.push(window.InfoChip.fromBrake('ПТ', ptBrake));
                         hasBrakes = true;
                     }
                     if (eptBrake) {
-                        tags.push(`ЭПТ - ${formatBrakeChipValue(eptBrake)}`);
+                        chips.push(window.InfoChip.fromBrake('ЭПТ', eptBrake));
                         hasBrakes = true;
                     }
                 } else if (isLast) {
                     const deadEndMatch = findDeadEndBrake(stationTitleRaw);
                     if (deadEndMatch) {
-                        const trackInfo = deadEndMatch.track ? ` (${deadEndMatch.track})` : '';
-                        tags.push(`Тупик - ${formatBrakeChipValue(deadEndMatch)}${trackInfo}`);
+                        chips.push(window.InfoChip.fromBrake('ТП', deadEndMatch, deadEndMatch.track));
                         hasBrakes = true;
                     }
                 }
             }
 
-            const stationWarningTexts = warningsByStation[index] || [];
+            const stationWarningChips = warningsByStation[index] || [];
 
             const opsPlaques = collectStationOpsPlaques(
                 stationTitleRaw,
                 currentDirection,
                 isPass ? null : stop
             );
-            opsPlaques.tags.forEach((tag) => tags.push(tag));
+            opsPlaques.tags.forEach((tag) => chips.push(window.InfoChip.fromText(tag)));
+            stationWarningChips.forEach((item) => chips.push(item));
 
-            if (stationWarningTexts.length) hasBrakes = true;
+            if (stationWarningChips.length) hasBrakes = true;
             if (opsPlaques.tags.length) hasBrakes = true;
             opsPlaques.notes.forEach(() => { hasBrakes = true; });
 
-            const chipHtml = [...tags, ...stationWarningTexts].map((tag) => (
-                `<span class="station-chip">${escapeHtml(tag)}</span>`
-            )).join('');
+            const chipHtml = window.InfoChip.renderRow(chips, 'station-chips');
             const noteHtml = renderStationNoteBadgeHtml(index);
             const opsHtml = opsPlaques.notes.map((note) => (
                 `<div class="station-note-badge"><span class="station-note-text">${escapeHtml(note.text)}</span></div>`
@@ -7323,11 +7445,11 @@
             return `
                 <div class="station-node ${rowState}${kindClass}${skipClass}${cardClass}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
                     <span class="station-km">${kmText ? escapeHtml(kmText) : ''}</span>
-                    <span class="station-mark" aria-hidden="true"></span>
+                    <span class="station-mark timeline-dot" aria-hidden="true"></span>
                     <div class="station-card">
                         <div class="station-main">
                             <span class="station-name">${stationTitle}</span>
-                            ${chipHtml ? `<div class="station-chips">${chipHtml}</div>` : ''}
+                            ${chipHtml}
                             ${noteHtml}
                             ${opsHtml}
                         </div>
@@ -7593,14 +7715,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Расписание с Cloud.ru, без Яндекса',
-            'Выгрузка остановок в бакет S3',
-            'Новый кэш PWA'
+            'Компактные чипы ПТ / ЭПТ / тупик и предупреждений',
+            'Одна живая точка: синяя на станции, зелёная следующая',
+            'Свечение и дыхание активных точек',
+            'Подписи Со всеми / Без остановок / Экспресс по пропускам'
         ],
         highlights: [
-            'Расписание с Cloud.ru, без Яндекса',
-            'Выгрузка остановок в бакет S3',
-            'Новый кэш PWA'
+            'Компактные чипы ПТ / ЭПТ / тупик и предупреждений',
+            'Одна живая точка: синяя на станции, зелёная следующая',
+            'Свечение и дыхание активных точек',
+            'Подписи Со всеми / Без остановок / Экспресс по пропускам'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

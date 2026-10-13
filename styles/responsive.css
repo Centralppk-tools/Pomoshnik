@@ -700,18 +700,9 @@
         gap: 5px;
     }
 
-    .route-brake-box {
-        padding: 4px 8px;
-        border-radius: var(--app-radius);
-    }
-
-    .route-brake-text {
-        font-size: 10px;
-        font-weight: 500;
-    }
-
-    .route-tags-container {
-        gap: 5px;
+    .route-tags-container,
+    .info-chip-row {
+        gap: 4px;
     }
 
     /* Компактная сводка смены */

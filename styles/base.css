@@ -976,3 +976,57 @@ button:focus-visible,
         gap: 8px;
     }
 }
+
+.info-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.info-chip {
+    display: inline-flex;
+    align-items: stretch;
+    height: 20px;
+    max-height: 20px;
+    border-radius: 5px;
+    border: 1px solid var(--info-chip-border);
+    background: var(--info-chip-bg);
+    color: var(--info-chip-text);
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+.info-chip__prefix,
+.info-chip__value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-chip__prefix {
+    padding: 0 5px;
+    border-right: 1px solid var(--info-chip-border);
+    background: var(--info-chip-prefix-bg);
+    text-transform: uppercase;
+}
+
+.info-chip__value {
+    padding: 0 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.info-chip--danger {
+    border-color: var(--info-chip-danger-border);
+    background: var(--info-chip-danger-bg);
+    color: var(--info-chip-danger-text);
+}
+
+.info-chip--danger .info-chip__prefix {
+    border-right-color: var(--info-chip-danger-border);
+    background: var(--info-chip-danger-prefix-bg);
+}
