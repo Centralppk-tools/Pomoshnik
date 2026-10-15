@@ -1279,10 +1279,10 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
 }
 
 .bottom-tab-btn.active {
-    color: var(--app-green);
-    background: rgba(23, 128, 56, 0.16);
+    color: var(--brand-grad-light);
+    background: rgba(6, 199, 133, 0.14);
     border-radius: var(--tabbar-active-radius);
-    box-shadow: inset 0 0 0 1px rgba(23, 128, 56, 0.28), 0 0 16px rgba(23, 128, 56, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(6, 199, 133, 0.32);
 }
 
 .bottom-tab-btn.active .tab-icon {
@@ -1290,7 +1290,7 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
 }
 
 .bottom-tab-btn.active .tab-icon svg {
-    stroke: var(--app-green);
+    stroke: var(--brand-grad-light);
 }
 
 .bottom-tab-btn--profile.active .tab-icon--avatar {

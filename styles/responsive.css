@@ -110,12 +110,22 @@
         margin-left: var(--mobile-edge);
         margin-right: var(--mobile-edge);
         margin-top: 6px;
+        margin-bottom: 6px;
         padding: 0;
         border-radius: var(--card-radius);
         gap: 6px;
         box-sizing: border-box;
         background: var(--surface-card);
         border: var(--card-border);
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #screen-instructions .instructions-app-wrap {
+        min-height: 100dvh;
+        max-height: 100dvh;
+        overflow: hidden;
     }
 
     .schedule-glass-stack {

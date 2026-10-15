@@ -26,6 +26,14 @@
     --bottom-tabbar-height: 78px;
     --bottom-tabbar-inset: 10px;
     --bottom-tabbar-clearance: calc(var(--bottom-tabbar-height) + 20px + env(safe-area-inset-bottom, 0px));
+    --instr-fab-size: 56px;
+    --instr-fab-gap: 12px;
+    --instr-scroll-pad: calc(var(--bottom-tabbar-clearance) + var(--instr-fab-size) + var(--instr-fab-gap));
+    --instr-space-1: 4px;
+    --instr-space-2: 8px;
+    --instr-space-3: 12px;
+    --instr-radius-card: 16px;
+    --instr-radius-control: 12px;
     --card-border: 1px solid rgba(255, 255, 255, 0.05);
     --card-padding: 24px;
     --surface-card: #1c1c1e;

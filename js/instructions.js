@@ -743,20 +743,10 @@
 
     function folderButtonHtml(folder) {
         const locked = folder.source === 'static';
+        const active = folder.id === activeFolderId;
         return `
-            <button type="button" class="instr-folder${locked ? ' instr-folder--static' : ''}" data-folder-id="${escapeHtml(folder.id)}" ${locked ? 'data-static="1"' : ''}>
-                <span class="instr-folder__icon" aria-hidden="true">
-                    <svg viewBox="0 0 68 54" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="instrFolderGrad_${escapeHtml(folder.id)}" x1="8%" y1="0%" x2="92%" y2="100%">
-                                <stop offset="0%" stop-color="#06C785"/>
-                                <stop offset="100%" stop-color="#024C4E"/>
-                            </linearGradient>
-                        </defs>
-                        <path fill="url(#instrFolderGrad_${escapeHtml(folder.id)})" d="M4 18c0-2.8 2.2-5 5-5h15.8c.8 0 1.5.3 2.1.8l3.6 3.4c.5.5 1.3.8 2.1.8H59c2.8 0 5 2.2 5 5v23c0 2.8-2.2 5-5 5H9c-2.8 0-5-2.2-5-5V18z"/>
-                        <path fill="url(#instrFolderGrad_${escapeHtml(folder.id)})" d="M4 16.5c0-2.5 2-4.5 4.5-4.5H22l3.2 3.2H9c-2.8 0-5 1.8-5 4.3v.5H4z" opacity="0.95"/>
-                    </svg>
-                </span>
+            <button type="button" class="instr-folder${locked ? ' instr-folder--static' : ''}${active ? ' is-active' : ''}" data-folder-id="${escapeHtml(folder.id)}" ${locked ? 'data-static="1"' : ''}>
+                <span class="instr-folder__icon" aria-hidden="true"></span>
                 <span class="instr-folder__name">${escapeHtml(folder.name)}</span>
             </button>
         `;
@@ -814,17 +804,19 @@
     async function renderFsNav() {
         const back = $('instrFsBack');
         const title = $('instrFsTitle');
+        const showAll = $('instrShowAllBtn');
         if (!title) return;
 
-        if (!activeFolderId) {
-            if (back) back.hidden = true;
-            title.textContent = 'Рабочий стол';
-            return;
-        }
+        title.textContent = 'Рабочий стол';
+        if (back) back.hidden = true;
+        if (showAll) showAll.hidden = !activeFolderId;
 
+        if (!activeFolderId) return;
         const folder = await resolveFolder(activeFolderId);
-        if (back) back.hidden = false;
-        title.textContent = folder?.name || 'Папка';
+        if (folder?.parentId) {
+            if (back) back.hidden = false;
+            title.textContent = folder.name || 'Папка';
+        }
     }
 
     async function enterFolder(folderId) {
@@ -855,43 +847,45 @@
         const baseHost = $('instrBaseFolders');
         const baseSection = $('instrBaseSection');
         if (!host) return;
-        const q = String($('instrSearchInput')?.value || '').trim();
         const sortFolders = (a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name), 'ru');
+        const userAll = (await getAll('folders')).filter((f) => !SYSTEM_FOLDER_IDS.includes(f.id));
+        const active = activeFolderId ? await resolveFolder(activeFolderId) : null;
+        const nested = Boolean(active?.parentId);
 
-        if (q) {
-            host.classList.add('is-hidden');
-            host.innerHTML = '';
-            if (baseSection) baseSection.hidden = true;
-            if (baseHost) baseHost.innerHTML = '';
-            return;
-        }
-
-        const parent = activeFolderId || null;
-        const userFolders = (await getAll('folders'))
-            .filter((f) => !SYSTEM_FOLDER_IDS.includes(f.id) && (f.parentId || null) === parent)
+        const desktopStatic = staticPack.folders
+            .filter((f) => !f.parentId)
             .sort(sortFolders);
-        const baseFolders = staticPack.folders
-            .filter((f) => (f.parentId || null) === parent)
+        const desktopUser = userAll
+            .filter((f) => !f.parentId)
             .sort(sortFolders);
+        const desktopFolders = [...desktopStatic, ...desktopUser];
 
         if (baseHost && baseSection) {
-            if (baseFolders.length) {
+            if (desktopFolders.length && !nested) {
                 baseSection.hidden = false;
-                baseHost.innerHTML = baseFolders.map((folder) => folderButtonHtml(folder)).join('');
+                baseHost.innerHTML = desktopFolders.map((folder) => folderButtonHtml(folder)).join('');
             } else {
                 baseSection.hidden = true;
                 baseHost.innerHTML = '';
             }
         }
 
-        if (!userFolders.length) {
+        const childParent = nested ? activeFolderId : null;
+        const childFolders = childParent
+            ? [
+                ...staticPack.folders.filter((f) => (f.parentId || null) === childParent),
+                ...userAll.filter((f) => (f.parentId || null) === childParent)
+            ].sort(sortFolders)
+            : [];
+
+        if (!childFolders.length) {
             host.classList.add('is-hidden');
             host.innerHTML = '';
             return;
         }
 
         host.classList.remove('is-hidden');
-        host.innerHTML = userFolders.map((folder) => folderButtonHtml(folder)).join('');
+        host.innerHTML = childFolders.map((folder) => folderButtonHtml(folder)).join('');
     }
 
     function docSubMeta(doc, extra = '') {
@@ -902,6 +896,17 @@
             extra
         ].filter(Boolean);
         return bits.join(' · ');
+    }
+
+    function docSeriesLabel(doc) {
+        const title = String(doc?.title || '');
+        const found = title.match(/ЭП2ДМ?|ЭГЭ?2Т[Вв]|ПТЭ|ИДП/i);
+        if (found) {
+            return found[0].replace(/эгэ2тв/i, 'ЭГ2ТВ').replace(/эг2тв/i, 'ЭГ2ТВ').toUpperCase();
+        }
+        if (doc?.kind === 'xlsx') return 'XLS';
+        if (doc?.kind === 'docx') return 'DOC';
+        return doc?.source === 'static' ? 'БЗ' : 'PDF';
     }
 
     async function moveDocToFolder(docId, folderId) {
@@ -948,24 +953,17 @@
             ? `<div class="instr-doc-hits">${hits.map((h) => renderHitSnippetRow(h, query)).join('')}</div>`
             : '';
         const banner = needsDigitizeBanner(doc) ? digitizeBannerHtml() : '';
-        const subExtra = [
-            hits.length ? `${hits.length} совп.` : '',
-            location
-        ].filter(Boolean).join(' · ');
+        const pages = doc.pageCount ? `${doc.pageCount} стр.` : '';
+        const place = [location, pages].filter(Boolean).join(' • ');
         return `
             <article class="instr-doc-card${hits.length ? ' is-open' : ''}" data-doc-card="${escapeHtml(doc.id)}" ${doc.source === 'static' ? '' : 'draggable="true"'}>
+                <div class="instr-doc-head">
+                    <span class="instr-doc__series">${escapeHtml(docSeriesLabel(doc))}</span>
+                    <span class="instr-doc__place">${escapeHtml(place || docSubMeta(doc))}</span>
+                </div>
                 <div class="instr-doc" data-doc-open="${escapeHtml(doc.id)}" role="button" tabindex="0">
-                    <span class="instr-doc__badge" aria-hidden="true">
-                        <span class="instr-doc__badge-label">${
-                            doc.source === 'static'
-                                ? (doc.kind === 'xlsx' ? 'XLS' : doc.kind === 'docx' ? 'DOC' : 'БЗ')
-                                : (doc.kind === 'xlsx' ? 'XLS' : doc.kind === 'docx' ? 'DOC' : 'PDF')
-                        }</span>
-                        <span class="instr-doc__badge-lines"><span></span><span></span><span></span></span>
-                    </span>
                     <span class="instr-doc__meta">
                         <span class="instr-doc__title">${escapeHtml(doc.title)}</span>
-                        <span class="instr-doc__sub">${escapeHtml(docSubMeta(doc, subExtra))}</span>
                     </span>
                     ${docActionsHtml(doc, { hitsCount: hits.length })}
                 </div>
@@ -992,7 +990,10 @@
         lastFileHits = [];
 
         if (qNorm) {
-            const chunkHits = await keywordSearch(q, 80);
+            let chunkHits = await keywordSearch(q, 80);
+            if (activeFolderId) {
+                chunkHits = chunkHits.filter((hit) => hit.doc.folderId === activeFolderId);
+            }
             lastFileHits = chunkHits;
             const byDoc = new Map();
             chunkHits.forEach((hit) => {
@@ -1001,7 +1002,10 @@
             });
 
             const titleHits = allDocs.filter(
-                (d) => d.hasText !== false && normalizeText(d.title).includes(qNorm) && !byDoc.has(d.id)
+                (d) => d.hasText !== false
+                    && normalizeText(d.title).includes(qNorm)
+                    && !byDoc.has(d.id)
+                    && (!activeFolderId || d.folderId === activeFolderId)
             );
             const orderedIds = [
                 ...chunkHits.map((h) => h.doc.id).filter((id, i, arr) => arr.indexOf(id) === i),
@@ -1529,20 +1533,737 @@
         if (stage) stage.innerHTML = '';
     }
 
+    const WALL_STORAGE_KEY = 'da_crew_wall_v1';
+    const WALL_FORM_CONFIG = {
+        machines: {
+            chips: ['Двери', 'Тормоза', 'Климат', 'Тяга', 'Радиостанция', 'Камеры'],
+            series: ['ЭГЭ2Тв', 'ЭП2Д', 'ЭД4М'],
+            parts: ['Голова', 'Хвост', 'Вагон', 'Весь состав']
+        },
+        line: {
+            chips: ['Юз', 'Негабарит', 'Короткая платформа', 'Платформа', 'Сигнал', 'Ремонт']
+        },
+        office: {
+            chips: ['Роспись в журнале', 'Инструктаж', 'Другое', 'Нарядчики']
+        },
+        contacts: {
+            chips: ['Депо', 'Офис', 'Ремонт', 'Станции']
+        }
+    };
+
+    let instrMainMode = 'wall';
+    let wallItems = [];
+    let activeWallCategory = 'all';
+    let activeWallTag = '';
+    let currentFormType = 'machines';
+    let selectedChipTag = WALL_FORM_CONFIG.machines.chips[0];
+    let selectedMachinePart = 'Голова';
+    let wallEditingId = null;
+
+    function defaultWallItems() {
+        return [
+            { id: 1, category: 'machines', objectTitle: 'Машина 045', subMeta: 'Хвост • Вагон 03', tag: 'Климат', text: 'Климат в салоне 3 вагона дует только на +28.', extraLine: 'Решение: перезагрузка шкафа не помогает, автомат в тамбуре не трогать.', time: 'Сегодня, 14:20', resolved: false },
+            { id: 2, category: 'machines', objectTitle: 'Поезд 6270 (Борт 0142)', subMeta: '2 тупик', tag: 'Сдача смены', text: 'Поставили во 2 тупике. Башмаки уложены с хвоста по описи.', extraLine: 'Ключи и реверсивку передали дежурной по вокзалу.', time: 'Сегодня, 13:50', resolved: false },
+            { id: 3, category: 'line', objectTitle: 'Мытищи → Пушкино', subMeta: '2 путь • 28.4 км', tag: 'Негабарит / Ветки', text: 'После ветра ветки свисают близко к габариту справа.', extraLine: 'Внимание: по правому зеркалу смотреть аккуратнее.', time: 'Сегодня, 11:10', resolved: false },
+            { id: 4, category: 'line', objectTitle: 'Платформа Яуза', subMeta: 'На Москву', tag: 'Короткая платформа', text: 'Последний вагон не дотягивает до настила полметра при обычной остановке.', extraLine: 'Ориентир: протягивать состав вплотную до рейки.', time: 'Вчера, 19:05', resolved: false },
+            { id: 5, category: 'office', objectTitle: 'Приказ №42 (осенняя подготовка)', subMeta: 'Срок: 17.10.2026', tag: 'Роспись в журнале', text: 'Обязательная личная подпись в ведомости инструктажа.', extraLine: 'Где лежит: кабинет зам по эксплуатации, журнал №3 на столе.', time: 'Сегодня, 09:30', urgent: true },
+            { id: 6, category: 'contacts', objectTitle: 'Василич', subMeta: 'Иванов', tag: 'Ремонт', phone: '+7 (916) 450 22 18', text: 'Прямой мобильный, если ночью депо не отвечает по селектору.', time: 'Закреплено' },
+            { id: 7, category: 'contacts', objectTitle: 'Дежурный ЭЧ', subMeta: 'Петров', tag: 'Станции', phone: '+7 (903) 711 84 90', text: 'Оперативная связь при просадке напряжения или срабатывании БВ.', time: 'Закреплено' }
+        ];
+    }
+
+    function formatResolveVotes(count) {
+        const n = Math.max(0, Number(count) || 0);
+        if (!n) return '';
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod10 === 1 && mod100 !== 11) return `${n} человек проголосовал`;
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} человека проголосовало`;
+        return `${n} человек проголосовало`;
+    }
+
+    function normalizeWallItem(item) {
+        const row = item && typeof item === 'object' ? { ...item } : {};
+        row.resolveVotes = Math.max(0, Number(row.resolveVotes) || 0);
+        if (!row.resolved) row.resolveVotes = 0;
+        return row;
+    }
+
+    function loadWallItems() {
+        try {
+            const raw = localStorage.getItem(WALL_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(parsed) && parsed.length) {
+                return parsed.map((item) => normalizeWallItem(item));
+            }
+        } catch (_) { /* seed */ }
+        return defaultWallItems();
+    }
+
+    function renderWallResolveActions(item) {
+        const votes = Math.max(0, Number(item.resolveVotes) || 0);
+        if (!item.resolved) {
+            return `<button type="button" class="wall-card__action" data-wall-resolve="${item.id}">Снято / починили</button>`;
+        }
+        const votesLabel = votes > 0
+            ? `<span class="wall-card__votes">${escapeHtml(formatResolveVotes(votes))}</span>`
+            : '';
+        return `
+            <div class="wall-card__resolve-done">
+                <button type="button" class="wall-card__done" data-wall-vote="${item.id}">Сделано</button>
+                ${votesLabel}
+                <button type="button" class="wall-card__unresolve" data-wall-unresolve="${item.id}">Вернуть в работу</button>
+            </div>
+        `;
+    }
+
+    function saveWallItems() {
+        try {
+            localStorage.setItem(WALL_STORAGE_KEY, JSON.stringify(wallItems));
+        } catch (_) { /* ignore quota */ }
+    }
+
+    function switchInstrMode(mode) {
+        instrMainMode = mode === 'pdf' ? 'pdf' : 'wall';
+        const wallPane = $('instrPaneWall');
+        const pdfPane = $('instrPaneFiles');
+        const topCard = $('instrTopCard');
+        const wallBtn = $('instrModeWall');
+        const pdfBtn = $('instrModePdf');
+        const isWall = instrMainMode === 'wall';
+
+        wallPane?.classList.toggle('active', isWall);
+        pdfPane?.classList.toggle('active', !isWall);
+        if (topCard) topCard.hidden = false;
+        const wallFilters = $('wallFilterBlock');
+        if (wallFilters) wallFilters.hidden = !isWall;
+        updateSearchChrome();
+        wallBtn?.classList.toggle('is-active', isWall);
+        pdfBtn?.classList.toggle('is-active', !isWall);
+        wallBtn?.setAttribute('aria-selected', isWall ? 'true' : 'false');
+        pdfBtn?.setAttribute('aria-selected', isWall ? 'false' : 'true');
+        setFabMenuOpen(false);
+        if (isWall) renderWall();
+        else refreshUi().catch(() => {});
+    }
+
+    function updateSearchChrome() {
+        const input = $('instrSearchInput');
+        const hint = $('instrSearchHint');
+        const block = $('instrSearchBlock');
+        if (instrMainMode === 'wall') {
+            if (input) input.placeholder = 'Поиск по записям';
+            if (hint) hint.textContent = 'Теги';
+        } else {
+            if (input) input.placeholder = 'Поиск в тексте...';
+            if (hint) hint.textContent = 'Поиск по словам внутри оцифрованных PDF с переходом на страницу.';
+        }
+        if (block && input) block.classList.toggle('has-query', Boolean(String(input.value || '').trim()));
+    }
+
+    function tagsForCategory(cat) {
+        const make = (list, kind) => (list || []).map((value) => ({ value, kind }));
+        if (cat === 'all') {
+            const seen = new Set();
+            const out = [];
+            ['machines', 'line', 'office', 'contacts'].forEach((kind) => {
+                make(WALL_FORM_CONFIG[kind].chips, kind).forEach((item) => {
+                    if (seen.has(item.value)) return;
+                    seen.add(item.value);
+                    out.push(item);
+                });
+            });
+            return out;
+        }
+        const cfg = WALL_FORM_CONFIG[cat] || {};
+        return [...make(cfg.chips, cat), ...make(cfg.series, 'series')];
+    }
+
+    function itemMatchesTag(item, tag) {
+        if (!tag) return true;
+        const series = WALL_FORM_CONFIG.machines.series || [];
+        if (series.includes(tag)) {
+            return normalizeText(item.objectTitle || '').includes(normalizeText(tag));
+        }
+        const a = normalizeText(item.tag || '');
+        const b = normalizeText(tag);
+        return a === b || a.includes(b) || b.includes(a);
+    }
+
+    let wallTagsExpanded = false;
+
+    function updateWallTagsToggle(tags) {
+        const toggle = $('wallTagsToggle');
+        const extra = $('wallTagExtra');
+        if (!toggle || !extra) return;
+        const hasTags = (tags || []).length > 0;
+        extra.hidden = !hasTags;
+        if (!hasTags) return;
+        const active = activeWallTag ? ` · ${activeWallTag}` : '';
+        toggle.textContent = wallTagsExpanded ? `Скрыть теги${active}` : `Доп. фильтры${active}`;
+        toggle.setAttribute('aria-expanded', wallTagsExpanded ? 'true' : 'false');
+        toggle.classList.toggle('has-active-tag', Boolean(activeWallTag));
+    }
+
+    function renderWallTagRow() {
+        const row = $('wallTagRow');
+        if (!row) return;
+        const tags = tagsForCategory(activeWallCategory);
+        if (activeWallTag && !tags.some((t) => t.value === activeWallTag)) activeWallTag = '';
+        row.innerHTML = tags.map((t) => (
+            `<button type="button" class="wall-filter-tag${t.value === activeWallTag ? ' is-active' : ''}${t.kind === 'series' ? ' is-series' : ''}" data-wall-filter-tag="${escapeHtml(t.value)}">${escapeHtml(t.value)}</button>`
+        )).join('');
+        row.hidden = !wallTagsExpanded || !tags.length;
+        updateWallTagsToggle(tags);
+    }
+
+    function setWallCategory(cat) {
+        const next = cat || 'all';
+        const sameCategory = next === activeWallCategory;
+        activeWallCategory = next;
+        if (sameCategory) {
+            wallTagsExpanded = !wallTagsExpanded;
+        } else {
+            wallTagsExpanded = false;
+        }
+        document.querySelectorAll('.wall-cat-pill').forEach((btn) => {
+            btn.classList.toggle('is-active', btn.dataset.cat === activeWallCategory);
+        });
+        renderWallTagRow();
+        renderWall();
+    }
+
+    function setWallTag(tag) {
+        activeWallTag = activeWallTag === tag ? '' : (tag || '');
+        if (activeWallTag) wallTagsExpanded = true;
+        renderWallTagRow();
+        renderWall();
+    }
+
+    function renderWall() {
+        const container = $('wallFeedContainer');
+        const countLabel = $('wallCountLabel');
+        if (!container) return;
+        const query = normalizeText($('instrSearchInput')?.value || '');
+
+        const filtered = wallItems.filter((item) => {
+            if (activeWallCategory === 'all' && !query && !activeWallTag && item.category === 'contacts') return false;
+            if (activeWallCategory !== 'all' && item.category !== activeWallCategory) return false;
+            if (!itemMatchesTag(item, activeWallTag)) return false;
+            if (!query) return true;
+            const hay = normalizeText(`${item.objectTitle} ${item.subMeta || ''} ${item.tag} ${item.text} ${item.extraLine || ''} ${item.phone || ''}`);
+            return hay.includes(query);
+        });
+
+        if (countLabel) {
+            countLabel.textContent = activeWallCategory === 'contacts'
+                ? 'Прямые телефоны смены (набор в 1 тап)'
+                : `Найдено записей: ${filtered.length}`;
+        }
+
+        if (!filtered.length) {
+            container.innerHTML = '<p class="wall-empty">По фильтру записей нет. Нажмите +, чтобы добавить сводку.</p>';
+            return;
+        }
+
+        container.innerHTML = filtered.map((item) => {
+            const editBtn = `<button type="button" class="wall-card__edit" data-wall-edit="${item.id}">Редактировать</button>`;
+            const deleteBtn = `<button type="button" class="wall-card__delete" data-wall-delete="${item.id}">Удалить</button>`;
+            if (item.category === 'contacts') {
+                const tel = String(item.phone || '').replace(/[^\d+]/g, '');
+                return `
+                    <article class="wall-card wall-card--contact">
+                        <div class="wall-card__body">
+                            <div class="wall-card__head">
+                                <div class="wall-card__head-main">
+                                    <h3 class="wall-card__title">${escapeHtml(item.objectTitle)}</h3>
+                                    <span class="wall-card__tag">${escapeHtml(item.tag)}</span>
+                                </div>
+                                ${item.subMeta ? `<p class="wall-card__sub">${escapeHtml(item.subMeta)}</p>` : ''}
+                            </div>
+                            <div class="wall-card__phone">${escapeHtml(item.phone || '')}</div>
+                            ${item.text ? `<p class="wall-card__text">${escapeHtml(item.text)}</p>` : ''}
+                            <div class="wall-card__foot wall-card__foot--contact">
+                                <div class="wall-card__foot-actions">
+                                    ${editBtn}
+                                    ${deleteBtn}
+                                </div>
+                            </div>
+                        </div>
+                        <a class="wall-call" href="tel:${escapeHtml(tel)}" aria-label="Позвонить">
+                            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                        </a>
+                    </article>
+                `;
+            }
+            const tagClass = item.category === 'line'
+                ? ' is-line'
+                : item.category === 'office'
+                    ? ' is-office'
+                    : item.category === 'machines'
+                        ? ' is-machines'
+                        : '';
+            const statusHtml = item.category === 'machines' || item.category === 'line'
+                ? renderWallResolveActions(item)
+                : '<span class="wall-card__status-ok">Актуально</span>';
+            return `
+                <article class="wall-card${item.resolved ? ' is-resolved' : ''}">
+                    <div class="wall-card__head">
+                        <div class="wall-card__head-main">
+                            <h3 class="wall-card__title">${escapeHtml(item.objectTitle)}</h3>
+                            <span class="wall-card__tag${tagClass}">${escapeHtml(item.tag)}</span>
+                        </div>
+                        ${item.subMeta ? `<p class="wall-card__sub">${escapeHtml(item.subMeta)}</p>` : ''}
+                    </div>
+                    <p class="wall-card__text">${escapeHtml(item.text)}</p>
+                    ${item.extraLine ? `<div class="wall-card__extra"><span class="wall-card__extra-label">Описание события</span><span class="wall-card__extra-text">${escapeHtml(item.extraLine)}</span></div>` : ''}
+                    <div class="wall-card__foot">
+                        <time class="wall-card__time">${escapeHtml(item.time || '')}</time>
+                        <div class="wall-card__foot-actions">
+                            ${editBtn}
+                            ${statusHtml}
+                            ${deleteBtn}
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+    }
+
+    function syncWallModalChrome() {
+        const title = $('wallCreateTitle');
+        const submit = $('wallSubmitBtn');
+        if (wallEditingId) {
+            if (title) title.textContent = 'Редактировать запись';
+            if (submit) submit.textContent = 'Сохранить';
+        } else {
+            if (title) title.textContent = 'Добавить на Стену';
+            if (submit) submit.textContent = 'Опубликовать на Стену';
+        }
+    }
+
+    function syncWallChipActiveState() {
+        document.querySelectorAll('.wall-chip').forEach((el) => {
+            el.classList.toggle('is-active', el.dataset.wallChip === selectedChipTag);
+        });
+    }
+
+    function syncMachineSeriesHighlight(title) {
+        const value = String(title || '');
+        document.querySelectorAll('[data-wall-series]').forEach((el) => {
+            const series = el.dataset.wallSeries || '';
+            el.classList.toggle('is-active', series && value.toLowerCase().startsWith(`${series.toLowerCase()}-`));
+        });
+    }
+
+    function syncMachinePartHighlight(subMeta) {
+        const value = String(subMeta || '');
+        let matched = '';
+        (WALL_FORM_CONFIG.machines.parts || []).forEach((part) => {
+            if (value.toLowerCase().startsWith(`${part.toLowerCase()}-`) || value.toLowerCase() === part.toLowerCase()) {
+                matched = part;
+            }
+        });
+        if (matched) selectedMachinePart = matched;
+        document.querySelectorAll('[data-wall-part]').forEach((el) => {
+            el.classList.toggle('is-active', el.dataset.wallPart === selectedMachinePart);
+        });
+    }
+
+    function populateWallFormFields(item) {
+        if (!item) return;
+        const chips = WALL_FORM_CONFIG[item.category]?.chips || [];
+        selectedChipTag = chips.includes(item.tag) ? item.tag : (chips[0] || item.tag || '');
+        const textEl = $('f_text');
+        const extraEl = $('f_extra');
+        const filler = 'Добавлено с линии';
+        if (textEl) textEl.value = item.text && item.text !== filler ? item.text : '';
+        if (extraEl) extraEl.value = item.extraLine || '';
+
+        if (item.category === 'machines') {
+            const titleEl = $('f_title');
+            const subEl = $('f_sub');
+            if (titleEl) {
+                titleEl.value = String(item.objectTitle || '').replace(/^Машина\s+/i, '');
+                syncMachineSeriesHighlight(titleEl.value);
+            }
+            if (subEl) {
+                subEl.value = item.subMeta || '';
+                syncMachinePartHighlight(subEl.value);
+            }
+        } else if (item.category === 'line') {
+            const titleEl = $('f_title');
+            if (titleEl) titleEl.value = item.objectTitle || '';
+            const meta = String(item.subMeta || '');
+            const pathMatch = meta.match(/(\d+)\s*путь/i);
+            const kmPart = meta.split('•').map((s) => s.trim()).filter(Boolean).find((s) => !/путь/i.test(s));
+            const pathEl = $('f_path');
+            const kmEl = $('f_km');
+            if (pathEl && pathMatch) pathEl.value = pathMatch[1];
+            if (kmEl && kmPart) kmEl.value = kmPart;
+        } else if (item.category === 'office') {
+            const titleEl = $('f_title');
+            if (titleEl) titleEl.value = item.objectTitle || '';
+            const dateEl = $('f_date');
+            const deadline = String(item.subMeta || '').match(/(\d{2})\.(\d{2})\.(\d{4})/);
+            if (dateEl && deadline) {
+                dateEl.value = `${deadline[3]}-${deadline[2]}-${deadline[1]}`;
+            }
+        } else if (item.category === 'contacts') {
+            const titleEl = $('f_title');
+            const subEl = $('f_sub');
+            const phoneEl = $('f_phone');
+            if (titleEl) titleEl.value = item.objectTitle || '';
+            if (subEl) subEl.value = item.subMeta || '';
+            if (phoneEl) phoneEl.value = item.phone || '+7 ';
+        }
+        syncWallChipActiveState();
+    }
+
+    function openWallModal(editId = null) {
+        const modal = $('wallCreateModal');
+        if (!modal) return;
+        wallEditingId = editId ? Number(editId) : null;
+        if (wallEditingId) {
+            const item = wallItems.find((x) => x.id === wallEditingId);
+            if (!item) {
+                wallEditingId = null;
+            } else {
+                currentFormType = item.category;
+                document.querySelectorAll('.wall-form-tab').forEach((btn) => {
+                    btn.classList.toggle('is-active', btn.dataset.formType === currentFormType);
+                });
+                renderWallForm();
+                populateWallFormFields(item);
+                syncWallModalChrome();
+                modal.hidden = false;
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('release-overlay-open');
+                return;
+            }
+        }
+        const initial = activeWallCategory !== 'all' ? activeWallCategory : 'machines';
+        selectWallFormType(initial);
+        syncWallModalChrome();
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('release-overlay-open');
+    }
+
+    function closeWallModal() {
+        const modal = $('wallCreateModal');
+        if (!modal) return;
+        wallEditingId = null;
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('release-overlay-open');
+        syncWallModalChrome();
+    }
+
+    function selectWallFormType(type) {
+        currentFormType = WALL_FORM_CONFIG[type] ? type : 'machines';
+        selectedChipTag = WALL_FORM_CONFIG[currentFormType].chips[0];
+        document.querySelectorAll('.wall-form-tab').forEach((btn) => {
+            btn.classList.toggle('is-active', btn.dataset.formType === currentFormType);
+        });
+        renderWallForm();
+    }
+
+    function formatPhoneMask(value) {
+        let digits = String(value || '').replace(/\D/g, '');
+        if (digits.startsWith('7') || digits.startsWith('8')) digits = digits.slice(1);
+        digits = digits.slice(0, 10);
+        let formatted = '+7';
+        if (digits.length) formatted += ' (' + digits.slice(0, 3);
+        if (digits.length >= 4) formatted += ') ' + digits.slice(3, 6);
+        if (digits.length >= 7) formatted += ' ' + digits.slice(6, 8);
+        if (digits.length >= 9) formatted += ' ' + digits.slice(8, 10);
+        return formatted;
+    }
+
+    function applyMachineSeries(series) {
+        const input = $('f_title');
+        if (!input || !series) return;
+        const list = WALL_FORM_CONFIG.machines.series || [];
+        let rest = String(input.value || '').trim();
+        list.forEach((s) => {
+            rest = rest.replace(new RegExp(`^\\+?${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-?`, 'i'), '');
+        });
+        rest = rest.replace(/^\s+/, '');
+        input.value = `${series}-${rest}`;
+        input.focus();
+        const pos = input.value.length;
+        try { input.setSelectionRange(pos, pos); } catch (_) { /* ignore */ }
+        document.querySelectorAll('[data-wall-series]').forEach((el) => {
+            el.classList.toggle('is-active', el.dataset.wallSeries === series);
+        });
+    }
+
+    function applyMachinePart(part) {
+        const input = $('f_sub');
+        if (!input || !part) return;
+        const list = WALL_FORM_CONFIG.machines.parts || [];
+        let rest = String(input.value || '').trim();
+        list.forEach((p) => {
+            const esc = p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            rest = rest.replace(new RegExp(`^\\+?${esc}-?`, 'i'), '');
+        });
+        rest = rest.replace(/^\s+/, '');
+        input.value = rest ? `${part}-${rest}` : `${part}-`;
+        selectedMachinePart = part;
+        input.focus();
+        const pos = input.value.length;
+        try { input.setSelectionRange(pos, pos); } catch (_) { /* ignore */ }
+        document.querySelectorAll('[data-wall-part]').forEach((el) => {
+            el.classList.toggle('is-active', el.dataset.wallPart === part);
+        });
+    }
+
+    function renderWallForm() {
+        const box = $('wallDynamicFields');
+        if (!box) return;
+        const chipsHtml = WALL_FORM_CONFIG[currentFormType].chips.map((c) => (
+            `<button type="button" class="wall-chip${c === selectedChipTag ? ' is-active' : ''}" data-wall-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+        )).join('');
+
+        if (currentFormType === 'machines') {
+            const partsHtml = WALL_FORM_CONFIG.machines.parts.map((p) => (
+                `<button type="button" class="wall-series wall-part${p === selectedMachinePart ? ' is-active' : ''}" data-wall-part="${escapeHtml(p)}">+${escapeHtml(p)}</button>`
+            )).join('');
+            const seriesHtml = WALL_FORM_CONFIG.machines.series.map((s) => (
+                `<button type="button" class="wall-series" data-wall-series="${escapeHtml(s)}">+${escapeHtml(s)}</button>`
+            )).join('');
+            box.innerHTML = `
+                <div class="wall-field">
+                    <label>Укажите машину</label>
+                    <div class="wall-chip-row wall-series-row">${seriesHtml}</div>
+                    <input id="f_title" type="text" autocomplete="off">
+                </div>
+                <div class="wall-field">
+                    <label>Вагон</label>
+                    <div class="wall-chip-row wall-series-row wall-part-row">${partsHtml}</div>
+                    <input id="f_sub" type="text" autocomplete="off">
+                </div>
+                <div class="wall-field">
+                    <label>Неисправность</label>
+                    <div class="wall-chip-row">${chipsHtml}</div>
+                </div>
+                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
+                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+            `;
+        } else if (currentFormType === 'line') {
+            box.innerHTML = `
+                <div class="wall-field">
+                    <label>Платформа или перегон</label>
+                    <div class="wall-chip-row">${chipsHtml}</div>
+                    <input id="f_title" type="text">
+                </div>
+                <div class="wall-grid-2">
+                    <div class="wall-field"><label>Путь</label><input id="f_path" type="text" inputmode="numeric" placeholder="2"></div>
+                    <div class="wall-field"><label>КМ / ПК</label><input id="f_km" type="text" placeholder="28.4"></div>
+                </div>
+                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
+                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+            `;
+        } else if (currentFormType === 'office') {
+            const today = new Date();
+            const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            box.innerHTML = `
+                <div class="wall-field">
+                    <label>Приказ / Тема</label>
+                    <div class="wall-chip-row">${chipsHtml}</div>
+                    <input id="f_title" type="text">
+                </div>
+                <div class="wall-field"><label>Дедлайн</label><input id="f_date" type="date" value="${iso}"></div>
+                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
+                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+            `;
+        } else {
+            box.innerHTML = `
+                <div class="wall-grid-2">
+                    <div class="wall-field"><label>Имя</label><input id="f_title" type="text" autocomplete="given-name"></div>
+                    <div class="wall-field"><label>Фамилия</label><input id="f_sub" type="text" autocomplete="family-name"></div>
+                </div>
+                <div class="wall-field"><label>Служба</label><div class="wall-chip-row">${chipsHtml}</div></div>
+                <div class="wall-field"><label>Телефон</label><input id="f_phone" type="tel" value="+7 " placeholder="+7 (999) 000 00 00"></div>
+                <div class="wall-field"><label>Пометка</label><input id="f_text" type="text" placeholder="По каким вопросам звонить..."></div>
+            `;
+        }
+    }
+
+    function submitWallItem() {
+        const titleEl = $('f_title');
+        const subEl = $('f_sub');
+        const pathEl = $('f_path');
+        const kmEl = $('f_km');
+        const textEl = $('f_text');
+        const extraEl = $('f_extra');
+        const dateEl = $('f_date');
+        const phoneEl = $('f_phone');
+        const rawTitle = (titleEl && titleEl.value.trim()) || 'Без названия';
+        const rawText = (textEl && textEl.value.trim()) || '';
+        let subMeta = subEl ? subEl.value.trim() : '';
+        if (currentFormType === 'machines') {
+            subMeta = subEl ? subEl.value.trim() : '';
+        } else if (currentFormType === 'line') {
+            const path = pathEl ? pathEl.value.trim() : '';
+            const km = kmEl ? kmEl.value.trim() : '';
+            subMeta = [path ? `${path} путь` : '', km].filter(Boolean).join(' • ');
+        } else if (currentFormType === 'office' && dateEl && dateEl.value) {
+            const parts = dateEl.value.split('-');
+            subMeta = `Срок: ${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        const payload = {
+            category: currentFormType,
+            objectTitle: currentFormType === 'machines' && /^\d+$/.test(rawTitle) ? `Машина ${rawTitle}` : rawTitle,
+            subMeta,
+            tag: selectedChipTag,
+            text: rawText || 'Добавлено с линии',
+            extraLine: extraEl && extraEl.value.trim() ? extraEl.value.trim() : '',
+            phone: phoneEl ? phoneEl.value.trim() : '',
+        };
+        if (wallEditingId) {
+            const idx = wallItems.findIndex((x) => x.id === wallEditingId);
+            if (idx >= 0) {
+                wallItems[idx] = {
+                    ...wallItems[idx],
+                    ...payload,
+                    time: wallItems[idx].time || 'Только что',
+                };
+            }
+        } else {
+            wallItems.unshift({
+                id: Date.now(),
+                ...payload,
+                time: 'Только что',
+                resolved: false,
+                resolveVotes: 0,
+            });
+        }
+        const wasEdit = Boolean(wallEditingId);
+        saveWallItems();
+        closeWallModal();
+        setWallCategory(currentFormType);
+        setStatus(wasEdit ? 'Запись обновлена' : 'Запись добавлена на Стену');
+        window.setTimeout(() => setStatus(''), 2000);
+    }
+
+    function bindWallUi() {
+        wallItems = loadWallItems();
+        $('instrModeWall')?.addEventListener('click', () => switchInstrMode('wall'));
+        $('instrModePdf')?.addEventListener('click', () => switchInstrMode('pdf'));
+        document.querySelectorAll('.wall-cat-pill').forEach((btn) => {
+            btn.addEventListener('click', () => setWallCategory(btn.dataset.cat));
+        });
+        $('wallTagsToggle')?.addEventListener('click', () => {
+            wallTagsExpanded = !wallTagsExpanded;
+            renderWallTagRow();
+        });
+        $('wallTagRow')?.addEventListener('click', (e) => {
+            const tagBtn = e.target.closest('[data-wall-filter-tag]');
+            if (tagBtn) setWallTag(tagBtn.dataset.wallFilterTag);
+        });
+        $('wallAddLink')?.addEventListener('click', openWallModal);
+        $('wallCreateModal')?.addEventListener('click', (e) => {
+            if (e.target.closest('[data-wall-close]')) closeWallModal();
+            const tab = e.target.closest('.wall-form-tab');
+            if (tab) selectWallFormType(tab.dataset.formType);
+            const seriesBtn = e.target.closest('[data-wall-series]');
+            if (seriesBtn) {
+                applyMachineSeries(seriesBtn.dataset.wallSeries);
+                return;
+            }
+            const chip = e.target.closest('[data-wall-chip]');
+            if (chip) {
+                selectedChipTag = chip.dataset.wallChip;
+                document.querySelectorAll('.wall-chip').forEach((el) => {
+                    el.classList.toggle('is-active', el === chip);
+                });
+            }
+            const part = e.target.closest('[data-wall-part]');
+            if (part) {
+                applyMachinePart(part.dataset.wallPart);
+                return;
+            }
+        });
+        $('wallCreateModal')?.addEventListener('input', (e) => {
+            if (e.target.id === 'f_phone') e.target.value = formatPhoneMask(e.target.value);
+        });
+        $('wallSubmitBtn')?.addEventListener('click', submitWallItem);
+        $('wallFeedContainer')?.addEventListener('click', (e) => {
+            const edit = e.target.closest('[data-wall-edit]');
+            if (edit) {
+                openWallModal(Number(edit.dataset.wallEdit));
+                return;
+            }
+            const del = e.target.closest('[data-wall-delete]');
+            if (del) {
+                const id = Number(del.dataset.wallDelete);
+                const item = wallItems.find((x) => x.id === id);
+                if (!item) return;
+                const ok = window.confirm(`Удалить запись «${item.objectTitle}»?`);
+                if (!ok) return;
+                wallItems = wallItems.filter((x) => x.id !== id);
+                saveWallItems();
+                renderWall();
+                return;
+            }
+            const unresolveBtn = e.target.closest('[data-wall-unresolve]');
+            if (unresolveBtn) {
+                const id = Number(unresolveBtn.dataset.wallUnresolve);
+                const item = wallItems.find((x) => x.id === id);
+                if (!item) return;
+                item.resolved = false;
+                item.resolveVotes = 0;
+                saveWallItems();
+                renderWall();
+                return;
+            }
+            const voteBtn = e.target.closest('[data-wall-vote]');
+            if (voteBtn) {
+                const id = Number(voteBtn.dataset.wallVote);
+                const item = wallItems.find((x) => x.id === id);
+                if (!item || !item.resolved) return;
+                item.resolveVotes = Math.max(1, (Number(item.resolveVotes) || 0) + 1);
+                saveWallItems();
+                renderWall();
+                return;
+            }
+            const btn = e.target.closest('[data-wall-resolve]');
+            if (!btn) return;
+            const id = Number(btn.dataset.wallResolve);
+            const item = wallItems.find((x) => x.id === id);
+            if (!item) return;
+            item.resolved = true;
+            item.resolveVotes = Math.max(1, (Number(item.resolveVotes) || 0) + 1);
+            saveWallItems();
+            renderWall();
+        });
+        updateSearchChrome();
+        renderWallTagRow();
+        renderWall();
+    }
+
     function bindUi() {
         if (uiBound) return;
         uiBound = true;
+        bindWallUi();
 
         $('instrSearchInput')?.addEventListener('input', (e) => {
+            updateSearchChrome();
             window.clearTimeout(searchDebounceTimer);
             const value = e.target.value;
             searchDebounceTimer = window.setTimeout(() => {
-                renderDocuments(value);
+                if (instrMainMode === 'wall') renderWall();
+                else renderDocuments(value);
             }, 220);
         });
 
         $('instrFsBack')?.addEventListener('click', () => {
             goBack();
+        });
+        $('instrShowAllBtn')?.addEventListener('click', () => {
+            goDesktop();
         });
 
         const pane = $('instrPaneFiles');
@@ -1617,7 +2338,12 @@
             }
             const btn = e.target.closest('[data-folder-id]');
             if (!btn || !pane.contains(btn)) return;
-            enterFolder(btn.dataset.folderId);
+            const id = btn.dataset.folderId;
+            if (id && id === activeFolderId) {
+                goDesktop();
+                return;
+            }
+            enterFolder(id);
         });
 
         let pressTimer = 0;
@@ -1666,25 +2392,25 @@
             else if (kind === 'doc') deleteDocument(id);
         });
 
-        foldersHost?.addEventListener('dragover', (e) => {
+        pane?.addEventListener('dragover', (e) => {
             const folder = e.target.closest('[data-folder-id]');
             if (!folder || folder.hasAttribute('data-static') || !dragDocId) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            foldersHost.querySelectorAll('.instr-folder.is-drop-target').forEach((el) => {
+            pane.querySelectorAll('.instr-folder.is-drop-target').forEach((el) => {
                 if (el !== folder) el.classList.remove('is-drop-target');
             });
             folder.classList.add('is-drop-target');
         });
-        foldersHost?.addEventListener('dragleave', (e) => {
+        pane?.addEventListener('dragleave', (e) => {
             const folder = e.target.closest('[data-folder-id]');
             if (!folder) return;
             if (folder.contains(e.relatedTarget)) return;
             folder.classList.remove('is-drop-target');
         });
-        foldersHost?.addEventListener('drop', async (e) => {
+        pane?.addEventListener('drop', async (e) => {
             const folder = e.target.closest('[data-folder-id]');
-            foldersHost.querySelectorAll('.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
+            pane.querySelectorAll('.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
             if (!folder) return;
             e.preventDefault();
             const docId = e.dataTransfer.getData('text/instr-doc-id') || dragDocId;
@@ -1712,7 +2438,7 @@
         docsHost?.addEventListener('dragend', () => {
             dragDocId = null;
             docsHost.querySelectorAll('.is-dragging').forEach((el) => el.classList.remove('is-dragging'));
-            foldersHost?.querySelectorAll('.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
+            pane?.querySelectorAll('.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
         });
 
         docsHost?.addEventListener('click', (e) => {
@@ -1749,6 +2475,10 @@
 
         $('instrFab')?.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (instrMainMode === 'wall') {
+                openWallModal();
+                return;
+            }
             const menu = $('instrFabMenu');
             setFabMenuOpen(!!menu?.hidden);
         });
@@ -1856,6 +2586,12 @@
 
         document.addEventListener('keydown', (e) => {
             const nameDialog = $('instrNameDialog');
+            const wallModal = $('wallCreateModal');
+            if (wallModal && !wallModal.hidden && e.key === 'Escape') {
+                e.preventDefault();
+                closeWallModal();
+                return;
+            }
             if (nameDialog && !nameDialog.hidden && e.key === 'Escape') {
                 e.preventDefault();
                 closeNameDialog(null);
@@ -1880,7 +2616,7 @@
     async function initInstructionsModule() {
         bindUi();
         try {
-            await refreshUi();
+            if (instrMainMode === 'pdf') await refreshUi();
         } catch (err) {
             console.warn('[instructions] init', err);
             setStatus('Не удалось открыть локальную базу инструкций');
