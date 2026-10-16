@@ -170,18 +170,16 @@ body {
 }
 
 .app-screen-header {
-    position: sticky;
-    top: calc(6px + env(safe-area-inset-top, 0px));
-    z-index: 120;
+    position: static;
     width: 100%;
     flex-shrink: 0;
     padding: 0;
-    background: var(--surface-card);
-    border: var(--card-border);
-    border-radius: var(--card-radius);
+    background: transparent;
+    border: none;
+    border-radius: 0;
     box-shadow: none;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .app-header-bar {
@@ -519,7 +517,8 @@ transform: translateX(20px);
 
 #screen-schedule .phone-screen {
     overflow: visible;
-    padding: 24px;
+    overflow-x: visible;
+    padding: 0 12px 24px;
 }
 
 #screen-schedule .schedule-app-wrap {
@@ -540,14 +539,14 @@ transform: translateX(20px);
     overflow: visible;
 }
 
-#screen-schedule .screen-card--schedule .schedule-glass-stack {
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
     width: 100%;
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
-    position: sticky;
-    top: env(safe-area-inset-top, 0px);
-    z-index: 50;
+    position: static;
+    top: auto;
+    z-index: auto;
 }
 
 #screen-schedule .screen-card--schedule .app-community-footer {
@@ -565,10 +564,10 @@ transform: translateX(20px);
 .schedule-glass-stack {
     width: var(--schedule-glass-width);
     max-width: 100%;
-    margin: 0 auto 14px;
-    position: sticky;
-    top: env(safe-area-inset-top, 0px);
-    z-index: 40;
+    margin: 0 auto 10px;
+    position: static;
+    top: auto;
+    z-index: auto;
     border: var(--card-border);
     border-radius: var(--card-radius);
     background: var(--surface-card-inner);
@@ -1029,4 +1028,290 @@ button:focus-visible,
 .info-chip--danger .info-chip__prefix {
     border-right-color: var(--info-chip-danger-border);
     background: var(--info-chip-danger-prefix-bg);
+}
+
+/* --- Овальная шапка + sticky только на экране «Маршрут» --- */
+html,
+body {
+    background-color: #0b0e14 !important;
+}
+
+.main-screens-stage:not(.is-transitioning):not(.is-dragging) {
+    overflow: visible !important;
+}
+
+#screen-schedule,
+#screen-schedule .schedule-app-wrap,
+#screen-schedule .screen-card--schedule {
+    overflow: visible !important;
+}
+
+#screen-instructions,
+#screen-instructions .instructions-app-wrap {
+    overflow: hidden !important;
+}
+
+.app-header-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    margin: 8px 12px 10px !important;
+    border-radius: 9999px !important;
+    background: rgba(18, 25, 38, 0.92) !important;
+    border: 1px solid rgba(6, 199, 133, 0.28) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+    box-sizing: border-box !important;
+    position: static !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+}
+
+/* Инструкции (Frame 142): без общей овальной шапки — два отдельных блока */
+#screen-instructions .app-header-bar.instr-header-bar {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 8px 12px 10px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+#screen-instructions .app-header-bar.instr-header-bar .app-header-bar-brand {
+    flex: 0 1 auto !important;
+}
+
+.app-header-bar-end {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.app-header-bar-brand .app-brand-text {
+    text-transform: none !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+}
+
+/* Маршрут: монолитная липкая зона (шапка + табы), без просвета сверху */
+#screen-schedule .route-sticky-header-wrap,
+.route-sticky-header-wrap {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 !important;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px !important;
+    background: #0b0e14 !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow:
+        0 16px 30px rgba(0, 0, 0, 0.7),
+        0 -20px 0 20px #0b0e14 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .app-screen-header {
+    padding: 0;
+}
+
+/* Верхняя строка маршрута: логотип | часы | Поддержать */
+#screen-schedule .route-sticky-header-wrap .app-header-bar.route-header-bar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 0 0 10px !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-sizing: border-box !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .route-header-brand {
+    justify-self: start;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+    background: rgba(18, 25, 38, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-sizing: border-box !important;
+    max-width: 100%;
+}
+
+#screen-schedule .route-sticky-header-wrap .route-header-brand-text {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+    color: #e8edf5 !important;
+    white-space: normal !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .route-header-brand .app-brand-logo {
+    width: 26px !important;
+    height: 26px !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .app-header-bar-clock {
+    justify-self: center;
+    grid-column: 2;
+    font-family: "Cascadia Mono", "SF Mono", Consolas, monospace !important;
+    font-variant-numeric: tabular-nums !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #00f59b !important;
+    background: rgba(6, 199, 133, 0.08) !important;
+    border: 1px solid rgba(6, 199, 133, 0.35) !important;
+    border-radius: 12px !important;
+    padding: 4px 14px !important;
+    box-shadow: 0 0 20px rgba(6, 199, 133, 0.15) !important;
+    line-height: 1.1 !important;
+    width: auto !important;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#screen-schedule .route-sticky-header-wrap .route-header-donate {
+    justify-self: end;
+    grid-column: 3;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+    background: rgba(18, 25, 38, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #c5cedb !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-tabs {
+    margin: 0 !important;
+    padding: 4px !important;
+    width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 16px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-tabs .tab-btn {
+    flex: 1 1 50% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-radius: 12px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    padding: 0 12px !important;
+    color: rgba(232, 237, 245, 0.75) !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-tabs .tab-btn.active {
+    color: #ffffff !important;
+    background: var(--brand-grad) !important;
+    box-shadow:
+        0 0 18px rgba(6, 199, 133, 0.22),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Список поездов — без внешней «коробки» screen-card */
+#screen-schedule .screen-card--schedule {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-top: 0 !important;
+    padding: 0 12px !important;
+    overflow: visible !important;
+}
+
+#screen-schedule .schedule-tabs-stage,
+#screen-schedule #tab-route {
+    overflow: visible !important;
+}
+
+/* Sticky: родители маршрута без overflow:hidden и без верхнего padding */
+#screen-schedule,
+#screen-schedule .phone-screen,
+#screen-schedule .phone-screen.schedule-app-wrap,
+#screen-schedule .schedule-app-wrap {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    padding-top: 0 !important;
+}
+
+.app-header-bar .header-clock,
+.app-header-bar .app-header__clock {
+    font-family: "Cascadia Mono", "SF Mono", Consolas, monospace !important;
+    font-variant-numeric: tabular-nums !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #00f59b !important;
+    background: rgba(6, 199, 133, 0.12) !important;
+    border: 1px solid rgba(6, 199, 133, 0.3) !important;
+    border-radius: 9999px !important;
+    padding: 4px 10px !important;
+    line-height: 1 !important;
+    width: auto !important;
+    text-align: center;
+}
+
+/* Часы маршрута — крупнее (перекрывает общее правило выше) */
+#screen-schedule .route-sticky-header-wrap .app-header-bar .header-clock,
+#screen-schedule .route-sticky-header-wrap .app-header-bar .app-header__clock,
+#screen-schedule .route-sticky-header-wrap #scheduleLiveClock {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    padding: 4px 14px !important;
+    box-shadow: 0 0 20px rgba(6, 199, 133, 0.15) !important;
+}
+
+.schedule-title-plate {
+    display: none !important;
 }

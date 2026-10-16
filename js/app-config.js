@@ -8,9 +8,10 @@ window.APP_CONFIG = {
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee',
     sheduleMax: {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
-        apiBaseUrl: '',
+        apiBaseUrl: 'http://127.0.0.1:8792',
         functionUrl: '',
-        useDirectS3: true
+        useDirectS3: true,
+        preferStopsApi: true
     }
 };
 

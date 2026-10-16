@@ -10,6 +10,7 @@ window.APP_CONFIG = {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
         apiBaseUrl: '',
         functionUrl: '',
-        useDirectS3: true
+        useDirectS3: true,
+        // Локально: apiBaseUrl: 'http://127.0.0.1:8792', preferStopsApi: true — нитки с полировкой Shedule_Max
     }
 };

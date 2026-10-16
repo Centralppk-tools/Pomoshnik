@@ -18,7 +18,21 @@
     const dayStopsInflight = Object.create(null);
     const trainStopsMem = Object.create(null);
     const FETCH_TIMEOUT_MS = 4500;
-    const DAY_CACHE_NAME = 'da_shedulemax_day_v1';
+    const DAY_CACHE_NAME = 'da_shedulemax_tpl_v1';
+
+    function weekdayTemplateId(dateIso) {
+        const parts = String(dateIso || '').split('-').map(Number);
+        if (parts.length < 3 || !parts[0]) return 'MON_THU';
+        const weekday = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
+        if (weekday === 0) return 'SUN';
+        if (weekday === 5) return 'FRI';
+        if (weekday === 6) return 'SAT';
+        return 'MON_THU';
+    }
+
+    function scheduleObjectPath(date) {
+        return `data/cache_schedule/schedule_${weekdayTemplateId(date)}.json`;
+    }
 
     function dayStopsPath(date) {
         const day = String(date || '').trim();
@@ -38,6 +52,54 @@
 
     function s3Url(path) {
         return `${s3Base()}/${String(path || '').replace(/^\//, '')}`;
+    }
+
+    function apiBase() {
+        const fromCfg = String(cfg().apiBaseUrl || cfg().functionUrl || '').replace(/\/$/, '');
+        if (fromCfg) return fromCfg;
+        const host = String(global.location?.hostname || '');
+        if (host === '127.0.0.1' || host === 'localhost') {
+            return 'http://127.0.0.1:8792';
+        }
+        return '';
+    }
+
+    function preferStopsApi() {
+        return Boolean(apiBase()) && cfg().preferStopsApi !== false;
+    }
+
+    function apiUrl(path) {
+        const base = apiBase();
+        const tail = String(path || '').replace(/^\//, '');
+        return base ? `${base}/${tail}` : `/${tail}`;
+    }
+
+    async function fetchTrainDetailsFromApi(date, trainNumber, direction = 'from_moscow', options = {}) {
+        const day = String(date || '').trim();
+        const train = String(trainNumber || '').trim();
+        const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+        if (!day || !train) {
+            throw new Error('fetchTrainDetailsFromApi: нужны date и train');
+        }
+        const q = new URLSearchParams({ date: day, train, direction: dir });
+        const voyageCode = String(options.voyageCode || '').trim();
+        if (voyageCode) q.set('voyage_code', voyageCode);
+        if (options.fresh) q.set('fresh', '1');
+        const url = apiUrl(`/api/train_details?${q.toString()}`);
+        const res = await fetch(url, { cache: 'no-store' });
+        let payload = null;
+        try {
+            payload = await res.json();
+        } catch (err) {
+            console.error('[shedule-max train_details] invalid JSON', url, err);
+            throw new Error(`Ошибка нитки (HTTP ${res.status})`);
+        }
+        if (!res.ok || payload?.ok === false) {
+            const message = payload?.error || `Ошибка нитки (HTTP ${res.status})`;
+            console.error('[shedule-max train_details]', message, { url, status: res.status });
+            throw new Error(message);
+        }
+        return payload;
     }
 
     function clockHms(value) {
@@ -319,7 +381,7 @@
 
     async function fetchBoardFromS3(date, direction, errors) {
         if (!useDirectS3()) return null;
-        const path = `data/cache_schedule/schedule_${date}_${direction}.json`;
+        const path = scheduleObjectPath(date);
         try {
             const url = s3Url(path);
             const cached = await readCachedJson(url);
@@ -342,6 +404,24 @@
     }
 
     async function fetchYaroslavlBoard(date) {
+        if (useDirectS3()) {
+            const errors = [];
+            const payloadTrains = await Promise.all(
+                DIRS.map((direction) => fetchBoardFromS3(date, direction, errors)),
+            );
+            const schedule = [];
+            const seen = new Set();
+            payloadTrains.forEach((trains) => {
+                (trains || []).forEach((item) => {
+                    const key = `${item.thread?.number || ''}@${item.thread?.uid || ''}@${item.departure || ''}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    schedule.push(item);
+                });
+            });
+            if (schedule.length) return schedule;
+            throw errors[0] || new Error(`Табло ${date} недоступно`);
+        }
         const parts = await Promise.allSettled(DIRS.map((direction) => fetchBoardDirection(date, direction)));
         const schedule = [];
         const seen = new Set();
@@ -474,21 +554,46 @@
         return payload;
     }
 
-    async function loadTrainStops(date, number, uid) {
+    async function loadTrainStops(date, number, uid, direction = 'from_moscow', options = {}) {
         const key = trainStopsKey(date, number);
         const path = stopFilePath(uid);
         if (!key) return null;
-        if (trainStopsMem[key]) return trainStopsMem[key];
-        const url = path ? s3Url(path) : '';
-        if (!url) return null;
+        const fresh = options.fresh === true;
+        if (trainStopsMem[key] && !fresh) return trainStopsMem[key];
 
-        const cached = await readCachedJson(url);
-        const remembered = rememberStopsPayload(key, url, cached);
-        if (remembered) return remembered;
+        const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+        if ((preferStopsApi() || fresh) && apiBase()) {
+            try {
+                const payload = await fetchTrainDetailsFromApi(date, number, dir, {
+                    voyageCode: uid,
+                    fresh,
+                });
+                const stored = rememberStopsPayload(key, '', payload);
+                if (stored) return stored;
+            } catch (err) {
+                console.warn('[shedule-max] API stop miss, fallback S3', err);
+            }
+        }
+
+        const url = path ? s3Url(path) : '';
+        if (url) {
+            const cached = await readCachedJson(url);
+            const remembered = rememberStopsPayload(key, url, cached);
+            if (remembered) return remembered;
+            try {
+                const payload = await readJson(url, FETCH_TIMEOUT_MS);
+                const stored = rememberStopsPayload(key, url, payload);
+                if (stored) return stored;
+            } catch (err) {
+                console.warn('[shedule-max] S3 stop miss', url, err);
+            }
+        }
+        if (!apiBase()) return null;
         try {
-            const payload = await readJson(url, FETCH_TIMEOUT_MS);
-            return rememberStopsPayload(key, url, payload);
-        } catch {
+            const payload = await fetchTrainDetailsFromApi(date, number, dir, { voyageCode: uid });
+            return rememberStopsPayload(key, '', payload);
+        } catch (err) {
+            console.error('[shedule-max train_details]', err);
             return null;
         }
     }
@@ -523,6 +628,7 @@
     global.SheduleMaxSource = {
         fetchYaroslavlBoard,
         fetchThread,
+        fetchTrainDetailsFromApi,
         lookupThreadSync,
         loadTrainStops,
         hydrateDayStopsCacheOnly,

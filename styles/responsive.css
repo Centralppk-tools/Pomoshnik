@@ -66,23 +66,23 @@
     }
 
     .app-screen-header {
-        width: calc(100% - (var(--mobile-edge) * 2));
-        margin: 6px var(--mobile-edge) 0;
-        position: sticky;
-        top: calc(6px + env(safe-area-inset-top, 0px));
-        z-index: 120;
+        width: 100%;
+        margin: 0;
+        position: static;
         padding: 0;
-        background: var(--surface-card);
-        border: var(--card-border);
-        border-radius: var(--card-radius);
-        overflow: hidden;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        overflow: visible;
     }
 
     .app-header-bar {
-        align-items: center;
-        min-height: 44px;
-        padding: 6px 12px;
-        gap: 8px;
+        margin-left: 8px !important;
+        margin-right: 8px !important;
+    }
+
+    #screen-schedule .route-sticky-header-wrap {
+        width: 100%;
     }
 
     #screen-calendar .app-community-footer,
@@ -101,7 +101,10 @@
     }
 
     .screen-card,
-    #screen-schedule .screen-card--schedule,
+    #screen-schedule .screen-card--schedule {
+        overflow: visible;
+    }
+
     #screen-calendar .screen-card--calendar,
     #screen-profile .screen-card--profile,
     #screen-instructions .screen-card--instructions {
@@ -109,17 +112,27 @@
         max-width: none;
         margin-left: var(--mobile-edge);
         margin-right: var(--mobile-edge);
-        margin-top: 6px;
+        margin-top: 0;
         margin-bottom: 6px;
         padding: 0;
-        border-radius: var(--card-radius);
+        border-radius: 0;
         gap: 6px;
         box-sizing: border-box;
-        background: var(--surface-card);
-        border: var(--card-border);
+        background: transparent;
+        border: none;
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow: visible;
+    }
+
+    #screen-schedule .screen-card--schedule {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0 8px;
+        border: none;
+        background: transparent;
+        overflow: visible;
     }
 
     #screen-instructions .instructions-app-wrap {
@@ -136,9 +149,22 @@
         border-radius: var(--card-radius);
     }
 
-    #screen-schedule .screen-card--schedule .schedule-glass-stack {
-        width: 100%;
-        top: env(safe-area-inset-top, 0px);
+    #screen-schedule .route-sticky-header-wrap {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    #screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    #screen-schedule .phone-screen,
+    #screen-schedule .phone-screen.schedule-app-wrap,
+    #screen-schedule .schedule-app-wrap {
+        overflow: visible !important;
+        padding-top: 0 !important;
     }
 
     .route-grid,

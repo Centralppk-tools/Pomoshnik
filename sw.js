@@ -1,5 +1,5 @@
-// Версия релиза приложения — менять при каждом выкладке (сейчас 4.0.46)
-const CACHE_VERSION = 'da_v4_0_46';
+// Версия кэша приложения — меняется при обновлении оболочки.
+const CACHE_VERSION = 'da_v4_0_47';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -29,6 +29,9 @@ const PRECACHE_ASSETS = [
     './vendor/pdfjs/pdf.worker.mjs',
     './assets/brand-logo.png',
     './assets/app-icon.png',
+    './assets/wall-icons/doc.svg',
+    './assets/wall-icons/hammer.svg',
+    './assets/wall-icons/delete.svg',
     './.nojekyll'
 ];
 
@@ -102,6 +105,17 @@ function isTrainUidsRequest(pathname) {
 /** Конфиг прокси — всегда из сети (не cache-first), иначе залипает старый workers.dev */
 function isAppConfigRequest(pathname) {
     return pathname.endsWith('/js/app-config.js') || pathname.endsWith('app-config.js');
+}
+
+/** Модуль «Инструкции» — network-first, иначе залипают старые иконки/стили после правок */
+function isInstructionsModuleRequest(pathname) {
+    return pathname.endsWith('/js/instructions.js')
+        || pathname.endsWith('instructions.js')
+        || pathname.endsWith('/styles/instructions.css')
+        || pathname.endsWith('instructions.css')
+        || pathname.endsWith('/styles/tokens.css')
+        || pathname.endsWith('tokens.css')
+        || pathname.includes('/assets/wall-icons/');
 }
 
 async function networkFirst(request) {
@@ -278,6 +292,11 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return;
 
     if (isAppConfigRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    if (isInstructionsModuleRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }

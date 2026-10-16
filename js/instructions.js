@@ -1534,6 +1534,7 @@
     }
 
     const WALL_STORAGE_KEY = 'da_crew_wall_v1';
+    const WALL_HAMMER_VOTES_KEY = 'da_wall_hammer_my_votes_v1';
     const WALL_FORM_CONFIG = {
         machines: {
             chips: ['Двери', 'Тормоза', 'Климат', 'Тяга', 'Радиостанция', 'Камеры'],
@@ -1582,10 +1583,66 @@
         return `${n} человек проголосовало`;
     }
 
+    function loadMyHammerVotes() {
+        try {
+            const raw = localStorage.getItem(WALL_HAMMER_VOTES_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function saveMyHammerVotes(map) {
+        try {
+            localStorage.setItem(WALL_HAMMER_VOTES_KEY, JSON.stringify(map || {}));
+        } catch (_) { /* quota */ }
+    }
+
+    function pruneMyHammerVotes(validIds) {
+        const ids = validIds instanceof Set ? validIds : new Set(validIds || []);
+        const map = loadMyHammerVotes();
+        let changed = false;
+        Object.keys(map).forEach((key) => {
+            if (!ids.has(Number(key))) {
+                delete map[key];
+                changed = true;
+            }
+        });
+        if (changed) saveMyHammerVotes(map);
+        return map;
+    }
+
+    function hasMyHammerVote(id) {
+        return Boolean(loadMyHammerVotes()[String(id)]);
+    }
+
+    function toggleWallHammerVote(id) {
+        const item = wallItems.find((x) => x.id === id);
+        if (!item) return;
+        const map = loadMyHammerVotes();
+        const key = String(id);
+        const votes = Math.max(0, Number(item.resolveVotes) || 0);
+        if (map[key]) {
+            delete map[key];
+            item.resolveVotes = Math.max(0, votes - 1);
+        } else {
+            map[key] = true;
+            item.resolveVotes = votes + 1;
+        }
+        item.resolved = item.resolveVotes > 0;
+        saveMyHammerVotes(map);
+        saveWallItems();
+        renderWall();
+    }
+
     function normalizeWallItem(item) {
         const row = item && typeof item === 'object' ? { ...item } : {};
         row.resolveVotes = Math.max(0, Number(row.resolveVotes) || 0);
-        if (!row.resolved) row.resolveVotes = 0;
+        row.resolved = row.resolveVotes > 0 || Boolean(row.resolved);
+        if (row.canManage === undefined) {
+            row.canManage = Number(row.id) !== 2;
+        }
         return row;
     }
 
@@ -1600,21 +1657,53 @@
         return defaultWallItems();
     }
 
-    function renderWallResolveActions(item) {
+    const WALL_HAMMER_INLINE = '<svg class="hammer-inline-svg" width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true"><g transform="translate(24 24) rotate(-45) translate(-24 -24)"><rect x="20.5" y="24" width="7" height="20" rx="3.5" fill="#F59E0B"/><rect x="5" y="10" width="38" height="11" rx="5.5" fill="#F59E0B"/></g></svg>';
+
+    function renderWallHammerBlock(item) {
+        const showHammer = item.category === 'machines' || item.category === 'line' || item.category === 'office';
+        if (!showHammer) return '';
         const votes = Math.max(0, Number(item.resolveVotes) || 0);
-        if (!item.resolved) {
-            return `<button type="button" class="wall-card__action" data-wall-resolve="${item.id}">Снято / починили</button>`;
-        }
-        const votesLabel = votes > 0
-            ? `<span class="wall-card__votes">${escapeHtml(formatResolveVotes(votes))}</span>`
-            : '';
+        const voted = hasMyHammerVote(item.id);
+        const label = voted ? 'Убрать подтверждение' : 'Подтвердить актуальность';
         return `
-            <div class="wall-card__resolve-done">
-                <button type="button" class="wall-card__done" data-wall-vote="${item.id}">Сделано</button>
-                ${votesLabel}
-                <button type="button" class="wall-card__unresolve" data-wall-unresolve="${item.id}">Вернуть в работу</button>
-            </div>
-        `;
+            <button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--hammer btn-hammer wall-action-btn${voted ? ' is-voted' : ''}" data-wall-hammer="${item.id}" aria-pressed="${voted ? 'true' : 'false'}" aria-label="${label}" title="Подтвердить">
+                <span class="hammer-icon-wrap" aria-hidden="true">${WALL_HAMMER_INLINE}</span>
+                <span class="hammer-divider" aria-hidden="true"></span>
+                <span class="hammer-count">${votes}</span>
+            </button>`;
+    }
+
+    function renderWallIconActions(item) {
+        const hammer = renderWallHammerBlock(item);
+        const canManage = item.canManage !== false;
+        if (!canManage) {
+            return `<div class="wall-card__icon-actions event-actions-bar">${hammer}</div>`;
+        }
+        const editBtn = `<button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--edit btn-doc wall-action-btn" data-wall-edit="${item.id}" aria-label="Редактировать" title="Редактировать"></button>`;
+        const deleteBtn = `<button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--delete btn-delete wall-action-btn" data-wall-delete="${item.id}" aria-label="Удалить" title="Удалить"></button>`;
+        return `<div class="wall-card__icon-actions event-actions-bar">${editBtn}${hammer}${deleteBtn}</div>`;
+    }
+
+    function syncWallHintsCollapsedUi() {
+        const collapse = $('wallHintsCollapse');
+        const footer = $('wallHintsGrab');
+        const expanded = wallTagsExpanded;
+        collapse?.classList.toggle('is-collapsed', !expanded);
+        if (footer) {
+            footer.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            footer.classList.toggle('is-collapsed', !expanded);
+            footer.setAttribute(
+                'aria-label',
+                expanded ? 'Свернуть подсказки' : 'Развернуть подсказки'
+            );
+        }
+        const toggle = $('wallTagsToggle');
+        if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
+    function toggleWallHintsExpanded() {
+        wallTagsExpanded = !wallTagsExpanded;
+        renderWallTagRow();
     }
 
     function saveWallItems() {
@@ -1637,9 +1726,12 @@
         if (topCard) topCard.hidden = false;
         const wallFilters = $('wallFilterBlock');
         if (wallFilters) wallFilters.hidden = !isWall;
+        const wallHints = $('wallTagExtra');
+        if (wallHints) wallHints.hidden = !isWall;
+        $('wallHintsGrab')?.toggleAttribute('hidden', !isWall);
         updateSearchChrome();
-        wallBtn?.classList.toggle('is-active', isWall);
-        pdfBtn?.classList.toggle('is-active', !isWall);
+        wallBtn?.classList.toggle('active', isWall);
+        pdfBtn?.classList.toggle('active', !isWall);
         wallBtn?.setAttribute('aria-selected', isWall ? 'true' : 'false');
         pdfBtn?.setAttribute('aria-selected', isWall ? 'false' : 'true');
         setFabMenuOpen(false);
@@ -1653,7 +1745,7 @@
         const block = $('instrSearchBlock');
         if (instrMainMode === 'wall') {
             if (input) input.placeholder = 'Поиск по записям';
-            if (hint) hint.textContent = 'Теги';
+            if (hint) hint.textContent = '';
         } else {
             if (input) input.placeholder = 'Поиск в тексте...';
             if (hint) hint.textContent = 'Поиск по словам внутри оцифрованных PDF с переходом на страницу.';
@@ -1690,7 +1782,7 @@
         return a === b || a.includes(b) || b.includes(a);
     }
 
-    let wallTagsExpanded = false;
+    let wallTagsExpanded = true;
 
     function updateWallTagsToggle(tags) {
         const toggle = $('wallTagsToggle');
@@ -1713,19 +1805,13 @@
         row.innerHTML = tags.map((t) => (
             `<button type="button" class="wall-filter-tag${t.value === activeWallTag ? ' is-active' : ''}${t.kind === 'series' ? ' is-series' : ''}" data-wall-filter-tag="${escapeHtml(t.value)}">${escapeHtml(t.value)}</button>`
         )).join('');
-        row.hidden = !wallTagsExpanded || !tags.length;
+        row.hidden = instrMainMode !== 'wall' || !tags.length;
         updateWallTagsToggle(tags);
+        syncWallHintsCollapsedUi();
     }
 
     function setWallCategory(cat) {
-        const next = cat || 'all';
-        const sameCategory = next === activeWallCategory;
-        activeWallCategory = next;
-        if (sameCategory) {
-            wallTagsExpanded = !wallTagsExpanded;
-        } else {
-            wallTagsExpanded = false;
-        }
+        activeWallCategory = cat || 'all';
         document.querySelectorAll('.wall-cat-pill').forEach((btn) => {
             btn.classList.toggle('is-active', btn.dataset.cat === activeWallCategory);
         });
@@ -1744,6 +1830,7 @@
         const container = $('wallFeedContainer');
         const countLabel = $('wallCountLabel');
         if (!container) return;
+        pruneMyHammerVotes(wallItems.map((x) => x.id));
         const query = normalizeText($('instrSearchInput')?.value || '');
 
         const filtered = wallItems.filter((item) => {
@@ -1756,9 +1843,7 @@
         });
 
         if (countLabel) {
-            countLabel.textContent = activeWallCategory === 'contacts'
-                ? 'Прямые телефоны смены (набор в 1 тап)'
-                : `Найдено записей: ${filtered.length}`;
+            countLabel.textContent = `Всего записей: ${filtered.length}`;
         }
 
         if (!filtered.length) {
@@ -1767,8 +1852,7 @@
         }
 
         container.innerHTML = filtered.map((item) => {
-            const editBtn = `<button type="button" class="wall-card__edit" data-wall-edit="${item.id}">Редактировать</button>`;
-            const deleteBtn = `<button type="button" class="wall-card__delete" data-wall-delete="${item.id}">Удалить</button>`;
+            const iconActions = renderWallIconActions(item);
             if (item.category === 'contacts') {
                 const tel = String(item.phone || '').replace(/[^\d+]/g, '');
                 return `
@@ -1784,10 +1868,7 @@
                             <div class="wall-card__phone">${escapeHtml(item.phone || '')}</div>
                             ${item.text ? `<p class="wall-card__text">${escapeHtml(item.text)}</p>` : ''}
                             <div class="wall-card__foot wall-card__foot--contact">
-                                <div class="wall-card__foot-actions">
-                                    ${editBtn}
-                                    ${deleteBtn}
-                                </div>
+                                ${iconActions}
                             </div>
                         </div>
                         <a class="wall-call" href="tel:${escapeHtml(tel)}" aria-label="Позвонить">
@@ -1803,27 +1884,24 @@
                     : item.category === 'machines'
                         ? ' is-machines'
                         : '';
-            const statusHtml = item.category === 'machines' || item.category === 'line'
-                ? renderWallResolveActions(item)
-                : '<span class="wall-card__status-ok">Актуально</span>';
-            return `
-                <article class="wall-card${item.resolved ? ' is-resolved' : ''}">
+            const eventBody = item.extraLine || item.text || '';
+            const headBlock = `
                     <div class="wall-card__head">
                         <div class="wall-card__head-main">
                             <h3 class="wall-card__title">${escapeHtml(item.objectTitle)}</h3>
-                            <span class="wall-card__tag${tagClass}">${escapeHtml(item.tag)}</span>
+                            <span class="wall-card__tag wall-card__tag--outline${tagClass}">${escapeHtml(item.tag)}</span>
                         </div>
                         ${item.subMeta ? `<p class="wall-card__sub">${escapeHtml(item.subMeta)}</p>` : ''}
-                    </div>
-                    <p class="wall-card__text">${escapeHtml(item.text)}</p>
-                    ${item.extraLine ? `<div class="wall-card__extra"><span class="wall-card__extra-label">Описание события</span><span class="wall-card__extra-text">${escapeHtml(item.extraLine)}</span></div>` : ''}
+                    </div>`;
+            const extraBlock = eventBody
+                ? `<div class="wall-card__extra"><span class="wall-card__extra-label">Описание события</span><span class="wall-card__extra-text">${escapeHtml(eventBody)}</span></div>`
+                : '';
+            return `
+                <article class="wall-card wall-card--event">
+                    ${headBlock}
+                    ${extraBlock}
                     <div class="wall-card__foot">
-                        <time class="wall-card__time">${escapeHtml(item.time || '')}</time>
-                        <div class="wall-card__foot-actions">
-                            ${editBtn}
-                            ${statusHtml}
-                            ${deleteBtn}
-                        </div>
+                        ${iconActions}
                     </div>
                 </article>
             `;
@@ -2155,10 +2233,8 @@
         document.querySelectorAll('.wall-cat-pill').forEach((btn) => {
             btn.addEventListener('click', () => setWallCategory(btn.dataset.cat));
         });
-        $('wallTagsToggle')?.addEventListener('click', () => {
-            wallTagsExpanded = !wallTagsExpanded;
-            renderWallTagRow();
-        });
+        $('wallTagsToggle')?.addEventListener('click', () => toggleWallHintsExpanded());
+        $('wallHintsGrab')?.addEventListener('click', () => toggleWallHintsExpanded());
         $('wallTagRow')?.addEventListener('click', (e) => {
             const tagBtn = e.target.closest('[data-wall-filter-tag]');
             if (tagBtn) setWallTag(tagBtn.dataset.wallFilterTag);
@@ -2204,40 +2280,17 @@
                 const ok = window.confirm(`Удалить запись «${item.objectTitle}»?`);
                 if (!ok) return;
                 wallItems = wallItems.filter((x) => x.id !== id);
+                const voteMap = loadMyHammerVotes();
+                delete voteMap[String(id)];
+                saveMyHammerVotes(voteMap);
                 saveWallItems();
                 renderWall();
                 return;
             }
-            const unresolveBtn = e.target.closest('[data-wall-unresolve]');
-            if (unresolveBtn) {
-                const id = Number(unresolveBtn.dataset.wallUnresolve);
-                const item = wallItems.find((x) => x.id === id);
-                if (!item) return;
-                item.resolved = false;
-                item.resolveVotes = 0;
-                saveWallItems();
-                renderWall();
-                return;
+            const hammerBtn = e.target.closest('[data-wall-hammer]');
+            if (hammerBtn) {
+                toggleWallHammerVote(Number(hammerBtn.dataset.wallHammer));
             }
-            const voteBtn = e.target.closest('[data-wall-vote]');
-            if (voteBtn) {
-                const id = Number(voteBtn.dataset.wallVote);
-                const item = wallItems.find((x) => x.id === id);
-                if (!item || !item.resolved) return;
-                item.resolveVotes = Math.max(1, (Number(item.resolveVotes) || 0) + 1);
-                saveWallItems();
-                renderWall();
-                return;
-            }
-            const btn = e.target.closest('[data-wall-resolve]');
-            if (!btn) return;
-            const id = Number(btn.dataset.wallResolve);
-            const item = wallItems.find((x) => x.id === id);
-            if (!item) return;
-            item.resolved = true;
-            item.resolveVotes = Math.max(1, (Number(item.resolveVotes) || 0) + 1);
-            saveWallItems();
-            renderWall();
         });
         updateSearchChrome();
         renderWallTagRow();

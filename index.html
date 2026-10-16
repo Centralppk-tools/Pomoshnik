@@ -24,7 +24,7 @@
     <meta name="theme-color" content="#0a1018">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="styles/tokens.css">
+    <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/routes.css">
     <link rel="stylesheet" href="styles/schedule.css">
@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="styles/auth.css">
     <link rel="stylesheet" href="styles/community.css">
-    <link rel="stylesheet" href="styles/instructions.css">
+    <link rel="stylesheet" href="styles/instructions.css?v=20260416j">
 </head>
 <body class="auth-locked">
 
@@ -151,28 +151,28 @@
 <div id="screen-schedule" class="screen hidden">
 
 <div class="phone-screen schedule-app-wrap">
-    <header class="app-screen-header">
-        <div class="app-header-bar">
-            <div class="app-header-bar-brand">
-                <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+    <div class="route-sticky-header-wrap">
+        <header class="app-screen-header">
+            <div class="app-header-bar route-header-bar">
+                <div class="app-header-bar-brand route-header-brand">
+                    <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                    <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
+                </div>
+                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
-            <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+        </header>
+
+        <div class="schedule-glass-stack" id="scheduleGlassStack">
+            <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
+                <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
+                <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
+            </div>
+            <div id="scheduleHeader" class="schedule-glass-body" style="display:none;" hidden></div>
         </div>
-        <div class="schedule-title-plate">
-            <h2 class="screen-section-title">Расписание</h2>
-        </div>
-    </header>
+    </div>
 
     <div class="screen-card screen-card--schedule">
-
-    <div class="schedule-glass-stack" id="scheduleGlassStack">
-        <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
-            <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
-            <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
-        </div>
-        <div id="scheduleHeader" class="schedule-glass-body" style="display:none;"></div>
-    </div>
 
     <div id="scheduleTabsStage" class="schedule-tabs-stage">
 
@@ -384,12 +384,9 @@
             <div class="app-header-bar">
                 <div class="app-header-bar-brand">
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+                    <span class="app-brand-text">График смен</span>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
-            </div>
-            <div class="schedule-title-plate">
-                <h2 class="screen-section-title">График смен</h2>
             </div>
         </header>
 
@@ -452,12 +449,9 @@
             <div class="app-header-bar">
                 <div class="app-header-bar-brand">
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+                    <span class="app-brand-text">Личный кабинет</span>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
-            </div>
-            <div class="schedule-title-plate">
-                <h2 class="screen-section-title">Личный кабинет</h2>
             </div>
         </header>
 
@@ -609,52 +603,67 @@
 
 <div id="screen-instructions" class="screen hidden">
     <div class="phone-screen instructions-app-wrap">
-        <header class="app-screen-header">
-            <div class="app-header-bar">
-                <div class="app-header-bar-brand">
-                    <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                    <span class="app-brand-text">ЦИФРОВОЙ ПОМОЩНИК</span>
+        <div class="instr-sticky-header-wrap">
+            <header class="app-screen-header">
+                <div class="app-header-bar instr-header-bar">
+                    <div class="app-header-bar-brand instr-header-brand">
+                        <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
+                        <span class="app-brand-text instr-header-brand-text">Цифровой<br>Помощник</span>
+                    </div>
+                    <button type="button" class="app-donate-trigger app-donate-trigger--header instr-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
                 </div>
-                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
-            </div>
-            <div class="schedule-title-plate instructions-title-plate">
-                <div class="instr-mode-switch" role="tablist" aria-label="Раздел инструкций">
-                    <button type="button" id="instrModeWall" class="instr-mode-switch__btn is-active" role="tab" aria-selected="true">Стена бригад</button>
-                    <button type="button" id="instrModePdf" class="instr-mode-switch__btn" role="tab" aria-selected="false">База PDF</button>
-                </div>
-            </div>
-            <p class="instr-test-banner">Тестовая версия модуля «Инструкции». Записи, документы и контакты не несут служебной информации.</p>
-        </header>
+                <p class="instr-test-banner" hidden>Тестовая версия модуля «Инструкции». Записи, документы и контакты не несут служебной информации.</p>
+            </header>
 
-        <div class="screen-card screen-card--instructions">
-            <div class="instr-top-card" id="instrTopCard">
-                <div id="instrSearchBlock" class="instr-search">
-                    <label class="instr-search__field">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                        <input type="search" id="instrSearchInput" class="instr-search__input" placeholder="Поиск по записям" autocomplete="off">
-                    </label>
-                    <p id="instrSearchHint" class="instr-search__hint">Теги</p>
-                    <div id="wallFilterBlock" class="wall-filter-block">
-                        <div class="wall-cat-row" role="tablist" aria-label="Рубрики стены">
-                            <button type="button" class="wall-cat-pill is-active" data-cat="all">Все записи</button>
-                            <button type="button" class="wall-cat-pill" data-cat="machines">Машины</button>
-                            <button type="button" class="wall-cat-pill" data-cat="line">Линия</button>
-                            <button type="button" class="wall-cat-pill" data-cat="office">Офис</button>
-                            <button type="button" class="wall-cat-pill" data-cat="contacts">Контакты</button>
+            <div class="instr-glass-stack" id="instrGlassStack">
+                <div class="tabs-nav schedule-glass-tabs instr-mode-tabs" role="tablist" aria-label="Раздел инструкций">
+                    <button type="button" id="instrModeWall" class="tab-btn active" role="tab" aria-selected="true">Стена</button>
+                    <button type="button" id="instrModePdf" class="tab-btn" role="tab" aria-selected="false">Файлы</button>
+                </div>
+            </div>
+
+            <div class="instr-filter-stack">
+                <div class="instr-top-card" id="instrTopCard">
+                    <div id="instrSearchBlock" class="instr-search instr-filter-panel">
+                        <div id="wallFilterBlock" class="wall-filter-block">
+                            <p class="instr-filter-label">Теги</p>
+                            <div class="wall-cat-row instr-tags-row" role="tablist" aria-label="Рубрики стены">
+                                <button type="button" class="wall-cat-pill is-active" data-cat="all">Все записи</button>
+                                <button type="button" class="wall-cat-pill" data-cat="machines">Машины</button>
+                                <button type="button" class="wall-cat-pill" data-cat="line">Линия</button>
+                                <button type="button" class="wall-cat-pill" data-cat="office">Офис</button>
+                                <button type="button" class="wall-cat-pill" data-cat="contacts">Контакты</button>
+                            </div>
                         </div>
-                        <div class="wall-filter-extra" id="wallTagExtra">
-                            <button type="button" id="wallTagsToggle" class="wall-tags-toggle" aria-expanded="false" aria-controls="wallTagRow">Доп. фильтры</button>
-                            <div id="wallTagRow" class="wall-tag-row" role="list" aria-label="Теги" hidden></div>
+                        <label class="instr-search__field">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                            <input type="search" id="instrSearchInput" class="instr-search__input" placeholder="Поиск по записям" autocomplete="off">
+                        </label>
+                        <p id="instrSearchHint" class="instr-search__hint" hidden></p>
+                        <div class="instr-hints-collapse" id="wallHintsCollapse">
+                            <div class="instr-hints-collapse__inner">
+                                <div class="wall-filter-extra instr-filter-hints" id="wallTagExtra">
+                                    <p class="instr-filter-label">Подсказки</p>
+                                    <button type="button" id="wallTagsToggle" class="wall-tags-toggle" aria-expanded="true" aria-controls="wallTagRow" hidden>Доп. фильтры</button>
+                                    <div class="instr-hints-scroll">
+                                        <div id="wallTagRow" class="wall-tag-row instr-hints-grid" role="list" aria-label="Подсказки"></div>
+                                    </div>
+                                </div>
+                                <div class="instr-filter-hints-divider" id="wallHintsDivider" aria-hidden="true"></div>
+                            </div>
                         </div>
+                        <button type="button" class="instr-filter-footer" id="wallHintsGrab" aria-label="Свернуть или развернуть подсказки" aria-expanded="true">
+                            <span id="wallCountLabel" class="instr-filter-count">Всего записей: 0</span>
+                            <span class="instr-filter-grab" aria-hidden="true"></span>
+                        </button>
                     </div>
                 </div>
             </div>
+        </div>
 
+        <div class="screen-card screen-card--instructions">
             <div id="instrPaneWall" class="instr-pane instr-pane--wall active">
-                <div class="wall-subhead">
-                    <span id="wallCountLabel">Оперативная лента по сменам</span>
-                    <button type="button" id="wallAddLink" class="wall-add-link">+ Добавить запись</button>
-                </div>
+                <button type="button" id="wallAddLink" class="wall-add-link" hidden aria-hidden="true">+ Добавить запись</button>
                 <div id="wallFeedContainer" class="wall-feed"></div>
             </div>
 
@@ -761,7 +770,7 @@
 <script src="js/app-config.js"></script>
 <script src="js/shedule-max-source.js"></script>
 <script src="js/info-chip.js"></script>
-<script src="js/instructions.js"></script>
+<script src="js/instructions.js?v=20260416j"></script>
 <script src="js/profile-compliance.js"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
@@ -840,7 +849,7 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.46';
+    const APP_RELEASE_VERSION = '4.0.47';
     const CLIENT_CACHE_VERSION = 'da_v4_0_46';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
@@ -7332,16 +7341,6 @@
                         <span>${escapeHtml(stopsLabel)}</span>
                     </div>
                 </div>
-                <div class="route-card-section route-card-middle schedule-route-card-middle">
-                    <div class="route-card-middle-head schedule-route-clock-row">
-                        <div class="route-time schedule-route-time" id="scheduleLiveClock">--:--:--</div>
-                        <button type="button" class="schedule-live-clock-refresh" aria-label="Обновить часы" onclick="refreshScheduleLiveClock(event)">
-                            <span class="schedule-live-clock-refresh-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
                 <div class="route-card-section schedule-route-card-footer">
                     <p class="schedule-date-hint" id="scheduleDateHint"></p>
                 </div>
@@ -7766,16 +7765,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Личный кабинет: плановые события и контроль допусков',
-            'Карточки 3×2, детальный лист и выбор карточек под себя',
-            'Стена: «Сделано» со счётчиком голосов',
-            'Подписи стены: Теги, Все записи, Поиск по записям'
+            'Инструкции «Стена»: шапка и фильтры как на маршруте, карточки по макету',
+            'Молоток: один голос на пользователя, счётчик подтверждений',
+            'Подсказки: горизонтальный скролл и плавное сворачивание по строке счётчика',
+            'Иконки действий на карточках стены (документ, молоток, удаление)'
         ],
         highlights: [
-            'Личный кабинет: плановые события и контроль допусков',
-            'Карточки 3×2, детальный лист и выбор карточек под себя',
-            'Стена: «Сделано» со счётчиком голосов',
-            'Подписи стены: Теги, Все записи, Поиск по записям'
+            'Инструкции «Стена»: шапка и фильтры как на маршруте, карточки по макету',
+            'Молоток: один голос на пользователя, счётчик подтверждений',
+            'Подсказки: горизонтальный скролл и плавное сворачивание по строке счётчика',
+            'Иконки действий на карточках стены (документ, молоток, удаление)'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -16389,15 +16388,19 @@
             ? forcedTabId
             : getActiveScheduleTab();
         const hasContent = header && header.innerHTML.trim().length > 0;
-        const showRouteCard = hasContent;
         const isRouteTab = activeTab === 'tab-route';
+        const showRouteCard = hasContent && !isRouteTab;
         const clockEl = document.getElementById('scheduleLiveClock');
 
         stack.classList.toggle('has-route-card', showRouteCard);
-        stack.classList.toggle('schedule-glass-stack--route-tab', showRouteCard && isRouteTab);
+        stack.classList.toggle('schedule-glass-stack--route-tab', false);
 
         if (header && hasContent) {
             header.style.display = showRouteCard ? 'block' : 'none';
+            header.hidden = !showRouteCard;
+        } else if (header) {
+            header.style.display = 'none';
+            header.hidden = true;
         }
 
         // Часы живут в sticky glass-stack (вне #scheduleTabsStage) — не должны «отклеиваться»
