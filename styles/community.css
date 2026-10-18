@@ -169,7 +169,16 @@ body.release-overlay-open {
 }
 
 @media (max-width: 480px) {
-    #screen-calendar .app-community-footer,
+    #screen-calendar .app-community-footer {
+        width: calc(100% - (var(--mobile-edge) * 2));
+        margin-left: var(--mobile-edge);
+        margin-right: var(--mobile-edge);
+        margin-top: 12px;
+        margin-bottom: 0;
+        padding: 0 12px;
+        box-sizing: border-box;
+    }
+
     #screen-profile .app-community-footer {
         width: calc(100% - (var(--mobile-edge) * 2));
         margin-left: var(--mobile-edge);

@@ -23,17 +23,18 @@
     <link rel="apple-touch-icon" href="assets/app-icon.png">
     <meta name="theme-color" content="#0a1018">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
-    <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/base.css?v=20261018i">
     <link rel="stylesheet" href="styles/routes.css">
-    <link rel="stylesheet" href="styles/schedule.css">
-    <link rel="stylesheet" href="styles/calendar.css">
-    <link rel="stylesheet" href="styles/profile.css">
-    <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="styles/schedule.css?v=20261018h">
+    <link rel="stylesheet" href="styles/calendar.css?v=20261018a">
+    <link rel="stylesheet" href="styles/profile.css?v=20261018i">
+    <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css">
     <link rel="stylesheet" href="styles/community.css">
-    <link rel="stylesheet" href="styles/instructions.css?v=20260416j">
+    <link rel="stylesheet" href="styles/instructions.css?v=20261018f">
 </head>
 <body class="auth-locked">
 
@@ -381,12 +382,13 @@
 <div id="screen-calendar" class="screen">
     <div class="phone-screen calendar-app-wrap">
         <header class="app-screen-header">
-            <div class="app-header-bar">
-                <div class="app-header-bar-brand">
+            <div class="app-header-bar route-header-bar">
+                <div class="app-header-bar-brand route-header-brand">
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                    <span class="app-brand-text">График смен</span>
+                    <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
-                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
 
@@ -407,16 +409,15 @@
                     <span class="calendar-sync-btn-label">Добавить в календарь</span>
                 </button>
             </div>
-        </div>
-        <div class="calendar-legend" aria-hidden="true">
-            <span><i class="legend-dot legend-dot--day"></i> День</span>
-            <span><i class="legend-dot legend-dot--night"></i> Ночь</span>
-            <span><i class="legend-dot legend-dot--tech"></i> ТО</span>
-        </div>
-
-        <div class="calendar-grid" id="calendarGrid">
-            <div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div>
-            <div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div>
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div>
+                <div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div>
+            </div>
+            <div class="calendar-legend" aria-hidden="true">
+                <span><i class="legend-dot legend-dot--day"></i> День</span>
+                <span><i class="legend-dot legend-dot--night"></i> Ночь</span>
+                <span><i class="legend-dot legend-dot--tech"></i> ТО</span>
+            </div>
         </div>
 
         <div class="shift-constructor" id="shiftConstructor">
@@ -445,13 +446,14 @@
 
 <div id="screen-profile" class="screen hidden">
     <div class="phone-screen profile-app-wrap">
-        <header class="app-screen-header">
-            <div class="app-header-bar">
-                <div class="app-header-bar-brand">
+        <header class="app-screen-header profile-screen-header">
+            <div class="app-header-bar route-header-bar">
+                <div class="app-header-bar-brand route-header-brand">
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                    <span class="app-brand-text">Личный кабинет</span>
+                    <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
-                <button type="button" class="app-donate-trigger app-donate-trigger--header" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
 
@@ -466,7 +468,7 @@
                     <div id="profileUserName" class="profile-text-fit">Сотрудник</div>
                     <div class="profile-position-combobox route-combobox" id="profilePositionCombobox">
                         <div class="route-combobox-field">
-                            <button type="button" id="profilePositionTrigger" class="profile-position-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="profilePositionList">
+                            <button type="button" id="profilePositionTrigger" name="profilePosition" class="profile-position-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="profilePositionList">
                                 <span id="profilePositionLabel">Машинист</span>
                             </button>
                         </div>
@@ -608,9 +610,9 @@
                 <div class="app-header-bar instr-header-bar">
                     <div class="app-header-bar-brand instr-header-brand">
                         <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                        <span class="app-brand-text instr-header-brand-text">Цифровой<br>Помощник</span>
+                        <span class="app-brand-text instr-header-brand-text">Цифровой помощник</span>
                     </div>
-                    <button type="button" class="app-donate-trigger app-donate-trigger--header instr-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+                    <button type="button" class="app-donate-trigger app-donate-trigger--header instr-header-donate instr-header-chip" data-donate-open aria-label="Поддержать проект">Поддержать</button>
                 </div>
                 <p class="instr-test-banner" hidden>Тестовая версия модуля «Инструкции». Записи, документы и контакты не несут служебной информации.</p>
             </header>
@@ -771,7 +773,7 @@
 <script src="js/shedule-max-source.js"></script>
 <script src="js/info-chip.js"></script>
 <script src="js/instructions.js?v=20260416j"></script>
-<script src="js/profile-compliance.js"></script>
+<script src="js/profile-compliance.js?v=20261018i"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
 
@@ -849,8 +851,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.47';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_46';
+    const APP_RELEASE_VERSION = '4.0.48';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_48';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -2510,16 +2512,20 @@
     }
 
     function updateScheduleLiveClockDisplay() {
-        const el = document.getElementById('scheduleLiveClock');
-        if (!el) return;
+        const clocks = document.querySelectorAll('.app-header-bar-clock');
+        if (!clocks.length) return;
+        const label = (!scheduleLiveClockSynced || !scheduleLiveClockTime)
+            ? '--:--:--'
+            : formatLiveClockTime(scheduleLiveClockTime);
+        clocks.forEach((el) => {
+            el.textContent = label;
+            if (scheduleLiveClockSynced && scheduleLiveClockTime) el.title = '';
+        });
         if (!scheduleLiveClockSynced || !scheduleLiveClockTime) {
-            el.textContent = '--:--:--';
             clearScheduleActiveStationHighlight();
             clearRouteCardsHighlight();
             return;
         }
-        el.textContent = formatLiveClockTime(scheduleLiveClockTime);
-        el.title = '';
         updateScheduleDateHint();
         updateScheduleActiveStation();
         updateRouteCardsHighlight();
@@ -2574,7 +2580,7 @@
     function refreshScheduleLiveClock(e) {
         e?.preventDefault?.();
         e?.stopPropagation?.();
-        if (!document.getElementById('scheduleLiveClock')) return;
+        if (!document.querySelector('.app-header-bar-clock')) return;
         ensureScheduleNotificationPermission(true).then((granted) => {
             if (granted) void ensureWebPushSubscription(true);
         });
@@ -7765,16 +7771,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Инструкции «Стена»: шапка и фильтры как на маршруте, карточки по макету',
-            'Молоток: один голос на пользователя, счётчик подтверждений',
-            'Подсказки: горизонтальный скролл и плавное сворачивание по строке счётчика',
-            'Иконки действий на карточках стены (документ, молоток, удаление)'
+            'Мелкие технические правки интерфейса и логики приложения'
         ],
         highlights: [
-            'Инструкции «Стена»: шапка и фильтры как на маршруте, карточки по макету',
-            'Молоток: один голос на пользователя, счётчик подтверждений',
-            'Подсказки: горизонтальный скролл и плавное сворачивание по строке счётчика',
-            'Иконки действий на карточках стены (документ, молоток, удаление)'
+            'Мелкие технические правки интерфейса и логики приложения'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -8425,7 +8425,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker.register('./sw.js?v=20261018i')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);

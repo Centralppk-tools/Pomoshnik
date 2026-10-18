@@ -25,7 +25,7 @@
     flex-direction: column;
     align-items: center;
     user-select: none;
-    min-height: calc(100vh - 68px);
+    min-height: 0;
     box-sizing: border-box;
     font-size: var(--font-base);
     line-height: 1.45;
@@ -111,6 +111,15 @@
     gap: var(--app-gap);
 }
 
+#screen-calendar .calendar-app-wrap {
+    padding-bottom: var(--bottom-tabbar-clearance);
+    box-sizing: border-box;
+}
+
+#screen-calendar .app-community-footer {
+    margin-bottom: 0;
+}
+
 #screen-calendar .phone-screen,
 #screen-profile .phone-screen {
     width: 100%;
@@ -133,9 +142,11 @@
     border: var(--card-border);
     border-radius: var(--card-radius);
     background: var(--surface-card-inner);
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 #screen-calendar .calendar-header {
@@ -236,9 +247,12 @@
     justify-content: center;
     flex-wrap: wrap;
     gap: 8px 14px;
-    margin-bottom: 6px;
+    margin: 0;
+    padding: 8px 12px 12px;
     font-size: 10px;
     color: var(--app-caption);
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 #screen-calendar .calendar-legend span {
@@ -269,11 +283,35 @@
     align-items: stretch;
     gap: 4px;
     width: 100%;
-    background: var(--surface-card-inner);
-    padding: 12px;
-    border-radius: var(--card-radius);
-    border: var(--card-border);
+    background: transparent;
+    padding: 8px 12px 4px;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0;
     box-sizing: border-box;
+    position: relative;
+    z-index: 0;
+    flex: 0 0 auto;
+}
+
+/* Жёстко: шапка месяца не sticky и не перекрывает экспорт/сетку (в т.ч. старый кэш responsive.css) */
+#screen-calendar .calendar-top-block .calendar-header {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    background: transparent !important;
+    flex: 0 0 auto !important;
+}
+
+#screen-calendar .calendar-top-block .calendar-export-row,
+#screen-calendar .calendar-top-block .calendar-grid,
+#screen-calendar .calendar-top-block .calendar-legend {
+    position: relative !important;
+    z-index: auto !important;
+    flex: 0 0 auto !important;
 }
 
 #screen-calendar .weekday {

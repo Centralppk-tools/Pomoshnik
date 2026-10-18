@@ -2,12 +2,26 @@
 #screen-profile {
     --profile-surface: var(--surface-card-inner);
     --profile-surface-border: rgba(255, 255, 255, 0.05);
+    overflow-x: clip;
+    max-width: 100%;
+    min-width: 0;
+}
+
+#screen-profile .profile-app-wrap,
+#screen-profile .profile-screen-header {
+    overflow-x: clip;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 #screen-profile .screen-card--profile {
     gap: 0;
     padding-top: 12px;
-    overflow: visible;
+    overflow-x: clip;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 #screen-profile .profile-card--hero,
@@ -112,18 +126,21 @@
 
 #screen-profile .profile-hero-top {
     display: flex;
-    align-items: center;
-    gap: 16px;
+    align-items: flex-start;
+    gap: 14px;
     width: 100%;
 }
 
 #screen-profile .profile-hero-tab-line {
     margin: 0 0 12px;
-    padding-left: 2px;
+    padding-left: 0;
     font-size: 13px;
     font-weight: 500;
     color: #7a8596;
     line-height: 1.3;
+    text-align: left;
+    align-self: flex-start;
+    width: 100%;
 }
 
 #screen-profile .profile-identity {
@@ -187,6 +204,8 @@
     font-size: var(--font-2xl);
     letter-spacing: -0.03em;
     color: var(--app-text-bright);
+    text-align: left;
+    width: 100%;
 }
 
 #screen-profile .profile-user-meta {
@@ -202,17 +221,23 @@
 
 #screen-profile .profile-position-combobox {
     position: relative;
-    width: min(100%, 240px);
+    width: 100%;
+    max-width: 100%;
     margin: 0;
+    align-self: stretch;
+}
+
+#screen-profile .profile-position-combobox .route-combobox-field {
+    width: 100%;
 }
 
 #screen-profile .profile-position-trigger {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     width: 100%;
     margin: 0;
-    padding: 6px 28px 6px 12px;
+    padding: 6px 28px 6px 10px;
     border: none;
     border-radius: var(--app-radius);
     background: rgba(255, 255, 255, 0.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b97ab' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E") no-repeat right 10px center;
@@ -222,8 +247,13 @@
     line-height: 1.3;
     cursor: pointer;
     font-family: inherit;
-    text-align: center;
+    text-align: left;
     transition: background 0.15s ease, color 0.15s ease;
+}
+
+#screen-profile #profilePositionLabel {
+    text-align: left;
+    width: 100%;
 }
 
 #screen-profile .profile-position-trigger:hover,
@@ -1179,11 +1209,13 @@
 
 #screen-profile .events-panel {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     margin-top: 2px;
-    padding: 12px 10px 8px;
+    padding: 10px 8px 8px;
     background: var(--pe-panel-bg);
     border: 1.5px solid var(--pe-panel-border);
-    border-radius: 24px;
+    border-radius: 18px;
     box-sizing: border-box;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 28px rgba(0, 0, 0, 0.25);
     overflow: hidden;
@@ -1191,8 +1223,8 @@
 
 #screen-profile .profile-events-panel-head {
     display: flex;
-    justify-content: center;
-    margin-bottom: 10px;
+    justify-content: flex-start;
+    margin-bottom: 8px;
 }
 
 #screen-profile .panel-pill-header {
@@ -1250,6 +1282,160 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+}
+
+/* ---------- Плановые события: компактная таблица (3 колонки) ---------- */
+#screen-profile .plan-events-table {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+}
+
+#screen-profile .plan-events-table-head {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(44px, auto);
+    gap: 8px;
+    padding: 0 6px 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--pe-muted, #7a8596);
+    line-height: 1.2;
+}
+
+#screen-profile .plan-events-table-head__pill {
+    text-align: right;
+}
+
+#screen-profile .plan-events-row {
+    appearance: none;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(44px, auto);
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 8px 6px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--pe-text, #e8edf5);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease, transform 0.12s ease;
+}
+
+#screen-profile .plan-events-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+#screen-profile .plan-events-row:active {
+    transform: scale(0.995);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#screen-profile .plan-events-row:focus-visible {
+    outline: 2px solid var(--pe-cyan);
+    outline-offset: -2px;
+}
+
+#screen-profile .plan-events-row__event {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+    padding-left: 6px;
+    border-left: 3px solid rgba(255, 255, 255, 0.12);
+}
+
+#screen-profile .plan-events-row__event.badge-ot { border-left-color: var(--pe-cyan, #38c8de); }
+#screen-profile .plan-events-row__event.badge-prmo { border-left-color: #f472b6; }
+#screen-profile .plan-events-row__event.badge-quarter { border-left-color: #f6ad55; }
+#screen-profile .plan-events-row__event.badge-exam { border-left-color: #63b3ed; }
+#screen-profile .plan-events-row__event.badge-trans { border-left-color: #f87171; }
+
+#screen-profile .plan-events-row__title {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #f3f6fb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#screen-profile .plan-events-row__sub {
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--pe-muted, #9aa6b8);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#screen-profile .plan-events-row__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+}
+
+#screen-profile .plan-events-row__event.badge-ot .plan-events-row__sub { color: var(--pe-cyan, #38c8de); }
+#screen-profile .plan-events-row__event.badge-prmo .plan-events-row__sub { color: #fca5d5; }
+#screen-profile .plan-events-row__event.badge-quarter .plan-events-row__sub { color: #f6ad55; }
+#screen-profile .plan-events-row__event.badge-exam .plan-events-row__sub { color: #63b3ed; }
+#screen-profile .plan-events-row__event.badge-trans .plan-events-row__sub { color: #feb2b2; }
+
+#screen-profile .plan-events-row__pass {
+    font-size: 9px;
+    line-height: 1.2;
+    color: var(--pe-muted, #8f9aa8);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#screen-profile .plan-events-row__next {
+    font-size: 10px;
+    line-height: 1.25;
+    color: #d8e4f8;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+#screen-profile .plan-events-row__pill {
+    justify-self: end;
+    min-width: 44px;
+    max-width: 56px;
+    font-size: 9px;
+    padding: 4px 6px;
+}
+
+#screen-profile .plan-events-row--add .plan-events-row__title {
+    font-weight: 600;
+    color: var(--app-muted);
+}
+
+#screen-profile .plan-events-row--add .plan-events-row__pill {
+    min-width: 28px;
+    text-align: center;
 }
 
 /* ---------- Плитка ---------- */

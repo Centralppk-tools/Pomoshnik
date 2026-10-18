@@ -18,7 +18,16 @@
     const dayStopsInflight = Object.create(null);
     const trainStopsMem = Object.create(null);
     const FETCH_TIMEOUT_MS = 4500;
-    const DAY_CACHE_NAME = 'da_shedulemax_tpl_v1';
+    const DAY_CACHE_NAME = 'da_shedulemax_tpl_v2';
+
+    function expectedThreadRev() {
+        const rev = Number(cfg().threadRev);
+        return Number.isFinite(rev) && rev > 0 ? rev : 12;
+    }
+
+    function stopPayloadFresh(payload) {
+        return Number(payload?.threadRev ?? 0) >= expectedThreadRev();
+    }
 
     function weekdayTemplateId(dateIso) {
         const parts = String(dateIso || '').split('-').map(Number);
@@ -47,7 +56,7 @@
 
     function stopFilePath(uid) {
         const id = String(uid || '').trim();
-        return id ? `data/cache_stops/stop_${id}.json` : '';
+        return id ? `data/cache_stops/stop_${id}.json?rev=${expectedThreadRev()}` : '';
     }
 
     function s3Url(path) {
@@ -562,28 +571,50 @@
         if (trainStopsMem[key] && !fresh) return trainStopsMem[key];
 
         const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+
+        const url = path ? s3Url(path) : '';
+        if (url && useDirectS3() && !fresh) {
+            const cached = await readCachedJson(url);
+            if (cached && stopPayloadFresh(cached)) {
+                const remembered = rememberStopsPayload(key, url, cached);
+                if (remembered) return remembered;
+            }
+            try {
+                const payload = await readJson(url, FETCH_TIMEOUT_MS);
+                if (stopPayloadFresh(payload)) {
+                    const stored = rememberStopsPayload(key, url, payload);
+                    if (stored) return stored;
+                }
+            } catch (err) {
+                console.warn('[shedule-max] S3 stop miss', url, err);
+            }
+        }
+
         if ((preferStopsApi() || fresh) && apiBase()) {
             try {
                 const payload = await fetchTrainDetailsFromApi(date, number, dir, {
                     voyageCode: uid,
-                    fresh,
+                    fresh: fresh || !stopPayloadFresh(trainStopsMem[key]),
                 });
-                const stored = rememberStopsPayload(key, '', payload);
-                if (stored) return stored;
+                if (stopPayloadFresh(payload)) {
+                    const stored = rememberStopsPayload(key, '', payload);
+                    if (stored) return stored;
+                }
             } catch (err) {
                 console.warn('[shedule-max] API stop miss, fallback S3', err);
             }
         }
 
-        const url = path ? s3Url(path) : '';
-        if (url) {
+        if (url && !useDirectS3()) {
             const cached = await readCachedJson(url);
             const remembered = rememberStopsPayload(key, url, cached);
-            if (remembered) return remembered;
+            if (remembered && stopPayloadFresh(remembered)) return remembered;
             try {
                 const payload = await readJson(url, FETCH_TIMEOUT_MS);
-                const stored = rememberStopsPayload(key, url, payload);
-                if (stored) return stored;
+                if (stopPayloadFresh(payload)) {
+                    const stored = rememberStopsPayload(key, url, payload);
+                    if (stored) return stored;
+                }
             } catch (err) {
                 console.warn('[shedule-max] S3 stop miss', url, err);
             }

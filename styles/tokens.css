@@ -23,9 +23,9 @@
     --card-radius: 16px;
     --tabbar-radius: 24px;
     --tabbar-active-radius: 12px;
-    --bottom-tabbar-height: 78px;
+    --bottom-tabbar-height: 84px;
     --bottom-tabbar-inset: 10px;
-    --bottom-tabbar-clearance: calc(var(--bottom-tabbar-height) + 20px + env(safe-area-inset-bottom, 0px));
+    --bottom-tabbar-clearance: calc(var(--bottom-tabbar-height) + 28px + env(safe-area-inset-bottom, 0px));
     --instr-fab-size: 56px;
     --instr-fab-gap: 12px;
     --instr-scroll-pad: calc(var(--bottom-tabbar-clearance) + var(--instr-fab-size) + var(--instr-fab-gap));

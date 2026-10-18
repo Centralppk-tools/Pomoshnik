@@ -79,6 +79,8 @@
     .app-header-bar {
         margin-left: 8px !important;
         margin-right: 8px !important;
+        max-width: calc(100% - 16px) !important;
+        box-sizing: border-box !important;
     }
 
     #screen-schedule .route-sticky-header-wrap {
@@ -90,8 +92,13 @@
         width: calc(100% - (var(--mobile-edge) * 2));
         margin-left: var(--mobile-edge);
         margin-right: var(--mobile-edge);
+        margin-bottom: 0;
         padding: 0 12px;
         box-sizing: border-box;
+    }
+
+    #screen-calendar .calendar-app-wrap {
+        padding-bottom: var(--bottom-tabbar-clearance);
     }
 
     #screen-schedule .screen-card--schedule .app-community-footer {
@@ -120,7 +127,7 @@
         box-sizing: border-box;
         background: transparent;
         border: none;
-        flex: 1;
+        flex: 0 1 auto;
         min-height: 0;
         overflow: visible;
     }
@@ -227,15 +234,6 @@
         flex-shrink: 0;
     }
 
-    #screen-calendar .calendar-header {
-        position: sticky;
-        top: calc(96px + env(safe-area-inset-top, 0px));
-        z-index: 40;
-        flex-shrink: 0;
-        min-height: 48px;
-        background: var(--surface-card-inner);
-    }
-
     #screen-calendar .shift-constructor {
         padding-bottom: 18px;
         margin-bottom: 2px;
@@ -304,14 +302,7 @@
     }
 
     #screen-calendar .calendar-header {
-        position: sticky;
-        top: calc(96px + env(safe-area-inset-top, 0px));
-        z-index: 40;
-        flex-shrink: 0;
-        min-height: 48px;
         padding: 10px 8px 8px;
-        background: var(--surface-card-inner);
-        border-radius: var(--card-radius) var(--card-radius) 0 0;
     }
 
     #screen-calendar .calendar-export-row {
@@ -333,8 +324,13 @@
 
     #screen-calendar .calendar-grid {
         gap: 3px;
-        padding: 8px 6px;
-        border-radius: var(--card-radius);
+        padding: 8px 10px 10px;
+        border-radius: 0;
+    }
+
+    #screen-calendar .calendar-legend {
+        padding-left: 10px;
+        padding-right: 10px;
     }
 
     #screen-calendar .weekday {

@@ -1,5 +1,5 @@
 // Версия кэша приложения — меняется при обновлении оболочки.
-const CACHE_VERSION = 'da_v4_0_47';
+const CACHE_VERSION = 'da_v4_0_48';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -116,6 +116,14 @@ function isInstructionsModuleRequest(pathname) {
         || pathname.endsWith('/styles/tokens.css')
         || pathname.endsWith('tokens.css')
         || pathname.includes('/assets/wall-icons/');
+}
+
+/** Личный кабинет — network-first (плановые события, должность) */
+function isProfileModuleRequest(pathname) {
+    return pathname.endsWith('/js/profile-compliance.js')
+        || pathname.endsWith('profile-compliance.js')
+        || pathname.endsWith('/styles/profile.css')
+        || pathname.endsWith('profile.css');
 }
 
 async function networkFirst(request) {
@@ -297,6 +305,11 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isInstructionsModuleRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    if (isProfileModuleRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }

@@ -11,7 +11,8 @@ window.APP_CONFIG = {
         apiBaseUrl: 'http://127.0.0.1:8792',
         functionUrl: '',
         useDirectS3: true,
-        preferStopsApi: true
+        preferStopsApi: false,
+        threadRev: 12
     }
 };
 

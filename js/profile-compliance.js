@@ -15,14 +15,12 @@
         'Возьмите паспорт, СНИЛС, полис ОМС и направление от работодателя'
     ];
 
-    const BUILTIN_IDS = ['ot_eb', 'prmo', 'quarter', 'exam', 'trans_sec'];
+    const BUILTIN_IDS = ['ot_eb', 'prmo', 'quarter'];
 
     const DEFAULT_VISIBLE = {
         ot_eb: true,
         prmo: true,
-        quarter: true,
-        exam: true,
-        trans_sec: true
+        quarter: true
     };
 
     const BADGE_COLOR_OPTIONS = [
@@ -67,6 +65,12 @@
         const d = parseIsoDate(iso);
         if (!d) return '—';
         return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    }
+
+    function countdownShort(days) {
+        if (days === null) return '—';
+        if (days < 0) return 'Проср.';
+        return `${days} дн`;
     }
 
     function countdownFoot(days) {
@@ -202,6 +206,11 @@
             data.flags = { ...(data.flags || {}), builtinCardsExpanded: true };
             data._needsPersist = true;
         }
+        if (data.cardVisible.exam !== false || data.cardVisible.trans_sec !== false) {
+            data.cardVisible.exam = false;
+            data.cardVisible.trans_sec = false;
+            data._needsPersist = true;
+        }
         if (data.quarter && typeof data.quarter.theme === 'string' && data.quarter.theme.length > 22) {
             data.quarter.themeFull = data.quarter.theme;
             data.quarter.theme = 'ОТ: Действия ЧС';
@@ -271,9 +280,6 @@
 
     function buildBuiltinCatalog(data) {
         const q = getQuarterInfo();
-        const examDots = formatDateDots(data.exam?.scheduled);
-        const examShort = examDots !== '—' ? examDots.slice(0, 5) : '—';
-        const other = data.other || {};
 
         return [
             {
@@ -318,34 +324,6 @@
                 sheetTitle: 'Квартальный зачёт',
                 sheetSub: quarterStatusText(data, q),
                 dateField: 'quarter.windowEnd'
-            },
-            {
-                id: 'exam',
-                kind: 'exam',
-                badgeClass: 'badge-exam',
-                title: 'Экзамен',
-                subBadge: 'ПТЭ Депо',
-                passedLabel: `Назначен: ${examShort}`,
-                nextIso: data.exam?.scheduled,
-                nextLabel: data.exam?.orderRef || 'Приказ',
-                note: data.exam?.note,
-                sheetTitle: 'Экзамен',
-                sheetSub: examAdmissionLabel(data.exam?.admission),
-                dateField: 'exam.scheduled'
-            },
-            {
-                id: 'trans_sec',
-                kind: 'trans_sec',
-                badgeClass: 'badge-trans',
-                title: other.title || 'Тр. Безоп.',
-                subBadge: other.subBadge || 'Аттестация',
-                passedLabel: `Срок: ${formatDateDots(other.deadline)}`,
-                nextIso: other.deadline,
-                nextLabel: 'ФЗ-16 (ОТБ)',
-                note: other.note || other.label,
-                sheetTitle: other.label || 'Другое',
-                sheetSub: other.done ? 'Выполнено' : (daysUntil(other.deadline) !== null && daysUntil(other.deadline) < 0 ? 'Просрочено' : 'В работе'),
-                dateField: 'other.deadline'
             }
         ];
     }
@@ -373,40 +351,47 @@
         return [...builtins, ...customs];
     }
 
-    function tileCardHtml(item) {
+    function planEventRowHtml(item) {
         const days = daysUntil(item.nextIso);
-        return `<button type="button" class="tile-card" data-compliance-action="open-card" data-card-id="${escapeHtml(item.id)}">
-  <div class="badge-compound ${escapeHtml(item.badgeClass)}">
-    <div class="badge-top">${escapeHtml(item.title)}</div>
-    <div class="badge-bottom">${escapeHtml(item.subBadge)}</div>
-  </div>
-  <div class="tile-card-mid">
-    <div class="tile-date-label">${escapeHtml(item.passedLabel)}</div>
-    <div class="tile-date-underline">${escapeHtml(item.nextLabel)}</div>
-  </div>
-  <div class="${pillClassForDays(days)}">${escapeHtml(countdownFoot(days))}</div>
+        const pillClass = pillClassForDays(days);
+        return `<button type="button" class="plan-events-row" data-compliance-action="open-card" data-card-id="${escapeHtml(item.id)}">
+  <span class="plan-events-row__event ${escapeHtml(item.badgeClass)}">
+    <span class="plan-events-row__title">${escapeHtml(item.title)}</span>
+    <span class="plan-events-row__sub">${escapeHtml(item.subBadge)}</span>
+  </span>
+  <span class="plan-events-row__meta">
+    <span class="plan-events-row__next">${escapeHtml(item.nextLabel)}</span>
+    <span class="plan-events-row__pass">${escapeHtml(item.passedLabel)}</span>
+  </span>
+  <span class="plan-events-row__pill ${pillClass}">${escapeHtml(countdownShort(days))}</span>
 </button>`;
     }
 
-    function placeholderHtml(withAdd) {
-        if (withAdd) {
-            return `<button type="button" class="tile-placeholder" data-compliance-action="settings">
-  <span class="tile-placeholder__icon" aria-hidden="true">+</span>
-  <span class="tile-placeholder__label">Добавить</span>
+    function planEventsAddRowHtml() {
+        return `<button type="button" class="plan-events-row plan-events-row--add" data-compliance-action="settings">
+  <span class="plan-events-row__event plan-events-row__event--add">
+    <span class="plan-events-row__title">Добавить событие</span>
+    <span class="plan-events-row__sub">Свои допуски</span>
+  </span>
+  <span class="plan-events-row__meta" aria-hidden="true">
+    <span class="plan-events-row__next">Настройка списка</span>
+    <span class="plan-events-row__pass">—</span>
+  </span>
+  <span class="plan-events-row__pill pill-counter" aria-hidden="true">+</span>
 </button>`;
-        }
-        return '<div class="tile-placeholder tile-placeholder--empty" aria-hidden="true"></div>';
     }
 
-    function buildGridHtml(data) {
+    function buildTableHtml(data) {
         const visible = data.cardVisible || DEFAULT_VISIBLE;
         const active = getAllCatalogItems(data).filter((c) => visible[c.id]);
-        let html = active.map(tileCardHtml).join('');
-        const remaining = 6 - active.length;
-        for (let i = 0; i < remaining; i++) {
-            html += placeholderHtml(i === 0);
-        }
-        return html;
+        const head = `
+            <div class="plan-events-table-head" aria-hidden="true">
+                <span class="plan-events-table-head__event">Событие</span>
+                <span class="plan-events-table-head__meta">Срок</span>
+                <span class="plan-events-table-head__pill">Ост.</span>
+            </div>`;
+        const rows = active.map(planEventRowHtml).join('') + planEventsAddRowHtml();
+        return head + rows;
     }
 
     function buildHtml(data, panelOpen) {
@@ -423,7 +408,7 @@
                 </button>
             </div>
             <div class="${wrapClass}" id="profilePlanGridWrapper">
-                <div class="grid-3x2" id="profilePlanGrid">${buildGridHtml(data)}</div>
+                <div class="plan-events-table" id="profilePlanGrid" data-compliance-layout="table">${buildTableHtml(data)}</div>
             </div>
             <button type="button" class="panel-drag-handle" data-compliance-panel-toggle title="Свернуть / развернуть" aria-label="Свернуть или развернуть блок"></button>
         `;
@@ -542,7 +527,7 @@
             <div class="plan-detail-edit">
                 <label class="plan-detail-edit__label" for="planDetailDateInput">Указать новую дату сдачи</label>
                 <div class="plan-detail-edit__row">
-                    <input type="date" id="planDetailDateInput" class="plan-detail-edit__input" value="${escapeHtml(dateIso)}">
+                    <input type="date" id="planDetailDateInput" name="planDetailDate" class="plan-detail-edit__input" value="${escapeHtml(dateIso)}">
                     <button type="button" class="plan-detail-edit__save" data-plan-save-date="${escapeHtml(cardId)}">Сохранить</button>
                 </div>
             </div>
@@ -651,12 +636,12 @@
                     <div id="profilePlanSettingsList" class="profile-plan-settings-list"></div>
                     <div class="plan-settings-add">
                         <p class="plan-settings-add__title">+ Добавить новый допуск</p>
-                        <input type="text" id="planCustomName" class="plan-settings-input" placeholder="Заголовок (например: ПТМ)" autocomplete="off">
-                        <input type="text" id="planCustomTag" class="plan-settings-input" placeholder="Подзаголовок (например: Пожарный минимум)" autocomplete="off">
+                        <input type="text" id="planCustomName" name="planCustomName" class="plan-settings-input" placeholder="Заголовок (например: ПТМ)" autocomplete="off">
+                        <input type="text" id="planCustomTag" name="planCustomTag" class="plan-settings-input" placeholder="Подзаголовок (например: Пожарный минимум)" autocomplete="off">
                         <div class="plan-settings-add__grid">
                             <label class="plan-settings-field">
                                 <span>Дата след. сдачи</span>
-                                <input type="date" id="planCustomDate" class="plan-settings-input">
+                                <input type="date" id="planCustomDate" name="planCustomDate" class="plan-settings-input">
                             </label>
                             <label class="plan-settings-field">
                                 <span>Цвет плашки</span>
@@ -687,7 +672,7 @@
                     <span class="profile-plan-settings-row__sub">${escapeHtml(item.nextLabel)}</span>
                 </span>
                 <span class="plan-switch">
-                    <input type="checkbox" class="profile-plan-settings-toggle" data-card-visible="${escapeHtml(item.id)}" ${visible[item.id] ? 'checked' : ''} aria-label="Показывать ${escapeHtml(item.title)}">
+                    <input type="checkbox" class="profile-plan-settings-toggle" id="planCardVisible-${escapeHtml(item.id)}" name="planCardVisible-${escapeHtml(item.id)}" data-card-visible="${escapeHtml(item.id)}" ${visible[item.id] ? 'checked' : ''} aria-label="Показывать ${escapeHtml(item.title)}">
                     <span class="plan-switch__track"><span class="plan-switch__dot"></span></span>
                 </span>
             </label>

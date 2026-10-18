@@ -70,10 +70,12 @@
 }
 
 #screen-instructions .instructions-app-wrap {
-    display: flex;
-    flex-direction: column;
-    min-height: 100dvh;
-    max-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
     overflow: hidden;
 }
 
@@ -1769,7 +1771,7 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     #screen-instructions .screen-card--instructions {
         flex: 1;
         min-height: 0;
-        overflow: visible;
+        overflow: hidden;
     }
 }
 
@@ -1781,14 +1783,16 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 }
 
 #screen-instructions .app-header-bar.instr-header-bar {
+    --instr-header-chip-h: 34px;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 10px;
-    margin: 0 0 8px !important;
+    gap: 8px;
+    margin: 0 0 6px !important;
     padding: 0 !important;
-    height: auto !important;
-    min-height: 0 !important;
+    height: var(--instr-header-chip-h) !important;
+    min-height: var(--instr-header-chip-h) !important;
+    max-height: var(--instr-header-chip-h) !important;
     border: none !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -1796,17 +1800,33 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     backdrop-filter: none !important;
 }
 
-#screen-instructions .instr-header-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+#screen-instructions .instr-header-brand,
+#screen-instructions .instr-header-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    align-self: center !important;
+    gap: 6px;
     min-width: 0;
-    height: 40px;
-    padding: 0 10px;
-    border-radius: 10px;
+    height: var(--instr-header-chip-h) !important;
+    min-height: var(--instr-header-chip-h) !important;
+    max-height: var(--instr-header-chip-h) !important;
+    padding: 0 8px !important;
+    border-radius: 8px;
     background: rgba(18, 25, 38, 0.88);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    flex: 0 1 auto !important;
+}
+
+#screen-instructions .instr-header-brand {
+    flex: 1 1 auto !important;
+    max-width: calc(100% - 108px);
+}
+
+#screen-instructions .instr-header-brand .app-brand-logo {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
 }
 
 #screen-instructions .instr-header-brand .app-brand-text,
@@ -1816,33 +1836,47 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     line-height: 1.15 !important;
     color: #9ca3af !important;
     text-transform: none !important;
-    white-space: normal !important;
-    overflow: visible !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
-#screen-instructions .instr-header-donate {
-    height: 40px;
-    min-height: 40px;
-    padding: 0 14px;
-    border-radius: 10px !important;
+#screen-instructions button.instr-header-donate.instr-header-chip.app-donate-trigger.app-donate-trigger--header {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    align-self: center !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: var(--instr-header-chip-h) !important;
+    min-height: var(--instr-header-chip-h) !important;
+    max-height: var(--instr-header-chip-h) !important;
+    margin: 0 !important;
+    margin-left: auto !important;
+    padding: 0 10px !important;
+    border-radius: 8px !important;
     background: rgba(18, 25, 38, 0.88) !important;
     border: 1px solid #06c785 !important;
     color: #ffffff !important;
-    font-size: 13px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
+    line-height: 1 !important;
     box-shadow: none !important;
+    box-sizing: border-box !important;
 }
 
 #screen-instructions .instr-sticky-header-wrap {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+    position: relative;
+    top: auto;
+    z-index: 30;
+    grid-row: 1;
     flex-shrink: 0;
     width: 100%;
     box-sizing: border-box;
-    padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px;
     background: #090c10;
-    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+    isolation: isolate;
 }
 
 #screen-instructions .instr-sticky-header-wrap .app-screen-header {
@@ -1851,7 +1885,7 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 
 #screen-instructions .instr-glass-stack {
     width: 100%;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     padding: 0;
     background: transparent;
     border: none;
@@ -1860,27 +1894,28 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 
 #screen-instructions .instr-sticky-header-wrap .instr-mode-tabs.schedule-glass-tabs {
     margin: 0 !important;
-    padding: 4px !important;
+    padding: 2px !important;
     width: 100% !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    border-radius: 16px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    border-radius: 12px !important;
     background: rgba(0, 0, 0, 0.4) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     display: flex !important;
     align-items: stretch !important;
-    gap: 4px !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    gap: 3px !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
     box-sizing: border-box !important;
 }
 
 #screen-instructions .instr-sticky-header-wrap .instr-mode-tabs .tab-btn {
     flex: 1 1 50% !important;
     min-height: 0 !important;
-    border-radius: 12px !important;
-    font-size: 14px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
     font-weight: 600 !important;
-    padding: 0 12px !important;
+    padding: 0 8px !important;
     color: rgba(232, 237, 245, 0.75) !important;
     background: transparent !important;
     border: none !important;
@@ -1913,22 +1948,32 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 
 #screen-instructions #instrSearchBlock.instr-search.instr-filter-panel {
     background: #161f2c;
-    padding: 12px;
+    padding: 8px 10px 4px;
 }
 
 #screen-instructions .instr-filter-panel {
     margin-top: 0;
-    padding: 12px;
-    border-radius: 16px;
+    padding: 8px 10px 4px;
+    border-radius: 14px;
     background: #161f2c;
     border: none;
-    gap: 10px;
+    gap: 6px;
+}
+
+#screen-instructions .wall-filter-block {
+    gap: 4px;
+    padding-top: 0;
+}
+
+#screen-instructions .wall-filter-extra {
+    gap: 4px;
 }
 
 #screen-instructions .instr-filter-label {
-    margin: 0 0 6px;
-    font-size: 11px;
+    margin: 0 0 3px;
+    font-size: 10px;
     font-weight: 600;
+    line-height: 1.2;
     color: var(--app-muted);
 }
 
@@ -1936,11 +1981,12 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    justify-content: space-between !important;
-    gap: 6px !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
     width: 100% !important;
     overflow-x: auto !important;
     scrollbar-width: none !important;
+    padding-bottom: 1px;
 }
 
 #screen-instructions .instr-tags-row::-webkit-scrollbar {
@@ -1948,19 +1994,17 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 }
 
 #screen-instructions .instr-tags-row .wall-cat-pill {
-    flex: 1 1 0 !important;
+    flex: 0 0 auto !important;
     min-width: 0 !important;
     max-width: none !important;
     white-space: nowrap !important;
-    padding: 6px 4px !important;
-    font-size: clamp(10px, 2.65vw, 12px) !important;
-    line-height: 1.15 !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
     border-radius: 999px !important;
     background: #2a323d;
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: #d1d5db;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 #screen-instructions .instr-tags-row .wall-cat-pill.is-active {
@@ -1973,7 +2017,19 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 #screen-instructions .instr-search__field {
     background: #262f3d;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
+    min-height: 36px;
+    padding: 6px 10px;
+    gap: 8px;
+}
+
+#screen-instructions .instr-search__field svg {
+    width: 16px;
+    height: 16px;
+}
+
+#screen-instructions .instr-search__input {
+    font-size: 14px;
 }
 
 #screen-instructions .instr-hints-collapse {
@@ -2007,7 +2063,7 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     margin: 0 -2px;
-    padding: 0 2px 6px;
+    padding: 0 2px 2px;
     touch-action: pan-x;
 }
 
@@ -2020,7 +2076,7 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     grid-template-rows: repeat(2, auto) !important;
     grid-auto-flow: column !important;
     grid-auto-columns: max-content !important;
-    gap: 6px !important;
+    gap: 4px 5px !important;
     width: max-content;
     min-width: 100%;
     max-width: none;
@@ -2032,8 +2088,8 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     align-items: center;
     justify-content: center;
     white-space: nowrap !important;
-    font-size: 11px !important;
-    padding: 5px 10px !important;
+    font-size: 10px !important;
+    padding: 3px 8px !important;
     border-radius: 999px !important;
     background: #2a323d;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2049,17 +2105,17 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 
 #screen-instructions .instr-filter-hints-divider {
     border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
-    margin: 4px 0 2px;
+    margin: 2px 0 0;
 }
 
 #screen-instructions button.instr-filter-footer {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     margin: 0;
-    padding: 8px 4px 10px;
+    padding: 5px 2px 6px;
     border: none;
     border-radius: 0 0 12px 12px;
     background: transparent;
@@ -2080,8 +2136,8 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 
 #screen-instructions .instr-filter-count {
     grid-column: 1;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 10px;
+    line-height: 1.25;
     color: var(--app-muted);
     pointer-events: none;
 }
@@ -2089,8 +2145,8 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 #screen-instructions .instr-filter-grab {
     grid-column: 2;
     justify-self: center;
-    width: 36px;
-    height: 4px;
+    width: 32px;
+    height: 3px;
     padding: 0;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.22);
@@ -2112,6 +2168,7 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
 }
 
 #screen-instructions .screen-card--instructions {
+    grid-row: 2;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -2119,6 +2176,36 @@ body:has(#instrPdfOverlay:not([hidden])) .instr-fab-wrap {
     overflow: hidden;
     padding: 0 12px 8px;
     box-sizing: border-box;
+}
+
+/* Экран «Инструкции»: без скролла body, лента — только в .wall-feed */
+#screen-instructions.screen:not(.hidden) {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#screen-instructions.screen:not(.hidden) .phone-screen.instructions-app-wrap {
+    height: 100%;
+    max-height: 100%;
+}
+
+.main-screens-stage:has(> #screen-instructions:not(.hidden)) {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+}
+
+body:has(#screen-instructions:not(.hidden)) {
+    overflow: hidden;
+    height: 100dvh;
+    max-height: 100dvh;
+}
+
+#screen-instructions .wall-feed {
+    overscroll-behavior: contain;
+    padding-top: 4px;
 }
 
 #screen-instructions .wall-card,

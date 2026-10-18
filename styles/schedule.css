@@ -953,7 +953,8 @@
 
 /* Idle: ?? ??????? ?? Y ? ????? position:sticky ? #scheduleGlassStack ?? ???????? ??? ??????? body */
 .main-screens-stage:not(.is-transitioning):not(.is-dragging) {
-    overflow: visible;
+    overflow-x: clip;
+    overflow-y: visible;
     touch-action: pan-y;
 }
 
@@ -1157,6 +1158,10 @@
 }
 .screen.hidden { display: none !important; }
 .screen.screen-fade { opacity: 0; }
+
+html {
+    scroll-padding-bottom: var(--bottom-tabbar-clearance);
+}
 
 body {
     padding-bottom: var(--bottom-tabbar-clearance);

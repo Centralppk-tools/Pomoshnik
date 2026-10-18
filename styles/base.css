@@ -1051,6 +1051,12 @@ body {
     overflow: hidden !important;
 }
 
+#screen-instructions.screen:not(.hidden) {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+}
+
 .app-header-bar {
     display: flex !important;
     align-items: center !important;
@@ -1074,7 +1080,7 @@ body {
     height: auto !important;
     min-height: 0 !important;
     padding: 0 !important;
-    margin: 8px 12px 10px !important;
+    margin: 0 0 6px !important;
     border: none !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -1124,8 +1130,18 @@ body {
     padding: 0;
 }
 
-/* Верхняя строка маршрута: логотип | часы | Поддержать */
-#screen-schedule .route-sticky-header-wrap .app-header-bar.route-header-bar {
+#screen-profile .profile-screen-header,
+#screen-calendar .app-screen-header {
+    width: 100%;
+    max-width: 100%;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 0;
+    box-sizing: border-box;
+}
+
+/* Верхняя строка: логотип | часы | Поддержать (маршрут, календарь, профиль) */
+#screen-schedule .route-sticky-header-wrap .app-header-bar.route-header-bar,
+#screen-profile .profile-screen-header .app-header-bar.route-header-bar,
+#screen-calendar .app-screen-header .app-header-bar.route-header-bar {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center !important;
@@ -1144,7 +1160,9 @@ body {
     box-sizing: border-box !important;
 }
 
-#screen-schedule .route-sticky-header-wrap .route-header-brand {
+#screen-schedule .route-sticky-header-wrap .route-header-brand,
+#screen-profile .profile-screen-header .route-header-brand,
+#screen-calendar .app-screen-header .route-header-brand {
     justify-self: start;
     display: inline-flex !important;
     align-items: center !important;
@@ -1159,7 +1177,9 @@ body {
     max-width: 100%;
 }
 
-#screen-schedule .route-sticky-header-wrap .route-header-brand-text {
+#screen-schedule .route-sticky-header-wrap .route-header-brand-text,
+#screen-profile .profile-screen-header .route-header-brand-text,
+#screen-calendar .app-screen-header .route-header-brand-text {
     font-size: 11px !important;
     font-weight: 600 !important;
     line-height: 1.15 !important;
@@ -1167,12 +1187,16 @@ body {
     white-space: normal !important;
 }
 
-#screen-schedule .route-sticky-header-wrap .route-header-brand .app-brand-logo {
+#screen-schedule .route-sticky-header-wrap .route-header-brand .app-brand-logo,
+#screen-profile .profile-screen-header .route-header-brand .app-brand-logo,
+#screen-calendar .app-screen-header .route-header-brand .app-brand-logo {
     width: 26px !important;
     height: 26px !important;
 }
 
-#screen-schedule .route-sticky-header-wrap .app-header-bar-clock {
+#screen-schedule .route-sticky-header-wrap .app-header-bar-clock,
+#screen-profile .profile-screen-header .app-header-bar-clock,
+#screen-calendar .app-screen-header .app-header-bar-clock {
     justify-self: center;
     grid-column: 2;
     font-family: "Cascadia Mono", "SF Mono", Consolas, monospace !important;
@@ -1191,7 +1215,9 @@ body {
     white-space: nowrap;
 }
 
-#screen-schedule .route-sticky-header-wrap .route-header-donate {
+#screen-schedule .route-sticky-header-wrap .route-header-donate,
+#screen-profile .profile-screen-header .route-header-donate,
+#screen-calendar .app-screen-header .route-header-donate {
     justify-self: end;
     grid-column: 3;
     display: inline-flex !important;
