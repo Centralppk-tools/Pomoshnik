@@ -1,5 +1,5 @@
 // Версия кэша приложения — меняется при обновлении оболочки.
-const CACHE_VERSION = 'da_v4_0_48';
+const CACHE_VERSION = 'da_v4_0_50';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -288,11 +288,20 @@ function isSheduleMaxDataRequest(url) {
     return false;
 }
 
+/** API на том же origin — только сеть, без CacheStorage */
+function isSameOriginApiRequest(url) {
+    return url.pathname.startsWith('/api/');
+}
+
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
+    if (url.origin === self.location.origin && isSameOriginApiRequest(url)) {
+        event.respondWith(fetch(request));
+        return;
+    }
     if (isSheduleMaxDataRequest(url)) {
         event.respondWith(networkFirst(request));
         return;

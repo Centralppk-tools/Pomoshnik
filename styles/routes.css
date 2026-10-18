@@ -1703,6 +1703,7 @@
 }
 
 .route-refresh-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1719,6 +1720,30 @@
     cursor: pointer;
     box-shadow: 0 4px 16px var(--app-green-glow);
     transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
+    overflow: hidden;
+}
+
+.route-refresh-progress {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background: rgba(255, 255, 255, 0.28);
+    transition: width 0.25s ease;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.route-refresh-btn .route-refresh-icon,
+.route-refresh-btn .route-refresh-label {
+    position: relative;
+    z-index: 1;
+}
+
+.route-refresh-label {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 .route-refresh-btn:hover {
@@ -1737,8 +1762,17 @@
 }
 
 .route-refresh-btn.is-loading {
-    opacity: 0.72;
+    opacity: 0.92;
     pointer-events: none;
+}
+
+.route-refresh-btn.is-loading .route-refresh-icon svg {
+    animation: route-refresh-spin 0.85s linear infinite;
+}
+
+@keyframes route-refresh-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .route-refresh-btn.is-full-refresh {

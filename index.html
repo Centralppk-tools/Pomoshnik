@@ -257,11 +257,12 @@
         <div id="routeSummary" class="route-summary-wrap" style="display: none;"></div>
 
         <div id="routeToolbarWrap" class="route-toolbar-wrap">
-            <button type="button" id="routeRefreshBtn" class="route-refresh-btn" aria-label="Обновить данные поездов. Удержание — полное обновление табло." title="Короткое нажатие — нитки поездов. Удержание ~0,6 с — табло Ярославского заново.">
+            <button type="button" id="routeRefreshBtn" class="route-refresh-btn" aria-label="Обновить расписание и нитки поездов текущей смены" title="Сбросить кэш ниток и загрузить актуальные времена">
+                <span class="route-refresh-progress" aria-hidden="true"></span>
                 <span class="route-refresh-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
                 </span>
-                <span>Обновить</span>
+                <span class="route-refresh-label">Обновить</span>
             </button>
             <button type="button" class="shift-clear-link" onclick="requestShiftReset(event)">Очистить смену</button>
         </div>
@@ -825,7 +826,6 @@
 
     const STATION_BOARD_CACHE_VERSION = 2;
     const STATION_BOARD_CACHE_MAX_DATES = 4;
-    const ROUTE_REFRESH_LONG_PRESS_MS = 580;
 
     let stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
     let trainThreadsCache = {};
@@ -851,8 +851,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.48';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_48';
+    const APP_RELEASE_VERSION = '4.0.50';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_50';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -4561,11 +4561,105 @@
         }
     }
 
-    function refreshRouteData(e, options = {}) {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
+    function setRouteRefreshProgress(percent, phaseLabel) {
+        const btn = document.getElementById('routeRefreshBtn');
+        if (!btn) return;
+        const value = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+        const bar = btn.querySelector('.route-refresh-progress');
+        if (bar) bar.style.width = `${value}%`;
+        const label = btn.querySelector('.route-refresh-label');
+        const phase = String(phaseLabel || '').trim();
+        if (label) {
+            label.textContent = value > 0 && value < 100
+                ? (phase ? `${phase} ${value}%` : `${value}%`)
+                : 'Обновить';
         }
+        btn.setAttribute('aria-busy', value > 0 && value < 100 ? 'true' : 'false');
+    }
+
+    function resetRouteRefreshProgress() {
+        const btn = document.getElementById('routeRefreshBtn');
+        if (!btn) return;
+        const bar = btn.querySelector('.route-refresh-progress');
+        if (bar) bar.style.width = '0%';
+        const label = btn.querySelector('.route-refresh-label');
+        if (label) label.textContent = 'Обновить';
+        btn.setAttribute('aria-busy', 'false');
+    }
+
+    async function refreshShiftTrainsFromNetwork(inputs, onStep) {
+        const dates = resolveTrainSearchDatesForShift();
+        const failed = [];
+
+        for (let i = 0; i < dates.length; i++) {
+            const date = dates[i];
+            await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
+            if (typeof onStep === 'function') {
+                onStep({ phase: 'board', date, index: i + 1, total: dates.length });
+            }
+        }
+
+        const pairTotal = Math.max(1, inputs.length * dates.length);
+        let pairIndex = 0;
+
+        for (const trainNumber of inputs) {
+            let trainOk = false;
+            for (const date of dates) {
+                pairIndex += 1;
+                const registryEntry = findLocalTrainRegistryEntry(trainNumber);
+                let hit = null;
+                try {
+                    hit = await findTrainOnStationBoards(trainNumber, date, {
+                        forceRefresh: true,
+                        threadsOnly: false,
+                    });
+                } catch (err) {
+                    console.warn('[trains] board lookup failed:', trainNumber, date, err);
+                }
+                if (!hit && window.SheduleMaxSource?.enabled?.()) {
+                    hit = lookupTrainOnStationBoard(trainNumber, date);
+                }
+                const uid = String(hit?.thread?.uid || '').trim();
+                if (window.SheduleMaxSource?.loadTrainStops && uid) {
+                    try {
+                        await window.SheduleMaxSource.loadTrainStops(
+                            date,
+                            trainNumber,
+                            uid,
+                            'from_moscow',
+                            { fresh: true }
+                        );
+                    } catch (err) {
+                        console.warn('[trains] fresh stops failed:', trainNumber, err);
+                    }
+                }
+                if (hit) {
+                    try {
+                        const decorated = await fetchTrainFromBoardHit(hit, trainNumber, date, registryEntry);
+                        if (decorated && !decorated.partial) trainOk = true;
+                    } catch (err) {
+                        console.warn('[trains] refresh thread failed:', trainNumber, err);
+                    }
+                }
+                if (typeof onStep === 'function') {
+                    onStep({
+                        phase: 'train',
+                        trainNumber,
+                        date,
+                        index: pairIndex,
+                        total: pairTotal,
+                    });
+                }
+            }
+            if (!trainOk) failed.push(trainNumber);
+        }
+        return failed;
+    }
+
+    async function refreshRouteDataAsync(options = {}) {
+        const report = (percent, label) => {
+            if (typeof options.onProgress === 'function') options.onProgress(percent, label);
+        };
 
         const inputs = getTrainNumbersFromDom();
         if (!inputs.length) {
@@ -4573,67 +4667,96 @@
             return;
         }
 
-        const fullBoard = options.fullBoard === true;
+        report(2, 'Старт');
 
-        if (fullBoard) {
-            invalidateTrainThreadCacheForNumbers(inputs);
-            invalidateStationBoardCachesForDates(resolveTrainSearchDatesForShift());
-            getRouteData({ forceRefresh: true, forceBoardRefresh: true });
-            return;
+        if (window.SheduleMaxSource?.clearShiftThreadCaches) {
+            await window.SheduleMaxSource.clearShiftThreadCaches();
         }
+        report(10, 'Очистка кэша');
 
         invalidateTrainThreadCacheForNumbers(inputs);
-        getRouteData({ forceRefresh: true, threadsOnly: true });
+        invalidateStationBoardCachesForDates(resolveTrainSearchDatesForShift());
+        report(14, 'Подготовка');
+
+        const failed = await refreshShiftTrainsFromNetwork(inputs, (step) => {
+            if (step.phase === 'board') {
+                const part = step.total ? (step.index / step.total) : 1;
+                report(14 + part * 20, 'Табло');
+                return;
+            }
+            if (step.phase === 'train') {
+                const part = step.total ? (step.index / step.total) : 1;
+                report(34 + part * 48, step.trainNumber ? `Поезд ${step.trainNumber}` : 'Нитки');
+            }
+        });
+
+        report(86, 'Маршрут');
+        getRouteData({ forceRefresh: true, forceBoardRefresh: true });
+
+        report(93, 'Расписание');
+        const openTrain = String(userStorageGet('lastSingleTrain') || '').trim();
+        if (openTrain) {
+            getScheduleData(openTrain, { forceRefresh: true });
+        }
+
+        report(100, 'Готово');
+
+        if (failed.length) {
+            const msg = `Не удалось обновить поезда: ${failed.join(', ')}. Проверьте сеть.`;
+            if (typeof showToast === 'function') showToast(msg);
+            else console.warn(msg);
+        }
+    }
+
+    function refreshRouteData(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        void refreshRouteDataAsync();
+    }
+
+    async function handleRouteRefreshClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const btn = document.getElementById('routeRefreshBtn');
+        if (!btn || btn.disabled) return;
+
+        btn.disabled = true;
+        btn.dataset.refreshBusy = '1';
+        btn.classList.add('is-loading');
+        btn.classList.remove('is-full-refresh');
+        setRouteRefreshProgress(1, 'Старт');
+        try {
+            await refreshRouteDataAsync({
+                onProgress: (percent, label) => setRouteRefreshProgress(percent, label),
+            });
+        } catch (err) {
+            console.error('[trains] route refresh failed:', err);
+            const msg = 'Не удалось обновить расписание. Проверьте сеть.';
+            if (typeof showToast === 'function') showToast(msg);
+            else alert(msg);
+        } finally {
+            btn.disabled = false;
+            delete btn.dataset.refreshBusy;
+            btn.classList.remove('is-loading');
+            btn.classList.remove('is-full-refresh');
+            setRouteRefreshProgress(100, 'Готово');
+            window.setTimeout(() => resetRouteRefreshProgress(), 500);
+        }
     }
 
     function initRouteRefreshButton() {
         const btn = document.getElementById('routeRefreshBtn');
         if (!btn || btn.dataset.refreshBound === '1') return;
         btn.dataset.refreshBound = '1';
-
-        let pressTimer = null;
-        let longPressHandled = false;
-
-        const clearPressTimer = () => {
-            if (pressTimer) {
-                clearTimeout(pressTimer);
-                pressTimer = null;
-            }
-        };
-
-        btn.addEventListener('pointerdown', (e) => {
-            if (e.button !== 0) return;
-            longPressHandled = false;
-            clearPressTimer();
-            pressTimer = setTimeout(() => {
-                longPressHandled = true;
-                btn.classList.add('is-full-refresh');
-                refreshRouteData(e, { fullBoard: true });
-            }, ROUTE_REFRESH_LONG_PRESS_MS);
-        });
-
-        btn.addEventListener('pointerup', () => {
-            clearPressTimer();
-            btn.classList.remove('is-full-refresh');
-        });
-
-        btn.addEventListener('pointercancel', () => {
-            clearPressTimer();
-            btn.classList.remove('is-full-refresh');
-        });
-
         btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (longPressHandled) {
-                longPressHandled = false;
-                return;
-            }
-            refreshRouteData(e);
+            void handleRouteRefreshClick(e);
         });
     }
 
     window.refreshRouteData = refreshRouteData;
+    window.refreshRouteDataAsync = refreshRouteDataAsync;
     window.refreshScheduleLiveClock = refreshScheduleLiveClock;
 
     function resetScheduleResults() {
@@ -7183,7 +7306,9 @@
             finalize: true,
             allowMissing: true
         });
-        refreshBtn?.classList.remove('is-loading');
+        if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
+            refreshBtn.classList.remove('is-loading');
+        }
 
         const repaintRoute = () => {
             if (requestId !== routeDataRequestId) return;
@@ -7207,7 +7332,14 @@
                     || ''
                 ).trim();
                 if (!uid) return Promise.resolve();
-                return window.SheduleMaxSource.loadTrainStops(baseDate, trainNumber, uid).catch(() => null);
+                const fresh = searchOptions.forceRefresh === true;
+                return window.SheduleMaxSource.loadTrainStops(
+                    baseDate,
+                    trainNumber,
+                    uid,
+                    'from_moscow',
+                    { fresh }
+                ).catch(() => null);
             })).then(repaintRoute);
         };
 
@@ -7314,7 +7446,14 @@
         ).trim();
         if (hasMiddleClocks || !stopUid || !window.SheduleMaxSource?.loadTrainStops) return;
 
-        void window.SheduleMaxSource.loadTrainStops(selectedDate, input, stopUid).then((payload) => {
+        const fresh = options.forceRefresh === true;
+        void window.SheduleMaxSource.loadTrainStops(
+            selectedDate,
+            input,
+            stopUid,
+            'from_moscow',
+            { fresh }
+        ).then((payload) => {
             if (!payload) return;
             if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
             if (getSelectedDate() !== selectedDate) return;
@@ -7873,13 +8012,20 @@
         overlay.hidden = false;
         overlay.setAttribute('aria-hidden', 'false');
         document.body.classList.add('release-overlay-open');
+        requestAnimationFrame(() => {
+            document.getElementById('appReleaseDismissBtn')?.focus({ preventScroll: true });
+        });
     }
 
     function hideAppReleaseOverlay(markSeen = true) {
         const overlay = document.getElementById('appReleaseOverlay');
         if (!overlay) return;
-        overlay.hidden = true;
+        const active = document.activeElement;
+        if (active && overlay.contains(active)) {
+            active.blur();
+        }
         overlay.setAttribute('aria-hidden', 'true');
+        overlay.hidden = true;
         document.body.classList.remove('release-overlay-open');
         if (markSeen) markAppVersionSeen();
     }
@@ -8354,17 +8500,96 @@
         toast.hidden = true;
     }
 
-    function applyServiceWorkerUpdate() {
-        const registration = activeServiceWorkerRegistration;
+    function isProtectedLocalStorageKey(key) {
+        if (!key) return true;
+        const exact = new Set([
+            AUTH_SESSION_KEY,
+            DEPOT_TAB_KEY,
+            DEPOT_FIO_KEY,
+            DEPOT_POSITION_KEY,
+            APP_LAST_SEEN_VERSION_KEY,
+            APP_HOST_HINT_KEY,
+            USERS_DB_KEY,
+            'rzd_auth_session',
+            SHIFT_HOURS_SEEN_UNTIL_KEY,
+            ANALYTICS_PING_PENDING_KEY,
+            ANALYTICS_PING_PENDING_UUID_KEY,
+            ANONYMOUS_DEVICE_UUID_KEY,
+            LEGACY_ANALYTICS_DEVICE_ID_KEY
+        ]);
+        if (exact.has(key)) return true;
+        if (key.includes(DEPOT_SHIFTS_KEY)) return true;
+        if (key.startsWith('da_profile_compliance')) return true;
+        if (key.startsWith('da_profile_plan_')) return true;
+        if (key.startsWith('da_crew_wall') || key.startsWith('da_wall_hammer')) return true;
+        return false;
+    }
+
+    function shouldClearTrainScheduleLocalStorageKey(key) {
+        if (isProtectedLocalStorageKey(key)) return false;
+        if (key.endsWith('_trainThreadsCache') || key.endsWith('_stationScheduleCache')) return true;
+        if (key.startsWith('stops_') || key.startsWith('train_') || key.startsWith('route_')) return true;
+        if (/schedule_cache/i.test(key) || /thread_/i.test(key)) return true;
+        if (key.startsWith('cache_')) return true;
+        return false;
+    }
+
+    function clearTrainScheduleLocalStorageCaches() {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (shouldClearTrainScheduleLocalStorageKey(key)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+        trainThreadsCache = {};
+        stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
+        Object.keys(stationScheduleByKey).forEach((k) => { delete stationScheduleByKey[k]; });
+        Object.keys(stationUidIndexByDate).forEach((k) => { delete stationUidIndexByDate[k]; });
+        Object.keys(stationScheduleLoaders).forEach((k) => { delete stationScheduleLoaders[k]; });
+    }
+
+    async function forceAppUpdate() {
+        const toastBtn = document.getElementById('appUpdateToastBtn');
+        if (toastBtn) {
+            toastBtn.disabled = true;
+            toastBtn.textContent = 'Обновляем…';
+        }
+
         serviceWorkerReloadPending = true;
 
-        const waitingWorker = registration?.waiting;
-        if (waitingWorker) {
-            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-            return;
+        try {
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map((name) => caches.delete(name)));
+            }
+
+            if (window.SheduleMaxSource?.clearNetworkCaches) {
+                await window.SheduleMaxSource.clearNetworkCaches();
+            }
+
+            clearTrainScheduleLocalStorageCaches();
+
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.update().catch(() => {});
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[ЦППК] Ошибка принудительного обновления:', err);
         }
 
         window.location.reload();
+    }
+
+    function applyServiceWorkerUpdate() {
+        void forceAppUpdate();
     }
 
     function watchServiceWorkerUpdate(registration) {
@@ -8425,7 +8650,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261018i')
+        navigator.serviceWorker.register('./sw.js?v=20261018m')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);

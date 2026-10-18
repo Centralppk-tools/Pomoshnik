@@ -93,7 +93,10 @@
         const q = new URLSearchParams({ date: day, train, direction: dir });
         const voyageCode = String(options.voyageCode || '').trim();
         if (voyageCode) q.set('voyage_code', voyageCode);
-        if (options.fresh) q.set('fresh', '1');
+        if (options.fresh) {
+            q.set('fresh', '1');
+            q.set('_t', String(Date.now()));
+        }
         const url = apiUrl(`/api/train_details?${q.toString()}`);
         const res = await fetch(url, { cache: 'no-store' });
         let payload = null;
@@ -338,12 +341,22 @@
         }
     }
 
-    async function readJson(url, timeoutMs = FETCH_TIMEOUT_MS) {
+    function withCacheBust(url, fresh) {
+        if (!fresh) return url;
+        const sep = String(url).includes('?') ? '&' : '?';
+        return `${url}${sep}_t=${Date.now()}`;
+    }
+
+    async function readJson(url, timeoutMs = FETCH_TIMEOUT_MS, options = {}) {
+        const fresh = options.fresh === true;
         const controller = new AbortController();
         const timer = global.setTimeout(() => controller.abort(), timeoutMs);
         let res;
         try {
-            res = await fetch(url, { signal: controller.signal });
+            res = await fetch(withCacheBust(url, fresh), {
+                signal: controller.signal,
+                cache: fresh ? 'no-store' : 'default',
+            });
         } catch (err) {
             const fail = new Error(
                 err?.name === 'AbortError'
@@ -378,7 +391,9 @@
             fail.code = 'FETCH_FAILED';
             throw fail;
         }
-        void writeCachedResponse(url, res, payload);
+        if (!fresh) {
+            void writeCachedResponse(url, res, payload);
+        }
         return payload;
     }
 
@@ -573,14 +588,16 @@
         const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
 
         const url = path ? s3Url(path) : '';
-        if (url && useDirectS3() && !fresh) {
-            const cached = await readCachedJson(url);
-            if (cached && stopPayloadFresh(cached)) {
-                const remembered = rememberStopsPayload(key, url, cached);
-                if (remembered) return remembered;
+        if (url && useDirectS3()) {
+            if (!fresh) {
+                const cached = await readCachedJson(url);
+                if (cached && stopPayloadFresh(cached)) {
+                    const remembered = rememberStopsPayload(key, url, cached);
+                    if (remembered) return remembered;
+                }
             }
             try {
-                const payload = await readJson(url, FETCH_TIMEOUT_MS);
+                const payload = await readJson(url, FETCH_TIMEOUT_MS, { fresh });
                 if (stopPayloadFresh(payload)) {
                     const stored = rememberStopsPayload(key, url, payload);
                     if (stored) return stored;
@@ -656,6 +673,63 @@
         return fetchThreadFromObjectStore(date, number, uid);
     }
 
+    async function deleteIndexedDbSchedule() {
+        if (!global.indexedDB) return;
+        await new Promise((resolve) => {
+            try {
+                const req = global.indexedDB.deleteDatabase('da_shedulemax_idb');
+                req.onsuccess = () => resolve();
+                req.onerror = () => resolve();
+                req.onblocked = () => resolve();
+            } catch {
+                resolve();
+            }
+        });
+    }
+
+    async function clearCacheStopsFromCacheStorage() {
+        if (!global.caches?.keys) return;
+        try {
+            const names = await global.caches.keys();
+            for (const name of names) {
+                const cache = await global.caches.open(name);
+                const requests = await cache.keys();
+                await Promise.all(requests
+                    .filter((req) => /cache_stops/i.test(req.url))
+                    .map((req) => cache.delete(req)));
+            }
+        } catch (err) {
+            console.warn('[shedule-max] CacheStorage cache_stops clear failed', err);
+        }
+    }
+
+    async function clearShiftThreadCaches() {
+        Object.keys(dayStopsCache).forEach((k) => { delete dayStopsCache[k]; });
+        Object.keys(dayStopsInflight).forEach((k) => { delete dayStopsInflight[k]; });
+        Object.keys(trainStopsMem).forEach((k) => { delete trainStopsMem[k]; });
+        await clearCacheStopsFromCacheStorage();
+        if (global.caches?.open) {
+            try {
+                await global.caches.delete(DAY_CACHE_NAME);
+            } catch {
+                /* ignore */
+            }
+        }
+        await deleteIndexedDbSchedule();
+    }
+
+    async function clearNetworkCaches() {
+        await clearShiftThreadCaches();
+        if (!global.caches?.keys) return;
+        try {
+            const names = await global.caches.keys();
+            await Promise.all(names.filter((n) => /shedulemax/i.test(n))
+                .map((n) => global.caches.delete(n)));
+        } catch (err) {
+            console.warn('[shedule-max] cache clear failed', err);
+        }
+    }
+
     global.SheduleMaxSource = {
         fetchYaroslavlBoard,
         fetchThread,
@@ -664,6 +738,9 @@
         loadTrainStops,
         hydrateDayStopsCacheOnly,
         prefetchDayStops: hydrateDayStopsCacheOnly,
+        clearNetworkCaches,
+        clearShiftThreadCaches,
+        expectedThreadRev,
         clockHms,
         clockToIso,
         enabled() {
