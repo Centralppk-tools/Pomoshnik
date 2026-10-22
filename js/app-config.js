@@ -1,4 +1,7 @@
+window.APP_BUILD_ID = '2026-10-22_v1';
+
 window.APP_CONFIG = {
+    APP_BUILD_ID: window.APP_BUILD_ID,
     yandexProxy: '',
     yandexClientToken: '',
     webPushVapidPublicKey: 'BPKYfiRk4SLmag3Q4xclEcQB8TkYY-3r-jfzo00lXFjW6JSIDi8-F7MDH72MEIhsLeFSSY62fYlrR-h5-hMVA1A',
@@ -12,7 +15,8 @@ window.APP_CONFIG = {
         functionUrl: '',
         useDirectS3: true,
         preferStopsApi: false,
-        threadRev: 13
+        preferBoardApi: false,
+        threadRev: 14
     }
 };
 

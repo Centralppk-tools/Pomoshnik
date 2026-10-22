@@ -276,6 +276,7 @@
 
         <div id="scheduleResults" class="timeline schedule-results-wrap" style="display: none;">
             <div class="timeline-line"></div>
+            <div id="scheduleInterpolationBanner" class="schedule-interpolation-banner-wrap" hidden></div>
             <div id="stationsList"></div>
         </div>
     </div>
@@ -781,6 +782,7 @@
 </div>
 
 <script src="js/app-config.js"></script>
+<script src="js/hard-reset-app.js"></script>
 <script src="js/app-data-source.js"></script>
 <script src="js/shedule-max-source.js"></script>
 <script src="js/info-chip.js"></script>
@@ -866,8 +868,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.53';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_53';
+    const APP_RELEASE_VERSION = '4.0.55';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_55';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1814,6 +1816,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.ensureAppBuildMatches === 'function') {
+            void window.ensureAppBuildMatches();
+        }
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -3822,36 +3827,14 @@
 
     function findCachedTrainResult(trainNumber, scheduleDate) {
         const numKey = normalizeTrainCacheKey(trainNumber);
-        if (!numKey) return null;
+        if (!numKey || !scheduleDate) return null;
 
         const datedKey = getTrainCacheKey(trainNumber, scheduleDate);
-        if (datedKey && trainThreadsCache[datedKey] && isApiTrainCacheEntry(trainThreadsCache[datedKey])) {
-            return trainThreadsCache[datedKey];
-        }
-
-        if (scheduleDate) {
-            const altDates = [
-                addDaysToDateStr(scheduleDate, 1),
-                addDaysToDateStr(scheduleDate, -1)
-            ];
-            for (const altDate of altDates) {
-                const altKey = getTrainCacheKey(trainNumber, altDate);
-                if (altKey && trainThreadsCache[altKey] && isApiTrainCacheEntry(trainThreadsCache[altKey])) {
-                    return trainThreadsCache[altKey];
-                }
-            }
-        }
-
-        const legacy = trainThreadsCache[numKey];
-        if (legacy && isApiTrainCacheEntry(legacy)) return legacy;
-
-        for (const [key, value] of Object.entries(trainThreadsCache)) {
-            if (key.startsWith(`${numKey}@`) && isApiTrainCacheEntry(value)) {
-                return value;
-            }
-        }
-
-        return null;
+        const hit = datedKey ? trainThreadsCache[datedKey] : null;
+        if (!hit || !isApiTrainCacheEntry(hit)) return null;
+        const cachedDate = String(hit.scheduleDate || '').trim();
+        if (cachedDate && cachedDate !== scheduleDate) return null;
+        return hit;
     }
 
     function migrateTrainThreadsCache(cache) {
@@ -3992,15 +3975,15 @@
         const empty = { trains: [] };
         const sm = window.APP_CONFIG?.sheduleMax || {};
         const base = String(sm.s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
-        const rev = Number(sm.threadRev) > 0 ? Number(sm.threadRev) : 13;
-        const remoteUrl = `${base}/data/trains-local.json?rev=${rev}&_t=${Date.now()}`;
+        const buildId = String(window.APP_BUILD_ID || window.APP_CONFIG?.APP_BUILD_ID || 'dev').trim();
+        const remoteUrl = `${base}/data/trains-local.json?build=${encodeURIComponent(buildId)}&_t=${Date.now()}`;
         try {
             const res = await fetch(remoteUrl, { cache: 'no-store' });
             if (res.ok) {
                 const parsed = await res.json();
                 if (Array.isArray(parsed?.trains) && parsed.trains.length) {
                     persistReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY, parsed);
-                    console.log('[trains-local] S3', parsed.trains.length, 'trains, rev', rev);
+                    console.log('[trains-local] S3', parsed.trains.length, 'build', buildId);
                     return parsed;
                 }
             }
@@ -4636,6 +4619,10 @@
         return result;
     }
 
+    function trainHasScheduleInterpolation(_train) {
+        return false;
+    }
+
     function formatStopsTextDisplay(text) {
         const raw = String(text || '').trim();
         if (!raw || raw === '—' || raw === DASH_CHAR) return 'Без остановок';
@@ -4963,14 +4950,16 @@
         btn.disabled = true;
         btn.dataset.refreshBusy = '1';
         btn.classList.add('is-loading');
-        btn.classList.remove('is-full-refresh');
-        setRouteRefreshProgress(1, 'Старт');
-        let refreshOk = false;
+        btn.classList.add('is-full-refresh');
+        setRouteRefreshProgress(2, 'Полная очистка');
         try {
+            if (typeof window.hardResetAppData === 'function') {
+                await window.hardResetAppData({ reload: true });
+                return;
+            }
             await refreshRouteDataAsync({
                 onProgress: (percent, label) => setRouteRefreshProgress(percent, label),
             });
-            refreshOk = true;
             setRouteRefreshProgress(100, 'Готово');
             window.setTimeout(() => resetRouteRefreshProgress(), 500);
         } catch (err) {
@@ -4985,9 +4974,6 @@
             delete btn.dataset.refreshBusy;
             btn.classList.remove('is-loading');
             btn.classList.remove('is-full-refresh');
-            if (!refreshOk) {
-                resetRouteRefreshProgress();
-            }
         }
     }
 
@@ -5013,6 +4999,11 @@
         scheduleCurrentTrain = null;
         scheduleNotificationTargets = null;
         if (results) results.style.display = 'none';
+        const interpolationBanner = document.getElementById('scheduleInterpolationBanner');
+        if (interpolationBanner) {
+            interpolationBanner.innerHTML = '';
+            interpolationBanner.hidden = true;
+        }
         if (header) {
             header.style.display = 'none';
             header.innerHTML = '';
@@ -6231,28 +6222,30 @@
         return window.InfoChip.formatKmPiket(brake?.km, brake?.piket);
     }
 
-    function renderStationTimesHtml({ isFirst, isLast, isPassThrough, arrivalTime, departureTime, dwellMin }) {
+    function renderStationTimesHtml({ isFirst, isLast, isPassThrough, arrivalTime, departureTime, dwellMin, timeEstimated = false }) {
         const arr = formatClockHm(arrivalTime);
         const dep = formatClockHm(departureTime);
         const dwell = formatDwellChip(dwellMin);
+        const estClass = timeEstimated ? ' station-time-estimated' : '';
+        const estMark = timeEstimated ? '<span class="station-time-estimated-mark" aria-hidden="true">*</span>' : '';
         if (isPassThrough && !arr && !dep) {
             return `<div class="station-times"><span class="station-time-empty">—</span></div>`;
         }
         if (isFirst && !isLast) {
             return `<div class="station-times station-times--origin">
                 <span class="station-dep-chip">Отпр</span>
-                <span class="station-time-value station-time-dep">${escapeHtml(dep || '—')}</span>
+                <span class="station-time-value station-time-dep${estClass}">${escapeHtml(dep || '—')}${estMark}</span>
             </div>`;
         }
         if (isLast && !dep) {
             return `<div class="station-times">
-                <span class="station-time-value station-time-arr">${escapeHtml(arr || '—')}</span>
+                <span class="station-time-value station-time-arr${estClass}">${escapeHtml(arr || '—')}${estMark}</span>
             </div>`;
         }
         return `<div class="station-times">
-            <span class="station-time-value station-time-arr">${escapeHtml(arr || '—')}</span>
+            <span class="station-time-value station-time-arr${estClass}">${escapeHtml(arr || '—')}${estMark}</span>
             <span class="station-dwell">${dwell || '0:00'}</span>
-            <span class="station-time-value station-time-dep">${escapeHtml(dep || '—')}</span>
+            <span class="station-time-value station-time-dep${estClass}">${escapeHtml(dep || '—')}${estMark}</span>
         </div>`;
     }
 
@@ -7198,7 +7191,18 @@
         const registryEntry = findLocalTrainRegistryEntry(trainNumber);
 
         let train = null;
-        const cached = findCachedTrainResult(trainNumber, date);
+        const datedStops = window.SheduleMaxSource?.lookupStopsByTrain?.(date, trainNumber);
+        if (datedStops && Array.isArray(datedStops.stops) && datedStops.stops.length > 2) {
+            train = decorateTrainSearchResult({
+                ...datedStops,
+                number: trainNumber,
+                scheduleDate: date,
+                partial: false,
+                source: datedStops.source || 'shedule-max',
+                runsOnSelectedDate: true,
+            }, trainNumber, date, registryEntry);
+        }
+        const cached = train ? null : findCachedTrainResult(trainNumber, date);
         const cachedMiddles = Array.isArray(cached?.stops) ? cached.stops.slice(1, -1) : [];
         const cachedHasClocks = !cachedMiddles.length || cachedMiddles.some((stop) => stopHasValidClock(stop));
         if (cached && !cached.apiOffDay && Array.isArray(cached.stops) && cached.stops.length > 2 && cachedHasClocks) {
@@ -7667,7 +7671,7 @@
                 updateScheduleEmptyState();
                 return;
             }
-            renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate);
+            renderTimelineFromData(trainMeta.stops, trainMeta.number, selectedDate, trainMeta);
             updateScheduleEmptyState();
         };
 
@@ -7692,22 +7696,19 @@
             || ''
         ).trim();
         const forceNetwork = options.forceRefresh === true || options.forceNetworkStops === true;
-        const middles = Array.isArray(trainMeta?.stops) ? trainMeta.stops.slice(1, -1) : [];
-        const hasMiddleClocks = middles.some((stop) => stopHasValidClock(stop));
-        if (!forceNetwork && (hasMiddleClocks || !stopUid || !window.SheduleMaxSource?.loadTrainStops)) {
-            return;
-        }
         if (!stopUid || !window.SheduleMaxSource?.loadTrainStops) return;
 
         const direction = boardHit?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
         const loadOpts = {
-            fresh: true,
+            fresh: forceNetwork,
             bypassCache: forceNetwork,
         };
 
         const applyPaint = () => {
             if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
             if (getSelectedDate() !== selectedDate) return;
+            const trip = window.SheduleMaxSource.lookupStopsByTrain?.(selectedDate, input);
+            if (trip) cacheTrainThread(input, trip, selectedDate);
             paint(resolveTrainLocalSync(input, searchOpts));
         };
 
@@ -7740,7 +7741,7 @@
         }).catch(() => {});
     }
 
-    function renderTimelineFromData(stops, trainNumber, selectedDate) {
+    function renderTimelineFromData(stops, trainNumber, selectedDate, trainMeta = null) {
         if (!stops || stops.length === 0) {
             resetScheduleResults();
             return;
@@ -7769,6 +7770,11 @@
                     <p class="schedule-date-hint" id="scheduleDateHint"></p>
                 </div>
             </div>`;
+        const interpolationBanner = document.getElementById('scheduleInterpolationBanner');
+        if (interpolationBanner) {
+            interpolationBanner.innerHTML = '';
+            interpolationBanner.hidden = true;
+        }
         header.style.display = 'block';
         syncScheduleGlassStack();
         updateScheduleDateHint();
@@ -7863,7 +7869,8 @@
                 arrivalTime,
                 departureTime,
                 dwellMin,
-                rowState
+                rowState,
+                timeEstimated: false
             });
 
             let hasBrakes = false;
@@ -8194,10 +8201,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Добавлена кнопка «О» со средним заработком за 3 месяца'
+            'Расписание нитки на дату смены — оперативное время Туту',
+            'Убраны плашки «скорректировано» в расписании'
         ],
         highlights: [
-            'Добавлена кнопка «О» со средним заработком за 3 месяца'
+            'Расписание нитки на дату смены — оперативное время Туту',
+            'Убраны плашки «скорректировано» в расписании'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

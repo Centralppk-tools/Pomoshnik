@@ -18,15 +18,18 @@
     const dayStopsInflight = Object.create(null);
     const trainStopsMem = Object.create(null);
     const FETCH_TIMEOUT_MS = 4500;
-    const DAY_CACHE_NAME = 'da_shedulemax_tpl_v2';
-
-    function expectedThreadRev() {
-        const rev = Number(cfg().threadRev);
-        return Number.isFinite(rev) && rev > 0 ? rev : 12;
-    }
+    const DAY_CACHE_NAME = 'da_shedulemax_tpl_v3';
+    const DAILY_BOARD_PATH = 'data/schedule_yar_daily.json';
 
     function stopPayloadFresh(payload) {
-        return Number(payload?.threadRev ?? 0) >= expectedThreadRev();
+        return Boolean(payload && Array.isArray(payload.stops) && payload.stops.length > 0);
+    }
+
+    function stopPayloadMatchesDate(payload, date) {
+        const want = String(date || '').trim().slice(0, 10);
+        if (!want) return true;
+        const got = String(payload?.date || payload?.scheduleDate || '').trim().slice(0, 10);
+        return !got || got === want;
     }
 
     function normalizeStopLoadError(err, fallbackCode = 'FETCH_FAILED') {
@@ -64,9 +67,38 @@
         return day && num ? `${day}|${num}` : '';
     }
 
+    function dayToken(iso) {
+        return String(iso || '').trim().replace(/-/g, '_');
+    }
+
+    function expectedThreadRev() {
+        const cfgRev = cfg().threadRev;
+        if (cfgRev !== undefined && cfgRev !== null && String(cfgRev).trim() !== '') {
+            return String(cfgRev).trim();
+        }
+        return String(global.APP_CONFIG?.APP_BUILD_ID || global.APP_BUILD_ID || '1')
+            .replace(/[^\w.-]/g, '_');
+    }
+
+    function revQuery() {
+        return `rev=${encodeURIComponent(expectedThreadRev())}`;
+    }
+
+    function datedStopObjectPath(date, trainNumber) {
+        const day = String(date || '').trim().slice(0, 10);
+        const num = String(trainNumber || '').replace(/\D/g, '');
+        if (!day || !num) return '';
+        return `data/cache_stops/${dayToken(day)}/${num}.json`;
+    }
+
     function stopFilePath(uid) {
         const id = String(uid || '').trim();
-        return id ? `data/cache_stops/stop_${id}.json?rev=${expectedThreadRev()}` : '';
+        return id ? `data/cache_stops/stop_${id}.json?${revQuery()}` : '';
+    }
+
+    function isLocalDevHost() {
+        const host = String(global.location?.hostname || '');
+        return host === '127.0.0.1' || host === 'localhost';
     }
 
     function s3Url(path) {
@@ -84,7 +116,26 @@
     }
 
     function preferStopsApi() {
-        return Boolean(apiBase()) && cfg().preferStopsApi !== false;
+        if (!apiBase()) return false;
+        if (cfg().preferStopsApi === true) return true;
+        if (cfg().preferStopsApi === false) return isLocalDevHost();
+        return isLocalDevHost();
+    }
+
+    function preferBoardApi() {
+        if (!apiBase()) return false;
+        if (cfg().preferBoardApi === true) return true;
+        if (cfg().preferBoardApi === false) return isLocalDevHost();
+        return isLocalDevHost();
+    }
+
+    function stopResourceUrl(objectPath) {
+        const path = String(objectPath || '').replace(/^\//, '');
+        if (!path) return '';
+        const withRev = path.includes('?') ? path : `${path}?${revQuery()}`;
+        if (useDirectS3()) return s3Url(withRev);
+        if (apiBase()) return apiUrl(path.split('?')[0]);
+        return '';
     }
 
     function apiUrl(path) {
@@ -236,6 +287,7 @@
                 dwell: stop?.dwell || '',
                 skip: skipped,
                 is_stop: !skipped,
+                timeEstimated: false,
             };
         });
         const halts = stops.filter((stop) => !stop.skip);
@@ -253,7 +305,7 @@
         }
         const origin = first?.station?.title || '';
         const dest = last?.station?.title || '';
-        return {
+        const trip = {
             number: String(payload?.trainNumber || trainNumber || ''),
             uid: String(payload?.voyageCode || ''),
             title: payload?.route || (origin && dest ? `${origin} — ${dest}` : ''),
@@ -268,6 +320,7 @@
             serviceDays: null,
             source: 'shedule-max',
         };
+        return trip;
     }
 
     async function openDayCache() {
@@ -413,68 +466,102 @@
         return Array.isArray(trains) ? trains : [];
     }
 
-    async function fetchBoardFromS3(date, direction, errors, options = {}) {
-        if (!useDirectS3()) return null;
-        const path = scheduleObjectPath(date);
+    function dailyBoardMatchesDate(payload, date) {
+        const day = String(date || '').trim().slice(0, 10);
+        const docDate = String(payload?.date || '').trim().slice(0, 10);
+        return Boolean(day && docDate && docDate === day);
+    }
+
+    async function readBoardPayload(url, options = {}) {
         const forceRefresh = options.forceRefresh === true;
+        if (!url) return null;
+        if (!forceRefresh) {
+            const cached = await readCachedJson(url);
+            if (cached) return cached;
+        }
+        return readJson(url, FETCH_TIMEOUT_MS, { fresh: forceRefresh });
+    }
+
+    function mapBoardTrains(payload, date, direction) {
+        const trains = trainsFromBoardPayload(payload, direction);
+        if (!trains.length) return null;
+        return trains.map((train) => mapBoardTrain(train, date, direction));
+    }
+
+    async function fetchBoardFromApi(date, direction, errors, options = {}) {
+        if (!preferBoardApi()) return null;
+        const day = String(date || '').trim().slice(0, 10);
         try {
-            const url = s3Url(path);
-            const payload = forceRefresh
-                ? await readJson(url, FETCH_TIMEOUT_MS, { fresh: true })
-                : ((await readCachedJson(url)) || await readJson(url, FETCH_TIMEOUT_MS));
-            const trains = trainsFromBoardPayload(payload, direction);
-            if (trains.length) {
-                return trains.map((train) => mapBoardTrain(train, date, direction));
-            }
+            const fresh = options.forceRefresh === true ? '&fresh=1' : '';
+            const url = apiUrl(
+                `/api/schedule?date=${encodeURIComponent(day)}&direction=${encodeURIComponent(direction)}${fresh}`,
+            );
+            const payload = await readBoardPayload(url, options);
+            return mapBoardTrains(payload, day, direction);
         } catch (err) {
             errors.push(normalizeStopLoadError(err));
         }
         return null;
     }
 
-    async function fetchBoardDirection(date, direction) {
-        const errors = [];
-        const fromS3 = await fetchBoardFromS3(date, direction, errors);
-        if (fromS3?.length) return fromS3;
-        throw errors[0] || new Error(`Расписание на ${date} ещё не создано`);
+    async function fetchBoardFromDailyDoc(date, direction, errors, options = {}) {
+        const day = String(date || '').trim().slice(0, 10);
+        const urls = [];
+        if (useDirectS3()) urls.push(s3Url(DAILY_BOARD_PATH));
+        if (apiBase()) urls.push(apiUrl(DAILY_BOARD_PATH));
+        for (const url of urls) {
+            try {
+                const payload = await readBoardPayload(url, options);
+                if (!dailyBoardMatchesDate(payload, day)) continue;
+                const mapped = mapBoardTrains(payload, day, direction);
+                if (mapped?.length) return mapped;
+            } catch (err) {
+                errors.push(normalizeStopLoadError(err));
+            }
+        }
+        return null;
+    }
+
+    async function fetchBoardFromS3(date, direction, errors, options = {}) {
+        if (!useDirectS3()) return null;
+        const path = scheduleObjectPath(date);
+        try {
+            const url = s3Url(path);
+            const payload = await readBoardPayload(url, options);
+            return mapBoardTrains(payload, date, direction);
+        } catch (err) {
+            errors.push(normalizeStopLoadError(err));
+        }
+        return null;
+    }
+
+    async function fetchBoardDirection(date, direction, errors, options = {}) {
+        const fromApi = await fetchBoardFromApi(date, direction, errors, options);
+        if (fromApi?.length) return fromApi;
+        const fromDaily = await fetchBoardFromDailyDoc(date, direction, errors, options);
+        if (fromDaily?.length) return fromDaily;
+        const fromTemplate = await fetchBoardFromS3(date, direction, errors, options);
+        if (fromTemplate?.length) return fromTemplate;
+        return null;
     }
 
     async function fetchYaroslavlBoard(date, options = {}) {
-        if (useDirectS3()) {
-            const errors = [];
-            const payloadTrains = await Promise.all(
-                DIRS.map((direction) => fetchBoardFromS3(date, direction, errors, options)),
-            );
-            const schedule = [];
-            const seen = new Set();
-            payloadTrains.forEach((trains) => {
-                (trains || []).forEach((item) => {
-                    const key = `${item.thread?.number || ''}@${item.thread?.uid || ''}@${item.departure || ''}`;
-                    if (seen.has(key)) return;
-                    seen.add(key);
-                    schedule.push(item);
-                });
-            });
-            if (schedule.length) return schedule;
-            throw errors[0] || new Error(`Табло ${date} недоступно`);
-        }
-        const parts = await Promise.allSettled(DIRS.map((direction) => fetchBoardDirection(date, direction)));
+        const errors = [];
+        const payloadTrains = await Promise.all(
+            DIRS.map((direction) => fetchBoardDirection(date, direction, errors, options)),
+        );
         const schedule = [];
         const seen = new Set();
-        parts.forEach((part) => {
-            if (part.status !== 'fulfilled') return;
-            (part.value || []).forEach((item) => {
+        payloadTrains.forEach((trains) => {
+            (trains || []).forEach((item) => {
                 const key = `${item.thread?.number || ''}@${item.thread?.uid || ''}@${item.departure || ''}`;
                 if (seen.has(key)) return;
                 seen.add(key);
                 schedule.push(item);
             });
         });
-        if (!schedule.length) {
-            const err = parts.find((part) => part.status === 'rejected');
-            throw err?.reason || new Error(`Табло ${date} недоступно`);
-        }
-        return schedule;
+        if (schedule.length) return schedule;
+        throw errors[0] || new Error(`Табло ${date} недоступно`);
     }
 
     function isTripPayload(value) {
@@ -570,12 +657,23 @@
         return mapStops(payload, number, date);
     }
 
+    function lookupStopsByTrain(date, trainNumber) {
+        const day = String(date || '').trim();
+        const number = String(trainNumber || '').replace(/\D/g, '');
+        if (!day || !number) return null;
+        const mem = trainStopsMem[trainStopsKey(day, number)];
+        if (!mem || !stopPayloadMatchesDate(mem, day)) return null;
+        return threadFromPayload(mem, number, day);
+    }
+
     function lookupThreadSync(trainData, date) {
         const day = String(date || '').trim();
         if (!day) return null;
         const { number, uid } = threadLookupKeys(trainData);
+        const byNumber = lookupStopsByTrain(day, number);
+        if (byNumber) return byNumber;
         const mem = trainStopsMem[trainStopsKey(day, number)];
-        if (mem) return threadFromPayload(mem, number, date);
+        if (mem && stopPayloadMatchesDate(mem, day)) return threadFromPayload(mem, number, date);
         const doc = dayStopsCache[day];
         if (!doc) return null;
         const trip = pickTripFromDayDoc(doc, number, uid);
@@ -597,29 +695,29 @@
             throw err;
         }
         if (!stopPayloadFresh(payload)) {
-            const rev = Number(payload?.threadRev ?? 0);
-            const need = expectedThreadRev();
-            const err = new Error(`Нитка устарела: threadRev ${rev} < ${need}`);
-            err.code = 'STALE_THREAD_REV';
-            err.threadRev = rev;
-            err.expectedRev = need;
+            const err = new Error('В ответе нет остановок');
+            err.code = 'EMPTY_STOPS';
             throw err;
         }
         return payload;
     }
 
-    async function fetchStopPayloadFromNetwork(url) {
+    async function readStopPayloadFromUrl(url, fresh) {
+        if (!url) return null;
+        if (!fresh) {
+            const cached = await readCachedJson(url);
+            if (cached && stopPayloadFresh(cached)) return cached;
+        }
         try {
-            const payload = await readJson(url, FETCH_TIMEOUT_MS, { fresh: true });
-            return assertStopPayloadUsable(payload);
-        } catch (err) {
-            throw normalizeStopLoadError(err);
+            const payload = await readJson(url, FETCH_TIMEOUT_MS, { fresh: Boolean(fresh) });
+            return stopPayloadFresh(payload) ? payload : null;
+        } catch {
+            return null;
         }
     }
 
     async function loadTrainStops(date, number, uid, direction = 'from_moscow', options = {}) {
         const key = trainStopsKey(date, number);
-        const path = stopFilePath(uid);
         if (!key) {
             const err = new Error('Нет даты или номера поезда');
             err.code = 'INVALID_ARGS';
@@ -644,80 +742,62 @@
             return null;
         }
 
-        const url = path ? s3Url(path) : '';
+        const tryStore = (payload, cacheUrl = '', requireDate = false) => {
+            if (!stopPayloadFresh(payload)) return null;
+            if (requireDate && !stopPayloadMatchesDate(payload, date)) return null;
+            return rememberStopsPayload(key, cacheUrl, payload);
+        };
+
+        const loaders = [];
+
+        const datedPath = datedStopObjectPath(date, number);
+        const datedUrl = stopResourceUrl(datedPath);
+        if (datedUrl) {
+            loaders.push(async () => {
+                const payload = await readStopPayloadFromUrl(datedUrl, fresh || bypassCache);
+                return tryStore(payload, datedUrl, true);
+            });
+        }
+
+        if (apiBase()) {
+            loaders.push(async () => {
+                try {
+                    const payload = await fetchTrainDetailsFromApi(date, number, dir, {
+                        voyageCode: voyageUid,
+                        fresh: Boolean(fresh || bypassCache),
+                    });
+                    return tryStore(payload, '', true);
+                } catch {
+                    return null;
+                }
+            });
+        }
+
+        const uidPath = stopFilePath(voyageUid);
+        const uidUrl = stopResourceUrl(uidPath.split('?')[0]);
+        if (uidUrl) {
+            loaders.push(async () => {
+                const payload = await readStopPayloadFromUrl(uidUrl, fresh);
+                return tryStore(payload, uidUrl, false);
+            });
+        }
+
+        for (const load of loaders) {
+            try {
+                const hit = await load();
+                if (hit) return hit;
+            } catch (err) {
+                if (bypassCache) throw normalizeStopLoadError(err);
+                console.warn('[shedule-max] stop source miss', err);
+            }
+        }
 
         if (bypassCache) {
-            if (!url || !useDirectS3()) {
-                const err = new Error('Прямой S3 недоступен для принудительной загрузки');
-                err.code = 'S3_DISABLED';
-                throw err;
-            }
-            const payload = await fetchStopPayloadFromNetwork(url);
-            const stored = rememberStopsPayload(key, url, payload);
-            if (!stored) {
-                const err = new Error('Не удалось сохранить нитку в памяти');
-                err.code = 'STORE_FAILED';
-                throw err;
-            }
-            return stored;
+            const err = new Error('Нитка не найдена ни в API, ни в S3');
+            err.code = 'NOT_FOUND';
+            throw err;
         }
-
-        if (url && useDirectS3()) {
-            if (!fresh) {
-                const cached = await readCachedJson(url);
-                if (cached && stopPayloadFresh(cached)) {
-                    const remembered = rememberStopsPayload(key, url, cached);
-                    if (remembered) return remembered;
-                }
-            }
-            try {
-                const payload = await readJson(url, FETCH_TIMEOUT_MS, { fresh });
-                if (stopPayloadFresh(payload)) {
-                    const stored = rememberStopsPayload(key, url, payload);
-                    if (stored) return stored;
-                }
-            } catch (err) {
-                console.warn('[shedule-max] S3 stop miss', url, err);
-            }
-        }
-
-        if ((preferStopsApi() || fresh) && apiBase()) {
-            try {
-                const payload = await fetchTrainDetailsFromApi(date, number, dir, {
-                    voyageCode: voyageUid,
-                    fresh: fresh || !stopPayloadFresh(trainStopsMem[key]),
-                });
-                if (stopPayloadFresh(payload)) {
-                    const stored = rememberStopsPayload(key, '', payload);
-                    if (stored) return stored;
-                }
-            } catch (err) {
-                console.warn('[shedule-max] API stop miss, fallback S3', err);
-            }
-        }
-
-        if (url && !useDirectS3()) {
-            const cached = await readCachedJson(url);
-            const remembered = rememberStopsPayload(key, url, cached);
-            if (remembered && stopPayloadFresh(remembered)) return remembered;
-            try {
-                const payload = await readJson(url, FETCH_TIMEOUT_MS);
-                if (stopPayloadFresh(payload)) {
-                    const stored = rememberStopsPayload(key, url, payload);
-                    if (stored) return stored;
-                }
-            } catch (err) {
-                console.warn('[shedule-max] S3 stop miss', url, err);
-            }
-        }
-        if (!apiBase()) return null;
-        try {
-            const payload = await fetchTrainDetailsFromApi(date, number, dir, { voyageCode: voyageUid });
-            return rememberStopsPayload(key, '', payload);
-        } catch (err) {
-            console.error('[shedule-max train_details]', err);
-            return null;
-        }
+        return null;
     }
 
     async function hydrateDayStopsCacheOnly(date) {
@@ -836,6 +916,7 @@
         fetchThread,
         fetchTrainDetailsFromApi,
         lookupThreadSync,
+        lookupStopsByTrain,
         loadTrainStops,
         hydrateDayStopsCacheOnly,
         prefetchDayStops: hydrateDayStopsCacheOnly,

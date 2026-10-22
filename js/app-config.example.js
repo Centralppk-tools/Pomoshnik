@@ -12,6 +12,10 @@ window.APP_CONFIG = {
         apiBaseUrl: '',
         functionUrl: '',
         useDirectS3: true,
-        // Локально: apiBaseUrl: 'http://127.0.0.1:8792', preferStopsApi: true — нитки с полировкой Shedule_Max
+        preferStopsApi: false,
+        preferBoardApi: false,
+        threadRev: 14,
+        // Локально (8765 + Shedule_Max 8792):
+        // apiBaseUrl: 'http://127.0.0.1:8792', preferStopsApi: true, preferBoardApi: true
     }
 };
