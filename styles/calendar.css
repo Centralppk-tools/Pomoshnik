@@ -496,6 +496,12 @@
     border-color: rgba(230, 190, 110, 0.28);
 }
 
+#screen-calendar .day-shift-chip.has-average-pay-shift {
+    background: rgba(217, 119, 6, 0.42);
+    color: #fffbeb;
+    border-color: rgba(251, 191, 36, 0.35);
+}
+
 #screen-calendar .day-shift-chip.has-tech-shift {
     background: var(--shift-tech-bg);
     color: #f7f2ff;
@@ -1129,12 +1135,59 @@
     line-height: 1;
 }
 
+.shift-day-panel--design .shift-card__quick-groups {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
 .shift-day-panel--design .shift-card__quick-btns {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
     justify-content: flex-start;
     gap: 5px;
     width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.shift-day-panel--design .shift-card__quick-btns--work,
+.shift-day-panel--design .shift-card__quick-btns--status {
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.shift-day-panel--design .shift-card__quick-btns--work,
+.shift-day-panel--design .shift-card__quick-btns--status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.shift-day-panel--design .shift-card__row--status-quick {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.shift-day-panel--design .shift-card__row--status-quick .shift-card__label {
+    flex: 0 0 72px;
+    align-self: flex-start;
+    margin-top: 4px;
+    padding-top: 0;
+}
+
+.shift-day-panel--design .shift-card__row--status-quick .shift-card__field {
+    flex: 1;
+    min-width: 0;
+}
+
+.shift-day-panel--design .shift-card__route-area--average-pay .shift-card__quick-routes {
+    padding: 0;
+    margin: 0;
 }
 
 .shift-day-panel--design .shift-card__quick-btn {
@@ -1172,6 +1225,49 @@
     border-color: rgba(240, 120, 120, 0.65);
     color: #fff;
     background: linear-gradient(135deg, rgba(140, 35, 35, 0.72) 0%, rgba(200, 60, 60, 0.42) 100%);
+}
+
+.shift-day-panel--design .shift-card__quick-btn--average {
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fcd34d;
+}
+
+.shift-day-panel--design .shift-card__quick-btn--average.is-active {
+    border-color: rgba(251, 191, 36, 0.75);
+    color: #fff;
+    background: linear-gradient(135deg, rgba(180, 83, 9, 0.75) 0%, rgba(245, 158, 11, 0.45) 100%);
+}
+
+.shift-day-panel--design .shift-card__summary--average-pay {
+    margin-top: 4px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-top: none;
+    box-shadow: none;
+}
+
+.average-pay-card {
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    box-shadow: none;
+}
+
+.average-pay-card__amount {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: #34d399;
+}
+
+.average-pay-card__meta {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: #94a3b8;
 }
 
 .shift-day-panel--design .shift-card__quick-routes--replace {
@@ -2833,5 +2929,86 @@ button.shift-card__time-slot {
 
 #screen-profile .profile-month-picker-cell.is-selected.is-current::after {
     background: #7dffb0;
+}
+
+/* —— Средний заработок (принудительно поверх summary-gradient) —— */
+#screen-calendar .shift-day-panel--design .shift-card__average-pay-wrap {
+    margin-top: 4px;
+    padding: 0;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+#screen-calendar .shift-day-panel--design .shift-card__summary.shift-card__summary--average-pay {
+    margin-top: 4px;
+    padding: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-top: none !important;
+    box-shadow: none !important;
+}
+
+#screen-calendar .shift-day-panel--design .average-pay-card,
+#screen-calendar .shift-day-panel--design .average-pay-card[data-summary-average-pay] {
+    background: rgba(16, 185, 129, 0.08) !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    padding: 12px 16px !important;
+}
+
+#screen-calendar .shift-day-panel--design .average-pay-card__amount,
+#screen-calendar .shift-day-panel--design .average-pay-card__meta {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    outline: none !important;
+}
+
+#screen-calendar .shift-day-panel--design .average-pay-card__amount {
+    color: #34d399 !important;
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    line-height: 1.35;
+}
+
+#screen-calendar .shift-day-panel--design .average-pay-card__meta {
+    color: #94a3b8 !important;
+    font-size: 0.8rem !important;
+    margin-top: 4px !important;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+#screen-calendar .shift-day-panel--design .shift-card__quick-groups {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    width: 100%;
+}
+
+#screen-calendar .shift-day-panel--design .shift-card__quick-btns--work,
+#screen-calendar .shift-day-panel--design .shift-card__quick-btns--status {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    padding-left: 0 !important;
+    width: 100%;
+}
+
+#screen-calendar .shift-day-panel--design .shift-card__row--status-quick .shift-card__label,
+#screen-calendar .shift-day-panel--design .shift-card__row--status-quick.shift-card__row--route .shift-card__label {
+    align-self: flex-start !important;
+    margin-top: 4px !important;
+    padding-top: 0 !important;
 }
 

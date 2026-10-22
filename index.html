@@ -29,7 +29,7 @@
     <link rel="stylesheet" href="styles/base.css?v=20261018i">
     <link rel="stylesheet" href="styles/routes.css">
     <link rel="stylesheet" href="styles/schedule.css?v=20261018h">
-    <link rel="stylesheet" href="styles/calendar.css?v=20261018a">
+    <link rel="stylesheet" href="styles/calendar.css?v=20261022c">
     <link rel="stylesheet" href="styles/profile.css?v=20261018i">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css">
@@ -484,6 +484,13 @@
                 </div>
             </div>
             <div id="profileUserTab" class="profile-hero-tab-line">Таб. № —</div>
+            <label class="profile-average-pay-field" for="profileAverageShiftPayInput">
+                <span class="profile-average-pay-field__label">Средний заработок за смену, ₽</span>
+                <input type="number" id="profileAverageShiftPayInput" class="profile-average-pay-field__input"
+                    min="0" step="100" inputmode="decimal" placeholder="Если нет истории смен"
+                    aria-describedby="profileAverageShiftPayHint">
+            </label>
+            <p id="profileAverageShiftPayHint" class="profile-average-pay-field__hint">Используется для дней «О» (оплата по среднему), когда в календаре мало закрытых смен.</p>
             <div class="events-panel" id="profileComplianceRoot" aria-label="Плановые события"></div>
         </div>
         <div class="profile-card profile-card--nearest">
@@ -855,9 +862,12 @@
     const DEPOT_FIO_KEY = 'depotFio';
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
+    const DEPOT_AVERAGE_SHIFT_PAY_KEY = 'depotAverageShiftPay';
+    const AVG_PAY_LOOKBACK_DAYS = 90;
+    const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.52';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_52';
+    const APP_RELEASE_VERSION = '4.0.53';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_53';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1381,6 +1391,15 @@
             if (!dayPanel.dataset.quickPresetsBound) {
                 dayPanel.dataset.quickPresetsBound = '1';
                 dayPanel.addEventListener('click', (e) => {
+                    const avgBtn = e.target.closest('[data-average-pay-toggle]');
+                    if (avgBtn && dayPanel.contains(avgBtn)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const panelEl = avgBtn.closest('[data-shift-tab-panel]');
+                        const shiftIndex = panelEl ? Number(panelEl.dataset.shiftIndex) : 0;
+                        calendarApplyAveragePay(dateKey, Number.isFinite(shiftIndex) ? shiftIndex : 0);
+                        return;
+                    }
                     const btn = e.target.closest('[data-local-preset]');
                     if (!btn || !dayPanel.contains(btn)) return;
                     e.preventDefault();
@@ -3463,6 +3482,10 @@
 
     function formatApproxMoney(amount) {
         return `≈ ${Math.round(amount).toLocaleString('ru-RU')} ₽`;
+    }
+
+    function formatExactMoney(amount) {
+        return `${Math.round(amount).toLocaleString('ru-RU')} ₽`;
     }
 
     function formatScheduledHoursLine(hours) {
@@ -8171,14 +8194,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Доработка ошибок расписания',
-            'Доработка функции кнопки «Обновить»',
-            'Приятные доработки интерфейса'
+            'Добавлена кнопка «О» со средним заработком за 3 месяца'
         ],
         highlights: [
-            'Доработка ошибок расписания',
-            'Доработка функции кнопки «Обновить»',
-            'Приятные доработки интерфейса'
+            'Добавлена кнопка «О» со средним заработком за 3 месяца'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -8915,7 +8934,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261022b')
+        navigator.serviceWorker.register('./sw.js?v=20261022d')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -10616,25 +10635,44 @@
         });
     }
 
+    function buildShiftQuickRouteGroupsHtml(workPresets, shift, presetActiveId, options = {}) {
+        const includeStatus = options.includeStatus !== false;
+        const workBtns = workPresets.map(preset => buildQuickPresetButtonHtml(preset, presetActiveId)).join('');
+        const workGroup = workBtns
+            ? `<div class="shift-card__quick-btns shift-card__quick-btns--work" role="group" aria-label="Поездные маршруты">${workBtns}</div>`
+            : '';
+
+        let statusGroup = '';
+        if (includeStatus) {
+            const { rest } = getQuickPresetGroups(shift);
+            const restBtns = rest.map(preset => buildQuickPresetButtonHtml(preset, presetActiveId)).join('');
+            const averageBtn = buildAveragePayQuickButtonHtml(shift || {});
+            const statusBtns = `${restBtns}${averageBtn}`;
+            if (statusBtns) {
+                statusGroup = `<div class="shift-card__quick-btns shift-card__quick-btns--status" role="group" aria-label="Статусы дня">${statusBtns}</div>`;
+            }
+        }
+
+        return `<div class="shift-card__quick-groups">${workGroup}${statusGroup}</div>`;
+    }
+
     function buildShiftPanelQuickRoutesInline(selectedPresetId = '', shift = null, options = {}) {
         const mode = options.mode || (shift && isRestDayRoute(shift.route) ? 'replace' : 'default');
         const workPresets = mode === 'replace' ? getRestDayReplacePresets() : getQuickPresetGroups(shift).work;
-        const workBtns = workPresets.map(preset => buildQuickPresetButtonHtml(preset, selectedPresetId)).join('');
+        const presetActiveId = shift && isAveragePayShift(shift) ? '' : selectedPresetId;
+        const groupsHtml = buildShiftQuickRouteGroupsHtml(workPresets, shift, presetActiveId, { includeStatus: true });
 
         if (mode === 'replace') {
             return `
             <div class="shift-card__quick-routes shift-card__quick-routes--replace">
-                <div class="shift-card__quick-btns">${workBtns}</div>
+                ${groupsHtml}
             </div>`;
         }
-
-        const { rest } = getQuickPresetGroups(shift);
-        const restBtns = rest.map(preset => buildQuickPresetButtonHtml(preset, selectedPresetId)).join('');
 
         return `
             <div class="shift-card__quick-routes">
                 <span class="shift-card__quick-label">Быстрые маршруты</span>
-                <div class="shift-card__quick-btns">${workBtns}${restBtns}</div>
+                ${groupsHtml}
             </div>`;
     }
 
@@ -10738,7 +10776,7 @@
     }
 
     function resolveLocalPresetIdForShift(shift) {
-        if (!shift) return '';
+        if (!shift || isAveragePayShift(shift)) return '';
         const byRoute = getLocalRoutePresetByRoute(shift.route);
         if (byRoute) return byRoute.id;
         if (shift.localPresetId) return String(shift.localPresetId);
@@ -10779,7 +10817,9 @@
             customHours = preset.defaultHours ?? 8;
         }
 
-        applyLocalPresetToCalendar(dateKey, preset, customHours);
+        const shift = buildShiftFromLocalPreset(preset, customHours);
+        delete shift.shiftStatus;
+        applyShiftToCalendarDay(dateKey, shift);
         persistUserShifts();
         calendarRenderCalendar({ skipConstructor: calendarSelectedDateKey !== dateKey });
         updateProfileScreen?.();
@@ -10790,9 +10830,9 @@
             normalizeCalendarRouteKey(s.route) === normalizeCalendarRouteKey(preset.route)
         );
         const shiftIndex = foundIdx >= 0 ? foundIdx : 0;
-        const shift = shifts[shiftIndex];
-        if (shift) {
-            syncRouteContextFromCalendar(dateKey, shift, shiftIndex, { remountEditor: true });
+        const storedShift = shifts[shiftIndex];
+        if (storedShift) {
+            syncRouteContextFromCalendar(dateKey, storedShift, shiftIndex, { remountEditor: true });
         }
     }
 
@@ -11295,6 +11335,7 @@
     }
 
     function getShiftColorClass(shift) {
+        if (isAveragePayShift(shift)) return 'has-average-pay-shift';
         const routeStr = String(shift.route || shift.name || '').trim();
         const routeLower = routeStr.toLowerCase();
         if (isRoute99Variant(routeStr)) {
@@ -11313,6 +11354,9 @@
     }
 
     function getShiftTypeInfo(shift) {
+        if (isAveragePayShift(shift)) {
+            return { label: 'Средний', color: '#f59e0b' };
+        }
         const routeStr = String(shift.route || shift.name || '').trim();
         const routeLower = routeStr.toLowerCase();
         if (isRoute99Variant(routeStr)) {
@@ -11339,6 +11383,7 @@
     }
 
     function isWorkShiftRoute(shift) {
+        if (isAveragePayShift(shift)) return false;
         const routeLower = String(shift?.route || shift?.name || '').trim().toLowerCase();
         if (!routeLower) return false;
         return !['в', 'выходной', 'о', 'отпуск', 'бл', 'больничный'].includes(routeLower);
@@ -12015,6 +12060,7 @@
 
     function resolveCalendarShiftHours(shift, dateKey) {
         if (!shift) return 0;
+        if (isAveragePayShift(shift)) return 0;
 
         const enriched = dateKey ? enrichShiftFromDepotTemplate(shift, dateKey) : shift;
         if (isRestDayRoute(enriched.route)) return 0;
@@ -12089,8 +12135,244 @@
         return Math.max(0, minutesOnDay) / 60;
     }
 
+    function parseCalendarDateKey(dateKey) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        if (![day, month, year].every(n => Number.isFinite(n))) return null;
+        return new Date(year, month, day);
+    }
+
+    function compareCalendarDateKeys(a, b) {
+        const da = parseCalendarDateKey(a);
+        const db = parseCalendarDateKey(b);
+        if (!da || !db) return 0;
+        return da.getTime() - db.getTime();
+    }
+
+    function getTodayCalendarDateKey() {
+        const t = new Date();
+        const dStr = String(t.getDate()).padStart(2, '0');
+        const mStr = String(t.getMonth() + 1).padStart(2, '0');
+        return `${dStr}.${mStr}.${t.getFullYear()}`;
+    }
+
+    function isAveragePayShift(shift) {
+        return String(shift?.shiftStatus || '').toLowerCase() === 'average_pay';
+    }
+
+    function getProfileManualAverageShiftPay() {
+        const raw = userStorageGet(DEPOT_AVERAGE_SHIFT_PAY_KEY, '');
+        if (raw == null || raw === '') return 0;
+        const num = parseFloat(String(raw).replace(/\s/g, '').replace(',', '.'));
+        return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    function setProfileManualAverageShiftPay(value) {
+        const num = parseFloat(String(value ?? '').replace(/\s/g, '').replace(',', '.'));
+        if (!Number.isFinite(num) || num <= 0) {
+            userStorageRemove(DEPOT_AVERAGE_SHIFT_PAY_KEY);
+            return;
+        }
+        userStorageSet(DEPOT_AVERAGE_SHIFT_PAY_KEY, String(Math.round(num)));
+    }
+
+    function isClosedWorkShiftForAverageBase(shift) {
+        if (!shift || shift.isVirtualMorning) return false;
+        if (isAveragePayShift(shift)) return false;
+        return isWorkShiftRoute(shift);
+    }
+
+    function collectAveragePayBaseStats(asOfDateKey) {
+        loadUserShifts();
+        const asOf = parseCalendarDateKey(asOfDateKey);
+        if (!asOf) {
+            return { totalEarnings: 0, totalDays: 0, spanDays: 0, monthsFound: 0 };
+        }
+        const fromDate = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
+        fromDate.setDate(fromDate.getDate() - AVG_PAY_LOOKBACK_DAYS);
+        const fromTime = fromDate.getTime();
+        const asOfTime = asOf.getTime();
+        const todayKey = getTodayCalendarDateKey();
+
+        let totalEarnings = 0;
+        let totalDays = 0;
+        let minTime = null;
+        let maxTime = null;
+        const monthsSet = new Set();
+
+        Object.entries(calendarUserShifts).forEach(([dateKey, rawShift]) => {
+            if (compareCalendarDateKeys(dateKey, asOfDateKey) >= 0) return;
+            if (compareCalendarDateKeys(dateKey, todayKey) > 0) return;
+            const d = parseCalendarDateKey(dateKey);
+            if (!d || d.getTime() < fromTime || d.getTime() >= asOfTime) return;
+
+            normalizeDayShiftsRecord(rawShift).forEach(shift => {
+                if (!isClosedWorkShiftForAverageBase(shift)) return;
+                const pay = getCalendarShiftPaymentFromHours(shift, dateKey);
+                const hours = getCalendarShiftHours(shift, dateKey);
+                if (pay <= 0 && hours <= 0) return;
+                totalEarnings += pay > 0 ? pay : hours * calendarGetShiftRate(shift);
+                totalDays += 1;
+                monthsSet.add(`${d.getFullYear()}-${d.getMonth()}`);
+                const t = d.getTime();
+                if (minTime == null || t < minTime) minTime = t;
+                if (maxTime == null || t > maxTime) maxTime = t;
+            });
+        });
+
+        const spanDays = minTime != null && maxTime != null
+            ? Math.max(1, Math.round((maxTime - minTime) / 86400000) + 1)
+            : 0;
+        const monthsFound = monthsSet.size;
+
+        return { totalEarnings, totalDays, spanDays, monthsFound };
+    }
+
+    function getAveragePayCalculation(asOfDateKey) {
+        const stats = collectAveragePayBaseStats(asOfDateKey);
+        const manual = getProfileManualAverageShiftPay();
+        const monthsFound = stats.monthsFound || 0;
+
+        if (stats.totalDays >= AVG_PAY_MIN_CLOSED_SHIFTS && stats.totalEarnings > 0) {
+            const amount = stats.totalEarnings / stats.totalDays;
+            const fullThreeMonthBase = monthsFound >= 3;
+            return {
+                amount,
+                fullThreeMonthBase,
+                preliminary: !fullThreeMonthBase,
+                needsManual: false,
+                source: 'history',
+                baseShifts: stats.totalDays,
+                monthsFound
+            };
+        }
+
+        if (manual > 0) {
+            return {
+                amount: manual,
+                fullThreeMonthBase: false,
+                preliminary: true,
+                needsManual: false,
+                source: 'manual',
+                baseShifts: stats.totalDays,
+                monthsFound
+            };
+        }
+
+        return {
+            amount: 0,
+            fullThreeMonthBase: false,
+            preliminary: true,
+            needsManual: true,
+            source: 'none',
+            baseShifts: stats.totalDays,
+            monthsFound
+        };
+    }
+
+    function formatAveragePayAmountText(info) {
+        if (!(info.amount > 0)) return '—';
+        return info.fullThreeMonthBase ? formatExactMoney(info.amount) : formatApproxMoney(info.amount);
+    }
+
+    function getAveragePayMetaLine(info) {
+        if (info.needsManual && !(info.amount > 0)) {
+            return 'Укажите «Средний заработок за смену» в профиле';
+        }
+        if (info.fullThreeMonthBase) {
+            return 'Расчет по базе за 3 месяца';
+        }
+        const months = Math.max(1, info.monthsFound || 1);
+        return `База ${months} мес. • Расчет предварительный`;
+    }
+
+    function buildAveragePayCardHtml(info) {
+        const amountLine = `Оплата по среднему: ${formatAveragePayAmountText(info)}`;
+        const metaLine = getAveragePayMetaLine(info);
+        return `<div class="average-pay-card" data-summary-average-pay>
+            <div class="average-pay-card__amount" data-average-pay-amount>${escapeHtml(amountLine)}</div>
+            <div class="average-pay-card__meta" data-average-pay-meta>${escapeHtml(metaLine)}</div>
+        </div>`;
+    }
+
+    function renderAveragePayCard(root, dateKey) {
+        const info = getAveragePayCalculation(dateKey);
+        const card = root?.querySelector?.('[data-summary-average-pay]');
+        if (!card) return;
+        const amountEl = card.querySelector('[data-average-pay-amount]');
+        const metaEl = card.querySelector('[data-average-pay-meta]');
+        if (amountEl) amountEl.textContent = `Оплата по среднему: ${formatAveragePayAmountText(info)}`;
+        if (metaEl) metaEl.textContent = getAveragePayMetaLine(info);
+    }
+
+    function formatAveragePayPlainText(info) {
+        return `${`Оплата по среднему: ${formatAveragePayAmountText(info)}`}\n${getAveragePayMetaLine(info)}`;
+    }
+
+    function buildAveragePayQuickButtonHtml(shift) {
+        const active = isAveragePayShift(shift) ? ' is-active' : '';
+        return `<button type="button" class="shift-card__quick-btn shift-card__quick-btn--average${active}"
+            data-average-pay-toggle aria-pressed="${isAveragePayShift(shift) ? 'true' : 'false'}"
+            aria-label="Оплата дня по среднему заработку">О</button>`;
+    }
+
+    function normalizeShiftForAveragePay(shift = {}) {
+        const next = { ...shift };
+        next.shiftStatus = 'average_pay';
+        next.route = '';
+        next.hours = '0';
+        next.startTime = '';
+        next.endTime = '';
+        next.reportTime = '';
+        next.lunch = '';
+        next.trainNum = '';
+        next.nightHours = '';
+        delete next.localPresetId;
+        delete next.restDayDoublePay;
+        delete next.templateSignature;
+        return next;
+    }
+
+    function calendarApplyAveragePay(dateKey, shiftIndex = 0) {
+        if (!dateKey) return;
+        loadUserShifts();
+        let shifts = getStoredDayShifts(dateKey);
+        if (!shifts.length) {
+            setStoredDayShifts(dateKey, [normalizeShiftForAveragePay({})]);
+        } else {
+            const idx = Math.min(Math.max(0, shiftIndex), shifts.length - 1);
+            const current = shifts[idx];
+            if (isAveragePayShift(current)) {
+                const cleared = { ...current };
+                delete cleared.shiftStatus;
+                cleared.route = cleared.route || '';
+                shifts[idx] = cleared;
+            } else {
+                shifts[idx] = normalizeShiftForAveragePay(current);
+            }
+            setStoredDayShifts(dateKey, shifts);
+        }
+        persistUserShifts();
+        calendarRenderCalendar({ skipConstructor: calendarSelectedDateKey !== dateKey });
+        updateProfileScreen?.();
+        refreshCalendarConstructorForDate(dateKey);
+
+        const updated = getStoredDayShifts(dateKey);
+        const idx = Math.min(Math.max(0, shiftIndex), Math.max(0, updated.length - 1));
+        const shift = updated[idx];
+        if (shift) {
+            syncRouteContextFromCalendar(dateKey, shift, idx, { remountEditor: true });
+        }
+    }
+
+    window.calendarApplyAveragePay = calendarApplyAveragePay;
+
     function getCalendarShiftPayHours(shift, dateKey) {
         if (!shift) return 0;
+        if (isAveragePayShift(shift)) return 0;
         if (isRestDayRoute(shift.route)) return 0;
 
         const preset = shift.localPresetId
@@ -12105,11 +12387,18 @@
         return resolveCalendarShiftHours(shift, dateKey);
     }
 
-    function getCalendarShiftPayment(shift, dateKey) {
+    function getCalendarShiftPaymentFromHours(shift, dateKey) {
         const payHours = getCalendarShiftPayHours(shift, dateKey);
         let payment = payHours * calendarGetShiftRate(shift);
         if (shift.restDayDoublePay && payHours > 0) payment *= 2;
         return payment;
+    }
+
+    function getCalendarShiftPayment(shift, dateKey) {
+        if (isAveragePayShift(shift)) {
+            return getAveragePayCalculation(dateKey).amount;
+        }
+        return getCalendarShiftPaymentFromHours(shift, dateKey);
     }
 
     function calendarKeyAddDays(dateKey, days) {
@@ -12293,7 +12582,7 @@
     }
 
     function canAddSecondShiftToDay(existingShifts, newRoute) {
-        if (existingShifts.some(s => isRestDayRoute(s.route))) return false;
+        if (existingShifts.some(s => isRestDayRoute(s.route) || isAveragePayShift(s))) return false;
         if (isRestDayRoute(newRoute)) return false;
         if (existingShifts.length !== 1) return false;
         if (!isMorningRoute(existingShifts[0].route)) return false;
@@ -12413,6 +12702,11 @@
 
     function resolveShiftForCalendarDay(dateKey) {
         return resolveShiftsForCalendarDay(dateKey)[0] || null;
+    }
+
+    function getShiftPanelRouteLabel(shift) {
+        if (isAveragePayShift(shift)) return 'О';
+        return formatCalendarShiftLabel(shift?.route || shift?.name || '');
     }
 
     function formatCalendarShiftLabel(route) {
@@ -13075,15 +13369,19 @@
             `Поезда: ${resolveIcsTrainsDisplay(shift, dateKey, context) || '—'}`
         ];
 
-        const totalHours = getCalendarShiftHours(enriched, dateKey);
-        lines.push(`Часов в смене: ${formatShiftHoursDisplay(totalHours)}`);
-
-        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
-        if (shiftPayment > 0) {
-            lines.push(`Оплата за смену: ${formatApproxMoney(shiftPayment)}`);
-            lines.push('Ориентировочный расчёт');
+        if (isAveragePayShift(enriched)) {
+            lines.push(formatAveragePayPlainText(getAveragePayCalculation(dateKey)));
         } else {
-            lines.push('Оплата за смену: —');
+            const totalHours = getCalendarShiftHours(enriched, dateKey);
+            lines.push(`Часов в смене: ${formatShiftHoursDisplay(totalHours)}`);
+
+            const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+            if (shiftPayment > 0) {
+                lines.push(`Оплата за смену: ${formatApproxMoney(shiftPayment)}`);
+                lines.push('Ориентировочный расчёт');
+            } else {
+                lines.push('Оплата за смену: —');
+            }
         }
 
         const notes = getShiftNotesList(shift);
@@ -13514,6 +13812,16 @@
     }
 
     function renderDayShiftChipHtml(shift, dateKey) {
+        if (isAveragePayShift(shift)) {
+            const colorClasses = getShiftColorClass(shift);
+            const hasNote = Boolean(getShiftNoteText(shift));
+            const noteTitle = hasNote ? ' title="Есть заметка к смене"' : '';
+            return `<div class="day-shift-chip ${colorClasses}${hasNote ? ' has-shift-note' : ''}"${noteTitle}
+                data-shift-chip data-shift-kind="average" data-shift-route="О"
+                role="button" tabindex="0" aria-label="Смена О, оплата по среднему">
+                <span class="day-shift-label">О</span>
+            </div>`;
+        }
         const routeDisplay = String(shift.route || '').trim();
         const skipRouteText = ['отпуск', 'о'];
         if (!routeDisplay || skipRouteText.includes(routeDisplay.toLowerCase())) return '';
@@ -15025,7 +15333,7 @@
         const isRestOnlyDay = storedShifts.length === 1 && isRestDayRoute(storedShifts[0]?.route);
 
         const tabsHtml = isRestOnlyDay ? '' : tabs.map((tab, index) => {
-            const routeLabel = formatCalendarShiftLabel(tab.shift?.route || '');
+            const routeLabel = getShiftPanelRouteLabel(tab.shift);
             const dateShort = formatTabDateShort(tab.dateKey);
             return `<button type="button" class="shift-day-panel__tab-pill${index === calendarConstructorActiveTab ? ' is-active' : ''}"
                 data-shift-tab data-tab-index="${index}" role="tab"
@@ -15353,7 +15661,14 @@
         const showQuickRoutes = editable && !isMorningRoute(route) && !shift?.isVirtualMorning;
         const showAddNightPlus = canShowMorningAddNightPlus(shift, dateKey, editable);
 
+        if (editable && isAveragePayShift(shift)) {
+            return `<div class="shift-card__route-area shift-card__route-area--average-pay">${buildShiftPanelQuickRoutesInline('', shift)}</div>`;
+        }
+
         if (!editable) {
+            if (isAveragePayShift(shift)) {
+                return `<span class="shift-card__route-readonly">О — оплата по среднему</span>`;
+            }
             return `<span class="shift-card__route-readonly">${escapeHtml(formatCalendarShiftLabel(route))}</span>`;
         }
 
@@ -15393,6 +15708,22 @@
 
         if (isRestDayRoute(route)) {
             return buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable);
+        }
+
+        if (isAveragePayShift(enriched)) {
+            const avgInfo = getAveragePayCalculation(dateKey);
+            const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable);
+            return `
+            <div class="shift-card__panel shift-summary__panel shift-summary__panel--average-pay" data-shift-summary-panel>
+                <div class="shift-card__row shift-card__row--route shift-card__row--status-quick">
+                    <span class="shift-card__label">Статус</span>
+                    <div class="shift-card__field">${routeField}</div>
+                </div>
+                <div class="shift-card__average-pay-wrap" data-summary-calc aria-live="polite">
+                    ${buildAveragePayCardHtml(avgInfo)}
+                </div>
+                ${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}
+            </div>`;
         }
 
         const totalHours = getCalendarShiftHours(enriched, dateKey);
@@ -15461,6 +15792,9 @@
         const hasLunchEditor = Boolean(lunchWrap || lunchRange);
 
         let nextShift = { ...storedShift };
+        if (isAveragePayShift(storedShift)) {
+            return nextShift;
+        }
         const routeChanged = normalizeCalendarRouteKey(storedShift.route) !== normalizeCalendarRouteKey(route);
 
         if (routeChanged && route) {
@@ -15512,6 +15846,10 @@
     function updateShiftSummaryCalcDisplay(panelRoot, draftShift, dateKey) {
         if (!panelRoot || !draftShift) return;
         const enriched = enrichShiftFromDepotTemplate(draftShift, dateKey);
+        if (isAveragePayShift(enriched)) {
+            renderAveragePayCard(panelRoot, dateKey);
+            return;
+        }
         const hoursEl = panelRoot.querySelector('[data-summary-hours]');
         const payEl = panelRoot.querySelector('[data-summary-pay]');
         if (hoursEl) hoursEl.textContent = formatShiftSummaryHoursValue(getCalendarShiftHours(enriched, dateKey));
@@ -15787,12 +16125,22 @@
         if (!dayPanel.dataset.quickPresetsBound) {
             dayPanel.dataset.quickPresetsBound = '1';
             dayPanel.addEventListener('click', (e) => {
+                const panelDateKey = dayPanel.dataset.dateKey || dateKey;
+                const avgBtn = e.target.closest('[data-average-pay-toggle]');
+                if (avgBtn && dayPanel.contains(avgBtn)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const panelEl = avgBtn.closest('[data-shift-tab-panel]');
+                    const shiftIndex = panelEl ? Number(panelEl.dataset.shiftIndex) : 0;
+                    calendarApplyAveragePay(panelDateKey, Number.isFinite(shiftIndex) ? shiftIndex : 0);
+                    return;
+                }
                 const btn = e.target.closest('[data-local-preset]');
                 if (!btn || !dayPanel.contains(btn)) return;
                 e.preventDefault();
                 e.stopPropagation();
                 const presetId = btn.getAttribute('data-local-preset') || '';
-                if (presetId) calendarApplyQuickPreset(presetId, dayPanel.dataset.dateKey || dateKey);
+                if (presetId) calendarApplyQuickPreset(presetId, panelDateKey);
             });
         }
 
@@ -15873,14 +16221,19 @@
             rows += calendarSummaryRow('Поезда', '—');
         }
 
-        const totalHours = getCalendarShiftHours(enriched, dateKey);
-        rows += calendarSummaryRow('Часов в смене', escapeHtml(formatShiftHoursDisplay(totalHours)));
-
-        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
-        if (shiftPayment > 0) {
-            rows += `<div class="shift-summary-row"><span>Оплата за смену</span>${renderMoneyBlockHtml(shiftPayment)}</div>`;
+        if (isAveragePayShift(enriched)) {
+            const avgInfo = getAveragePayCalculation(dateKey);
+            rows += `<div class="shift-summary-row shift-summary-row--average-pay"><span>Оплата</span><span class="shift-summary-value">${escapeHtml(formatAveragePayPlainText(avgInfo).replace(/\n/g, ' · '))}</span></div>`;
         } else {
-            rows += calendarSummaryRow('Оплата за смену', '—');
+            const totalHours = getCalendarShiftHours(enriched, dateKey);
+            rows += calendarSummaryRow('Часов в смене', escapeHtml(formatShiftHoursDisplay(totalHours)));
+
+            const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+            if (shiftPayment > 0) {
+                rows += `<div class="shift-summary-row"><span>Оплата за смену</span>${renderMoneyBlockHtml(shiftPayment)}</div>`;
+            } else {
+                rows += calendarSummaryRow('Оплата за смену', '—');
+            }
         }
 
         return rows;
@@ -16725,6 +17078,25 @@
         if (profileMonthPickerOpen) renderProfileMonthPicker();
     }
 
+    let profileAveragePayInputBound = false;
+
+    function initProfileAverageShiftPayField() {
+        const input = document.getElementById('profileAverageShiftPayInput');
+        if (!input) return;
+        if (!profileAveragePayInputBound) {
+            profileAveragePayInputBound = true;
+            const persist = () => {
+                setProfileManualAverageShiftPay(input.value);
+                updateProfileScreen();
+                if (calendarSelectedDateKey) refreshCalendarConstructorForDate(calendarSelectedDateKey);
+            };
+            input.addEventListener('change', persist);
+            input.addEventListener('blur', persist);
+        }
+        const manual = getProfileManualAverageShiftPay();
+        input.value = manual > 0 ? String(manual) : '';
+    }
+
     function initProfileMonthSelector() {
         const trigger = document.getElementById('profileMonthTrigger');
         const picker = document.getElementById('profileMonthPicker');
@@ -17387,6 +17759,7 @@
 
         renderNearestShift();
         renderProfileCompliance(tab);
+        initProfileAverageShiftPayField();
         initAspozhQrBlock();
         requestAnimationFrame(applyProfileTextFit);
     }
