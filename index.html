@@ -159,7 +159,10 @@
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
-                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                <div class="clock-wrap time-box header-clock-stack">
+                    <div class="clock-wrap__time app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                    <div class="clock-wrap__sub" id="scheduleMotionBadge" hidden></div>
+                </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
@@ -774,6 +777,7 @@
 <script src="js/app-data-source.js"></script>
 <script src="js/shedule-max-source.js"></script>
 <script src="js/info-chip.js"></script>
+<script src="js/train-motion-timer.js"></script>
 <script src="js/instructions.js?v=20260416j"></script>
 <script src="js/profile-compliance.js?v=20261018i"></script>
 <script>
@@ -852,8 +856,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.51';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_51';
+    const APP_RELEASE_VERSION = '4.0.52';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_52';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1897,6 +1901,13 @@
         getOrCreateAnonymousDeviceUuid();
         initSwipeNavigation();
         initScheduleLiveClockResume();
+        window.TrainMotionTimer?.init?.({
+            findTimelineStationPhases,
+            buildStopLiveWindow,
+            resolveRouteTrainPhase,
+            buildRouteEventDateTime,
+            isScheduleContextActive,
+        });
         initServiceWorker();
         initWebPushClient();
         void initReleaseNotesUi();
@@ -2525,11 +2536,26 @@
         if (!scheduleLiveClockSynced || !scheduleLiveClockTime) {
             clearScheduleActiveStationHighlight();
             clearRouteCardsHighlight();
+            window.TrainMotionTimer?.updateTimers?.({
+                nowDate: null,
+                synced: false,
+                tab: getActiveScheduleTab(),
+            });
             return;
         }
         updateScheduleDateHint();
         updateScheduleActiveStation();
         updateRouteCardsHighlight();
+        if (window.TrainMotionTimer?.updateTimers) {
+            window.TrainMotionTimer.updateTimers({
+                nowDate: scheduleLiveClockTime,
+                synced: scheduleLiveClockSynced,
+                tab: getActiveScheduleTab(),
+                routeTrains: routeNotificationTrains,
+                displayStops: scheduleDisplayStops,
+                selectedDate: scheduleActiveDate || getSelectedDate(),
+            });
+        }
         const profileEl = document.getElementById('screen-profile');
         if (profileEl && !profileEl.classList.contains('hidden')) {
             updateNearestShiftHighlight(scheduleLiveClockTime || new Date());
@@ -2687,6 +2713,13 @@
         scheduleNotificationTargets = null;
         routeNotificationTrains = null;
         clearScheduleActiveStationHighlight();
+        window.TrainMotionTimer?.clearTimelineMotion?.();
+        const motionBadge = document.getElementById('scheduleMotionBadge');
+        if (motionBadge) {
+            motionBadge.hidden = true;
+            motionBadge.textContent = '';
+        }
+        window.TrainMotionTimer?.resetRouteCardLiveFooters?.();
     }
 
     function getSchedulePushSessionId() {
@@ -7309,7 +7342,7 @@
             : `<div class="route-time">${formatClockHm(train.departure)} ${DASH_CHAR} ${formatClockHm(train.arrival)}</div>`;
         const durationBlockHtml = train.apiOffDay
             ? `<span>Нет рейса в этот день</span>`
-            : `<span>${durationHtml}</span>`;
+            : `<span class="route-live-travel" data-train-index="${i}" data-static="${escapeAttr(durationHtml)}">${durationHtml}</span>`;
 
         let brakeHtml = '';
         if (sprDataCache) {
@@ -7355,7 +7388,7 @@
                         <div class="route-card-section route-card-bottom">
                             ${durationBlockHtml}
                             <span class="route-mileage">${mileageHtml}</span>
-                            <span>${turnaroundHtml}</span>
+                            <span class="route-live-turnaround" data-train-index="${i}" data-static="${escapeAttr(turnaroundHtml)}">${turnaroundHtml}</span>
                         </div>
                     </div>
                 `;
@@ -7862,16 +7895,21 @@
 
             return `
                 <div class="station-node ${rowState}${kindClass}${skipClass}${cardClass}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
-                    <span class="station-km">${kmText ? escapeHtml(kmText) : ''}</span>
-                    <span class="station-mark timeline-dot" aria-hidden="true"></span>
-                    <div class="station-card">
-                        <div class="station-main">
+                    <div class="station-rail" aria-hidden="true">
+                        <span class="station-km">${kmText ? escapeHtml(kmText) : ''}</span>
+                        <span class="station-mark timeline-dot"></span>
+                    </div>
+                    <div class="station-card station-row">
+                        <div class="station-header">
                             <span class="station-name">${stationTitle}</span>
+                            ${timesHtml}
+                        </div>
+                        <div class="station-progress-bar" data-leg-progress hidden aria-hidden="true"><div class="fill"></div></div>
+                        <div class="station-extra">
                             ${chipHtml}
                             ${noteHtml}
                             ${opsHtml}
                         </div>
-                        ${timesHtml}
                     </div>
                 </div>
             `;
@@ -8133,12 +8171,14 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Справочники, часы смен и инструкции — с Cloud.ru S3; на GitHub только оболочка PWA',
-            '«Обновить» на маршруте — полный сброс кэша ниток и загрузка из сети'
+            'Доработка ошибок расписания',
+            'Доработка функции кнопки «Обновить»',
+            'Приятные доработки интерфейса'
         ],
         highlights: [
-            'Справочники, часы смен и инструкции — с Cloud.ru S3; на GitHub только оболочка PWA',
-            '«Обновить» на маршруте — полный сброс кэша ниток и загрузка из сети'
+            'Доработка ошибок расписания',
+            'Доработка функции кнопки «Обновить»',
+            'Приятные доработки интерфейса'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -8875,7 +8915,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261022a')
+        navigator.serviceWorker.register('./sw.js?v=20261022b')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);

@@ -217,6 +217,24 @@
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
+    flex-wrap: wrap;
+}
+
+.route-live-travel,
+.route-live-turnaround {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.route-live-travel--active {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.route-live-turnaround--active {
+    color: #6ee7b7;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Время отправки и прибытия (22:15 - 06:45) */

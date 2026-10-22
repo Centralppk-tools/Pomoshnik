@@ -43,10 +43,43 @@
 
 .station-node {
     position: relative;
-    padding-left: calc(var(--axis-x) + 14px);
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding-left: 4px;
     margin: 0;
     width: 100%;
     overflow: visible;
+    box-sizing: border-box;
+}
+
+.station-rail {
+    position: relative;
+    flex: 0 0 calc(var(--axis-x) + 14px);
+    width: calc(var(--axis-x) + 14px);
+    min-height: 36px;
+    align-self: stretch;
+}
+
+.station-rail .station-km {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.station-rail .station-mark {
+    position: absolute;
+    left: var(--axis-x);
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.station-node .station-card {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .station-node:last-child {
@@ -54,19 +87,19 @@
     padding-bottom: 20px;
 }
 
-.station-card {
+.station-card,
+.station-card.station-row {
     background: transparent;
     border: none;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
     border-radius: 0;
     box-shadow: none;
-    padding: 8px 2px;
+    padding: 8px 2px 8px 0;
     min-height: 36px;
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     width: 100%;
     box-sizing: border-box;
     transition: background 0.15s ease, opacity 0.2s ease;
@@ -74,6 +107,72 @@
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
+}
+
+.station-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    min-height: 28px;
+}
+
+.station-header .station-name {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+}
+
+.station-header .station-times {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.station-extra {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+}
+
+.station-extra:empty {
+    display: none;
+}
+
+.station-node.passed {
+    opacity: 0.45;
+}
+
+.station-progress-bar {
+    height: 3px;
+    width: 100%;
+    max-width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin: 6px 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.station-progress-bar .fill {
+    height: 100%;
+    width: 0%;
+    background: #10b981;
+    transition: width 1s linear;
+}
+
+.station-progress-bar--leg .fill {
+    background: #10b981;
+}
+
+.station-progress-bar--dwell .fill {
+    background: #38bdf8;
 }
 
 .station-node.item--station .station-card,
@@ -1494,35 +1593,71 @@ body.app-offline::after {
 }
 
 
-/* ????????: ??? ???????, ???????? ?????? ? ???? / ??????? / ?????? */
+/* Две колонки: рельс (фикс.) + контент (flex:1) */
 .station-node {
     position: relative;
-    padding-left: calc(var(--axis-x) + 14px);
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    padding-left: 4px !important;
     margin: 0;
     width: 100%;
     box-sizing: border-box;
+}
+
+.station-rail {
+    position: relative !important;
+    flex: 0 0 calc(var(--axis-x) + 14px) !important;
+    width: calc(var(--axis-x) + 14px) !important;
+    min-height: 36px;
+}
+
+.station-node > .station-card {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
 }
 
 .station-node:last-child {
     padding-bottom: 24px;
 }
 
-/* ?????? ????????? ??? ???? ????? */
-.station-card {
+.station-card,
+.station-card.station-row {
     background: transparent !important;
     border: none !important;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.12) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    padding: 8px 2px !important;
+    padding: 8px 2px 8px 0 !important;
     min-height: 36px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.station-header {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 12px !important;
+    gap: 8px !important;
     width: 100% !important;
-    box-sizing: border-box !important;
+    min-width: 0 !important;
+}
+
+.station-header .station-name {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+
+.station-header .station-times {
+    flex: 0 0 auto !important;
 }
 
 .station-node.item--station .station-card,
@@ -1614,8 +1749,8 @@ body.app-offline::after {
     outline: none !important;
 }
 
-/* ??????? ?? ??? (?????) */
-.station-mark {
+/* Маркер на рельсе — координаты внутри .station-rail */
+.station-rail .station-mark {
     position: absolute !important;
     left: var(--axis-x) !important;
     top: 50% !important;
