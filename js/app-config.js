@@ -1,4 +1,4 @@
-window.APP_BUILD_ID = '2026-10-22_v1';
+window.APP_BUILD_ID = '4.0.56';
 
 window.APP_CONFIG = {
     APP_BUILD_ID: window.APP_BUILD_ID,

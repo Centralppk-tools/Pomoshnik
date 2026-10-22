@@ -868,8 +868,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.55';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_55';
+    const APP_RELEASE_VERSION = '4.0.56';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_56';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -4951,12 +4951,8 @@
         btn.dataset.refreshBusy = '1';
         btn.classList.add('is-loading');
         btn.classList.add('is-full-refresh');
-        setRouteRefreshProgress(2, 'Полная очистка');
+        setRouteRefreshProgress(2, 'Обновление');
         try {
-            if (typeof window.hardResetAppData === 'function') {
-                await window.hardResetAppData({ reload: true });
-                return;
-            }
             await refreshRouteDataAsync({
                 onProgress: (percent, label) => setRouteRefreshProgress(percent, label),
             });
@@ -8201,12 +8197,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Расписание нитки на дату смены — оперативное время Туту',
-            'Убраны плашки «скорректировано» в расписании'
+            'Исправлено: приложение больше не сбрасывает данные при обновлении версии'
         ],
         highlights: [
-            'Расписание нитки на дату смены — оперативное время Туту',
-            'Убраны плашки «скорректировано» в расписании'
+            'Исправлено: приложение больше не сбрасывает данные при обновлении версии'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

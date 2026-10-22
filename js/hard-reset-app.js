@@ -1,4 +1,4 @@
-/** Полная зачистка клиентских кэшей и перезагрузка (кнопка «Обновить», смена build_id). */
+/** Полная зачистка — только явный вызов hardResetAppData (не при загрузке и не при смене build_id). */
 (function (global) {
     const BUILD_KEY = 'APP_BUILD_ID';
     const SCHEDULE_DB = 'da_schedule_yar';
@@ -111,31 +111,8 @@
         const stored = global.localStorage.getItem(BUILD_KEY);
         if (stored === localId) return;
 
-        let remoteId = '';
-        try {
-            const res = await fetch(`/version.json?ts=${Date.now()}`, { cache: 'no-store' });
-            if (res.ok) {
-                const doc = await res.json();
-                remoteId = String(doc?.build_id || '').trim();
-            }
-        } catch (err) {
-            console.warn('[build] version.json', err);
-        }
-
-        if (remoteId && remoteId !== 'GIT_COMMIT_HASH' && stored && remoteId === stored) {
-            global.localStorage.setItem(BUILD_KEY, localId);
-            return;
-        }
-
-        if (stored && stored !== localId) {
-            await hardResetAppData({ preserveBuild: false, reload: true });
-            return;
-        }
-
+        // Только метка сборки в localStorage. Полная зачистка — только кнопка «Обновить» (hardResetAppData).
         global.localStorage.setItem(BUILD_KEY, localId);
-        if (remoteId && remoteId !== 'GIT_COMMIT_HASH' && remoteId !== localId) {
-            await hardResetAppData({ preserveBuild: false, reload: true });
-        }
     }
 
     global.hardResetAppData = hardResetAppData;
