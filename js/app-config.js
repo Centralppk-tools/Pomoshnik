@@ -12,7 +12,7 @@ window.APP_CONFIG = {
         functionUrl: '',
         useDirectS3: true,
         preferStopsApi: false,
-        threadRev: 12
+        threadRev: 13
     }
 };
 

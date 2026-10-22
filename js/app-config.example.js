@@ -7,6 +7,7 @@ window.APP_CONFIG = {
     cloudtipsPaymentUrl: 'https://pay.cloudtips.ru/p/YOUR_LAYOUT_ID',
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee',
     sheduleMax: {
+        // Табло, нитки и справочники app (data/spr.json, shift-templates, instructions/…)
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
         apiBaseUrl: '',
         functionUrl: '',

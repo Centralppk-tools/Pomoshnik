@@ -771,6 +771,7 @@
 </div>
 
 <script src="js/app-config.js"></script>
+<script src="js/app-data-source.js"></script>
 <script src="js/shedule-max-source.js"></script>
 <script src="js/info-chip.js"></script>
 <script src="js/instructions.js?v=20260416j"></script>
@@ -851,8 +852,8 @@
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.50';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_50';
+    const APP_RELEASE_VERSION = '4.0.51';
+    const CLIENT_CACHE_VERSION = 'da_v4_0_51';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -3870,13 +3871,29 @@
         return s.startsWith('./') || s.startsWith('/') || !s.includes('://');
     }
 
+    function expandJsonAssetUrls(paths) {
+        const localPaths = (Array.isArray(paths) ? paths : [paths]).filter(isLocalAssetPath);
+        const urls = [];
+        const seen = new Set();
+        for (const path of localPaths) {
+            const list = window.AppDataSource?.urlsFor?.(path) || [path];
+            for (const url of list) {
+                if (!seen.has(url)) {
+                    seen.add(url);
+                    urls.push(url);
+                }
+            }
+        }
+        return urls;
+    }
+
     async function fetchJsonAsset(paths, storageKey = null, emptyValue = null) {
-        const candidates = (Array.isArray(paths) ? paths : [paths]).filter(isLocalAssetPath);
+        const candidates = expandJsonAssetUrls(paths);
         let lastError = null;
 
         for (const path of candidates) {
             try {
-                const res = await fetch(path);
+                const res = await fetch(path, { cache: 'no-store' });
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${path}`);
                     continue;
@@ -3912,11 +3929,37 @@
         );
         rebuildSprLookups();
 
-        localTrainsCache = await fetchJsonAsset(
-            ['./trains-local.json', 'trains-local.json'],
-            REFERENCE_TRAINS_STORAGE_KEY,
-            { trains: [] }
-        );
+        localTrainsCache = await loadTrainsLocalRegistry();
+    }
+
+    async function loadTrainsLocalRegistry() {
+        const empty = { trains: [] };
+        const sm = window.APP_CONFIG?.sheduleMax || {};
+        const base = String(sm.s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
+        const rev = Number(sm.threadRev) > 0 ? Number(sm.threadRev) : 13;
+        const remoteUrl = `${base}/data/trains-local.json?rev=${rev}&_t=${Date.now()}`;
+        try {
+            const res = await fetch(remoteUrl, { cache: 'no-store' });
+            if (res.ok) {
+                const parsed = await res.json();
+                if (Array.isArray(parsed?.trains) && parsed.trains.length) {
+                    persistReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY, parsed);
+                    console.log('[trains-local] S3', parsed.trains.length, 'trains, rev', rev);
+                    return parsed;
+                }
+            }
+        } catch (err) {
+            console.warn('[trains-local] S3 fetch failed:', err);
+        }
+        if (window.AppDataSource?.isLocalDevHost?.()) {
+            return fetchJsonAsset(
+                ['./trains-local.json', 'trains-local.json'],
+                REFERENCE_TRAINS_STORAGE_KEY,
+                empty
+            );
+        }
+        const cached = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY);
+        return cached || empty;
     }
 
     function getWeekdayInfoForIsoDate(isoDate) {
@@ -3930,23 +3973,44 @@
 
     function weekdayMarkerMatchesDate(marker, weekdayInfo) {
         if (!weekdayInfo) return true;
+        const parsed = parseTrainServiceDaysMarker(marker);
+        if (!parsed) return true;
+        if (parsed === 'daily') return true;
+        if (parsed === 'пн-пт') {
+            return ['пн', 'вт', 'ср', 'чт', 'пт'].includes(weekdayInfo.single);
+        }
+        if (parsed === 'сб-вс') {
+            return weekdayInfo.single === 'сб' || weekdayInfo.single === 'вс';
+        }
         const normalized = normalizeWeekdayMarker(marker);
         if (!normalized) return true;
         return shiftDateMatchesWeekday(normalized, weekdayInfo);
     }
 
-    function findLocalTrainRegistryEntry(trainNumber) {
+    function findLocalTrainRegistryEntry(trainNumber, scheduleDate = null) {
         const numKey = normalizeTrainCacheKey(trainNumber);
         if (!numKey || !Array.isArray(localTrainsCache?.trains)) return null;
-        return localTrainsCache.trains.find(entry => normalizeTrainCacheKey(entry.number) === numKey) || null;
+        const matches = localTrainsCache.trains.filter(
+            (entry) => normalizeTrainCacheKey(entry.number) === numKey
+        );
+        if (!matches.length) return null;
+        if (scheduleDate) {
+            const weekdayInfo = getWeekdayInfoForIsoDate(scheduleDate);
+            const dayHit = matches.find((entry) => weekdayMarkerMatchesDate(entry.days, weekdayInfo));
+            if (dayHit) return dayHit;
+        }
+        return matches[0];
     }
 
     function findLocalTrainEntry(trainNumber, scheduleDate) {
-        const entry = findLocalTrainRegistryEntry(trainNumber);
-        if (!entry) return null;
         const weekdayInfo = getWeekdayInfoForIsoDate(scheduleDate);
-        if (!weekdayMarkerMatchesDate(entry.days, weekdayInfo)) return null;
-        return entry;
+        const numKey = normalizeTrainCacheKey(trainNumber);
+        if (!numKey || !Array.isArray(localTrainsCache?.trains)) return null;
+        const entry = localTrainsCache.trains.find((item) => (
+            normalizeTrainCacheKey(item.number) === numKey
+            && weekdayMarkerMatchesDate(item.days, weekdayInfo)
+        ));
+        return entry || null;
     }
 
     function resolveTrainFromLocalOnly(trainNumber, scheduleDate, registryEntry) {
@@ -4206,24 +4270,25 @@
         return '<div class="route-forming-hint">Расписание формируется</div>';
     }
 
-    async function fetchYaroslavlBoardFromWorker(date) {
+    async function fetchYaroslavlBoardFromWorker(date, options = {}) {
         if (window.SheduleMaxSource?.enabled?.()) {
             try {
-                const schedule = await window.SheduleMaxSource.fetchYaroslavlBoard(date);
+                const schedule = await window.SheduleMaxSource.fetchYaroslavlBoard(date, options);
                 if (Array.isArray(schedule) && schedule.length) {
                     console.log('[trains] shedule-max board:', date, schedule.length);
                     return schedule;
                 }
             } catch (err) {
                 console.warn('[trains] shedule-max board failed:', date, err);
+                throw err;
             }
         }
         throw createBoardNotReadyError(null, 'Прокси табло не настроен');
     }
 
-    async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION) {
+    async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION, options = {}) {
         if (stationCode === ANCHOR_STATION) {
-            return fetchYaroslavlBoardFromWorker(date);
+            return fetchYaroslavlBoardFromWorker(date, options);
         }
         if (window.SheduleMaxSource?.enabled?.()) {
             return [];
@@ -4283,7 +4348,7 @@
 
         const loader = (async () => {
             try {
-                const schedule = await fetchStationScheduleForDate(date, stationCode);
+                const schedule = await fetchStationScheduleForDate(date, stationCode, { forceRefresh });
                 stationScheduleByKey[cacheKey] = schedule;
                 syncStationUidIndexForBoard(stationCode, date, schedule);
 
@@ -4587,13 +4652,49 @@
         btn.setAttribute('aria-busy', 'false');
     }
 
-    async function refreshShiftTrainsFromNetwork(inputs, onStep) {
+    function formatRefreshFailureSummary(failures) {
+        const lines = (failures || []).map((item) => {
+            const scope = item.scope || 'train';
+            const who = item.trainNumber || item.date || scope;
+            const code = item.code || 'REFRESH_FAILED';
+            const msg = item.message || 'ошибка';
+            return `${who}: ${msg} (${code})`;
+        });
+        return lines.length ? lines.join('; ') : 'Не удалось обновить расписание';
+    }
+
+    function isSchedulePanelVisible() {
+        const results = document.getElementById('scheduleResults');
+        const header = document.getElementById('scheduleHeader');
+        const resultsOpen = results && results.style.display !== 'none';
+        const headerOpen = header && header.style.display !== 'none' && String(header.innerHTML || '').trim().length > 0;
+        return Boolean(resultsOpen || headerOpen);
+    }
+
+    function resolveBoardDirectionForHit(hit) {
+        return hit?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+    }
+
+    async function refreshShiftTrainsFromNetwork(inputs, onStep, loadOptions = {}) {
         const dates = resolveTrainSearchDatesForShift();
-        const failed = [];
+        const failures = [];
+        const stopOpts = {
+            fresh: true,
+            bypassCache: loadOptions.bypassCache === true,
+        };
 
         for (let i = 0; i < dates.length; i++) {
             const date = dates[i];
-            await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
+            try {
+                await ensureBoardReadyForTrainSearch(date, { forceRefresh: true });
+            } catch (err) {
+                failures.push({
+                    scope: 'board',
+                    date,
+                    code: err?.code || 'BOARD_FAILED',
+                    message: err?.message || String(err),
+                });
+            }
             if (typeof onStep === 'function') {
                 onStep({ phase: 'board', date, index: i + 1, total: dates.length });
             }
@@ -4603,10 +4704,8 @@
         let pairIndex = 0;
 
         for (const trainNumber of inputs) {
-            let trainOk = false;
             for (const date of dates) {
                 pairIndex += 1;
-                const registryEntry = findLocalTrainRegistryEntry(trainNumber);
                 let hit = null;
                 try {
                     hit = await findTrainOnStationBoards(trainNumber, date, {
@@ -4620,25 +4719,31 @@
                     hit = lookupTrainOnStationBoard(trainNumber, date);
                 }
                 const uid = String(hit?.thread?.uid || '').trim();
-                if (window.SheduleMaxSource?.loadTrainStops && uid) {
+                if (!uid) {
+                    failures.push({
+                        scope: 'train',
+                        trainNumber,
+                        date,
+                        code: 'NO_UID',
+                        message: 'нет UID на табло',
+                    });
+                } else if (window.SheduleMaxSource?.loadTrainStops) {
                     try {
                         await window.SheduleMaxSource.loadTrainStops(
                             date,
                             trainNumber,
                             uid,
-                            'from_moscow',
-                            { fresh: true }
+                            resolveBoardDirectionForHit(hit),
+                            stopOpts,
                         );
                     } catch (err) {
-                        console.warn('[trains] fresh stops failed:', trainNumber, err);
-                    }
-                }
-                if (hit) {
-                    try {
-                        const decorated = await fetchTrainFromBoardHit(hit, trainNumber, date, registryEntry);
-                        if (decorated && !decorated.partial) trainOk = true;
-                    } catch (err) {
-                        console.warn('[trains] refresh thread failed:', trainNumber, err);
+                        failures.push({
+                            scope: 'train',
+                            trainNumber,
+                            date,
+                            code: err?.code || 'STOPS_FETCH_FAILED',
+                            message: err?.message || String(err),
+                        });
                     }
                 }
                 if (typeof onStep === 'function') {
@@ -4651,9 +4756,74 @@
                     });
                 }
             }
-            if (!trainOk) failed.push(trainNumber);
         }
-        return failed;
+        return failures;
+    }
+
+    function repaintRouteGridFromMemory(inputs) {
+        const baseDate = getSelectedDate();
+        if (!baseDate || !inputs.length) return;
+        const trainPlan = resolveShiftTrainPlanForInputs(inputs);
+        const searchOptions = { forceRefresh: true, trainPlan };
+        const refreshed = inputs.map((trainNumber) => resolveTrainLocalSync(trainNumber, searchOptions));
+        const requestId = routeDataRequestId;
+        paintRouteGrid(buildRouteTrainEntries(inputs, refreshed, trainPlan), {
+            requestId,
+            finalize: true,
+            allowMissing: true,
+        });
+    }
+
+    async function refreshSchedulePanelFromNetwork(trainNumber, options = {}) {
+        const input = String(trainNumber || '').trim();
+        const selectedDate = getSelectedDate();
+        if (!input) {
+            const err = new Error('Не выбран поезд');
+            err.code = 'NO_TRAIN';
+            throw err;
+        }
+        if (!selectedDate) {
+            const err = new Error('Не указана дата смены');
+            err.code = 'NO_DATE';
+            throw err;
+        }
+
+        await ensureBoardReadyForTrainSearch(selectedDate, { forceRefresh: true });
+        const hit = lookupTrainOnStationBoard(input, selectedDate);
+        const uid = String(hit?.thread?.uid || '').trim();
+        if (!uid) {
+            const err = new Error(`Поезд ${input} не найден на табло`);
+            err.code = 'NO_UID';
+            throw err;
+        }
+
+        await window.SheduleMaxSource.loadTrainStops(
+            selectedDate,
+            input,
+            uid,
+            resolveBoardDirectionForHit(hit),
+            { fresh: true, bypassCache: options.bypassCache !== false },
+        );
+
+        const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
+        const trainMeta = resolveTrainLocalSync(input, { forceRefresh: true, trainPlan });
+        if (!trainMeta || !Array.isArray(trainMeta.stops) || !trainMeta.stops.length) {
+            const err = new Error('Нитка не применилась после загрузки');
+            err.code = 'APPLY_FAILED';
+            throw err;
+        }
+
+        const list = document.getElementById('stationsList');
+        const header = document.getElementById('scheduleHeader');
+        if (!list || !header) return trainMeta;
+
+        const paint = (meta) => {
+            if (!meta?.stops?.length) return;
+            renderTimelineFromData(meta.stops, meta.number || input, selectedDate);
+            updateScheduleEmptyState();
+        };
+        paint(trainMeta);
+        return trainMeta;
     }
 
     async function refreshRouteDataAsync(options = {}) {
@@ -4669,7 +4839,9 @@
 
         report(2, 'Старт');
 
-        if (window.SheduleMaxSource?.clearShiftThreadCaches) {
+        if (window.SheduleMaxSource?.forceResetAllCaches) {
+            await window.SheduleMaxSource.forceResetAllCaches();
+        } else if (window.SheduleMaxSource?.clearShiftThreadCaches) {
             await window.SheduleMaxSource.clearShiftThreadCaches();
         }
         report(10, 'Очистка кэша');
@@ -4678,7 +4850,7 @@
         invalidateStationBoardCachesForDates(resolveTrainSearchDatesForShift());
         report(14, 'Подготовка');
 
-        const failed = await refreshShiftTrainsFromNetwork(inputs, (step) => {
+        const failures = await refreshShiftTrainsFromNetwork(inputs, (step) => {
             if (step.phase === 'board') {
                 const part = step.total ? (step.index / step.total) : 1;
                 report(14 + part * 20, 'Табло');
@@ -4686,26 +4858,36 @@
             }
             if (step.phase === 'train') {
                 const part = step.total ? (step.index / step.total) : 1;
-                report(34 + part * 48, step.trainNumber ? `Поезд ${step.trainNumber}` : 'Нитки');
+                report(34 + part * 56, step.trainNumber ? `Поезд ${step.trainNumber}` : 'Нитки');
             }
-        });
+        }, { bypassCache: true });
 
-        report(86, 'Маршрут');
-        getRouteData({ forceRefresh: true, forceBoardRefresh: true });
+        report(88, 'Маршрут');
+        repaintRouteGridFromMemory(inputs);
 
-        report(93, 'Расписание');
         const openTrain = String(userStorageGet('lastSingleTrain') || '').trim();
-        if (openTrain) {
-            getScheduleData(openTrain, { forceRefresh: true });
+        if (openTrain && isSchedulePanelVisible()) {
+            report(94, `Расписание ${openTrain}`);
+            try {
+                await refreshSchedulePanelFromNetwork(openTrain, { bypassCache: true });
+            } catch (err) {
+                failures.push({
+                    scope: 'schedule',
+                    trainNumber: openTrain,
+                    code: err?.code || 'SCHEDULE_REFRESH_FAILED',
+                    message: err?.message || String(err),
+                });
+            }
+        }
+
+        if (failures.length) {
+            const err = new Error(formatRefreshFailureSummary(failures));
+            err.code = failures[0].code || 'REFRESH_FAILED';
+            err.failures = failures;
+            throw err;
         }
 
         report(100, 'Готово');
-
-        if (failed.length) {
-            const msg = `Не удалось обновить поезда: ${failed.join(', ')}. Проверьте сеть.`;
-            if (typeof showToast === 'function') showToast(msg);
-            else console.warn(msg);
-        }
     }
 
     function refreshRouteData(e) {
@@ -4727,22 +4909,29 @@
         btn.classList.add('is-loading');
         btn.classList.remove('is-full-refresh');
         setRouteRefreshProgress(1, 'Старт');
+        let refreshOk = false;
         try {
             await refreshRouteDataAsync({
                 onProgress: (percent, label) => setRouteRefreshProgress(percent, label),
             });
+            refreshOk = true;
+            setRouteRefreshProgress(100, 'Готово');
+            window.setTimeout(() => resetRouteRefreshProgress(), 500);
         } catch (err) {
             console.error('[trains] route refresh failed:', err);
-            const msg = 'Не удалось обновить расписание. Проверьте сеть.';
-            if (typeof showToast === 'function') showToast(msg);
-            else alert(msg);
+            const code = err?.code || 'REFRESH_FAILED';
+            const msg = err?.message || 'Не удалось обновить расписание. Проверьте сеть.';
+            resetRouteRefreshProgress();
+            if (typeof showToast === 'function') showToast(`${msg} (${code})`);
+            else alert(`${msg} (${code})`);
         } finally {
             btn.disabled = false;
             delete btn.dataset.refreshBusy;
             btn.classList.remove('is-loading');
             btn.classList.remove('is-full-refresh');
-            setRouteRefreshProgress(100, 'Готово');
-            window.setTimeout(() => resetRouteRefreshProgress(), 500);
+            if (!refreshOk) {
+                resetRouteRefreshProgress();
+            }
         }
     }
 
@@ -7333,12 +7522,15 @@
                 ).trim();
                 if (!uid) return Promise.resolve();
                 const fresh = searchOptions.forceRefresh === true;
+                const bypassCache = searchOptions.forceRefresh === true;
+                const hit = lookupTrainOnStationBoard(trainNumber, baseDate);
+                const direction = hit?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
                 return window.SheduleMaxSource.loadTrainStops(
                     baseDate,
                     trainNumber,
                     uid,
-                    'from_moscow',
-                    { fresh }
+                    direction,
+                    { fresh, bypassCache }
                 ).catch(() => null);
             })).then(repaintRoute);
         };
@@ -7437,27 +7629,58 @@
         let trainMeta = resolveTrainLocalSync(input, searchOpts);
         paint(trainMeta);
 
-        const middles = Array.isArray(trainMeta?.stops) ? trainMeta.stops.slice(1, -1) : [];
-        const hasMiddleClocks = middles.some((stop) => stopHasValidClock(stop));
+        const boardHit = lookupTrainOnStationBoard(input, selectedDate);
         const stopUid = String(
             trainMeta?.uid
-            || lookupTrainOnStationBoard(input, selectedDate)?.thread?.uid
+            || boardHit?.thread?.uid
             || ''
         ).trim();
-        if (hasMiddleClocks || !stopUid || !window.SheduleMaxSource?.loadTrainStops) return;
+        const forceNetwork = options.forceRefresh === true || options.forceNetworkStops === true;
+        const middles = Array.isArray(trainMeta?.stops) ? trainMeta.stops.slice(1, -1) : [];
+        const hasMiddleClocks = middles.some((stop) => stopHasValidClock(stop));
+        if (!forceNetwork && (hasMiddleClocks || !stopUid || !window.SheduleMaxSource?.loadTrainStops)) {
+            return;
+        }
+        if (!stopUid || !window.SheduleMaxSource?.loadTrainStops) return;
 
-        const fresh = options.forceRefresh === true;
+        const direction = boardHit?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+        const loadOpts = {
+            fresh: true,
+            bypassCache: forceNetwork,
+        };
+
+        const applyPaint = () => {
+            if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
+            if (getSelectedDate() !== selectedDate) return;
+            paint(resolveTrainLocalSync(input, searchOpts));
+        };
+
+        if (forceNetwork) {
+            void window.SheduleMaxSource.loadTrainStops(
+                selectedDate,
+                input,
+                stopUid,
+                direction,
+                loadOpts,
+            ).then((payload) => {
+                if (!payload) return;
+                applyPaint();
+            }).catch((err) => {
+                const code = err?.code || 'STOPS_FETCH_FAILED';
+                console.warn('[trains] schedule stops refresh failed:', input, code, err);
+            });
+            return;
+        }
+
         void window.SheduleMaxSource.loadTrainStops(
             selectedDate,
             input,
             stopUid,
-            'from_moscow',
-            { fresh }
+            direction,
+            loadOpts,
         ).then((payload) => {
             if (!payload) return;
-            if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
-            if (getSelectedDate() !== selectedDate) return;
-            paint(resolveTrainLocalSync(input, searchOpts));
+            applyPaint();
         }).catch(() => {});
     }
 
@@ -7910,10 +8133,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Мелкие технические правки интерфейса и логики приложения'
+            'Справочники, часы смен и инструкции — с Cloud.ru S3; на GitHub только оболочка PWA',
+            '«Обновить» на маршруте — полный сброс кэша ниток и загрузка из сети'
         ],
         highlights: [
-            'Мелкие технические правки интерфейса и логики приложения'
+            'Справочники, часы смен и инструкции — с Cloud.ru S3; на GitHub только оболочка PWA',
+            '«Обновить» на маршруте — полный сброс кэша ниток и загрузка из сети'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -8650,7 +8875,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261018m')
+        navigator.serviceWorker.register('./sw.js?v=20261022a')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -10233,9 +10458,9 @@
 
         localShiftTemplatesPromise = (async () => {
             try {
-                const fetchers = [
-                    fetchShiftTemplatesJson(LOCAL_SHIFT_TEMPLATES_URL).catch(() => null)
-                ];
+                const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
+                    || [LOCAL_SHIFT_TEMPLATES_URL];
+                const fetchers = shiftUrls.map((url) => fetchShiftTemplatesJson(url).catch(() => null));
 
                 const candidates = (await Promise.all(fetchers)).filter(Boolean);
                 const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
@@ -10428,7 +10653,8 @@
 
         calendarLocalRoutesPromise = (async () => {
             try {
-                const urls = ['./data/calendar-local-routes.json'];
+                const urls = window.AppDataSource?.urlsFor?.('./data/calendar-local-routes.json')
+                    || ['./data/calendar-local-routes.json'];
                 let data = null;
                 let lastErr = null;
                 for (const url of urls) {

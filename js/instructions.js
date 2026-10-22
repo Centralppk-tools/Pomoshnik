@@ -233,7 +233,8 @@
         if (doc?.source === 'static' || doc?.storage === 'static') {
             const rel = String(doc.pdfPath || '').replace(/^\.\//, '');
             if (!rel) return null;
-            const res = await fetch(`./${rel}`, { cache: 'no-store' });
+            const pdfUrl = window.AppDataSource?.resolveAssetUrl?.(rel) || `./${rel}`;
+            const res = await fetch(pdfUrl, { cache: 'no-store' });
             if (!res.ok) return null;
             return res.blob();
         }
@@ -271,7 +272,8 @@
     async function loadStaticInstructionsPack() {
         staticPack = { ready: false, folders: [], documents: [], chunks: [] };
         try {
-            const catalogUrls = ['./data/instructions/catalog.json'];
+            const catalogUrls = window.AppDataSource?.urlsFor?.('./data/instructions/catalog.json')
+                || ['./data/instructions/catalog.json'];
 
             let catalog = null;
             for (const url of catalogUrls) {
@@ -323,7 +325,8 @@
                 staticPack.documents.push(doc);
                 if (!doc.hasText) continue;
                 try {
-                    const chunkUrls = [`./data/instructions/chunks/${d.id}.json`];
+                    const chunkUrls = window.AppDataSource?.urlsFor?.(`./data/instructions/chunks/${d.id}.json`)
+                        || [`./data/instructions/chunks/${d.id}.json`];
                     let pack = null;
                     for (const curl of chunkUrls) {
                         try {

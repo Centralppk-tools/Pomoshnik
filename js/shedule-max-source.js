@@ -29,6 +29,16 @@
         return Number(payload?.threadRev ?? 0) >= expectedThreadRev();
     }
 
+    function normalizeStopLoadError(err, fallbackCode = 'FETCH_FAILED') {
+        const error = err instanceof Error ? err : new Error(String(err || 'Ошибка загрузки нитки'));
+        if (!error.code) {
+            if (error.name === 'AbortError') error.code = 'TIMEOUT';
+            else if (Number(error.status) === 404) error.code = 'NOT_FOUND';
+            else error.code = fallbackCode;
+        }
+        return error;
+    }
+
     function weekdayTemplateId(dateIso) {
         const parts = String(dateIso || '').split('-').map(Number);
         if (parts.length < 3 || !parts[0]) return 'MON_THU';
@@ -403,19 +413,21 @@
         return Array.isArray(trains) ? trains : [];
     }
 
-    async function fetchBoardFromS3(date, direction, errors) {
+    async function fetchBoardFromS3(date, direction, errors, options = {}) {
         if (!useDirectS3()) return null;
         const path = scheduleObjectPath(date);
+        const forceRefresh = options.forceRefresh === true;
         try {
             const url = s3Url(path);
-            const cached = await readCachedJson(url);
-            const payload = cached || await readJson(url, FETCH_TIMEOUT_MS);
+            const payload = forceRefresh
+                ? await readJson(url, FETCH_TIMEOUT_MS, { fresh: true })
+                : ((await readCachedJson(url)) || await readJson(url, FETCH_TIMEOUT_MS));
             const trains = trainsFromBoardPayload(payload, direction);
             if (trains.length) {
                 return trains.map((train) => mapBoardTrain(train, date, direction));
             }
         } catch (err) {
-            errors.push(err);
+            errors.push(normalizeStopLoadError(err));
         }
         return null;
     }
@@ -427,11 +439,11 @@
         throw errors[0] || new Error(`Расписание на ${date} ещё не создано`);
     }
 
-    async function fetchYaroslavlBoard(date) {
+    async function fetchYaroslavlBoard(date, options = {}) {
         if (useDirectS3()) {
             const errors = [];
             const payloadTrains = await Promise.all(
-                DIRS.map((direction) => fetchBoardFromS3(date, direction, errors)),
+                DIRS.map((direction) => fetchBoardFromS3(date, direction, errors, options)),
             );
             const schedule = [];
             const seen = new Set();
@@ -578,16 +590,78 @@
         return payload;
     }
 
+    function assertStopPayloadUsable(payload) {
+        if (!payload || !Array.isArray(payload.stops) || !payload.stops.length) {
+            const err = new Error('В ответе нет остановок');
+            err.code = 'EMPTY_STOPS';
+            throw err;
+        }
+        if (!stopPayloadFresh(payload)) {
+            const rev = Number(payload?.threadRev ?? 0);
+            const need = expectedThreadRev();
+            const err = new Error(`Нитка устарела: threadRev ${rev} < ${need}`);
+            err.code = 'STALE_THREAD_REV';
+            err.threadRev = rev;
+            err.expectedRev = need;
+            throw err;
+        }
+        return payload;
+    }
+
+    async function fetchStopPayloadFromNetwork(url) {
+        try {
+            const payload = await readJson(url, FETCH_TIMEOUT_MS, { fresh: true });
+            return assertStopPayloadUsable(payload);
+        } catch (err) {
+            throw normalizeStopLoadError(err);
+        }
+    }
+
     async function loadTrainStops(date, number, uid, direction = 'from_moscow', options = {}) {
         const key = trainStopsKey(date, number);
         const path = stopFilePath(uid);
-        if (!key) return null;
-        const fresh = options.fresh === true;
-        if (trainStopsMem[key] && !fresh) return trainStopsMem[key];
+        if (!key) {
+            const err = new Error('Нет даты или номера поезда');
+            err.code = 'INVALID_ARGS';
+            if (options.bypassCache === true) throw err;
+            return null;
+        }
+        const bypassCache = options.bypassCache === true;
+        const fresh = options.fresh === true || bypassCache;
+
+        if (bypassCache) {
+            delete trainStopsMem[key];
+        } else if (trainStopsMem[key] && !fresh) {
+            return trainStopsMem[key];
+        }
 
         const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
+        const voyageUid = String(uid || '').trim();
+        if (!voyageUid) {
+            const err = new Error('Нет UID нитки (voyageCode)');
+            err.code = 'NO_UID';
+            if (bypassCache) throw err;
+            return null;
+        }
 
         const url = path ? s3Url(path) : '';
+
+        if (bypassCache) {
+            if (!url || !useDirectS3()) {
+                const err = new Error('Прямой S3 недоступен для принудительной загрузки');
+                err.code = 'S3_DISABLED';
+                throw err;
+            }
+            const payload = await fetchStopPayloadFromNetwork(url);
+            const stored = rememberStopsPayload(key, url, payload);
+            if (!stored) {
+                const err = new Error('Не удалось сохранить нитку в памяти');
+                err.code = 'STORE_FAILED';
+                throw err;
+            }
+            return stored;
+        }
+
         if (url && useDirectS3()) {
             if (!fresh) {
                 const cached = await readCachedJson(url);
@@ -610,7 +684,7 @@
         if ((preferStopsApi() || fresh) && apiBase()) {
             try {
                 const payload = await fetchTrainDetailsFromApi(date, number, dir, {
-                    voyageCode: uid,
+                    voyageCode: voyageUid,
                     fresh: fresh || !stopPayloadFresh(trainStopsMem[key]),
                 });
                 if (stopPayloadFresh(payload)) {
@@ -638,7 +712,7 @@
         }
         if (!apiBase()) return null;
         try {
-            const payload = await fetchTrainDetailsFromApi(date, number, dir, { voyageCode: uid });
+            const payload = await fetchTrainDetailsFromApi(date, number, dir, { voyageCode: voyageUid });
             return rememberStopsPayload(key, '', payload);
         } catch (err) {
             console.error('[shedule-max train_details]', err);
@@ -687,6 +761,12 @@
         });
     }
 
+    function wipeInMemoryScheduleCaches() {
+        Object.keys(dayStopsCache).forEach((k) => { delete dayStopsCache[k]; });
+        Object.keys(dayStopsInflight).forEach((k) => { delete dayStopsInflight[k]; });
+        Object.keys(trainStopsMem).forEach((k) => { delete trainStopsMem[k]; });
+    }
+
     async function clearCacheStopsFromCacheStorage() {
         if (!global.caches?.keys) return;
         try {
@@ -703,19 +783,40 @@
         }
     }
 
-    async function clearShiftThreadCaches() {
-        Object.keys(dayStopsCache).forEach((k) => { delete dayStopsCache[k]; });
-        Object.keys(dayStopsInflight).forEach((k) => { delete dayStopsInflight[k]; });
-        Object.keys(trainStopsMem).forEach((k) => { delete trainStopsMem[k]; });
-        await clearCacheStopsFromCacheStorage();
-        if (global.caches?.open) {
-            try {
-                await global.caches.delete(DAY_CACHE_NAME);
-            } catch {
-                /* ignore */
+    async function clearAllScheduleCachesFromStorage() {
+        if (!global.caches?.keys) return;
+        try {
+            const names = await global.caches.keys();
+            for (const name of names) {
+                if (/shedulemax|da_shedule/i.test(name)) {
+                    await global.caches.delete(name);
+                    continue;
+                }
+                const cache = await global.caches.open(name);
+                const requests = await cache.keys();
+                await Promise.all(requests
+                    .filter((req) => /cache_stops|cache_schedule|shedulemax-public/i.test(req.url))
+                    .map((req) => cache.delete(req)));
             }
+        } catch (err) {
+            console.warn('[shedule-max] CacheStorage schedule clear failed', err);
         }
+        try {
+            await global.caches.delete(DAY_CACHE_NAME);
+        } catch {
+            /* ignore */
+        }
+    }
+
+    /** Полный сброс кэша ниток и остановок (память + IDB + Cache Storage). */
+    async function forceResetAllCaches() {
+        wipeInMemoryScheduleCaches();
+        await clearAllScheduleCachesFromStorage();
         await deleteIndexedDbSchedule();
+    }
+
+    async function clearShiftThreadCaches() {
+        await forceResetAllCaches();
     }
 
     async function clearNetworkCaches() {
@@ -740,6 +841,8 @@
         prefetchDayStops: hydrateDayStopsCacheOnly,
         clearNetworkCaches,
         clearShiftThreadCaches,
+        forceResetAllCaches,
+        wipeInMemoryScheduleCaches,
         expectedThreadRev,
         clockHms,
         clockToIso,
