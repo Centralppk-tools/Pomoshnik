@@ -221,7 +221,7 @@
 }
 
 .route-live-travel,
-.route-live-turnaround {
+.route-turnaround-label {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -231,10 +231,40 @@
     font-weight: 600;
 }
 
-.route-live-turnaround--active {
-    color: #6ee7b7;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
+.route-turnaround-label {
+    justify-self: end;
+    text-align: right;
+    color: #8393af;
+}
+
+.route-turnaround-progress {
+    margin: 6px 0 2px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.route-turnaround-progress__fill {
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    transition: width 0.35s linear;
+}
+
+.route-turnaround-progress--green .route-turnaround-progress__fill {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.55), rgba(34, 197, 94, 0.95));
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
+}
+
+.route-turnaround-progress--yellow .route-turnaround-progress__fill {
+    background: linear-gradient(90deg, rgba(234, 179, 8, 0.55), rgba(234, 179, 8, 0.95));
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.35);
+}
+
+.route-turnaround-progress--red .route-turnaround-progress__fill {
+    background: linear-gradient(90deg, rgba(248, 113, 113, 0.55), rgba(248, 113, 113, 0.98));
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
 }
 
 /* Время отправки и прибытия (22:15 - 06:45) */
@@ -374,9 +404,7 @@
     white-space: nowrap;
 }
 
-.route-card-bottom > span:last-child {
-    justify-self: end;
-    text-align: right;
+.route-card-bottom .route-turnaround-label {
     white-space: nowrap;
 }
 
@@ -1228,6 +1256,14 @@
     border: none;
     box-shadow: none;
     padding: 0;
+}
+
+.route-last-updated {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--text-muted, #6b7280);
+    text-align: center;
 }
 
 .route-toolbar-wrap {

@@ -6,6 +6,11 @@
     const MS_HOUR = 60 * MS_MIN;
 
     const SUB_ACCENT_CLASSES = ['ok', 'muted', 'warn', 'danger', 'dwell'];
+    const TURNAROUND_PHASE_CLASSES = [
+        'route-turnaround-progress--green',
+        'route-turnaround-progress--yellow',
+        'route-turnaround-progress--red',
+    ];
 
     let deps = null;
 
@@ -44,6 +49,14 @@
         return 'muted';
     }
 
+    function phaseAccent(phase) {
+        if (phase === 'red') return 'danger';
+        if (phase === 'yellow') return 'warn';
+        if (phase === 'green') return 'ok';
+        if (phase === 'transit') return 'ok';
+        return 'muted';
+    }
+
     function setBadge(el, text, accent) {
         if (!el) return;
         SUB_ACCENT_CLASSES.forEach((name) => {
@@ -57,6 +70,39 @@
         el.hidden = false;
         el.textContent = text;
         el.classList.add(`clock-wrap__sub--${accent || 'muted'}`);
+    }
+
+    function resolveActiveTurnaround(nowDate, trains) {
+        if (!deps || !nowDate || !Array.isArray(trains)) return null;
+        const nowMs = nowDate.getTime();
+
+        for (let i = 0; i < trains.length; i++) {
+            const train = trains[i];
+            if (!train?.nextDeparture || !train?.nextDepartureDate || !train?.arrival) continue;
+            const arrDt = deps.buildRouteEventDateTime(train.arrivalDate, train.arrival);
+            const depNextDt = deps.buildRouteEventDateTime(train.nextDepartureDate, train.nextDeparture);
+            if (!arrDt || !depNextDt) continue;
+            const startMs = arrDt.getTime();
+            const endMs = depNextDt.getTime();
+            if (endMs <= startMs || nowMs < startMs || nowMs >= endMs) continue;
+
+            const remainingMs = endMs - nowMs;
+            const totalMs = endMs - startMs;
+            const elapsedMs = nowMs - startMs;
+            const diffMin = remainingMs / MS_MIN;
+            let phase = 'green';
+            if (diffMin <= 3) phase = 'red';
+            else if (diffMin <= 10) phase = 'yellow';
+
+            return {
+                trainIndex: train.index ?? i,
+                phase,
+                progress: Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)),
+                remainingMs,
+                totalMs,
+            };
+        }
+        return null;
     }
 
     function resolveActiveRouteTrain(nowDate, trains) {
@@ -91,6 +137,19 @@
         return null;
     }
 
+    function buildTurnaroundHeaderBadge(turnaround) {
+        if (!turnaround) return null;
+        const rem = turnaround.remainingMs;
+        const overdue = rem < 0;
+        const text = rem >= MS_HOUR
+            ? `Оборот ${formatHourMinRu(rem)}`
+            : `Оборот ${formatMmSs(rem)}`;
+        return {
+            text,
+            accent: phaseAccent(overdue ? 'red' : turnaround.phase),
+        };
+    }
+
     function buildRouteHeaderBadge(nowDate, active) {
         if (!active) return null;
         if (active.phase === 'transit') {
@@ -107,16 +166,69 @@
         if (!depDt) return null;
         const rem = depDt.getTime() - nowDate.getTime();
         const overdue = rem < 0;
+        const accent = accentFromRemainingMs(rem, overdue);
         if (rem >= MS_HOUR) {
             return {
                 text: `Отпр ${formatHourMinRu(rem)}`,
-                accent: accentFromRemainingMs(rem, overdue),
+                accent,
             };
         }
         return {
             text: `Отпр ${formatMmSs(rem)}`,
-            accent: accentFromRemainingMs(rem, overdue),
+            accent,
         };
+    }
+
+    function trainByIndex(trains, trainIndex) {
+        if (!Array.isArray(trains)) return null;
+        const idx = Number(trainIndex);
+        return trains.find((item) => (item?.index ?? -1) === idx) || trains[idx] || null;
+    }
+
+    function resolveWaitWindowStartMs(trainIndex, trains, shiftReportDt) {
+        const idx = Number(trainIndex);
+        if (idx === 0 && shiftReportDt) {
+            return shiftReportDt.getTime();
+        }
+        if (idx > 0) {
+            const prev = trainByIndex(trains, idx - 1);
+            if (prev?.arrival && prev?.arrivalDate) {
+                const arrDt = deps.buildRouteEventDateTime(prev.arrivalDate, prev.arrival);
+                if (arrDt) return arrDt.getTime();
+            }
+        }
+        return null;
+    }
+
+    function buildWaitProgress(nowDate, trainIndex, endDt, trains, shiftReportDt) {
+        if (!endDt || !deps) return null;
+        const endMs = endDt.getTime();
+        const startMs = resolveWaitWindowStartMs(trainIndex, trains, shiftReportDt);
+        if (startMs == null || endMs <= startMs) return null;
+
+        const nowMs = nowDate.getTime();
+        const remainingMs = endMs - nowMs;
+        const totalMs = endMs - startMs;
+        const elapsedMs = Math.max(0, Math.min(nowMs - startMs, totalMs));
+        const diffMin = remainingMs / MS_MIN;
+        let phase = 'green';
+        if (diffMin <= 3) phase = 'red';
+        else if (diffMin <= 10) phase = 'yellow';
+
+        return {
+            trainIndex,
+            phase,
+            progress: Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)),
+            remainingMs,
+            totalMs,
+        };
+    }
+
+    function resolvePreDepartureWait(nowDate, trains, shiftReportDt, active) {
+        if (!active || active.phase !== 'before' || !active.depDt || !active.train) return null;
+        const trainIndex = Number(active.train.index ?? 0);
+        if (trainIndex !== 0) return null;
+        return buildWaitProgress(nowDate, trainIndex, active.depDt, trains, shiftReportDt);
     }
 
     function findPrevDepartureIndex(displayStops, nextIndex, selectedDate) {
@@ -190,21 +302,39 @@
         return null;
     }
 
+    function resetRouteWaitBars() {
+        document.querySelectorAll('[data-wait-bar]').forEach((bar) => {
+            bar.hidden = true;
+            TURNAROUND_PHASE_CLASSES.forEach((cls) => bar.classList.remove(cls));
+            const fill = bar.querySelector('.route-turnaround-progress__fill');
+            if (fill) fill.style.width = '0%';
+        });
+    }
+
+    function applyRouteWaitBar(waitState) {
+        resetRouteWaitBars();
+        if (!waitState) return;
+        const bar = document.querySelector(`[data-wait-bar="${waitState.trainIndex}"]`);
+        if (!bar) return;
+        const fill = bar.querySelector('.route-turnaround-progress__fill');
+        bar.hidden = false;
+        TURNAROUND_PHASE_CLASSES.forEach((cls) => bar.classList.remove(cls));
+        bar.classList.add(`route-turnaround-progress--${waitState.phase}`);
+        if (fill) fill.style.width = `${waitState.progress}%`;
+    }
+
     function resetRouteCardLiveFooters() {
         document.querySelectorAll('.route-live-travel').forEach((el) => {
             const staticText = el.getAttribute('data-static') || '';
             el.textContent = staticText;
             el.classList.remove('route-live-travel--active');
         });
-        document.querySelectorAll('.route-live-turnaround').forEach((el) => {
-            const staticText = el.getAttribute('data-static') || '';
-            el.textContent = staticText;
-            el.classList.remove('route-live-turnaround--active');
-        });
+        resetRouteWaitBars();
     }
 
     function updateRouteMotion(nowDate, context) {
         const badgeEl = document.getElementById('scheduleMotionBadge');
+        const shiftReportDt = deps?.getShiftReportDateTime?.() || null;
 
         if (!context.synced || context.tab !== 'tab-route' || !context.routeTrains?.length) {
             setBadge(badgeEl, '', 'muted');
@@ -212,11 +342,40 @@
             return;
         }
 
+        const turnaround = resolveActiveTurnaround(nowDate, context.routeTrains);
+        if (turnaround) {
+            const header = buildTurnaroundHeaderBadge(turnaround);
+            setBadge(badgeEl, header?.text, header?.accent);
+            applyRouteWaitBar(turnaround);
+            document.querySelectorAll('.route-live-travel').forEach((el) => {
+                const staticText = el.getAttribute('data-static') || '';
+                el.textContent = staticText;
+                el.classList.remove('route-live-travel--active');
+            });
+            return;
+        }
+
+        resetRouteWaitBars();
         const active = resolveActiveRouteTrain(nowDate, context.routeTrains);
         const header = buildRouteHeaderBadge(nowDate, active);
         setBadge(badgeEl, header?.text, header?.accent);
 
-        resetRouteCardLiveFooters();
+        if (active?.phase === 'before') {
+            const preDep = resolvePreDepartureWait(
+                nowDate,
+                context.routeTrains,
+                shiftReportDt,
+                active,
+            );
+            applyRouteWaitBar(preDep);
+        }
+
+        document.querySelectorAll('.route-live-travel').forEach((el) => {
+            const staticText = el.getAttribute('data-static') || '';
+            el.textContent = staticText;
+            el.classList.remove('route-live-travel--active');
+        });
+
         if (!active?.train) return;
 
         const idx = active.train.index;
@@ -228,18 +387,6 @@
             if (travelEl) {
                 travelEl.textContent = `В пути: ${formatMmSs(Math.max(0, rem))}`;
                 travelEl.classList.add('route-live-travel--active');
-            }
-            return;
-        }
-
-        if (active.phase === 'before') {
-            const depDt = active.depDt;
-            if (!depDt) return;
-            const rem = depDt.getTime() - nowDate.getTime();
-            const turnEl = document.querySelector(`.route-live-turnaround[data-train-index="${idx}"]`);
-            if (turnEl) {
-                turnEl.textContent = `Оборот: ${formatMmSs(Math.max(0, rem))}`;
-                turnEl.classList.add('route-live-turnaround--active');
             }
         }
     }

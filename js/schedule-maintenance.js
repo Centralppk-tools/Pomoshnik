@@ -22,6 +22,23 @@
         document.body?.classList.add('schedule-maintenance-active');
     }
 
+    function clearMaintenanceChrome() {
+        document.documentElement.removeAttribute('data-schedule-maintenance');
+        document.body?.classList.remove('schedule-maintenance-active');
+        document.getElementById('screen-schedule')?.classList.remove('schedule-maintenance-screen');
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (overlay) {
+            overlay.setAttribute('hidden', '');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+        document.querySelector('.bottom-tab-btn[data-screen="schedule"]')
+            ?.classList.remove('bottom-tab-btn--maintenance');
+        document.querySelectorAll('#screen-schedule .tab-btn').forEach((btn) => {
+            btn.classList.remove('tab-btn--maintenance');
+            btn.removeAttribute('aria-disabled');
+        });
+    }
+
     function ensureOverlay() {
         let el = document.getElementById(OVERLAY_ID);
         if (!el) return null;
@@ -82,7 +99,10 @@
     }
 
     function init() {
-        if (!enabled()) return;
+        if (!enabled()) {
+            clearMaintenanceChrome();
+            return;
+        }
         applyChromeClasses();
         purgeShiftRouteCaches();
         const scheduleEl = document.getElementById('screen-schedule');
@@ -94,6 +114,8 @@
     if (enabled()) {
         applyDocumentFlag();
         unregisterOfflineShell();
+    } else {
+        clearMaintenanceChrome();
     }
 
     window.daScheduleMaintenance = {

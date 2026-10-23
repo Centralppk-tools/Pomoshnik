@@ -6,8 +6,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <script>
-    /** Выключить техработы: false + scheduleMaintenance в app-config.js */
-    window.DA_SCHEDULE_MAINTENANCE_BLOCK = true;
+    /** Жёсткий рубильник до app-config; иначе — scheduleMaintenance в app-config.js */
+    window.DA_SCHEDULE_MAINTENANCE_BLOCK = false;
     if (window.DA_SCHEDULE_MAINTENANCE_BLOCK) {
         document.documentElement.setAttribute('data-schedule-maintenance', '1');
     }
@@ -92,8 +92,8 @@
     <link rel="stylesheet" href="styles/instructions.css?v=20261018f">
 </head>
 <body class="auth-locked">
-<script src="js/app-config.js?v=4.0.58"></script>
-<script src="js/schedule-maintenance.js?v=20261023c"></script>
+<script src="js/app-config.js?v=4.1.0"></script>
+<script src="js/schedule-maintenance.js?v=20261024a"></script>
 
 <div id="appUpdateToast" class="appUpdateToast" role="status" aria-live="polite" hidden>
     <p class="appUpdateToastText">Доступна новая версия приложения.</p>
@@ -327,6 +327,7 @@
                 </span>
                 <span class="route-refresh-label">Обновить</span>
             </button>
+            <p id="routeLastUpdated" class="route-last-updated" hidden>Обновлено: —</p>
             <button type="button" class="shift-clear-link" onclick="requestShiftReset(event)">Очистить смену</button>
         </div>
     </div>
@@ -920,7 +921,14 @@
     const ANALYTICS_PING_PENDING_UUID_KEY = 'da_ping_pending_uuid';
     const analyticsPingInFlightUuids = new Set();
     const DEPOT_SHIFTS_KEY = 'depotShifts';
-    const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache';
+    const REFERENCE_SPR_STORAGE_KEY = 'cppk_spr_cache_v2';
+    const KRASNOARMEYSK_BRANCH_KM = {
+        'поселок дальний': 1.5,
+        'рахманово': 3.2,
+        'федоровское': 5.8,
+        'путилово': 8.4,
+        'красноармейск': 10.4,
+    };
     const REFERENCE_TRAINS_STORAGE_KEY = 'cppk_trains_local_cache';
     const CALENDAR_LOCAL_ROUTES_STORAGE_KEY = 'cppk_calendar_local_routes';
     const LOCAL_SHIFT_TEMPLATES_URL = './data/shift-templates.json';
@@ -933,8 +941,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.58';
-    const CLIENT_CACHE_VERSION = 'da_v4_0_56';
+    const APP_RELEASE_VERSION = '4.1.0';
+    const CLIENT_CACHE_VERSION = 'da_v4_1_0';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1999,6 +2007,11 @@
             resolveRouteTrainPhase,
             buildRouteEventDateTime,
             isScheduleContextActive,
+            getShiftReportDateTime() {
+                const ctx = resolveRouteShiftContext();
+                if (!ctx?.dateKey || !ctx?.shift) return null;
+                return buildShiftReportDateTime(ctx.dateKey, ctx.shift);
+            },
         });
         initServiceWorker();
         initWebPushClient();
@@ -2462,7 +2475,8 @@
 
     function isTimelineLiveHalt(item) {
         const stop = item?.threadStop;
-        if (!stop) return false;
+        if (!stop || item?.passThrough) return false;
+        if (isMarkedPassThroughStop(stop, false)) return false;
         return stopHasValidClock(stop);
     }
 
@@ -2972,6 +2986,39 @@
         let upcomingTrain = null;
         let upcomingPhase = null;
         let upcomingDiffMs = Infinity;
+        let turnaroundTrain = null;
+        let turnaroundPhase = null;
+
+        for (const train of routeNotificationTrains) {
+            if (train.nextDeparture && train.nextDepartureDate && train.arrival) {
+                const arrDt = buildRouteEventDateTime(train.arrivalDate, train.arrival);
+                const depNextDt = buildRouteEventDateTime(train.nextDepartureDate, train.nextDeparture);
+                if (arrDt && depNextDt) {
+                    const nowMs = nowDate.getTime();
+                    if (nowMs >= arrDt.getTime() && nowMs < depNextDt.getTime()) {
+                        const diffMin = (depNextDt.getTime() - nowMs) / 60000;
+                        turnaroundTrain = train;
+                        if (diffMin <= 3) turnaroundPhase = 'red';
+                        else if (diffMin <= 10) turnaroundPhase = 'yellow';
+                        else turnaroundPhase = 'green';
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (turnaroundTrain && turnaroundPhase) {
+            const card = grid.querySelector(`.route-card[data-train-index="${turnaroundTrain.index}"]`);
+            if (card) {
+                const classMap = {
+                    green: 'route-card--phase-green',
+                    yellow: 'route-card--phase-yellow',
+                    red: 'route-card--phase-red',
+                };
+                card.classList.add(classMap[turnaroundPhase]);
+            }
+            return;
+        }
 
         for (const train of routeNotificationTrains) {
             const phase = resolveRouteTrainPhase(nowDate, train);
@@ -3024,17 +3071,26 @@
 
             const departure = train.departure;
             const arrival = train.arrival;
-            const scheduleDate = train.scheduleDate || selectedDate;
+            const scheduleDate = selectedDate;
             let turnaroundMinutes = null;
 
+            let nextDeparture = null;
+            let nextDepartureDate = null;
             if (i < allTrainsData.length - 1) {
                 const nextTrain = allTrainsData[i + 1];
                 if (nextTrain) {
+                    nextDeparture = nextTrain.departure;
                     const arrCurrentMinutes = parseTimeToMinutes(arrival);
                     const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
                     if (arrCurrentMinutes !== null && depNextMinutes !== null) {
                         turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
                         if (turnaroundMinutes < 0) turnaroundMinutes += 1440;
+                        nextDepartureDate = resolveStopEventDate(
+                            scheduleDate,
+                            departure,
+                            arrival,
+                            nextTrain.departure
+                        );
                     }
                 }
             }
@@ -3047,7 +3103,9 @@
                 arrival,
                 departureDate: resolveStopEventDate(scheduleDate, departure, arrival, departure),
                 arrivalDate: resolveStopEventDate(scheduleDate, departure, arrival, arrival),
-                turnaroundMinutes
+                turnaroundMinutes,
+                nextDeparture,
+                nextDepartureDate,
             });
         }
 
@@ -4774,6 +4832,18 @@
         btn.setAttribute('aria-busy', 'false');
     }
 
+    function updateRouteLastUpdatedBadge() {
+        const node = document.getElementById('routeLastUpdated');
+        if (!node) return;
+        const label = window.SheduleMaxSource?.getRouteDataUpdatedLabel?.() || '';
+        if (!label) {
+            node.hidden = true;
+            return;
+        }
+        node.textContent = `Обновлено: ${label}`;
+        node.hidden = false;
+    }
+
     function formatRefreshFailureSummary(failures) {
         const lines = (failures || []).map((item) => {
             const scope = item.scope || 'train';
@@ -4822,63 +4892,60 @@
             }
         }
 
-        const pairTotal = Math.max(1, inputs.length * dates.length);
+        const pairs = [];
+        inputs.forEach((trainNumber) => {
+            dates.forEach((date) => pairs.push({ trainNumber, date }));
+        });
+        const pairTotal = Math.max(1, pairs.length);
         let pairIndex = 0;
 
-        for (const trainNumber of inputs) {
-            for (const date of dates) {
-                pairIndex += 1;
-                let hit = null;
+        await Promise.all(pairs.map(async ({ trainNumber, date }) => {
+            let hit = null;
+            try {
+                hit = await findTrainOnStationBoards(trainNumber, date, {
+                    forceRefresh: true,
+                    threadsOnly: false,
+                });
+            } catch (err) {
+                console.warn('[trains] board lookup failed:', trainNumber, date, err);
+            }
+            if (!hit && window.SheduleMaxSource?.enabled?.()) {
+                hit = lookupTrainOnStationBoard(trainNumber, date);
+            }
+            const uid = String(hit?.thread?.uid || '').trim();
+            if (window.SheduleMaxSource?.loadTrainStops) {
                 try {
-                    hit = await findTrainOnStationBoards(trainNumber, date, {
-                        forceRefresh: true,
-                        threadsOnly: false,
-                    });
+                    await window.SheduleMaxSource.loadTrainStops(
+                        date,
+                        trainNumber,
+                        uid,
+                        resolveBoardDirectionForHit(hit),
+                        stopOpts,
+                    );
                 } catch (err) {
-                    console.warn('[trains] board lookup failed:', trainNumber, date, err);
-                }
-                if (!hit && window.SheduleMaxSource?.enabled?.()) {
-                    hit = lookupTrainOnStationBoard(trainNumber, date);
-                }
-                const uid = String(hit?.thread?.uid || '').trim();
-                if (!uid) {
+                    if (err?.code === 'OFFLINE_CACHE' || (!navigator.onLine && err?.cachedPayload)) {
+                        return;
+                    }
                     failures.push({
                         scope: 'train',
                         trainNumber,
                         date,
-                        code: 'NO_UID',
-                        message: 'нет UID на табло',
-                    });
-                } else if (window.SheduleMaxSource?.loadTrainStops) {
-                    try {
-                        await window.SheduleMaxSource.loadTrainStops(
-                            date,
-                            trainNumber,
-                            uid,
-                            resolveBoardDirectionForHit(hit),
-                            stopOpts,
-                        );
-                    } catch (err) {
-                        failures.push({
-                            scope: 'train',
-                            trainNumber,
-                            date,
-                            code: err?.code || 'STOPS_FETCH_FAILED',
-                            message: err?.message || String(err),
-                        });
-                    }
-                }
-                if (typeof onStep === 'function') {
-                    onStep({
-                        phase: 'train',
-                        trainNumber,
-                        date,
-                        index: pairIndex,
-                        total: pairTotal,
+                        code: err?.code || 'STOPS_FETCH_FAILED',
+                        message: err?.message || String(err),
                     });
                 }
             }
-        }
+            pairIndex += 1;
+            if (typeof onStep === 'function') {
+                onStep({
+                    phase: 'train',
+                    trainNumber,
+                    date,
+                    index: pairIndex,
+                    total: pairTotal,
+                });
+            }
+        }));
         return failures;
     }
 
@@ -4961,10 +5028,13 @@
 
         report(2, 'Старт');
 
-        if (window.SheduleMaxSource?.forceResetAllCaches) {
-            await window.SheduleMaxSource.forceResetAllCaches();
-        } else if (window.SheduleMaxSource?.clearShiftThreadCaches) {
-            await window.SheduleMaxSource.clearShiftThreadCaches();
+        const dates = resolveTrainSearchDatesForShift();
+        const clearPairs = [];
+        inputs.forEach((trainNumber) => {
+            dates.forEach((date) => clearPairs.push({ date, trainNumber }));
+        });
+        if (window.SheduleMaxSource?.clearRouteTrainStopsForShift) {
+            window.SheduleMaxSource.clearRouteTrainStopsForShift(clearPairs);
         }
         report(10, 'Очистка кэша');
 
@@ -5001,6 +5071,11 @@
                 });
             }
         }
+
+        if (window.SheduleMaxSource?.markRouteDataUpdated) {
+            window.SheduleMaxSource.markRouteDataUpdated();
+        }
+        updateRouteLastUpdatedBadge();
 
         if (failures.length) {
             const err = new Error(formatRefreshFailureSummary(failures));
@@ -5042,8 +5117,18 @@
             const code = err?.code || 'REFRESH_FAILED';
             const msg = err?.message || 'Не удалось обновить расписание. Проверьте сеть.';
             resetRouteRefreshProgress();
-            if (typeof showToast === 'function') showToast(`${msg} (${code})`);
-            else alert(`${msg} (${code})`);
+            const inputs = getTrainNumbersFromDom();
+            if (!navigator.onLine || code === 'OFFLINE_CACHE') {
+                repaintRouteGridFromMemory(inputs);
+                updateRouteLastUpdatedBadge();
+                if (typeof showToast === 'function') {
+                    showToast('Нет сети, показаны сохранённые данные');
+                }
+            } else if (typeof showToast === 'function') {
+                showToast(`${msg} (${code})`);
+            } else {
+                alert(`${msg} (${code})`);
+            }
         } finally {
             btn.disabled = false;
             delete btn.dataset.refreshBusy;
@@ -6236,9 +6321,25 @@
 
     function displayTimelineStationTitle(title) {
         let text = String(title || '').trim();
-        text = text.replace(/\s*\(\s*ярославск(?:ий(?:\s+вокзал)?|ое(?:\s+направление)?)\s*\)/gi, '');
+        text = text.replace(/\s*\([^)]*\)/g, '');
         text = text.replace(/\s{2,}/g, ' ').trim();
         return text || String(title || 'Станция').trim();
+    }
+
+    function finalizeTimelineStationLabel(title) {
+        return displayTimelineStationTitle(title);
+    }
+
+    function sprCanonicalStationTitle(stationTitle, stationCode) {
+        const code = String(stationCode || '').replace(/\D/g, '');
+        const stripped = displayTimelineStationTitle(stationTitle);
+        const match = findStationPathMatch(stripped, code);
+        if (match?.station) return finalizeTimelineStationLabel(match.station);
+        const norm = normalizeStationKey(stripped);
+        if (/^москва[\s-]*3$/.test(norm)) return 'Москва-3';
+        if (norm.includes('подлипки') && norm.includes('дачн')) return 'Подлипки-Дачные';
+        if (norm.startsWith('ростокино')) return 'Ростокино';
+        return stripped;
     }
 
     function findStationBrakes(stationTitle, preferredDirection) {
@@ -6263,21 +6364,17 @@
         return lookupSprMap(sprLookups?.ops, stationTitle) || null;
     }
 
+    function isMarkedPassThroughStop(stop, isTerminal) {
+        if (!stop || isTerminal) return false;
+        return Boolean(stop.skip || stop.isPass || stop.pass || stop.is_stop === false);
+    }
+
     function expandRepeatedHaltClocks(arrival, departure, isTerminal) {
         if (isTerminal) return { arrival, departure, dwellSec: null };
         const start = parseTimeToSeconds(arrival);
         const end = parseTimeToSeconds(departure);
         if (start == null || end == null) return { arrival, departure, dwellSec: null };
-        if (start === end) {
-            const match = String(arrival).match(/(\d{1,2}):(\d{2})/);
-            if (!match) return { arrival, departure, dwellSec: 30 };
-            const hour = String(Number(match[1])).padStart(2, '0');
-            return {
-                arrival: `${hour}:${match[2]}:00`,
-                departure: `${hour}:${match[2]}:30`,
-                dwellSec: 30
-            };
-        }
+        if (start === end) return { arrival, departure, dwellSec: 0 };
         let dwellSec = end - start;
         if (dwellSec < 0) dwellSec += 24 * 3600;
         return { arrival, departure, dwellSec };
@@ -6325,8 +6422,8 @@
 
     function isThreadSkipStop(stop, isTerminal) {
         if (!stop || isTerminal) return false;
+        if (isMarkedPassThroughStop(stop, isTerminal)) return true;
         if (stopHasValidClock(stop)) return false;
-        if (stop.skip || stop.isPass || stop.pass || stop.is_stop === false) return true;
         return true;
     }
 
@@ -6360,8 +6457,8 @@
         const dwell = formatDwellChip(dwellMin);
         const estClass = timeEstimated ? ' station-time-estimated' : '';
         const estMark = timeEstimated ? '<span class="station-time-estimated-mark" aria-hidden="true">*</span>' : '';
-        if (isPassThrough && !arr && !dep) {
-            return `<div class="station-times"><span class="station-time-empty">—</span></div>`;
+        if (isPassThrough) {
+            return `<div class="station-times station-times--pass"><span class="station-time-skip">без остановки</span></div>`;
         }
         if (isFirst && !isLast) {
             return `<div class="station-times station-times--origin">
@@ -6424,8 +6521,14 @@
         }
     }
 
-    function formatStationKmLabel(match) {
+    function formatStationKmLabel(match, options = {}) {
         if (!match) return '';
+        if (options.branchKrasnoarmeysk) {
+            const branch = Number(match.branchKm);
+            if (Number.isFinite(branch)) {
+                return (Math.round(branch * 10) / 10).toFixed(1);
+            }
+        }
         const km = Number(match.km);
         if (!Number.isFinite(km)) return '';
         const piket = match.piket;
@@ -6433,6 +6536,52 @@
         const chain = km + (Number.isFinite(pk) ? pk / 10 : 0);
         if (!Number.isFinite(chain)) return '';
         return (Math.round(chain * 10) / 10).toFixed(1);
+    }
+
+    function isKrasnoarmeyskBranchRoute(stops) {
+        return resolveRouteReferenceKey(stops) === ROUTE_REFERENCE_KEYS.KRASNOARMEYSK;
+    }
+
+    function krasnoarmeyskBranchKmForTitle(stationTitle) {
+        const key = normalizeStationKey(stationTitle);
+        if (!key) return null;
+        if (Object.prototype.hasOwnProperty.call(KRASNOARMEYSK_BRANCH_KM, key)) {
+            return KRASNOARMEYSK_BRANCH_KM[key];
+        }
+        if (key.includes('дальн') && (key.includes('поселок') || key.includes('мкр'))) {
+            return KRASNOARMEYSK_BRANCH_KM['поселок дальний'];
+        }
+        return null;
+    }
+
+    function resolveTimelineKmText(stationTitle, stationCode, showBranchKrasnoarmeysk) {
+        if (showBranchKrasnoarmeysk) {
+            const branch = krasnoarmeyskBranchKmForTitle(stationTitle);
+            if (branch != null) {
+                return (Math.round(branch * 10) / 10).toFixed(1);
+            }
+        }
+        const match = findStationPathMatch(stationTitle, stationCode);
+        if (!match) return '';
+        return formatStationKmLabel(match, { branchKrasnoarmeysk: showBranchKrasnoarmeysk });
+    }
+
+    function isKrasnoarmeyskTerminalTitle(title) {
+        const key = normalizeStationKey(title);
+        return key.includes('красноармейск');
+    }
+
+    function isMoscowYaroslavskyTerminalTitle(title) {
+        const key = normalizeStationKey(title);
+        return key.includes('москва') && (key.includes('ярослав') || key.includes('вокзал'));
+    }
+
+    function isMoscowKrasnoarmeyskRoute(firstTitle, lastTitle) {
+        const a = isMoscowYaroslavskyTerminalTitle(firstTitle);
+        const b = isKrasnoarmeyskTerminalTitle(lastTitle);
+        const c = isKrasnoarmeyskTerminalTitle(firstTitle);
+        const d = isMoscowYaroslavskyTerminalTitle(lastTitle);
+        return (a && b) || (c && d);
     }
 
     function stationChainage(stationTitle, stationCode) {
@@ -6494,6 +6643,60 @@
 
     function stationsMatch(titleA, titleB) {
         return stationsMatchSoft(titleA, titleB);
+    }
+
+    function threadStopStationCode(stop) {
+        if (!stop) return '';
+        return String(stop.station?.code || stop.nnst || '').trim();
+    }
+
+    function threadStopMatchesReference(refTitle, stopOrTitle) {
+        const stop = stopOrTitle && typeof stopOrTitle === 'object' ? stopOrTitle : null;
+        const threadTitle = stop ? threadStopTitle(stop) : String(stopOrTitle || '');
+        if (stationsMatchSoft(refTitle, threadTitle)) return true;
+        const timelineTitle = stop ? resolveTimelineTitleForStop(stop) : '';
+        if (timelineTitle && stationsMatchSoft(refTitle, timelineTitle)) return true;
+        const code = threadStopStationCode(stop);
+        const sprTitle = code && typeof ESR_TO_SPR_STATION !== 'undefined'
+            ? ESR_TO_SPR_STATION[code]
+            : '';
+        if (sprTitle && stationsMatchSoft(refTitle, sprTitle)) return true;
+        return false;
+    }
+
+    function threadStopLooksLikePosyolokDalniy(stop) {
+        const key = normalizeStationKey(threadStopTitle(stop));
+        if (!key) return false;
+        if (key.includes('поселок дальн') || key.includes('посёлок дальн')) return true;
+        return key.includes('дальн') && (key.includes('мкр') || key.includes('софрино 2') || key.includes('софрино2'));
+    }
+
+    function resolveTimelineTitleForStop(stop) {
+        const raw = threadStopTitle(stop);
+        if (!raw) return 'Станция';
+        if (threadStopLooksLikePosyolokDalniy(stop)) return 'Посёлок Дальний';
+        const key = normalizeStationKey(raw);
+        if (key.includes('рахманово')) return 'Рахманово';
+        if (key.includes('федоровск')) return 'Фёдоровское';
+        if (key.includes('путилово')) return 'Путилово';
+        const code = threadStopStationCode(stop);
+        if (code === '50707') return 'Посёлок Дальний';
+        if (code && typeof ESR_TO_SPR_STATION !== 'undefined' && ESR_TO_SPR_STATION[code]) {
+            if (code === '47807' && threadStopLooksLikePosyolokDalniy(stop)) {
+                return 'Посёлок Дальний';
+            }
+            if (code !== '47807' || !threadStopLooksLikePosyolokDalniy(stop)) {
+                const fromCode = ESR_TO_SPR_STATION[code];
+                if (fromCode) return finalizeTimelineStationLabel(fromCode);
+            }
+        }
+        return sprCanonicalStationTitle(raw, code);
+    }
+
+    function threadStopsAreFullTimeline(threadStops) {
+        if (!Array.isArray(threadStops) || threadStops.length < 4) return false;
+        const middles = threadStops.slice(1, -1);
+        return middles.some((stop) => stopHasValidClock(stop) && !isSkippedThreadStop(stop));
     }
 
     function scoreSectionStops(stops, sectionStations) {
@@ -6575,9 +6778,10 @@
         return resolveTrainDir(stops) === 'out' ? routeData.from_moscow : routeData.to_moscow;
     }
 
-    function referenceIndexForStation(referenceList, stationTitle) {
+    function referenceIndexForStation(referenceList, stationTitle, threadStop) {
         for (let i = 0; i < referenceList.length; i++) {
-            if (stationsMatchSoft(referenceList[i], stationTitle)) return i;
+            const probe = threadStop || stationTitle;
+            if (threadStopMatchesReference(referenceList[i], probe)) return i;
         }
         return -1;
     }
@@ -6585,10 +6789,18 @@
     function buildScheduleDisplayStops(threadStops) {
         if (!Array.isArray(threadStops) || !threadStops.length) return [];
 
+        if (threadStopsAreFullTimeline(threadStops)) {
+            return threadStops.map((stop) => ({
+                referenceTitle: resolveTimelineTitleForStop(stop),
+                threadStop: stop,
+                passThrough: isSkippedThreadStop(stop),
+            }));
+        }
+
         const referenceList = getRouteReferenceList(threadStops);
         if (!referenceList?.length) {
             return threadStops.map(stop => ({
-                referenceTitle: threadStopTitle(stop) || 'Станция',
+                referenceTitle: resolveTimelineTitleForStop(stop),
                 threadStop: stop,
                 passThrough: isSkippedThreadStop(stop)
             }));
@@ -6597,12 +6809,12 @@
         const terminals = routeTerminalStops({ stops: threadStops });
         const firstTitle = threadStopTitle(terminals.first) || threadStopTitle(threadStops[0]);
         const lastTitle = threadStopTitle(terminals.last) || threadStopTitle(threadStops[threadStops.length - 1]);
-        const firstIdx = referenceIndexForStation(referenceList, firstTitle);
-        const lastIdx = referenceIndexForStation(referenceList, lastTitle);
+        const firstIdx = referenceIndexForStation(referenceList, firstTitle, terminals.first);
+        const lastIdx = referenceIndexForStation(referenceList, lastTitle, terminals.last);
 
         if (firstIdx === -1 || lastIdx === -1) {
             return threadStops.map(stop => ({
-                referenceTitle: threadStopTitle(stop) || 'Станция',
+                referenceTitle: resolveTimelineTitleForStop(stop),
                 threadStop: stop,
                 passThrough: isSkippedThreadStop(stop)
             }));
@@ -6621,7 +6833,7 @@
 
             for (let i = 0; i < threadStops.length; i++) {
                 if (usedThreadIndices.has(i)) continue;
-                if (!stationsMatchSoft(refTitle, threadStopTitle(threadStops[i]))) continue;
+                if (!threadStopMatchesReference(refTitle, threadStops[i])) continue;
                 matchedIndex = i;
                 threadStop = threadStops[i];
                 break;
@@ -6635,15 +6847,16 @@
             return {
                 referenceTitle: refTitle,
                 threadStop: threadStop || null,
-                passThrough: Boolean(skipped && !stopHasValidClock(threadStop))
+                passThrough: Boolean(skipped),
             };
         });
     }
 
     function isSkippedThreadStop(stop) {
         if (!stop) return true;
+        if (stop.skip || stop.isPass || stop.pass || stop.is_stop === false) return true;
         if (stopHasValidClock(stop)) return false;
-        return Boolean(stop.skip || stop.isPass || stop.pass || stop.is_stop === false);
+        return true;
     }
 
     function countTimelinePassStops(threadStops) {
@@ -6663,9 +6876,7 @@
         displayStops.forEach((item, index) => {
             const isTerminal = index === firstBoardingIndex || index === lastBoardingIndex;
             const stop = item.threadStop;
-            const hasClock = Boolean(pickStopArrival(stop) || pickStopDeparture(stop));
             let isPass = item.passThrough || isThreadSkipStop(stop, isTerminal);
-            if (hasClock) isPass = false;
             if (isPass) gray += 1;
         });
         return gray;
@@ -6743,6 +6954,7 @@
     }
 
     function calcRouteMileageKm(firstTitle, lastTitle, firstCode, lastCode) {
+        if (isMoscowKrasnoarmeyskRoute(firstTitle, lastTitle)) return 55;
         const start = stationChainage(firstTitle, firstCode);
         const end = stationChainage(lastTitle, lastCode);
         if (start === null || end === null) return null;
@@ -6797,7 +7009,7 @@
     const ALIASES = {
         "москва-ярославская": "москва (ярославский вокзал)",
         "москва ярославская": "москва (ярославский вокзал)",
-        "ростокино": "ростокино (ярославское направление)",
+        "ростокино (ярославское направление)": "ростокино",
         "александров": "александров-1",
         "нагорное": "нагорное (43 км)",
         "топорково": "топорково (76 км)",
@@ -6815,6 +7027,10 @@
         "фрязино пасс": "фрязино-пасс.",
         "фрязино-пасс": "фрязино-пасс.",
         "фрязино-товарная": "фрязино-тов.",
+        "фрязино (г. фрязино, ул. станционная)": "фрязино-тов.",
+        "софрино 2 (мкр. дальний)": "посёлок дальний",
+        "москва 3": "москва-3",
+        "подлипки дачные": "подлипки-дачные",
         "зеленый бор": "зелёный бор",
         "фабрика 1 мая": "фабрика 1 мая"
     };
@@ -6824,7 +7040,7 @@
         '45907': 'Москва-3',
         '46007': 'Маленковская',
         '46107': 'Яуза',
-        '46207': 'Ростокино (Ярославское направление)',
+        '46207': 'Ростокино',
         '46307': 'Лосиноостровская',
         '46407': 'Лось',
         '46507': 'Перловская',
@@ -6841,6 +7057,9 @@
         '47607': 'Зеленоградская',
         '47707': 'Нагорное (43 км)',
         '47807': 'Софрино',
+        '50707': 'Посёлок Дальний',
+        '50807': 'Рахманово',
+        '50907': 'Фёдоровское',
         '47907': 'Ашукинская',
         '48007': 'Калистово',
         '48107': 'Радонеж',
@@ -7337,10 +7556,18 @@
         const date = getSelectedDate();
         const planEntry = planEntryForNumber(options.trainPlan, trainNumber);
         const registryEntry = findLocalTrainRegistryEntry(trainNumber);
+        const loadDate = planEntry?.scheduleDate || date;
 
         let train = null;
-        const datedStops = window.SheduleMaxSource?.lookupStopsByTrain?.(date, trainNumber);
-        if (datedStops && Array.isArray(datedStops.stops) && datedStops.stops.length > 2) {
+        const datedStops = window.SheduleMaxSource?.lookupStopsByTrain?.(loadDate, trainNumber);
+        const datedStopsUsable = datedStops
+            && Array.isArray(datedStops.stops)
+            && datedStops.stops.length > 2
+            && (
+                window.SheduleMaxSource?.stopsPayloadHasMiddleClocks?.(datedStops)
+                || datedStops.stops.slice(1, -1).some((stop) => stopHasValidClock(stop))
+            );
+        if (datedStopsUsable) {
             train = decorateTrainSearchResult({
                 ...datedStops,
                 number: trainNumber,
@@ -7350,14 +7577,16 @@
                 runsOnSelectedDate: true,
             }, trainNumber, date, registryEntry);
         }
-        const cached = train ? null : findCachedTrainResult(trainNumber, date);
+        const cached = train ? null : findCachedTrainResult(trainNumber, loadDate)
+            || (loadDate !== date ? findCachedTrainResult(trainNumber, date) : null);
         const cachedMiddles = Array.isArray(cached?.stops) ? cached.stops.slice(1, -1) : [];
         const cachedHasClocks = !cachedMiddles.length || cachedMiddles.some((stop) => stopHasValidClock(stop));
         if (cached && !cached.apiOffDay && Array.isArray(cached.stops) && cached.stops.length > 2 && cachedHasClocks) {
             train = decorateTrainSearchResult({ ...cached }, trainNumber, date, registryEntry);
         }
         if (!train) {
-            train = trainFromLocalBoard(trainNumber, date, registryEntry);
+            train = trainFromLocalBoard(trainNumber, loadDate, registryEntry)
+                || (loadDate !== date ? trainFromLocalBoard(trainNumber, date, registryEntry) : null);
         }
         if (!train) {
             const local = resolveTrainFromLocalOnly(trainNumber, date, registryEntry)
@@ -7511,7 +7740,7 @@
         }
 
         const mileageHtml = formatMileage(mileageKm);
-        const cardDateLabel = formatTrainCardDate(train.scheduleDate, train.departure, train.arrival);
+        const cardDateLabel = formatTrainCardDate(train.scheduleDate);
         const timeRangeHtml = train.apiOffDay
             ? `<div class="route-time">—</div>`
             : `<div class="route-time">${formatClockHm(train.departure)} ${DASH_CHAR} ${formatClockHm(train.arrival)}</div>`;
@@ -7542,6 +7771,7 @@
             ? ' has-station-notes'
             : '';
         const partialClass = train.partial ? ' route-card--partial' : '';
+        const waitBarHtml = `<div class="route-turnaround-progress" data-wait-bar="${i}" hidden aria-hidden="true"><div class="route-turnaround-progress__fill"></div></div>`;
 
         return `
                     <div class="route-card clickable${offDayClass}${stationNotesClass}${partialClass}" data-train-index="${i}" data-uid="${train.uid || ''}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
@@ -7563,8 +7793,9 @@
                         <div class="route-card-section route-card-bottom">
                             ${durationBlockHtml}
                             <span class="route-mileage">${mileageHtml}</span>
-                            <span class="route-live-turnaround" data-train-index="${i}" data-static="${escapeAttr(turnaroundHtml)}">${turnaroundHtml}</span>
+                            <span class="route-turnaround-label" data-train-index="${i}">${turnaroundHtml}</span>
                         </div>
+                        ${waitBarHtml}
                     </div>
                 `;
     }
@@ -7717,6 +7948,7 @@
         if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
             refreshBtn.classList.remove('is-loading');
         }
+        updateRouteLastUpdatedBadge();
 
         const repaintRoute = () => {
             if (requestId !== routeDataRequestId) return;
@@ -7734,23 +7966,30 @@
             if (!window.SheduleMaxSource?.loadTrainStops) return Promise.resolve();
             return Promise.all(inputs.map((trainNumber) => {
                 const train = resolveTrainLocalSync(trainNumber, searchOptions);
+                const planEntry = planEntryForNumber(trainPlan, trainNumber);
+                const loadDate = planEntry?.scheduleDate || baseDate;
+                const hit = lookupTrainOnStationBoard(trainNumber, loadDate)
+                    || lookupTrainOnStationBoard(trainNumber, baseDate);
                 const uid = String(
                     train?.uid
-                    || lookupTrainOnStationBoard(trainNumber, baseDate)?.thread?.uid
+                    || hit?.thread?.uid
                     || ''
                 ).trim();
-                if (!uid) return Promise.resolve();
                 const fresh = searchOptions.forceRefresh === true;
                 const bypassCache = searchOptions.forceRefresh === true;
-                const hit = lookupTrainOnStationBoard(trainNumber, baseDate);
                 const direction = hit?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
                 return window.SheduleMaxSource.loadTrainStops(
-                    baseDate,
+                    loadDate,
                     trainNumber,
                     uid,
                     direction,
                     { fresh, bypassCache }
-                ).catch(() => null);
+                ).then((payload) => {
+                    if (payload && window.SheduleMaxSource?.markRouteDataUpdated) {
+                        window.SheduleMaxSource.markRouteDataUpdated();
+                    }
+                    return payload;
+                }).catch(() => null);
             })).then(repaintRoute);
         };
 
@@ -7826,6 +8065,9 @@
         if (loader) loader.style.display = 'none';
 
         const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
+        const planEntry = planEntryForNumber(trainPlan, input);
+        const loadDate = planEntry?.scheduleDate || selectedDate;
+
         const paint = (trainMeta) => {
             if (!trainMeta || !Array.isArray(trainMeta.stops) || !trainMeta.stops.length) {
                 updateScheduleEmptyState();
@@ -7849,7 +8091,8 @@
         let trainMeta = resolveTrainLocalSync(input, searchOpts);
         paint(trainMeta);
 
-        const boardHit = lookupTrainOnStationBoard(input, selectedDate);
+        const boardHit = lookupTrainOnStationBoard(input, loadDate)
+            || lookupTrainOnStationBoard(input, selectedDate);
         const stopUid = String(
             trainMeta?.uid
             || boardHit?.thread?.uid
@@ -7867,14 +8110,15 @@
         const applyPaint = () => {
             if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
             if (getSelectedDate() !== selectedDate) return;
-            const trip = window.SheduleMaxSource.lookupStopsByTrain?.(selectedDate, input);
-            if (trip) cacheTrainThread(input, trip, selectedDate);
+            const trip = window.SheduleMaxSource.lookupStopsByTrain?.(loadDate, input)
+                || window.SheduleMaxSource.lookupStopsByTrain?.(selectedDate, input);
+            if (trip) cacheTrainThread(input, trip, loadDate);
             paint(resolveTrainLocalSync(input, searchOpts));
         };
 
         if (forceNetwork) {
             void window.SheduleMaxSource.loadTrainStops(
-                selectedDate,
+                loadDate,
                 input,
                 stopUid,
                 direction,
@@ -7890,7 +8134,7 @@
         }
 
         void window.SheduleMaxSource.loadTrainStops(
-            selectedDate,
+            loadDate,
             input,
             stopUid,
             direction,
@@ -7950,6 +8194,7 @@
         scheduleCurrentTrain = trainNumber;
 
         const firstStationTitle = first.station?.title || '';
+        const showKrasnoarmeyskBranchKm = isKrasnoarmeyskBranchRoute(stops);
         const trainDir = resolveTrainDir(stops);
         const stopsForWarnings = displayStops.map(item => item.threadStop || {
             station: { title: item.referenceTitle },
@@ -7986,29 +8231,34 @@
         }
 
         list.innerHTML = displayStops.map((item, index) => {
-            const stationTitleRaw = item.referenceTitle || item.threadStop?.station?.title || 'Станция';
-            const stationTitle = escapeHtml(displayTimelineStationTitle(stationTitleRaw));
             const stop = item.threadStop;
+            const stationTitleRaw = item.referenceTitle || threadStopTitle(stop) || 'Станция';
+            const stationDisplay = stop
+                ? resolveTimelineTitleForStop(stop)
+                : sprCanonicalStationTitle(stationTitleRaw, stop?.station?.code);
+            const stationTitle = escapeHtml(stationDisplay);
             const isFirst = index === firstBoardingIndex;
             const isLast = index === lastBoardingIndex;
             const isTerminal = isFirst || isLast;
             const arrivalRaw = pickStopArrival(stop);
             const departureRaw = pickStopDeparture(stop);
-            const hasClock = Boolean(arrivalRaw || departureRaw);
             let isPass = item.passThrough || isThreadSkipStop(stop, isTerminal);
-            if (hasClock) isPass = false;
-            const infraKind = resolveStationInfraKind(stationTitleRaw, { forceStation: isTerminal && !isPass });
+            const infraKind = resolveStationInfraKind(stationDisplay, { forceStation: isTerminal && !isPass });
             const rowState = timelineRowState(infraKind, isPass);
 
             let kmText = '';
-            if (sprDataCache) {
-                const stationPathMatch = findStationPathMatch(stationTitleRaw, stop?.station?.code);
-                if (stationPathMatch) {
-                    kmText = formatStationKmLabel(stationPathMatch);
-                } else {
-                    const anyBrakeMatch = findBrakeMatch(stationTitleRaw, currentDirection);
+            if (sprDataCache || showKrasnoarmeyskBranchKm) {
+                kmText = resolveTimelineKmText(
+                    stationDisplay,
+                    stop?.station?.code,
+                    showKrasnoarmeyskBranchKm,
+                );
+                if (!kmText && sprDataCache) {
+                    const anyBrakeMatch = findBrakeMatch(stationDisplay, currentDirection);
                     if (anyBrakeMatch) {
-                        kmText = formatStationKmLabel(anyBrakeMatch);
+                        kmText = formatStationKmLabel(anyBrakeMatch, {
+                            branchKrasnoarmeysk: showKrasnoarmeyskBranchKm,
+                        });
                     }
                 }
             }
@@ -8016,15 +8266,15 @@
             let arrivalTime = '';
             let departureTime = '';
             let dwellMin = null;
-            if (stop) {
+            if (stop && !isPass) {
                 const clocks = expandRepeatedHaltClocks(
                     arrivalRaw || stop.arrival,
                     departureRaw || stop.departure,
-                    isTerminal && !isPass
+                    isTerminal
                 );
                 arrivalTime = getTime(clocks.arrival);
                 departureTime = getTime(clocks.departure);
-                dwellMin = getStopDwellMinutes(stop, isTerminal && !isPass);
+                dwellMin = getStopDwellMinutes(stop, isTerminal);
             }
 
             const timesHtml = renderStationTimesHtml({
@@ -8043,7 +8293,7 @@
 
             if (sprDataCache && !isPass) {
                 if (isFirst) {
-                    const stationBrakes = findStationBrakes(stationTitleRaw, currentDirection);
+                    const stationBrakes = findStationBrakes(stationDisplay, currentDirection);
                     const ptBrake = stationBrakes.find(b => b.type === "PT_1");
                     const eptBrake = stationBrakes.find(b => b.type === "EPT_2");
                     if (ptBrake) {
@@ -8055,7 +8305,7 @@
                         hasBrakes = true;
                     }
                 } else if (isLast) {
-                    const deadEndMatch = findDeadEndBrake(stationTitleRaw);
+                    const deadEndMatch = findDeadEndBrake(stationDisplay);
                     if (deadEndMatch) {
                         chips.push(window.InfoChip.fromBrake('ТП', deadEndMatch, deadEndMatch.track));
                         hasBrakes = true;
@@ -8066,7 +8316,7 @@
             const stationWarningChips = warningsByStation[index] || [];
 
             const opsPlaques = collectStationOpsPlaques(
-                stationTitleRaw,
+                stationDisplay,
                 currentDirection,
                 isPass ? null : stop
             );
@@ -8089,7 +8339,7 @@
             const skipClass = isPass ? ' is-skip pass-through' : '';
 
             return `
-                <div class="station-node ${rowState}${kindClass}${skipClass}${cardClass}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationTitleRaw)}" data-infra-kind="${infraKind}">
+                <div class="station-node ${rowState}${kindClass}${skipClass}${cardClass}${selectedClass}" data-station-index="${index}" data-station-title="${escapeAttr(stationDisplay)}" data-infra-kind="${infraKind}">
                     <div class="station-rail" aria-hidden="true">
                         <span class="station-km">${kmText ? escapeHtml(kmText) : ''}</span>
                         <span class="station-mark timeline-dot"></span>
@@ -8371,11 +8621,15 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Временно закрыты разделы «Маршрут» и «Расписание» — идут технические работы'
+            'Полное обновление расписания',
+            'Обновление маршрутов',
+            'Доработка логики'
         ],
         highlights: [
-            'Временно закрыты разделы «Маршрут» и «Расписание» — идут технические работы',
-            'Календарь смен и остальные разделы работают как прежде'
+            'Полное обновление расписания',
+            'Обновление маршрутов',
+            'Доработка логики',
+            'Расписание в супер-тестовом режиме: ближайшую неделю смотрите, но не верьте — проверяйте каждый поезд'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'

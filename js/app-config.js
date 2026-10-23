@@ -1,4 +1,4 @@
-window.APP_BUILD_ID = '4.0.58';
+window.APP_BUILD_ID = '4.1.0';
 
 window.APP_CONFIG = {
     APP_BUILD_ID: window.APP_BUILD_ID,
@@ -9,7 +9,7 @@ window.APP_CONFIG = {
     cloudtipsLayoutId: '0c990fdb',
     cloudtipsPaymentUrl: 'https://pay.cloudtips.ru/p/0c990fdb',
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee',
-    scheduleMaintenance: true,
+    scheduleMaintenance: false,
     scheduleMaintenanceMessage: 'Ведутся технические работы',
     sheduleMax: {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',

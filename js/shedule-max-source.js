@@ -17,9 +17,14 @@
     const dayStopsCache = Object.create(null);
     const dayStopsInflight = Object.create(null);
     const trainStopsMem = Object.create(null);
+    const dayBundleMem = Object.create(null);
+    const dayBundleInflight = Object.create(null);
     const FETCH_TIMEOUT_MS = 4500;
+    const BUNDLE_FETCH_TIMEOUT_MS = 12000;
     const DAY_CACHE_NAME = 'da_shedulemax_tpl_v3';
     const DAILY_BOARD_PATH = 'data/schedule_yar_daily.json';
+    const ROUTE_STOP_LS = 'da_route_stop_v1:';
+    const ROUTE_UPDATED_LS = 'da_route_updated_at';
 
     function stopPayloadFresh(payload) {
         return Boolean(payload && Array.isArray(payload.stops) && payload.stops.length > 0);
@@ -53,12 +58,82 @@
     }
 
     function scheduleObjectPath(date) {
-        return `data/cache_schedule/schedule_${weekdayTemplateId(date)}.json`;
+        const day = String(date || '').trim().slice(0, 10);
+        if (!day) return `data/cache_schedule/schedule_${weekdayTemplateId(date)}.json`;
+        return `data/cache_schedule/${dayToken(day)}.json`;
     }
 
     function dayStopsPath(date) {
-        const day = String(date || '').trim();
-        return day ? `data/cache_stops/${day}.json` : '';
+        return '';
+    }
+
+    function routeStopStorageKey(date, trainNumber) {
+        const day = String(date || '').trim().slice(0, 10);
+        const num = String(trainNumber || '').replace(/\D/g, '');
+        return day && num ? `${ROUTE_STOP_LS}${day}|${num}` : '';
+    }
+
+    function readRouteStopFromDevice(date, trainNumber) {
+        const key = routeStopStorageKey(date, trainNumber);
+        if (!key) return null;
+        try {
+            const raw = global.localStorage?.getItem(key);
+            if (!raw) return null;
+            const payload = JSON.parse(raw);
+            return stopPayloadFresh(payload) ? payload : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function writeRouteStopToDevice(date, trainNumber, payload) {
+        const key = routeStopStorageKey(date, trainNumber);
+        if (!key || !payload) return;
+        try {
+            global.localStorage?.setItem(key, JSON.stringify(payload));
+        } catch {
+            /* quota */
+        }
+    }
+
+    function clearRouteTrainStopsForShift(pairs) {
+        (pairs || []).forEach((item) => {
+            const day = String(item?.date || '').trim().slice(0, 10);
+            const num = String(item?.trainNumber || '').replace(/\D/g, '');
+            if (!day || !num) return;
+            delete trainStopsMem[trainStopsKey(day, num)];
+            const lsKey = routeStopStorageKey(day, num);
+            try {
+                global.localStorage?.removeItem(lsKey);
+            } catch {
+                /* ignore */
+            }
+        });
+    }
+
+    function markRouteDataUpdated(iso) {
+        const stamp = iso || new Date().toISOString();
+        try {
+            global.localStorage?.setItem(ROUTE_UPDATED_LS, stamp);
+        } catch {
+            /* ignore */
+        }
+        return stamp;
+    }
+
+    function getRouteDataUpdatedLabel() {
+        let raw = '';
+        try {
+            raw = global.localStorage?.getItem(ROUTE_UPDATED_LS) || '';
+        } catch {
+            return '';
+        }
+        if (!raw) return '';
+        const dt = new Date(raw);
+        if (Number.isNaN(dt.getTime())) return '';
+        const hh = String(dt.getHours()).padStart(2, '0');
+        const mm = String(dt.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
     }
 
     function trainStopsKey(date, number) {
@@ -89,6 +164,83 @@
         const num = String(trainNumber || '').replace(/\D/g, '');
         if (!day || !num) return '';
         return `data/cache_stops/${dayToken(day)}/${num}.json`;
+    }
+
+    function stopsBundleObjectPath(date) {
+        const day = String(date || '').trim().slice(0, 10);
+        return day ? `data/cppk_export/stops/stops_${day}.json` : '';
+    }
+
+    function stopRowHasClock(stop) {
+        if (!stop) return false;
+        const values = [
+            stop.arrival,
+            stop.departure,
+            stop.arr,
+            stop.dep,
+            stop.arrTime,
+            stop.depTime,
+        ];
+        return values.some((value) => String(value || '').trim() && String(value).trim() !== '...');
+    }
+
+    function stopsPayloadHasMiddleClocks(payload) {
+        const raw = Array.isArray(payload?.stops) ? payload.stops : [];
+        if (raw.length < 3) return false;
+        const middles = raw.slice(1, -1);
+        return middles.some(stopRowHasClock);
+    }
+
+    function pickThreadFromBundle(bundle, number, voyageCode) {
+        if (!bundle || bundle.format !== 'stops_bundle_v1') return null;
+        const byId = bundle.threadsByScheduleId || {};
+        const byNum = bundle.threadsByTrainNumber || {};
+        const code = String(voyageCode || '').trim();
+        if (code && byId[code]) return { ...byId[code] };
+        const num = String(number || '').replace(/\D/g, '');
+        if (num && byNum[num]) return { ...byNum[num] };
+        return null;
+    }
+
+    async function loadDayStopsBundle(day, fresh) {
+        const key = String(day || '').trim().slice(0, 10);
+        if (!key || !useDirectS3()) return null;
+        if (!fresh && dayBundleMem[key]) return dayBundleMem[key];
+        if (dayBundleInflight[key]) return dayBundleInflight[key];
+        const path = stopsBundleObjectPath(key);
+        if (!path) return null;
+        const bust = fresh ? `?t=${Date.now()}` : '';
+        const url = s3Url(`${path}${bust}`);
+        dayBundleInflight[key] = readJson(url, BUNDLE_FETCH_TIMEOUT_MS, { fresh: Boolean(fresh) })
+            .then((payload) => {
+                delete dayBundleInflight[key];
+                if (payload?.format === 'stops_bundle_v1') {
+                    dayBundleMem[key] = payload;
+                    return payload;
+                }
+                return null;
+            })
+            .catch((err) => {
+                delete dayBundleInflight[key];
+                console.warn('[shedule-max] day bundle miss', key, err?.code || err?.message);
+                return null;
+            });
+        return dayBundleInflight[key];
+    }
+
+    async function loadTrainStopsFromDayBundle(day, number, uid, fresh) {
+        const bundle = await loadDayStopsBundle(day, fresh);
+        const slice = pickThreadFromBundle(bundle, number, uid);
+        if (!slice || !stopPayloadFresh(slice)) return null;
+        return slice;
+    }
+
+    function datedStopFetchUrl(date, trainNumber, fresh) {
+        const path = datedStopObjectPath(date, trainNumber);
+        if (!path) return '';
+        if (!useDirectS3()) return '';
+        const bust = fresh ? `?t=${Date.now()}` : '';
+        return s3Url(`${path}${bust}`);
     }
 
     function stopFilePath(uid) {
@@ -200,13 +352,7 @@
             return { arr: arrival, dep: departure, seconds: 0 };
         }
         if (start === end) {
-            const hour = arrival.slice(0, 2);
-            const minute = arrival.slice(3, 5);
-            return {
-                arr: `${hour}:${minute}:00`,
-                dep: `${hour}:${minute}:30`,
-                seconds: 30,
-            };
+            return { arr: arrival, dep: departure, seconds: 0 };
         }
         let seconds = end - start;
         if (seconds < 0) seconds += 24 * 3600;
@@ -647,12 +793,27 @@
     function threadFromPayload(payload, number, date) {
         if (!payload) return null;
         const raw = Array.isArray(payload.stops) ? payload.stops : [];
-        if (raw.length && raw[0]?.station) {
+        if (!raw.length) return mapStops(payload, number, date);
+        const cppkShape = raw[0]?.name && !raw[0]?.station?.title;
+        if (cppkShape || raw.some((stop) => stop?.arr || stop?.dep)) {
+            return mapStops(payload, number, date);
+        }
+        if (raw[0]?.station && stopsPayloadHasMiddleClocks(payload)) {
             return {
                 ...payload,
-                number: payload.number || number,
+                number: payload.number || payload.trainNumber || number,
                 stops: raw,
             };
+        }
+        if (raw.some((stop) => stop?.arr || stop?.dep)) {
+            const normalized = {
+                ...payload,
+                stops: raw.map((stop) => ({
+                    ...stop,
+                    name: stop.name || stop.station?.title || '',
+                })),
+            };
+            return mapStops(normalized, number, date);
         }
         return mapStops(payload, number, date);
     }
@@ -661,7 +822,11 @@
         const day = String(date || '').trim();
         const number = String(trainNumber || '').replace(/\D/g, '');
         if (!day || !number) return null;
-        const mem = trainStopsMem[trainStopsKey(day, number)];
+        let mem = trainStopsMem[trainStopsKey(day, number)];
+        if (!mem || !stopPayloadMatchesDate(mem, day)) {
+            mem = readRouteStopFromDevice(day, number);
+            if (mem) trainStopsMem[trainStopsKey(day, number)] = mem;
+        }
         if (!mem || !stopPayloadMatchesDate(mem, day)) return null;
         return threadFromPayload(mem, number, day);
     }
@@ -674,17 +839,16 @@
         if (byNumber) return byNumber;
         const mem = trainStopsMem[trainStopsKey(day, number)];
         if (mem && stopPayloadMatchesDate(mem, day)) return threadFromPayload(mem, number, date);
-        const doc = dayStopsCache[day];
-        if (!doc) return null;
-        const trip = pickTripFromDayDoc(doc, number, uid);
-        if (!trip) return null;
-        return threadFromPayload(trip, number, date);
+        return null;
     }
 
     function rememberStopsPayload(key, url, payload) {
         if (!payload || !Array.isArray(payload.stops) || !payload.stops.length) return null;
         trainStopsMem[key] = payload;
-        if (url) void writeCachedResponse(url, null, payload);
+        const parts = String(key || '').split('|');
+        if (parts.length === 2) {
+            writeRouteStopToDevice(parts[0], parts[1], payload);
+        }
         return payload;
     }
 
@@ -726,105 +890,106 @@
         }
         const bypassCache = options.bypassCache === true;
         const fresh = options.fresh === true || bypassCache;
+        const day = String(date || '').trim().slice(0, 10);
+        const num = String(number || '').replace(/\D/g, '');
 
         if (bypassCache) {
             delete trainStopsMem[key];
-        } else if (trainStopsMem[key] && !fresh) {
-            return trainStopsMem[key];
-        }
-
-        const dir = direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
-        const voyageUid = String(uid || '').trim();
-        if (!voyageUid) {
-            const err = new Error('Нет UID нитки (voyageCode)');
-            err.code = 'NO_UID';
-            if (bypassCache) throw err;
-            return null;
-        }
-
-        const tryStore = (payload, cacheUrl = '', requireDate = false) => {
-            if (!stopPayloadFresh(payload)) return null;
-            if (requireDate && !stopPayloadMatchesDate(payload, date)) return null;
-            return rememberStopsPayload(key, cacheUrl, payload);
-        };
-
-        const loaders = [];
-
-        const datedPath = datedStopObjectPath(date, number);
-        const datedUrl = stopResourceUrl(datedPath);
-        if (datedUrl) {
-            loaders.push(async () => {
-                const payload = await readStopPayloadFromUrl(datedUrl, fresh || bypassCache);
-                return tryStore(payload, datedUrl, true);
-            });
-        }
-
-        if (apiBase()) {
-            loaders.push(async () => {
-                try {
-                    const payload = await fetchTrainDetailsFromApi(date, number, dir, {
-                        voyageCode: voyageUid,
-                        fresh: Boolean(fresh || bypassCache),
-                    });
-                    return tryStore(payload, '', true);
-                } catch {
-                    return null;
-                }
-            });
-        }
-
-        const uidPath = stopFilePath(voyageUid);
-        const uidUrl = stopResourceUrl(uidPath.split('?')[0]);
-        if (uidUrl) {
-            loaders.push(async () => {
-                const payload = await readStopPayloadFromUrl(uidUrl, fresh);
-                return tryStore(payload, uidUrl, false);
-            });
-        }
-
-        for (const load of loaders) {
             try {
-                const hit = await load();
-                if (hit) return hit;
-            } catch (err) {
-                if (bypassCache) throw normalizeStopLoadError(err);
-                console.warn('[shedule-max] stop source miss', err);
+                global.localStorage?.removeItem(routeStopStorageKey(day, num));
+            } catch {
+                /* ignore */
+            }
+        } else if (trainStopsMem[key] && !fresh) {
+            if (stopsPayloadHasMiddleClocks(trainStopsMem[key])) {
+                return trainStopsMem[key];
+            }
+            delete trainStopsMem[key];
+        } else if (!fresh) {
+            const offline = readRouteStopFromDevice(day, num);
+            if (offline && stopsPayloadHasMiddleClocks(offline)) {
+                trainStopsMem[key] = offline;
+                return offline;
             }
         }
 
+        const tryStore = (payload) => {
+            if (!stopPayloadFresh(payload)) return null;
+            if (!stopPayloadMatchesDate(payload, day)) return null;
+            return rememberStopsPayload(key, '', payload);
+        };
+
+        const datedUrl = datedStopFetchUrl(day, num, fresh || bypassCache);
+        if (!datedUrl) {
+            const err = new Error('S3 не настроен для ниток');
+            err.code = 'NO_S3';
+            if (bypassCache) throw err;
+            return readRouteStopFromDevice(day, num);
+        }
+
+        const storeFromBundle = async () => {
+            const fromBundle = await loadTrainStopsFromDayBundle(day, num, uid, fresh || bypassCache);
+            if (!fromBundle) return null;
+            const stored = tryStore(fromBundle);
+            if (stored) markRouteDataUpdated();
+            return stored;
+        };
+
+        let fetchErr = null;
+        try {
+            const payload = await readJson(datedUrl, FETCH_TIMEOUT_MS, { fresh: fresh || bypassCache });
+            const stored = tryStore(payload);
+            if (stored) {
+                markRouteDataUpdated();
+                return stored;
+            }
+        } catch (err) {
+            fetchErr = err;
+        }
+
+        const bundleStored = await storeFromBundle();
+        if (bundleStored) return bundleStored;
+
+        if (fetchErr) {
+            const offlineHit = readRouteStopFromDevice(day, num);
+            if (offlineHit && stopsPayloadHasMiddleClocks(offlineHit)) {
+                trainStopsMem[key] = offlineHit;
+                if (bypassCache || fresh) {
+                    const wrap = new Error('Нет сети, показаны сохранённые данные');
+                    wrap.code = 'OFFLINE_CACHE';
+                    wrap.cachedPayload = offlineHit;
+                    throw wrap;
+                }
+                return offlineHit;
+            }
+            const normalized = normalizeStopLoadError(fetchErr);
+            if (normalized.code === 'NOT_FOUND') {
+                normalized.message = `Поезд ${num} не найден на сервере (${day})`;
+            }
+            if (bypassCache || fresh) throw normalized;
+            console.warn('[shedule-max] stop miss', num, normalized.message);
+            return null;
+        }
+
         if (bypassCache) {
-            const err = new Error('Нитка не найдена ни в API, ни в S3');
+            const err = new Error(`Поезд ${num} не найден на сервере (${day})`);
             err.code = 'NOT_FOUND';
             throw err;
         }
         return null;
     }
 
-    async function hydrateDayStopsCacheOnly(date) {
-        const day = String(date || '').trim();
-        if (!day) return null;
-        if (dayStopsCache[day]) return dayStopsCache[day];
-        const cached = await readCachedJson(s3Url(dayStopsPath(day)));
-        if (cached) {
-            dayStopsCache[day] = cached;
-            return cached;
-        }
+    async function hydrateDayStopsCacheOnly(_date) {
         return null;
-    }
-
-    async function fetchThreadFromObjectStore(date, number, uid) {
-        const dayDoc = await loadDayStopsDoc(date);
-        if (!dayDoc) return null;
-        const trip = pickTripFromDayDoc(dayDoc, number, uid);
-        if (!trip) return null;
-        return mapStops(trip, number, date);
     }
 
     async function fetchThread(trainData, date) {
         const sync = lookupThreadSync(trainData, date);
         if (sync) return sync;
         const { number, uid } = threadLookupKeys(trainData);
-        return fetchThreadFromObjectStore(date, number, uid);
+        const payload = await loadTrainStops(date, number, uid, 'from_moscow', {});
+        if (!payload) return null;
+        return threadFromPayload(payload, number, date);
     }
 
     async function deleteIndexedDbSchedule() {
@@ -845,6 +1010,8 @@
         Object.keys(dayStopsCache).forEach((k) => { delete dayStopsCache[k]; });
         Object.keys(dayStopsInflight).forEach((k) => { delete dayStopsInflight[k]; });
         Object.keys(trainStopsMem).forEach((k) => { delete trainStopsMem[k]; });
+        Object.keys(dayBundleMem).forEach((k) => { delete dayBundleMem[k]; });
+        Object.keys(dayBundleInflight).forEach((k) => { delete dayBundleInflight[k]; });
     }
 
     async function clearCacheStopsFromCacheStorage() {
@@ -918,10 +1085,14 @@
         lookupThreadSync,
         lookupStopsByTrain,
         loadTrainStops,
+        stopsPayloadHasMiddleClocks,
         hydrateDayStopsCacheOnly,
         prefetchDayStops: hydrateDayStopsCacheOnly,
+        clearRouteTrainStopsForShift,
+        markRouteDataUpdated,
+        getRouteDataUpdatedLabel,
         clearNetworkCaches,
-        clearShiftThreadCaches,
+        clearShiftThreadCaches: clearRouteTrainStopsForShift,
         forceResetAllCaches,
         wipeInMemoryScheduleCaches,
         expectedThreadRev,
