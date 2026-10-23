@@ -111,7 +111,7 @@
         const stored = global.localStorage.getItem(BUILD_KEY);
         if (stored === localId) return;
 
-        // Только метка сборки в localStorage. Полная зачистка — только кнопка «Обновить» (hardResetAppData).
+        // Только метка сборки. hardResetAppData — только при явном вызове из UI (не автоматически).
         global.localStorage.setItem(BUILD_KEY, localId);
     }
 

@@ -1404,6 +1404,101 @@ body.is-swipe-dragging #screen-schedule .tab-btn {
     transform: none;
 }
 
+/* Режим техработ: маршрут / расписание */
+html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"],
+html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"].active,
+body.schedule-maintenance-active .bottom-tab-btn[data-screen="schedule"],
+body.schedule-maintenance-active .bottom-tab-btn[data-screen="schedule"].active {
+    color: rgba(120, 128, 142, 0.72);
+    background: transparent;
+    box-shadow: none;
+}
+
+html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"] .tab-icon svg,
+html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"].active .tab-icon svg,
+body.schedule-maintenance-active .bottom-tab-btn[data-screen="schedule"] .tab-icon svg,
+body.schedule-maintenance-active .bottom-tab-btn[data-screen="schedule"].active .tab-icon svg {
+    stroke: rgba(120, 128, 142, 0.65);
+}
+
+html[data-schedule-maintenance="1"] #screen-schedule .tab-btn,
+html[data-schedule-maintenance="1"] #screen-schedule .tab-btn.active,
+body.schedule-maintenance-active #screen-schedule .tab-btn,
+body.schedule-maintenance-active #screen-schedule .tab-btn.active {
+    color: rgba(120, 128, 142, 0.72);
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.72;
+}
+
+body.schedule-maintenance-active .trains-chip-panel--peek .trains-chip-panel__cta,
+body.schedule-maintenance-active .shift-summary__trains-row--nav {
+    opacity: 0.45;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+body.schedule-maintenance-active #screen-schedule .screen-card--schedule {
+    position: relative;
+    min-height: min(70vh, 520px);
+}
+
+body.schedule-maintenance-active #screen-schedule.schedule-maintenance-screen .screen-card--schedule {
+    overflow: hidden;
+}
+
+.schedule-maintenance-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+    text-align: center;
+    background: rgba(10, 16, 24, 0.92);
+    backdrop-filter: blur(6px);
+}
+
+html[data-schedule-maintenance="1"] #screen-schedule .screen-card--schedule {
+    position: relative;
+}
+
+html[data-schedule-maintenance="1"] #screen-schedule:not(.hidden) #scheduleMaintenanceOverlay {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+}
+
+.schedule-maintenance-overlay.hidden,
+.schedule-maintenance-overlay[hidden] {
+    display: none !important;
+}
+
+html[data-schedule-maintenance="1"] #screen-schedule:not(.hidden) #scheduleMaintenanceOverlay[hidden] {
+    display: flex !important;
+}
+
+.schedule-maintenance-overlay__text {
+    margin: 0;
+    max-width: 20rem;
+    font-size: var(--font-md, 1rem);
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
+    color: rgba(200, 208, 220, 0.92);
+}
+
+body.schedule-maintenance-active #screen-schedule:not(.hidden) .schedule-tabs-stage > .tab-content {
+    pointer-events: none;
+    user-select: none;
+}
+
+body.schedule-maintenance-active #screen-schedule:not(.hidden) .route-sticky-header-wrap .schedule-glass-tabs {
+    pointer-events: none;
+}
+
 button:active,
 .action-btn:active,
 .tab-btn:active,

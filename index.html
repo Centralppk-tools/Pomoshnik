@@ -3,6 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <script>
+    /** Выключить техработы: false + scheduleMaintenance в app-config.js */
+    window.DA_SCHEDULE_MAINTENANCE_BLOCK = true;
+    if (window.DA_SCHEDULE_MAINTENANCE_BLOCK) {
+        document.documentElement.setAttribute('data-schedule-maintenance', '1');
+    }
+    </script>
+    <style id="da-schedule-maint-critical">
+    html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"],
+    html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"].active {
+        color: rgba(120, 128, 142, 0.72) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"] .tab-icon svg,
+    html[data-schedule-maintenance="1"] .bottom-tab-btn[data-screen="schedule"].active .tab-icon svg {
+        stroke: rgba(120, 128, 142, 0.65) !important;
+    }
+    html[data-schedule-maintenance="1"] #screen-schedule .tab-btn,
+    html[data-schedule-maintenance="1"] #screen-schedule .tab-btn.active {
+        color: rgba(120, 128, 142, 0.72) !important;
+        opacity: 0.72;
+        pointer-events: none !important;
+    }
+    html[data-schedule-maintenance="1"] #screen-schedule .screen-card--schedule {
+        position: relative;
+    }
+    html[data-schedule-maintenance="1"] #screen-schedule:not(.hidden) #scheduleMaintenanceOverlay {
+        display: flex !important;
+        position: absolute;
+        inset: 0;
+        z-index: 80;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+        background: rgba(10, 16, 24, 0.94);
+        backdrop-filter: blur(8px);
+    }
+    html[data-schedule-maintenance="1"] .bottom-tabbar {
+        z-index: 2000;
+    }
+    html[data-schedule-maintenance="1"] #screen-schedule:not(.hidden) .schedule-tabs-stage > .tab-content {
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    html[data-schedule-maintenance="1"] .trains-chip-panel--peek .trains-chip-panel__cta,
+    html[data-schedule-maintenance="1"] .shift-summary__trains-row--nav {
+        opacity: 0.45 !important;
+        filter: grayscale(1);
+        pointer-events: none !important;
+    }
+    </style>
     <script>
     (function () {
         var blockOpts = { passive: false };
@@ -28,7 +83,7 @@
     <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
     <link rel="stylesheet" href="styles/base.css?v=20261018i">
     <link rel="stylesheet" href="styles/routes.css">
-    <link rel="stylesheet" href="styles/schedule.css?v=20261018h">
+    <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
     <link rel="stylesheet" href="styles/calendar.css?v=20261022c">
     <link rel="stylesheet" href="styles/profile.css?v=20261018i">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
@@ -37,6 +92,8 @@
     <link rel="stylesheet" href="styles/instructions.css?v=20261018f">
 </head>
 <body class="auth-locked">
+<script src="js/app-config.js?v=4.0.58"></script>
+<script src="js/schedule-maintenance.js?v=20261023c"></script>
 
 <div id="appUpdateToast" class="appUpdateToast" role="status" aria-live="polite" hidden>
     <p class="appUpdateToastText">Доступна новая версия приложения.</p>
@@ -177,6 +234,9 @@
     </div>
 
     <div class="screen-card screen-card--schedule">
+    <div id="scheduleMaintenanceOverlay" class="schedule-maintenance-overlay" role="status" aria-live="polite" aria-hidden="true">
+        <p class="schedule-maintenance-overlay__text">Ведутся технические работы</p>
+    </div>
 
     <div id="scheduleTabsStage" class="schedule-tabs-stage">
 
@@ -781,7 +841,6 @@
     </div>
 </div>
 
-<script src="js/app-config.js"></script>
 <script src="js/hard-reset-app.js"></script>
 <script src="js/app-data-source.js"></script>
 <script src="js/shedule-max-source.js"></script>
@@ -791,6 +850,12 @@
 <script src="js/profile-compliance.js?v=20261018i"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
+
+    function isScheduleMaintenanceOn() {
+        if (window.DA_SCHEDULE_MAINTENANCE_BLOCK === true) return true;
+        if (document.documentElement.getAttribute('data-schedule-maintenance') === '1') return true;
+        return !!(window.APP_CONFIG && window.APP_CONFIG.scheduleMaintenance);
+    }
 
     const DASH_CHAR = String.fromCharCode(45);
     const API_KEY = ''; // ключ Rasp только на сервере (Yandex Cloud Function)
@@ -868,7 +933,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.0.56';
+    const APP_RELEASE_VERSION = '4.0.58';
     const CLIENT_CACHE_VERSION = 'da_v4_0_56';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
@@ -1913,13 +1978,16 @@
 
         const lastSingle = userStorageGet('lastSingleTrain');
 
-        const localStationCache = userStorageGet('stationScheduleCache');
-        if (localStationCache) {
-            stationScheduleCache = migrateStationScheduleCache(parseJSON(localStationCache, null));
-            restoreStationBoardsFromCache();
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+        } else {
+            const localStationCache = userStorageGet('stationScheduleCache');
+            if (localStationCache) {
+                stationScheduleCache = migrateStationScheduleCache(parseJSON(localStationCache, null));
+                restoreStationBoardsFromCache();
+            }
+            loadTrainThreadsCacheFromStorage();
         }
-
-        loadTrainThreadsCacheFromStorage();
 
         initUserAuth();
         getOrCreateAnonymousDeviceUuid();
@@ -1968,6 +2036,7 @@
             .finally(() => {
                 const warmDate = getSelectedDate();
                 const finish = () => {
+                    if (isScheduleMaintenanceOn()) return;
                     const hasTrains = getTrainNumbersFromDom().length > 0;
                     if (hasTrains && activeTab === 'tab-route') {
                         getRouteData({ fromCacheOnly: true });
@@ -4651,6 +4720,11 @@
     }
 
     function renderRoutesFromCacheIfVisible() {
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+            window.daScheduleMaintenance?.onEnterScheduleScreen?.();
+            return;
+        }
         const grid = document.getElementById('routeGrid');
         if (grid && grid.style.display !== 'none' && grid.innerHTML.trim()) {
             getRouteData({ fromCacheOnly: true });
@@ -4658,6 +4732,11 @@
     }
 
     function renderScheduleFromCacheIfVisible() {
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+            window.daScheduleMaintenance?.onEnterScheduleScreen?.();
+            return;
+        }
         const trainNumber = userStorageGet('lastSingleTrain')?.trim();
         if (!trainNumber) return;
         const header = document.getElementById('scheduleHeader');
@@ -5674,6 +5753,63 @@
             summaryWrap.style.display = 'none';
         }
     }
+
+    /** Кэш маршрута/ниток/табло — без календаря смен (userShifts) и без сброса даты/номеров в полях. */
+    const ROUTE_SHIFT_CACHE_KEYS = [
+        'trainThreadsCache',
+        'stationScheduleCache',
+        'lastSingleTrain',
+        'routeShiftContext',
+        'shiftTrainPlan',
+        'schedulePushFiredKeys'
+    ];
+
+    function clearShiftRouteCachesForMaintenance() {
+        ROUTE_SHIFT_CACHE_KEYS.forEach((key) => userStorageRemove(key));
+
+        trainThreadsCache = {};
+        stationScheduleCache = { version: STATION_BOARD_CACHE_VERSION, boards: {} };
+        Object.keys(stationScheduleByKey).forEach((key) => delete stationScheduleByKey[key]);
+        Object.keys(stationUidIndexByDate).forEach((key) => delete stationUidIndexByDate[key]);
+        Object.keys(stationScheduleLoaders).forEach((key) => delete stationScheduleLoaders[key]);
+
+        routeNotificationTrains = null;
+        scheduleNotificationTargets = null;
+        scheduleDisplayStops = null;
+        scheduleActiveDate = null;
+        scheduleCurrentTrain = null;
+        resetSchedulePushState();
+
+        const grid = document.getElementById('routeGrid');
+        if (grid) {
+            grid.innerHTML = '';
+            grid.style.display = 'none';
+        }
+        const routeSummary = document.getElementById('routeSummary');
+        if (routeSummary) {
+            routeSummary.innerHTML = '';
+            routeSummary.style.display = 'none';
+        }
+        const routeLoader = document.getElementById('routeLoader');
+        if (routeLoader) routeLoader.style.display = 'none';
+        const scheduleLoader = document.getElementById('scheduleLoader');
+        if (scheduleLoader) scheduleLoader.style.display = 'none';
+
+        setRouteToolbarVisible(false);
+        setShiftWarningsVisible(false);
+        setRouteSummaryVisible(false);
+        resetScheduleResults();
+        stopScheduleLiveClock();
+        void syncScheduleAlertsToWorker();
+
+        if (window.SheduleMaxSource?.clearShiftThreadCaches) {
+            void window.SheduleMaxSource.clearShiftThreadCaches();
+        } else if (window.SheduleMaxSource?.wipeInMemoryScheduleCaches) {
+            window.SheduleMaxSource.wipeInMemoryScheduleCaches();
+        }
+    }
+
+    window.daClearShiftRouteCachesOnly = clearShiftRouteCachesForMaintenance;
 
     function closeShiftResetConfirm() {
         const overlay = document.getElementById('shiftResetConfirm');
@@ -6903,7 +7039,11 @@
 
     function getLastMainScreen(fallback = 'calendar') {
         const saved = String(userStorageGet('lastMainScreen', '') || '').trim();
-        return isMainScreenName(saved) ? saved : fallback;
+        const resolved = isMainScreenName(saved) ? saved : fallback;
+        if (isScheduleMaintenanceOn()) {
+            return window.daScheduleMaintenance.resolveLastMainScreen(resolved, fallback);
+        }
+        return resolved;
     }
 
     function bootstrapScheduleAlertsIfReady() {
@@ -6923,7 +7063,11 @@
             loadUserShifts();
             calendarRenderCalendar();
         } else if (screen === 'schedule') {
-            resumeScheduleLiveClockIfNeeded();
+            if (isScheduleMaintenanceOn()) {
+                window.daScheduleMaintenance.onEnterScheduleScreen();
+            } else {
+                resumeScheduleLiveClockIfNeeded();
+            }
         } else if (screen === 'instructions') {
             if (window.InstructionsModule?.init) {
                 void window.InstructionsModule.init();
@@ -6936,6 +7080,13 @@
             routeNotificationTrains = null;
             scheduleNotificationTargets = null;
             void syncScheduleAlertsToWorker();
+        }
+
+        if (isScheduleMaintenanceOn()) {
+            if (screen === 'schedule') {
+                window.daScheduleMaintenance.onEnterScheduleScreen();
+            }
+            return;
         }
 
         resumeScheduleLiveClockIfNeeded();
@@ -7004,6 +7155,7 @@
     }
 
     function switchTab(tabId, btn, options = {}) {
+        if (isScheduleMaintenanceOn()) return false;
         const { animate = false, direction = null, deferTabButtons = false } = options;
         const stage = document.getElementById('scheduleTabsStage');
         const forceInstant = !animate || screenTransitionLock
@@ -7418,6 +7570,11 @@
     }
 
     function paintRouteGrid(trainEntries, options = {}) {
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+            window.daScheduleMaintenance?.onEnterScheduleScreen?.();
+            return false;
+        }
         const {
             requestId,
             boardWarningHtml = '',
@@ -7460,6 +7617,11 @@
     }
 
     function patchRouteCards(indices, trainEntries, options = {}) {
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+            window.daScheduleMaintenance?.onEnterScheduleScreen?.();
+            return false;
+        }
         const {
             requestId,
             fromCacheOnly = false,
@@ -7506,6 +7668,7 @@
     }
 
     function getRouteData(options = {}) {
+        if (isScheduleMaintenanceOn()) return;
         const inputs = getTrainNumbersFromDom();
         const forceRefresh = options.forceRefresh === true;
         const fromCacheOnly = options.fromCacheOnly === true;
@@ -7647,6 +7810,7 @@
     }
 
     function getScheduleData(trainNumber, options = {}) {
+        if (isScheduleMaintenanceOn()) return;
         const input = String(trainNumber || userStorageGet('lastSingleTrain') || '').trim();
         if (!input) return;
 
@@ -7738,6 +7902,11 @@
     }
 
     function renderTimelineFromData(stops, trainNumber, selectedDate, trainMeta = null) {
+        if (isScheduleMaintenanceOn()) {
+            clearShiftRouteCachesForMaintenance();
+            window.daScheduleMaintenance?.onEnterScheduleScreen?.();
+            return;
+        }
         if (!stops || stops.length === 0) {
             resetScheduleResults();
             return;
@@ -7953,6 +8122,11 @@
     }
 
     function viewTrainSchedule(trainUid, trainNumber) {
+        if (isScheduleMaintenanceOn()) {
+            window.daScheduleMaintenance.onEnterScheduleScreen();
+            switchMainScreen('schedule');
+            return;
+        }
         userStorageSet('lastSingleTrain', trainNumber);
         const scheduleBtn = document.querySelector('.tab-btn[data-tab="tab-schedule"]');
         if (scheduleBtn) switchTab('tab-schedule', scheduleBtn);
@@ -8197,10 +8371,11 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Исправлено: приложение больше не сбрасывает данные при обновлении версии'
+            'Временно закрыты разделы «Маршрут» и «Расписание» — идут технические работы'
         ],
         highlights: [
-            'Исправлено: приложение больше не сбрасывает данные при обновлении версии'
+            'Временно закрыты разделы «Маршрут» и «Расписание» — идут технические работы',
+            'Календарь смен и остальные разделы работают как прежде'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -8926,6 +9101,19 @@
     function initServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
 
+        if (isScheduleMaintenanceOn()) {
+            void navigator.serviceWorker.getRegistrations().then((regs) => {
+                regs.forEach((reg) => { void reg.unregister(); });
+            });
+            if (window.caches?.keys) {
+                void window.caches.keys().then((keys) => {
+                    keys.forEach((key) => { void window.caches.delete(key); });
+                });
+            }
+            console.info('[ЦППК] Техработы: Service Worker и Cache Storage отключены');
+            return;
+        }
+
         warnIfHostChanged();
 
         document.getElementById('appUpdateToastBtn')?.addEventListener('click', () => {
@@ -8937,7 +9125,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261022d')
+        navigator.serviceWorker.register('./sw.js?v=20261023c')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -16519,6 +16707,12 @@
     }
 
     function navigateToRouteWithTrains(trainsText, dateKey, isNight = false, presetTrainNumbers = null, trainPlan = null) {
+        if (isScheduleMaintenanceOn()) {
+            switchMainScreen('schedule');
+            window.daScheduleMaintenance.onEnterScheduleScreen();
+            return;
+        }
+
         const trainNumbers = resolveNavigationTrainNumbers(presetTrainNumbers, trainPlan, trainsText);
 
         if (!trainNumbers.length) {

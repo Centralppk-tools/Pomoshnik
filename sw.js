@@ -1,5 +1,5 @@
 // Версия кэша приложения — меняется при обновлении оболочки.
-const CACHE_VERSION = 'da_v4_0_56';
+const CACHE_VERSION = 'da_v4_0_58';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
@@ -20,6 +20,8 @@ const PRECACHE_ASSETS = [
     './data/trains-uids.json',
     './data/release-notes.json',
     './js/app-config.js',
+    './js/schedule-maintenance.js',
+    './js/hard-reset-app.js',
     './js/app-data-source.js',
     './js/train-motion-timer.js',
     './js/shedule-max-source.js',
@@ -107,6 +109,10 @@ function isTrainUidsRequest(pathname) {
 /** Конфиг прокси — всегда из сети (не cache-first), иначе залипает старый workers.dev */
 function isAppConfigRequest(pathname) {
     return pathname.endsWith('/js/app-config.js') || pathname.endsWith('app-config.js');
+}
+
+function isScheduleMaintenanceRequest(pathname) {
+    return pathname.endsWith('/js/schedule-maintenance.js') || pathname.endsWith('schedule-maintenance.js');
 }
 
 /** Модуль «Инструкции» — network-first, иначе залипают старые иконки/стили после правок */
@@ -310,7 +316,7 @@ self.addEventListener('fetch', (event) => {
     }
     if (url.origin !== self.location.origin) return;
 
-    if (isAppConfigRequest(url.pathname)) {
+    if (isAppConfigRequest(url.pathname) || isScheduleMaintenanceRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }
