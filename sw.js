@@ -1,5 +1,5 @@
 // Версия кэша приложения — меняется при обновлении оболочки. v4.1.1
-const CACHE_VERSION = 'da_v4_1_1';
+const CACHE_VERSION = 'da_v4_1_2';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 

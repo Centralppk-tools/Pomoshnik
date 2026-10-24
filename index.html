@@ -238,7 +238,6 @@
                                 <span id="routeShiftWorkLine" class="shift-times route-shift-compact__work">—</span>
                             </div>
                             <div class="date-controls">
-                                <span id="routeShiftNormativeLine" class="route-shift-normative-hint" hidden></span>
                                 <label class="date-display" id="datePickerLabel" title="Выбрать дату смены">
                                     <span id="dateDisplayText" class="shift-date-display"></span>
                                     <input type="date" id="dateInput" class="shift-date-input" aria-label="Дата смены">
@@ -941,8 +940,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.1.1';
-    const CLIENT_CACHE_VERSION = 'da_v4_1_1';
+    const APP_RELEASE_VERSION = '4.1.2';
+    const CLIENT_CACHE_VERSION = 'da_v4_1_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1697,26 +1696,7 @@
             legacy.hidden = true;
         }
         syncRouteShiftChipHighlight();
-        syncRouteShiftNormativeLine();
         requestAnimationFrame(updateScheduleStickyOffset);
-    }
-
-    function syncRouteShiftNormativeLine() {
-        const el = document.getElementById('routeShiftNormativeLine');
-        if (!el) return;
-        const dateKey = getRouteTabDateKey();
-        applyNormativeForDateKey(dateKey);
-        const label = formatShiftHoursSourceLabel(dateKey);
-        if (!label || label === 'Часы смен не загружены') {
-            el.hidden = true;
-            el.textContent = '';
-            el.removeAttribute('title');
-            return;
-        }
-        el.hidden = false;
-        el.textContent = label;
-        const summary = localShiftTemplatesMeta?.activeNormativeSummary;
-        el.title = summary && !label.includes(summary) ? `${label} · ${summary}` : label;
     }
 
     function syncRouteShiftChipHighlight() {

@@ -1460,20 +1460,6 @@
     max-width: 52%;
 }
 
-#screen-schedule .route-shift-normative-hint {
-    display: block;
-    width: 100%;
-    margin: 0;
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 1.25;
-    color: #6c7e8e;
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 #screen-schedule .date-display {
     position: relative;
     display: flex;
