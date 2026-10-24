@@ -941,7 +941,7 @@
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '4.1.2';
-    const CLIENT_CACHE_VERSION = 'da_v4_1_2';
+    const CLIENT_CACHE_VERSION = 'da_v4_1_3';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -4466,6 +4466,20 @@
     }
 
     function buildStopsFromLocalEntry(entry) {
+        const rawStops = Array.isArray(entry?.stops) ? entry.stops : [];
+        if (rawStops.length >= 2) {
+            return rawStops.map((stop, index) => {
+                const title = String(stop?.station || stop?.name || '').trim();
+                const departure = normalizeShiftTimeToken(stop?.departure || stop?.dep || '') || null;
+                const arrival = normalizeShiftTimeToken(stop?.arrival || stop?.arr || '') || null;
+                return {
+                    station: { title: title || (index === 0 ? 'Станция отправления' : 'Станция назначения') },
+                    departure: index === 0 ? departure : (departure || null),
+                    arrival: index === rawStops.length - 1 ? arrival : (arrival || null),
+                };
+            });
+        }
+
         const fromTitle = String(entry.from || '').trim();
         const toTitle = String(entry.to || '').trim();
         const departure = normalizeShiftTimeToken(entry.departure || '');
@@ -9562,7 +9576,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261023c')
+        navigator.serviceWorker.register('./sw.js?v=20261024a')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);

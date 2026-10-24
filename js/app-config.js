@@ -1,4 +1,4 @@
-window.APP_BUILD_ID = '4.1.2';
+window.APP_BUILD_ID = '4.1.3';
 
 window.APP_CONFIG = {
     APP_BUILD_ID: window.APP_BUILD_ID,

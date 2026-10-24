@@ -919,8 +919,7 @@
             return rememberStopsPayload(key, '', payload);
         };
 
-        const datedUrl = datedStopFetchUrl(day, num, fresh || bypassCache);
-        if (!datedUrl) {
+        if (!useDirectS3()) {
             const err = new Error('S3 не настроен для ниток');
             err.code = 'NO_S3';
             if (bypassCache) throw err;
@@ -935,20 +934,23 @@
             return stored;
         };
 
-        let fetchErr = null;
-        try {
-            const payload = await readJson(datedUrl, FETCH_TIMEOUT_MS, { fresh: fresh || bypassCache });
-            const stored = tryStore(payload);
-            if (stored) {
-                markRouteDataUpdated();
-                return stored;
-            }
-        } catch (err) {
-            fetchErr = err;
-        }
-
         const bundleStored = await storeFromBundle();
         if (bundleStored) return bundleStored;
+
+        const datedUrl = datedStopFetchUrl(day, num, fresh || bypassCache);
+        let fetchErr = null;
+        if (datedUrl) {
+            try {
+                const payload = await readJson(datedUrl, FETCH_TIMEOUT_MS, { fresh: fresh || bypassCache });
+                const stored = tryStore(payload);
+                if (stored) {
+                    markRouteDataUpdated();
+                    return stored;
+                }
+            } catch (err) {
+                fetchErr = err;
+            }
+        }
 
         if (fetchErr) {
             const offlineHit = readRouteStopFromDevice(day, num);
