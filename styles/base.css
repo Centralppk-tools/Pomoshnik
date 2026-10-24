@@ -613,18 +613,23 @@ transform: translateX(20px);
     min-width: 0;
     overflow: visible;
     --schedule-pad-x: 24px;
-    gap: 8px;
+    gap: 12px;
+    padding-top: 4px;
     padding-bottom: 24px;
 }
 
 #scheduleHeader .schedule-route-card {
-    margin-bottom: 0;
+    margin: 0;
     width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     border: none;
-    border-radius: 0;
+    border-radius: 0 !important;
     box-shadow: none;
-    background: var(--surface-card);
-    border-top: 1px solid var(--glass-border-soft);
+    background: #141b27;
+    border-top: none;
+    animation: none;
+    overflow: hidden;
 }
 
 #screen-schedule .schedule-glass-stack--route-tab .route-card-top {
@@ -638,6 +643,7 @@ transform: translateX(20px);
 
 #screen-schedule .schedule-glass-stack--route-tab .schedule-route-card {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: #141b27;
 }
 
 #screen-schedule .schedule-glass-stack--route-tab .schedule-route-card-middle {
@@ -665,37 +671,81 @@ transform: translateX(20px);
     line-height: 1.3;
 }
 
+#screen-schedule .route-shift-sticky-shell {
+    display: block;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+#screen-schedule .route-shift-sticky-shell .route-shift-compact-wrap {
+    margin: 0;
+    padding: 0 12px 10px;
+    box-sizing: border-box;
+}
+
+#screen-schedule #tab-route .route-shift-expanded {
+    margin-top: 8px;
+}
+
 .schedule-glass-stack:not(.has-route-card) .schedule-glass-tabs {
     border-bottom: none;
 }
 
 #scheduleHeader .schedule-route-card::before {
-    width: 4px;
-    background: linear-gradient(180deg, var(--app-green) 0%, var(--app-blue) 100%);
-    opacity: 0.85;
+    width: 6px;
+    background: var(--brand-grad-vertical);
+    opacity: 1;
 }
 
 .schedule-route-card .route-card-section {
-    padding: 5px 12px 5px 18px;
+    padding: 10px 14px 10px 22px;
 }
 
 .schedule-route-card .route-card-top {
-    border-bottom: none;
-    gap: 1px;
+    gap: 6px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
+    padding-bottom: 8px;
 }
 
 .schedule-route-card .route-card-title {
     min-width: 0;
-    word-break: keep-all;
-    overflow-wrap: normal;
-    font-size: clamp(13px, 3.6vw, 15px);
-    line-height: 1.25;
+    font-family: var(--font-family);
+    font-size: clamp(14px, 3.8vw, var(--font-md));
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--app-text-bright);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .schedule-route-card .route-card-subtitle {
-    font-size: 11px;
-    gap: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+    font-size: var(--font-xs);
     line-height: 1.25;
+    color: var(--app-muted);
+}
+
+.schedule-route-card .schedule-route-category {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    font-size: var(--font-sm);
+    font-weight: 500;
+    color: rgba(196, 209, 232, 0.88);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-route-card .route-card-subtitle .train-num-chip {
+    flex-shrink: 0;
 }
 
 .schedule-route-card-middle {
@@ -847,13 +897,18 @@ transform: translateX(20px);
 }
 
 .schedule-route-card-footer {
-    padding-top: 0;
-    padding-bottom: 6px;
+    padding-top: 8px;
+    padding-bottom: 10px;
+    border-bottom: none;
 }
 
 .schedule-route-card-footer .schedule-date-hint {
-    font-size: 11px;
-    line-height: 1.3;
+    margin: 0;
+    font-size: var(--font-xs);
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--app-muted);
+    letter-spacing: 0.02em;
 }
 
 .schedule-empty {
@@ -872,6 +927,8 @@ transform: translateX(20px);
 .schedule-results-wrap {
     animation: fadeInScale 0.3s ease-out;
     overflow: visible;
+    margin-top: 12px;
+    padding-top: 4px;
     padding-bottom: 20px;
 }
 
@@ -1179,7 +1236,7 @@ body {
     width: 100%;
     box-sizing: border-box;
     margin: 0 !important;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px !important;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 0 0 !important;
     background: #0b0e14 !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -1187,6 +1244,12 @@ body {
         0 16px 30px rgba(0, 0, 0, 0.7),
         0 -20px 0 20px #0b0e14 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+#screen-schedule .route-sticky-header-wrap:has(.schedule-glass-stack.has-route-card) {
+    border-bottom: none !important;
+    box-shadow:
+        0 -20px 0 20px #0b0e14 !important;
 }
 
 #screen-schedule .route-sticky-header-wrap .app-screen-header {
@@ -1338,6 +1401,12 @@ body {
     box-shadow: none !important;
 }
 
+#screen-schedule .route-sticky-header-wrap .app-screen-header {
+    padding-left: 12px;
+    padding-right: 12px;
+    box-sizing: border-box;
+}
+
 #screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
     width: 100% !important;
     max-width: none !important;
@@ -1348,6 +1417,59 @@ body {
     background: transparent !important;
     box-shadow: none !important;
     overflow: visible !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card::before {
+    display: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card.schedule-glass-stack--route-tab .schedule-glass-tabs {
+    margin: 0 12px 8px !important;
+    padding: 4px !important;
+    border-radius: var(--card-radius) !important;
+    border: var(--card-border) !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    box-shadow: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card:not(.schedule-glass-stack--route-tab) {
+    background: #141b27 !important;
+    border: var(--card-border) !important;
+    border-radius: var(--card-radius) !important;
+    overflow: hidden !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card:not(.schedule-glass-stack--route-tab) .schedule-glass-tabs {
+    margin: 0 !important;
+    padding: 4px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(0, 0, 0, 0.22) !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card #scheduleHeader .schedule-route-card {
+    background: #141b27;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack:not(.has-route-card) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack:not(.has-route-card) .schedule-glass-tabs {
+    border-radius: 16px !important;
 }
 
 #screen-schedule .route-sticky-header-wrap .schedule-glass-tabs {

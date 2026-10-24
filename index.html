@@ -92,7 +92,7 @@
     <link rel="stylesheet" href="styles/instructions.css?v=20261018f">
 </head>
 <body class="auth-locked">
-<script src="js/app-config.js?v=4.1.0"></script>
+<script src="js/app-config.js?v=4.1.1"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
 <div id="appUpdateToast" class="appUpdateToast" role="status" aria-live="polite" hidden>
@@ -229,6 +229,55 @@
                 <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
                 <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
             </div>
+            <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
+                <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
+                    <div id="routeShiftCompact" class="route-header-card route-shift-compact--sticky" role="region" aria-label="Параметры смены и поезда">
+                        <div class="route-header-top">
+                            <div class="shift-info">
+                                <button type="button" id="routeShiftCodeBtn" class="badge-shift route-shift-compact__code" aria-label="Сменить шаблон смены">—</button>
+                                <span id="routeShiftWorkLine" class="shift-times route-shift-compact__work">—</span>
+                            </div>
+                            <div class="date-controls">
+                                <span id="routeShiftNormativeLine" class="route-shift-normative-hint" hidden></span>
+                                <label class="date-display" id="datePickerLabel" title="Выбрать дату смены">
+                                    <span id="dateDisplayText" class="shift-date-display"></span>
+                                    <input type="date" id="dateInput" class="shift-date-input" aria-label="Дата смены">
+                                    <svg class="icon-calendar" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </label>
+                                <label class="toggle-night">
+                                    <span class="toggle-label">Ночь</span>
+                                    <input type="checkbox" id="nightMode">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <p id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</p>
+                        <div class="route-header-bottom">
+                            <div class="route-shift-compact__trains route-header-trains-window" aria-label="Поезда смены">
+                                <div id="routeShiftTrainChips" class="trains-scroll route-shift-compact__chips" role="list"></div>
+                                <button type="button" id="routeShiftAddTrain" class="route-shift-compact__add route-header-trains-window__add" title="Добавить поезд" aria-label="Добавить поезд">
+                                    <svg class="route-header-trains-window__add-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                                        <path d="M12 5v14M5 12h14"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="action-buttons">
+                                <button type="button" id="routeShiftToggleChevron" class="btn-icon route-shift-compact__chevron" title="Параметры смены" aria-label="Параметры смены" aria-expanded="false" hidden>
+                                    <svg class="btn-icon__glyph route-shift-compact__chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn-routes route-shift-panel__action" onclick="getRouteData()">Маршруты</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="scheduleHeader" class="schedule-glass-body" style="display:none;" hidden></div>
         </div>
     </div>
@@ -241,62 +290,12 @@
     <div id="scheduleTabsStage" class="schedule-tabs-stage">
 
     <div id="tab-route" class="tab-content active">
-        <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
-            <div class="route-shift-panel">
-                <div class="shift-date-card route-shift-panel__date">
-                    <div class="shift-date-main">
-                        <label class="shift-date-picker" id="datePickerLabel" title="Выбрать дату смены">
-                            <span id="dateDisplayText" class="shift-date-display"></span>
-                            <input type="date" id="dateInput" class="shift-date-input" aria-label="Дата смены">
-                            <span class="shift-date-calendar-icon" aria-hidden="true">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                    <path d="M16 2v4M8 2v4M3 10h18"></path>
-                                </svg>
-                            </span>
-                        </label>
-                    </div>
-                    <div class="shift-date-night">
-                        <span class="shift-date-night-label">Ночь</span>
-                        <label class="night-switch">
-                            <input type="checkbox" id="nightMode">
-                            <span class="night-switch-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="routeShiftCompact" class="route-shift-compact" hidden>
-                    <div class="route-shift-compact__head">
-                        <button type="button" id="routeShiftCodeBtn" class="route-shift-compact__code" aria-label="Сменить шаблон смены">—</button>
-                        <div class="route-shift-compact__meta">
-                            <p id="routeShiftWorkLine" class="route-shift-compact__work">—</p>
-                            <p id="routeShiftLunchLine" class="route-shift-compact__lunch">—</p>
-                        </div>
-                    </div>
-                    <div class="route-shift-compact__trains">
-                        <div id="routeShiftTrainChips" class="route-shift-compact__chips" role="list"></div>
-                        <button type="button" id="routeShiftAddTrain" class="route-shift-compact__add" aria-label="Добавить поезд">+</button>
-                    </div>
-                </div>
-
-                <button type="button" id="routeShiftToggleChevron" class="route-shift-compact__chevron" aria-label="Параметры смены" aria-expanded="false" hidden>
-                    <svg class="route-shift-compact__chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                </button>
-
                 <div id="routeShiftExpanded" class="route-shift-expanded" hidden>
                     <div class="route-shift-expanded__header">
                         <span class="route-shift-expanded__title">Параметры смены</span>
                     </div>
                     <div id="routeShiftEditorMount" class="route-shift-editor-mount"></div>
                 </div>
-
-                <div class="route-shift-panel__submit">
-                    <button type="button" class="action-btn route-shift-panel__action" onclick="getRouteData()">Показать маршруты</button>
-                </div>
-            </div>
-        </div>
 
         <div class="trains-dynamic trains-dynamic--legacy">
             <div id="trainsList" class="trains-list"></div>
@@ -934,6 +933,7 @@
     const LOCAL_SHIFT_TEMPLATES_URL = './data/shift-templates.json';
     const LOCAL_SHIFT_TEMPLATES_STORAGE_KEY = 'cppk_shift_templates_bundle';
     const SHIFT_HOURS_SEEN_UNTIL_KEY = 'cppk_shift_hours_seen_until';
+    const SHIFT_HOURS_SEEN_NORMATIVE_KEY = 'cppk_shift_hours_seen_normative';
     const DEPOT_FIO_KEY = 'depotFio';
     const DEPOT_TAB_KEY = 'depotTab';
     const DEPOT_POSITION_KEY = 'depotPosition';
@@ -941,8 +941,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.1.0';
-    const CLIENT_CACHE_VERSION = 'da_v4_1_0';
+    const APP_RELEASE_VERSION = '4.1.1';
+    const CLIENT_CACHE_VERSION = 'da_v4_1_1';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1305,15 +1305,102 @@
             || document.querySelector('#constructorContent [data-shift-day-panel]');
     }
 
+    function formatMorningRouteCompactSuffix(morningRoute) {
+        const raw = String(morningRoute || '').trim();
+        if (!raw) return '';
+        const upper = raw.toUpperCase();
+        if (/^[УU]/.test(upper)) {
+            const num = upper.replace(/^[УU]\s*/, '').trim();
+            return num ? `${num}У` : 'У';
+        }
+        if (/У$/i.test(raw)) {
+            const num = upper.replace(/У$/i, '').trim();
+            return num ? `${num}У` : 'У';
+        }
+        return formatCalendarShiftLabel(raw).replace(/\s+/g, '');
+    }
+
+    function getEnrichedMorningShiftForNight(nightShift, dateKey) {
+        if (!nightShift || !dateKey) return null;
+        const morningRoute = resolveMorningRouteForNight(nightShift.route, dateKey, nightShift);
+        if (!morningRoute) return null;
+
+        const localMorning = getLocalRoutePresetByRoute(morningRoute);
+        loadGlobalShiftTemplates();
+        const morningTemplate = findShiftTemplate(depotShiftTemplates, morningRoute, dateKey);
+        const base = {
+            route: morningRoute,
+            startTime: localMorning?.startTime || morningTemplate?.startTime || '',
+            endTime: localMorning?.endTime || morningTemplate?.endTime || '',
+            lunch: localMorning?.lunch || morningTemplate?.lunch || '',
+        };
+        return enrichShiftFromDepotTemplate(base, dateKey);
+    }
+
+    function formatRouteShiftCompactCodeLabel(shift, dateKey) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const route = enriched?.route || enriched?.name || '';
+        if (!isNightShiftRoute(route)) {
+            return formatCalendarShiftLabel(route);
+        }
+        const nightPart = formatCalendarShiftLabel(route).replace(/\s+/g, '');
+        const morningRoute = resolveMorningRouteForNight(route, dateKey, enriched);
+        if (!morningRoute) return nightPart;
+        const morningSuffix = formatMorningRouteCompactSuffix(morningRoute);
+        return morningSuffix ? `${nightPart}/${morningSuffix}` : nightPart;
+    }
+
+    function resolveNightShiftLunchRange(shift, dateKey) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        if (!isNightShiftRoute(enriched?.route)) return null;
+
+        const lunchText = formatShiftLunchTimeDisplay(enriched, dateKey);
+        if (lunchText && lunchText !== '—') {
+            const times = (String(lunchText).match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
+            if (times.length >= 2 && times[0] !== times[1]) {
+                return { from: times[0], to: times[1] };
+            }
+        }
+
+        const nightEnd = normalizeShiftTimeToken(enriched?.endTime || '');
+        const morning = getEnrichedMorningShiftForNight(enriched, dateKey);
+        const morningStart = normalizeShiftTimeToken(morning?.startTime || morning?.reportTime || '');
+        if (!nightEnd || !morningStart) return null;
+        if (nightEnd === morningStart) return null;
+        return { from: nightEnd, to: morningStart };
+    }
+
     function formatRouteShiftCompactWorkLine(shift, dateKey) {
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         const start = normalizeShiftTimeToken(enriched?.startTime || enriched?.reportTime || '');
+        if (isNightShiftRoute(enriched?.route)) {
+            const morning = getEnrichedMorningShiftForNight(enriched, dateKey);
+            const end = normalizeShiftTimeToken(
+                morning?.endTime || enriched?.endTime || ''
+            );
+            if (!start && !end) return '—';
+            return `${start || '—'} - ${end || '—'}`;
+        }
         const end = normalizeShiftTimeToken(enriched?.endTime || '');
         if (!start && !end) return '—';
-        return `Явка ${start || '—'} → Сдача ${end || '—'}`;
+        return `${start || '—'} - ${end || '—'}`;
+    }
+
+    function formatRouteShiftCompactWorkLineHtml(shift, dateKey) {
+        const plain = formatRouteShiftCompactWorkLine(shift, dateKey);
+        if (!plain || plain === '—') return '—';
+        const parts = plain.split(/\s*-\s*/);
+        if (parts.length !== 2) return escapeHtml(plain);
+        return `${escapeHtml(parts[0].trim())} <span class="arrow" aria-hidden="true">-</span> ${escapeHtml(parts[1].trim())}`;
     }
 
     function formatRouteShiftCompactLunchLine(shift, dateKey) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        if (isNightShiftRoute(enriched?.route)) {
+            const range = resolveNightShiftLunchRange(enriched, dateKey);
+            if (!range) return '';
+            return `Обед с ${range.from} до ${range.to}`;
+        }
         const lunch = formatShiftLunchTimeDisplay(shift, dateKey);
         if (!lunch || lunch === '—') return '';
         return `Обед ${lunch}`;
@@ -1532,6 +1619,7 @@
         if (isOpen) {
             mountRouteShiftEditor();
         }
+        requestAnimationFrame(updateScheduleStickyOffset);
     }
 
     function renderRouteShiftCompact() {
@@ -1554,15 +1642,20 @@
 
         if (ctx) {
             const enriched = enrichShiftFromDepotTemplate(ctx.shift, ctx.dateKey);
-            const code = formatCalendarShiftLabel(enriched?.route || enriched?.name || '');
+            const code = formatRouteShiftCompactCodeLabel(enriched, ctx.dateKey);
             if (codeBtn) {
                 codeBtn.textContent = code || 'Смена';
-                codeBtn.className = 'route-shift-compact__code';
+                codeBtn.className = 'badge-shift route-shift-compact__code';
+                if (String(code).includes('/')) {
+                    codeBtn.classList.add('route-shift-compact__code--night-pair');
+                }
                 getShiftColorClass(enriched).split(/\s+/).filter(Boolean).forEach(cls => {
                     codeBtn.classList.add(cls);
                 });
             }
-            if (workLine) workLine.textContent = formatRouteShiftCompactWorkLine(enriched, ctx.dateKey);
+            if (workLine) {
+                workLine.innerHTML = formatRouteShiftCompactWorkLineHtml(enriched, ctx.dateKey);
+            }
             if (lunchLine) {
                 const lunchText = formatRouteShiftCompactLunchLine(enriched, ctx.dateKey);
                 lunchLine.textContent = lunchText;
@@ -1571,24 +1664,28 @@
         } else {
             if (codeBtn) {
                 codeBtn.textContent = 'Смена';
-                codeBtn.className = 'route-shift-compact__code';
+                codeBtn.className = 'badge-shift route-shift-compact__code';
             }
             if (workLine) workLine.textContent = trains.length ? 'Поезда смены' : 'Добавьте поезда';
             if (lunchLine) lunchLine.hidden = true;
         }
 
         chipsEl.innerHTML = '';
+        const chipsTrack = document.createElement('div');
+        chipsTrack.className = 'trains-scroll__track';
+        chipsTrack.setAttribute('role', 'presentation');
         slotValues.forEach((num, slotIndex) => {
             const trimmed = String(num || '').trim();
             if (!trimmed) return;
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'route-shift-compact__chip';
+            chip.className = 'train-chip route-shift-compact__chip';
             chip.dataset.index = String(slotIndex);
             chip.setAttribute('role', 'listitem');
             chip.textContent = trimmed;
-            chipsEl.appendChild(chip);
+            chipsTrack.appendChild(chip);
         });
+        chipsEl.appendChild(chipsTrack);
 
         if (addBtn) {
             const atMax = slotValues.length >= MAX_TRAIN_SLOTS;
@@ -1599,6 +1696,44 @@
         if (legacy && !document.getElementById('routeShiftCompactWrap')?.classList.contains('is-expanded')) {
             legacy.hidden = true;
         }
+        syncRouteShiftChipHighlight();
+        syncRouteShiftNormativeLine();
+        requestAnimationFrame(updateScheduleStickyOffset);
+    }
+
+    function syncRouteShiftNormativeLine() {
+        const el = document.getElementById('routeShiftNormativeLine');
+        if (!el) return;
+        const dateKey = getRouteTabDateKey();
+        applyNormativeForDateKey(dateKey);
+        const label = formatShiftHoursSourceLabel(dateKey);
+        if (!label || label === 'Часы смен не загружены') {
+            el.hidden = true;
+            el.textContent = '';
+            el.removeAttribute('title');
+            return;
+        }
+        el.hidden = false;
+        el.textContent = label;
+        const summary = localShiftTemplatesMeta?.activeNormativeSummary;
+        el.title = summary && !label.includes(summary) ? `${label} · ${summary}` : label;
+    }
+
+    function syncRouteShiftChipHighlight() {
+        const chipsEl = document.getElementById('routeShiftTrainChips');
+        if (!chipsEl) return;
+        chipsEl.querySelectorAll('.route-shift-compact__chip').forEach(chip => {
+            chip.classList.remove('active');
+        });
+        const grid = document.getElementById('routeGrid');
+        if (!grid) return;
+        const activeCard = grid.querySelector(
+            '.route-card.route-card--phase-green, .route-card.route-card--phase-yellow, .route-card.route-card--phase-red, .route-card.route-card--phase-transit'
+        );
+        const idx = activeCard?.dataset?.trainIndex;
+        if (idx == null || idx === '') return;
+        const chip = chipsEl.querySelector(`.route-shift-compact__chip[data-index="${idx}"]`);
+        chip?.classList.add('active');
     }
 
     let routeTrainChipFocusIndex = -1;
@@ -1788,6 +1923,58 @@
         setRouteShiftExpanded(Boolean(expanded?.hidden));
     }
 
+    function bindRouteShiftTrainChipsScroll(el) {
+        if (!el || el.dataset.routeChipsScrollBound === '1') return;
+        el.dataset.routeChipsScrollBound = '1';
+
+        const maxScrollLeft = () => Math.max(0, el.scrollWidth - el.clientWidth);
+
+        el.addEventListener('wheel', (e) => {
+            const maxScroll = maxScrollLeft();
+            if (maxScroll <= 0) return;
+            const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            if (!delta) return;
+            e.preventDefault();
+            e.stopPropagation();
+            el.scrollLeft = Math.max(0, Math.min(maxScroll, el.scrollLeft + delta));
+        }, { passive: false, capture: true });
+
+        let drag = null;
+        el.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (maxScrollLeft() <= 0) return;
+            drag = { x: e.clientX, scrollLeft: el.scrollLeft, moved: false };
+        });
+        el.addEventListener('mousemove', (e) => {
+            if (!drag) return;
+            const dx = e.clientX - drag.x;
+            if (Math.abs(dx) > 2) {
+                drag.moved = true;
+                el.classList.add('is-drag-scroll');
+            }
+            if (!drag.moved) return;
+            e.preventDefault();
+            const maxScroll = maxScrollLeft();
+            el.scrollLeft = Math.max(0, Math.min(maxScroll, drag.scrollLeft - dx));
+        });
+        const endDrag = () => {
+            if (!drag) return;
+            const wasDrag = drag.moved;
+            drag = null;
+            el.classList.remove('is-drag-scroll');
+            if (wasDrag) el.dataset.suppressChipClick = '1';
+        };
+        el.addEventListener('mouseup', endDrag);
+        el.addEventListener('mouseleave', endDrag);
+        el.addEventListener('click', (e) => {
+            if (el.dataset.suppressChipClick === '1') {
+                e.preventDefault();
+                e.stopPropagation();
+                delete el.dataset.suppressChipClick;
+            }
+        }, true);
+    }
+
     function initRouteShiftCompact() {
         if (routeShiftCompactListenersBound) return;
         routeShiftCompactListenersBound = true;
@@ -1799,7 +1986,7 @@
         });
 
         document.getElementById('routeShiftCompact')?.addEventListener('click', (e) => {
-            const chip = e.target.closest('.route-shift-compact__chip');
+            const chip = e.target.closest('.train-chip');
             if (chip?.dataset.index != null) {
                 e.stopPropagation();
                 openRouteTrainChipPopover(Number(chip.dataset.index));
@@ -1810,6 +1997,8 @@
             e.stopPropagation();
             openRouteTrainChipPopover(null);
         });
+
+        bindRouteShiftTrainChipsScroll(document.getElementById('routeShiftTrainChips'));
 
         document.getElementById('trainsList')?.addEventListener('input', (e) => {
             if (!e.target.classList.contains('train-input')) return;
@@ -2979,8 +3168,14 @@
         const grid = document.getElementById('routeGrid');
         const nowDate = getScheduleLiveDate();
         const selectedDate = getSelectedDate();
-        if (!grid || !nowDate || !selectedDate || !isScheduleContextActive(nowDate, selectedDate)) return;
-        if (!Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) return;
+        if (!grid || !nowDate || !selectedDate || !isScheduleContextActive(nowDate, selectedDate)) {
+            syncRouteShiftChipHighlight();
+            return;
+        }
+        if (!Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) {
+            syncRouteShiftChipHighlight();
+            return;
+        }
 
         let transitTrain = null;
         let upcomingTrain = null;
@@ -3008,7 +3203,8 @@
         }
 
         if (turnaroundTrain && turnaroundPhase) {
-            const card = grid.querySelector(`.route-card[data-train-index="${turnaroundTrain.index}"]`);
+            const nextIndex = (turnaroundTrain.index ?? 0) + 1;
+            const card = grid.querySelector(`.route-card[data-train-index="${nextIndex}"]`);
             if (card) {
                 const classMap = {
                     green: 'route-card--phase-green',
@@ -3017,6 +3213,7 @@
                 };
                 card.classList.add(classMap[turnaroundPhase]);
             }
+            syncRouteShiftChipHighlight();
             return;
         }
 
@@ -3040,10 +3237,16 @@
 
         const activeTrain = transitTrain || upcomingTrain;
         const activePhase = transitTrain ? 'transit' : upcomingPhase;
-        if (!activeTrain || !activePhase) return;
+        if (!activeTrain || !activePhase) {
+            syncRouteShiftChipHighlight();
+            return;
+        }
 
         const card = grid.querySelector(`.route-card[data-train-index="${activeTrain.index}"]`);
-        if (!card) return;
+        if (!card) {
+            syncRouteShiftChipHighlight();
+            return;
+        }
 
         const classMap = {
             green: 'route-card--phase-green',
@@ -3052,6 +3255,7 @@
             transit: 'route-card--phase-transit'
         };
         card.classList.add(classMap[activePhase]);
+        syncRouteShiftChipHighlight();
     }
 
     function resetRouteMidnightRefreshKey() {
@@ -7771,10 +7975,10 @@
             ? ' has-station-notes'
             : '';
         const partialClass = train.partial ? ' route-card--partial' : '';
-        const waitBarHtml = `<div class="route-turnaround-progress" data-wait-bar="${i}" hidden aria-hidden="true"><div class="route-turnaround-progress__fill"></div></div>`;
 
         return `
                     <div class="route-card clickable${offDayClass}${stationNotesClass}${partialClass}" data-train-index="${i}" data-uid="${train.uid || ''}" data-number="${train.number}" onclick="viewTrainSchedule(this.dataset.uid, this.dataset.number)">
+                        <span class="route-card__phase-fill" data-route-phase-fill="${i}" hidden aria-hidden="true"></span>
                         <div class="route-card-section route-card-top">
                             <div class="route-card-title">${train.title}</div>
                             <div class="route-card-subtitle">
@@ -7793,9 +7997,8 @@
                         <div class="route-card-section route-card-bottom">
                             ${durationBlockHtml}
                             <span class="route-mileage">${mileageHtml}</span>
-                            <span class="route-turnaround-label" data-train-index="${i}">${turnaroundHtml}</span>
+                            <span class="route-turnaround-label" data-train-index="${i}" data-static="${escapeAttr(turnaroundHtml)}">${turnaroundHtml}</span>
                         </div>
-                        ${waitBarHtml}
                     </div>
                 `;
     }
@@ -8172,7 +8375,7 @@
                     <div class="route-card-title">${escapeHtml(routeTitle)}</div>
                     <div class="route-card-subtitle">
                         ${renderTrainNumChip(trainNumber, true)}
-                        <span>${escapeHtml(stopsLabel)}</span>
+                        <span class="schedule-route-category">${escapeHtml(stopsLabel)}</span>
                     </div>
                 </div>
                 <div class="route-card-section schedule-route-card-footer">
@@ -10853,9 +11056,9 @@
 
     function shiftBundleCacheStamp(data) {
         return [
-            computeShiftBundleLoadedUntilIso(data) || '',
+            data?.meta?.activeNormativeId || data?.version || '',
             data?.meta?.lastWriteAt || data?.generatedAt || '',
-            data?.version || ''
+            computeShiftBundleLoadedUntilIso(data) || ''
         ].join('|');
     }
 
@@ -10884,12 +11087,15 @@
         const valid = candidates.filter(item => item?.normatives?.length);
         if (!valid.length) return null;
         return valid.sort((a, b) => {
-            const au = computeShiftBundleLoadedUntilIso(a) || '';
-            const bu = computeShiftBundleLoadedUntilIso(b) || '';
-            if (au !== bu) return au < bu ? 1 : -1;
+            const av = a?.meta?.activeNormativeId || a?.version || '';
+            const bv = b?.meta?.activeNormativeId || b?.version || '';
+            if (av !== bv) return av < bv ? 1 : -1;
             const as = a?.meta?.lastWriteAt || a?.generatedAt || '';
             const bs = b?.meta?.lastWriteAt || b?.generatedAt || '';
-            return as < bs ? 1 : -1;
+            if (as !== bs) return as < bs ? 1 : -1;
+            const au = computeShiftBundleLoadedUntilIso(a) || '';
+            const bu = computeShiftBundleLoadedUntilIso(b) || '';
+            return au < bu ? 1 : -1;
         })[0];
     }
 
@@ -10902,12 +11108,17 @@
     function buildShiftHoursUpdateHighlights(meta) {
         const untilLabel = meta?.loadedUntilLabel
             || formatIsoToRuDateLabel(meta?.loadedUntilIso || getShiftDataLoadedUntilIso());
-        const bullets = [
-            `Загружено разовых дат до ${untilLabel}.`,
-            'На новых днях в календаре должна быть подпись «Разовая смена · дата».',
-            'Проверьте ночные Н58/Н59 и утренние 59У/60У, если выходите на эти маршруты.',
+        const bullets = [];
+        if (meta?.activeNormativeSummary) {
+            bullets.push(`Норматив: ${meta.activeNormativeSummary}.`);
+        } else if (meta?.activeNormativeFrom) {
+            bullets.push(`Норматив с ${formatIsoToRuDateLabel(meta.activeNormativeFrom)}.`);
+        }
+        bullets.push(
+            `Разовые даты в базе до ${untilLabel}.`,
+            'На вкладке «Маршрут» под датой — подпись, какой норматив действует.',
             'В конструкторе смены откройте день и убедитесь, что маршрут и поезда подтянулись.',
-        ];
+        );
         if (meta?.lastUploadLabel) {
             bullets.splice(1, 0, `Последняя заливка: ${meta.lastUploadLabel}.`);
         }
@@ -10921,7 +11132,12 @@
         if (!overlay || !listEl) return;
         const untilLabel = meta?.loadedUntilLabel
             || formatIsoToRuDateLabel(meta?.loadedUntilIso || getShiftDataLoadedUntilIso());
-        if (untilEl) untilEl.textContent = `Актуально до ${untilLabel}`;
+        if (untilEl) {
+            untilEl.textContent = meta?.activeNormativeSummary
+                || (meta?.activeNormativeFrom
+                    ? `Норматив с ${formatIsoToRuDateLabel(meta.activeNormativeFrom)}`
+                    : `Актуально до ${untilLabel}`);
+        }
         listEl.innerHTML = buildShiftHoursUpdateHighlights(meta)
             .map(item => `<li>${escapeHtml(item)}</li>`)
             .join('');
@@ -10937,6 +11153,12 @@
     }
 
     function maybeShowShiftHoursUpdateOverlay(meta) {
+        const normId = String(meta?.activeNormativeId || meta?.version || '').trim();
+        const seenNorm = String(localStorage.getItem(SHIFT_HOURS_SEEN_NORMATIVE_KEY) || '').trim();
+        if (normId && normId !== seenNorm) {
+            showShiftHoursUpdateOverlay(meta);
+            return;
+        }
         const untilIso = meta?.loadedUntilIso || computeShiftBundleLoadedUntilIso({ meta, normatives: localShiftNormatives });
         if (!untilIso) return;
         const seenUntil = String(localStorage.getItem(SHIFT_HOURS_SEEN_UNTIL_KEY) || '').trim();
@@ -10945,6 +11167,8 @@
     }
 
     function markShiftHoursUpdateSeen(untilIso) {
+        const normId = String(localShiftTemplatesMeta?.activeNormativeId || localShiftTemplatesMeta?.version || '').trim();
+        if (normId) localStorage.setItem(SHIFT_HOURS_SEEN_NORMATIVE_KEY, normId);
         const iso = untilIso || getShiftDataLoadedUntilIso();
         if (iso) localStorage.setItem(SHIFT_HOURS_SEEN_UNTIL_KEY, iso);
         hideShiftHoursUpdateOverlay();
@@ -10986,7 +11210,11 @@
                 if (!picked) throw new Error('shift-templates unavailable');
 
                 const cachedStamp = cachedBundle ? shiftBundleCacheStamp({
-                    meta: { loadedUntilIso: cachedBundle.loadedUntilIso, lastWriteAt: cachedBundle.lastWriteAt },
+                    meta: {
+                        loadedUntilIso: cachedBundle.loadedUntilIso,
+                        lastWriteAt: cachedBundle.lastWriteAt,
+                        activeNormativeId: cachedBundle.activeNormativeId,
+                    },
                     version: cachedBundle.version,
                 }) : '';
                 const newStamp = shiftBundleCacheStamp(picked);
@@ -11005,6 +11233,8 @@
                 persistReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY, {
                     normatives: localShiftNormatives,
                     version: picked.version || null,
+                    activeNormativeId: localShiftTemplatesMeta?.activeNormativeId || null,
+                    activeNormativeSummary: localShiftTemplatesMeta?.activeNormativeSummary || null,
                     loadedUntilIso: localShiftTemplatesMeta?.loadedUntilIso || computeShiftBundleLoadedUntilIso(picked),
                     loadedUntilLabel: localShiftTemplatesMeta?.loadedUntilLabel || null,
                     lastWriteAt: localShiftTemplatesMeta?.lastWriteAt || picked.generatedAt || null,
@@ -17704,10 +17934,17 @@
         const hasContent = header && header.innerHTML.trim().length > 0;
         const isRouteTab = activeTab === 'tab-route';
         const showRouteCard = hasContent && !isRouteTab;
+        const showShiftSticky = isRouteTab;
         const clockEl = document.getElementById('scheduleLiveClock');
+        const shiftSticky = document.getElementById('routeShiftStickyShell');
 
-        stack.classList.toggle('has-route-card', showRouteCard);
-        stack.classList.toggle('schedule-glass-stack--route-tab', false);
+        stack.classList.toggle('has-route-card', showRouteCard || showShiftSticky);
+        stack.classList.toggle('schedule-glass-stack--route-tab', showShiftSticky);
+
+        if (shiftSticky) {
+            shiftSticky.hidden = !showShiftSticky;
+            shiftSticky.style.display = showShiftSticky ? 'block' : 'none';
+        }
 
         if (header && hasContent) {
             header.style.display = showRouteCard ? 'block' : 'none';
@@ -17729,8 +17966,11 @@
     function updateScheduleStickyOffset() {
         const stack = document.getElementById('scheduleGlassStack');
         const tabSchedule = document.getElementById('tab-schedule');
-        if (!stack || !tabSchedule) return;
-        tabSchedule.style.setProperty('--schedule-glass-stack-height', `${stack.offsetHeight}px`);
+        const tabRoute = document.getElementById('tab-route');
+        if (!stack) return;
+        const h = `${stack.offsetHeight}px`;
+        if (tabSchedule) tabSchedule.style.setProperty('--schedule-glass-stack-height', h);
+        if (tabRoute) tabRoute.style.setProperty('--schedule-glass-stack-height', h);
     }
 
     function applyScheduleTextFit() {

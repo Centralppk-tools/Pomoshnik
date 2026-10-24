@@ -54,6 +54,10 @@
     box-sizing: border-box;
 }
 
+#stationsList > .station-node:first-child {
+    margin-top: 4px;
+}
+
 .station-rail {
     position: relative;
     flex: 0 0 calc(var(--axis-x) + 14px);

@@ -89,7 +89,7 @@
 }
 
 .route-card.route-card--phase-green::before {
-    background: rgba(34, 197, 94, 0.92);
+    background: rgba(34, 197, 94, 0.16);
 }
 
 .route-card.route-card--phase-yellow {
@@ -98,7 +98,7 @@
 }
 
 .route-card.route-card--phase-yellow::before {
-    background: rgba(234, 179, 8, 0.92);
+    background: rgba(234, 179, 8, 0.16);
 }
 
 .route-card.route-card--phase-red {
@@ -107,7 +107,7 @@
 }
 
 .route-card.route-card--phase-red::before {
-    background: rgba(248, 113, 113, 0.92);
+    background: rgba(248, 113, 113, 0.16);
 }
 
 .route-card.route-card--phase-transit {
@@ -116,7 +116,58 @@
 }
 
 .route-card.route-card--phase-transit::before {
-    background: rgba(96, 165, 250, 0.88);
+    background: rgba(96, 165, 250, 0.16);
+}
+
+.route-card__phase-fill {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 2;
+    width: 6px;
+    height: 0%;
+    border-radius: var(--card-radius) 0 0 var(--card-radius);
+    pointer-events: none;
+    transition: height 0.35s linear;
+}
+
+.route-card--phase-green .route-card__phase-fill {
+    background: rgba(34, 197, 94, 0.95);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+}
+
+.route-card--phase-yellow .route-card__phase-fill {
+    background: rgba(234, 179, 8, 0.95);
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+}
+
+.route-card--phase-red .route-card__phase-fill {
+    background: rgba(248, 113, 113, 0.98);
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
+}
+
+.route-card--phase-transit .route-card__phase-fill {
+    background: rgba(96, 165, 250, 0.95);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.35);
+}
+
+@keyframes route-card-phase-breathe {
+    0%,
+    100% {
+        opacity: 0.45;
+        filter: brightness(0.9);
+    }
+    50% {
+        opacity: 1;
+        filter: brightness(1.42);
+    }
+}
+
+.route-card--phase-green .route-card__phase-fill--breath,
+.route-card--phase-yellow .route-card__phase-fill--breath,
+.route-card--phase-red .route-card__phase-fill--breath,
+.route-card--phase-transit .route-card__phase-fill--breath {
+    animation: route-card-phase-breathe 1.75s ease-in-out infinite;
 }
 
 .route-card.route-card--phase-transit .route-time {
@@ -237,34 +288,58 @@
     color: #8393af;
 }
 
-.route-turnaround-progress {
-    margin: 6px 0 2px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    overflow: hidden;
+.route-turnaround-label--live {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    color: #22c55e;
+    font-weight: 600;
+    text-shadow: none;
 }
 
-.route-turnaround-progress__fill {
-    height: 100%;
-    width: 0%;
-    border-radius: inherit;
-    transition: width 0.35s linear;
+.route-turnaround-label--live .route-turnaround-label__time {
+    color: #22c55e;
 }
 
-.route-turnaround-progress--green .route-turnaround-progress__fill {
-    background: linear-gradient(90deg, rgba(34, 197, 94, 0.55), rgba(34, 197, 94, 0.95));
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
+.route-turnaround-clock {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: #22c55e;
+    line-height: 0;
 }
 
-.route-turnaround-progress--yellow .route-turnaround-progress__fill {
-    background: linear-gradient(90deg, rgba(234, 179, 8, 0.55), rgba(234, 179, 8, 0.95));
-    box-shadow: 0 0 8px rgba(234, 179, 8, 0.35);
+.route-turnaround-clock__dial {
+    position: relative;
+    display: block;
+    width: 14px;
+    height: 14px;
+    border: 1.35px solid currentColor;
+    border-radius: 50%;
+    box-sizing: border-box;
 }
 
-.route-turnaround-progress--red .route-turnaround-progress__fill {
-    background: linear-gradient(90deg, rgba(248, 113, 113, 0.55), rgba(248, 113, 113, 0.98));
-    box-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
+.route-turnaround-clock__dial::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    width: 1.35px;
+    height: 4.5px;
+    margin-left: -0.675px;
+    background: currentColor;
+    border-radius: 1px;
+    transform-origin: 50% 100%;
+    animation: route-turnaround-clock-spin 5s linear infinite;
+}
+
+@keyframes route-turnaround-clock-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Время отправки и прибытия (22:15 - 06:45) */
@@ -1287,6 +1362,10 @@
     margin-bottom: 10px;
 }
 
+#screen-schedule .route-shift-sticky-shell .route-shift-compact-wrap {
+    margin-bottom: 0;
+}
+
 .route-shift-panel {
     width: 100%;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1295,6 +1374,483 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     overflow: hidden;
     transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Липкая панель маршрута — route-header-card (2 строки) */
+#screen-schedule .route-header-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    background-color: #17212b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+#screen-schedule .route-header-card .route-shift-compact__lunch {
+    display: none !important;
+}
+
+#screen-schedule .route-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+}
+
+#screen-schedule .shift-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#screen-schedule .badge-shift {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    height: 22px;
+    background-color: #2b3947;
+    color: #e4ecf2;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+
+#screen-schedule .badge-shift.has-day-shift,
+#screen-schedule .badge-shift.has-night-shift,
+#screen-schedule .badge-shift.has-study-shift {
+    background-color: #3a4a5c;
+}
+
+#screen-schedule .shift-times {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+#screen-schedule .shift-times .arrow {
+    color: #6c7e8e;
+    margin: 0 2px;
+}
+
+#screen-schedule .date-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 12px;
+    flex-shrink: 0;
+    max-width: 52%;
+}
+
+#screen-schedule .route-shift-normative-hint {
+    display: block;
+    width: 100%;
+    margin: 0;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #6c7e8e;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#screen-schedule .date-display {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #8292a1;
+    cursor: pointer;
+    margin: 0;
+}
+
+#screen-schedule .date-display .shift-date-display {
+    color: inherit;
+    font-size: inherit;
+    font-weight: 500;
+    pointer-events: none;
+}
+
+#screen-schedule .date-display .shift-date-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    cursor: pointer;
+}
+
+#screen-schedule .toggle-night {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+}
+
+#screen-schedule .toggle-label {
+    font-size: 11px;
+    color: #6c7e8e;
+}
+
+#screen-schedule .toggle-night input {
+    display: none;
+}
+
+#screen-schedule .toggle-night .slider {
+    position: relative;
+    width: 28px;
+    height: 16px;
+    background-color: #242f3d;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    transition: 0.2s;
+    flex-shrink: 0;
+}
+
+#screen-schedule .toggle-night .slider::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #8292a1;
+    transition: 0.2s;
+}
+
+#screen-schedule .toggle-night input:checked + .slider {
+    background-color: #00b488;
+}
+
+#screen-schedule .toggle-night input:checked + .slider::after {
+    transform: translateX(12px);
+    background-color: #ffffff;
+}
+
+#screen-schedule .route-header-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#screen-schedule .route-header-card .route-header-trains-window {
+    position: relative;
+    display: flex;
+    align-items: center;
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    height: 40px;
+    padding: 4px 40px 4px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(6, 199, 133, 0.32);
+    background: rgba(2, 76, 78, 0.2);
+    box-shadow: inset 0 1px 0 rgba(6, 199, 133, 0.1);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#screen-schedule .route-header-card .route-header-trains-window:has(.route-header-trains-window__add[hidden]) {
+    padding-right: 8px;
+}
+
+#screen-schedule .route-header-card #routeShiftTrainChips.trains-scroll {
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    scroll-behavior: smooth;
+    cursor: grab;
+    contain: inline-size;
+}
+
+#screen-schedule .route-header-card #routeShiftTrainChips.trains-scroll.is-drag-scroll {
+    cursor: grabbing;
+    user-select: none;
+}
+
+#screen-schedule .route-header-card #routeShiftTrainChips.trains-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+#screen-schedule .route-header-card .trains-scroll__track {
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 5px;
+    width: max-content;
+    min-width: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+#screen-schedule .route-header-card .route-shift-compact__chip.train-chip {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(180, 245, 220, 0.38);
+    background: var(--brand-grad-vertical);
+    color: #eefdf6;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+    transition: filter 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#screen-schedule .route-header-card .route-shift-compact__chip.train-chip:hover {
+    filter: brightness(1.06);
+    border-color: rgba(200, 255, 230, 0.55);
+}
+
+#screen-schedule .route-header-card .route-shift-compact__chip.train-chip.active {
+    border-color: rgba(255, 255, 255, 0.62);
+    box-shadow: 0 0 0 1px rgba(6, 199, 133, 0.45), 0 2px 6px rgba(0, 0, 0, 0.28);
+    filter: brightness(1.1);
+}
+
+#screen-schedule .route-header-card .route-header-trains-window__add {
+    position: absolute !important;
+    right: 5px;
+    top: 50%;
+    z-index: 2;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    background: var(--brand-grad) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(6, 202, 134, 0.3) !important;
+    transform: translateY(-50%) !important;
+    cursor: pointer;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+#screen-schedule .route-header-card .route-header-trains-window__add:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 3px 10px rgba(6, 202, 134, 0.38) !important;
+    background: var(--brand-grad) !important;
+    color: #ffffff !important;
+}
+
+#screen-schedule .route-header-card .route-header-trains-window__add:disabled {
+    opacity: 0.45;
+    cursor: default;
+    filter: none;
+}
+
+#screen-schedule .route-header-card .route-header-trains-window__add-icon {
+    display: block;
+    pointer-events: none;
+}
+
+#screen-schedule .trains-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scroll-behavior: smooth;
+}
+
+#screen-schedule .trains-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+#screen-schedule .train-chip {
+    flex-shrink: 0;
+    height: 28px;
+    padding: 0 10px;
+    background-color: #242f3d;
+    color: #d1dde6;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+#screen-schedule .train-chip.active {
+    background-color: #00b488;
+    color: #ffffff;
+    border-color: #00b488;
+}
+
+#screen-schedule .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    grid-column: 2;
+}
+
+#screen-schedule .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+    background-color: #242f3d;
+    color: #d1dde6;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    outline: none;
+    font-family: inherit;
+    padding: 0;
+    margin: 0;
+    position: static;
+    transform: none;
+    box-shadow: none;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#screen-schedule .route-header-card .btn-icon__glyph {
+    display: block;
+    margin: auto;
+    pointer-events: none;
+}
+
+#screen-schedule .route-header-card .route-shift-compact__chevron {
+    position: static !important;
+    right: auto !important;
+    top: auto !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background-color: #242f3d !important;
+    color: #d1dde6 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    filter: none !important;
+}
+
+#screen-schedule .route-header-card .route-shift-compact__chevron:hover {
+    background-color: #2f3d4d !important;
+    color: #eef4f8 !important;
+    filter: none !important;
+    box-shadow: none !important;
+}
+
+#screen-schedule .btn-routes {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    background-color: #242f3d;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+#screen-schedule .route-header-card .btn-routes.route-shift-panel__action {
+    display: inline-flex;
+    width: auto;
+    min-height: 28px;
+    height: 28px;
+    margin: 0;
+    border-radius: 8px;
+}
+
+#screen-schedule .route-header-card .btn-icon:active {
+    transform: scale(0.96);
+}
+
+#screen-schedule .btn-routes:active,
+#screen-schedule .train-chip:active {
+    transform: scale(0.96);
+}
+
+#screen-schedule .route-shift-compact-wrap.is-expanded .route-shift-compact__chevron svg {
+    transform: rotate(180deg);
+    transition: transform 0.22s var(--app-ease);
 }
 
 .route-shift-panel .shift-date-card {
@@ -1411,6 +1967,13 @@
     border-color: rgba(100, 116, 139, 0.55);
     background: rgba(71, 85, 105, 0.28);
     box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.14);
+}
+
+.route-shift-compact__code.route-shift-compact__code--night-pair {
+    font-size: 13px;
+    padding: 8px 10px;
+    letter-spacing: 0;
+    white-space: nowrap;
 }
 
 .route-shift-compact__code.has-study-shift {

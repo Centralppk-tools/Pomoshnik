@@ -157,9 +157,19 @@
     }
 
     #screen-schedule .route-sticky-header-wrap {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    #screen-schedule .route-sticky-header-wrap .app-screen-header {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    #screen-schedule .route-sticky-header-wrap .schedule-glass-stack:not(.has-route-card) {
         padding-left: 8px !important;
         padding-right: 8px !important;
-        padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
     }
 
     #screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
@@ -663,7 +673,7 @@
     }
 
     .schedule-route-card-footer .schedule-date-hint {
-        font-size: 10px;
+        font-size: 11px;
     }
 
     .schedule-route-card .route-card-title {
@@ -742,47 +752,51 @@
         padding: 8px 12px 10px;
     }
 
-    .route-shift-compact {
+    .route-shift-compact:not(.route-shift-compact--sticky) {
         padding: 8px 10px 10px;
         gap: 6px;
     }
 
-    .route-shift-compact__code {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__code {
         min-width: 48px;
         padding: 7px 10px;
         font-size: var(--font-sm);
     }
 
-    .route-shift-compact__work {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__work {
         font-size: var(--font-sm);
     }
 
-    .route-shift-compact__lunch {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__lunch {
         font-size: 11px;
     }
 
-    .route-shift-compact__chevron {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__chevron {
         min-height: 24px;
         padding: 0 0 4px;
     }
 
-    .route-shift-compact__trains {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__trains {
         min-height: 36px;
         height: 36px;
         padding: 4px 42px 4px 8px;
     }
 
-    .route-shift-compact__chip {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__chip {
         min-height: 24px;
         padding: 2px 8px;
         font-size: 11px;
     }
 
-    .route-shift-compact__add {
+    .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__add {
         width: 28px;
         height: 28px;
         font-size: 18px;
         right: 5px;
+    }
+
+    #screen-schedule .shift-times {
+        font-size: 12px;
     }
 
     .route-shift-expanded {
