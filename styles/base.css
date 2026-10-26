@@ -1429,13 +1429,38 @@ body {
     display: none !important;
 }
 
+/* Вкладка «Маршрут»: табы + панель смены — одна карточка, без «разъезда» */
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card.schedule-glass-stack--route-tab {
+    margin: 0 12px 10px !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    background: #111827 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+    box-sizing: border-box !important;
+}
+
 #screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card.schedule-glass-stack--route-tab .schedule-glass-tabs {
-    margin: 0 12px 8px !important;
+    margin: 0 !important;
     padding: 4px !important;
-    border-radius: var(--card-radius) !important;
-    border: var(--card-border) !important;
-    background: rgba(0, 0, 0, 0.35) !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(0, 0, 0, 0.22) !important;
     box-shadow: none !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack--route-tab .route-shift-sticky-shell .route-shift-compact-wrap {
+    padding: 0 !important;
+}
+
+#screen-schedule .route-sticky-header-wrap .schedule-glass-stack--route-tab .route-header-card.header-card {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
 }
 
 #screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card:not(.schedule-glass-stack--route-tab) {
@@ -1513,7 +1538,7 @@ body {
     border: none !important;
     box-shadow: none !important;
     margin-top: 0 !important;
-    padding: 0 12px !important;
+    padding: 0 !important;
     overflow: visible !important;
 }
 

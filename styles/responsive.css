@@ -172,9 +172,48 @@
         padding-right: 8px !important;
     }
 
+    #screen-schedule .route-sticky-header-wrap .schedule-glass-stack.has-route-card.schedule-glass-stack--route-tab {
+        margin-left: 8px !important;
+        margin-right: 8px !important;
+        width: calc(100% - 16px) !important;
+        max-width: none !important;
+    }
+
     #screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
         width: 100% !important;
         margin: 0 !important;
+    }
+
+    #screen-schedule .route-header-card .header-top-row {
+        flex-wrap: wrap;
+        align-items: center;
+        row-gap: 6px;
+    }
+
+    #screen-schedule .route-header-card .shift-meta {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #screen-schedule .route-header-card .date-controls {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
+
+    #screen-schedule .route-header-card .header-bottom-row {
+        flex-wrap: nowrap;
+        align-items: stretch;
+    }
+
+    #screen-schedule .screen-card--schedule {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    #screen-schedule {
+        overflow-x: clip;
+        max-width: 100%;
     }
 
     #screen-schedule .phone-screen,
