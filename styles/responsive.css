@@ -777,15 +777,16 @@
     }
 
     .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__trains {
-        min-height: 36px;
-        height: 36px;
-        padding: 4px 42px 4px 8px;
+        min-height: 28px;
+        height: 28px;
+        padding: 0 34px 0 6px;
     }
 
     .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__chip {
-        min-height: 24px;
-        padding: 2px 8px;
-        font-size: 11px;
+        min-height: 20px;
+        height: 20px;
+        padding: 0 6px;
+        font-size: 10px;
     }
 
     .route-shift-compact:not(.route-shift-compact--sticky) .route-shift-compact__add {
@@ -795,8 +796,24 @@
         right: 5px;
     }
 
+    #screen-schedule .route-header-card.header-card {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    #screen-schedule .header-top-row {
+        gap: 8px;
+    }
+
+    #screen-schedule .shift-time,
     #screen-schedule .shift-times {
-        font-size: 12px;
+        font-size: 13px;
+    }
+
+    #screen-schedule .toggle-btn,
+    #screen-schedule .shift-mode-segment__btn {
+        padding: 0 8px;
+        font-size: 10px;
     }
 
     .route-shift-expanded {

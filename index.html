@@ -231,14 +231,15 @@
             </div>
             <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
                 <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
-                    <div id="routeShiftCompact" class="route-header-card route-shift-compact--sticky" role="region" aria-label="Параметры смены и поезда">
-                        <div class="route-header-top">
-                            <div class="shift-info">
-                                <button type="button" id="routeShiftCodeBtn" class="badge-shift route-shift-compact__code" aria-label="Сменить шаблон смены">—</button>
-                                <span id="routeShiftWorkLine" class="shift-times route-shift-compact__work">—</span>
+                    <div id="routeShiftCompact" class="route-header-card header-card route-shift-compact--sticky" role="region" aria-label="Параметры смены и поезда">
+                        <p id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</p>
+                        <div class="header-top-row">
+                            <div class="shift-meta shift-info">
+                                <button type="button" id="routeShiftCodeBtn" class="route-badge badge-shift route-shift-compact__code" aria-label="Сменить шаблон смены">—</button>
+                                <span id="routeShiftWorkLine" class="shift-time shift-times route-shift-compact__work">—</span>
                             </div>
                             <div class="date-controls">
-                                <label class="date-display" id="datePickerLabel" title="Выбрать дату смены">
+                                <label class="date-badge date-display" id="datePickerLabel" title="Выбрать дату смены">
                                     <span id="dateDisplayText" class="shift-date-display"></span>
                                     <input type="date" id="dateInput" class="shift-date-input" aria-label="Дата смены">
                                     <svg class="icon-calendar" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -248,34 +249,30 @@
                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
                                 </label>
-                                <label class="toggle-night">
-                                    <span class="toggle-label">Ночь</span>
-                                    <input type="checkbox" id="nightMode">
-                                    <span class="slider"></span>
-                                </label>
                             </div>
+                            <input type="checkbox" id="nightMode" class="route-shift-night-input" hidden tabindex="-1" aria-hidden="true">
                         </div>
-                        <p id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</p>
-                        <div class="route-header-bottom">
-                            <div class="route-shift-compact__trains route-header-trains-window" aria-label="Поезда смены">
+                        <div class="header-bottom-row">
+                            <button type="button" id="routeShiftRoutesDropdown" class="routes-menu-btn route-shift-routes-dropdown" aria-haspopup="listbox" aria-expanded="false" aria-controls="routeShiftRoutesMenu" aria-label="Выбрать маршрут">
+                                <span class="routes-menu-btn__icon route-shift-routes-dropdown__icon" aria-hidden="true">≡</span>
+                                <span class="route-shift-routes-dropdown__label">Маршруты</span>
+                                <svg class="route-shift-routes-dropdown__chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                            <div class="trains-scroll-list route-shift-compact__trains route-header-trains-row" aria-label="Поезда смены">
                                 <div id="routeShiftTrainChips" class="trains-scroll route-shift-compact__chips" role="list"></div>
-                                <button type="button" id="routeShiftAddTrain" class="route-shift-compact__add route-header-trains-window__add" title="Добавить поезд" aria-label="Добавить поезд">
-                                    <svg class="route-header-trains-window__add-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-                                        <path d="M12 5v14M5 12h14"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div class="action-buttons">
-                                <button type="button" id="routeShiftToggleChevron" class="btn-icon route-shift-compact__chevron" title="Параметры смены" aria-label="Параметры смены" aria-expanded="false" hidden>
-                                    <svg class="btn-icon__glyph route-shift-compact__chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <polyline points="6 9 12 15 18 9"></polyline>
-                                    </svg>
-                                </button>
-                                <button type="button" class="btn-routes route-shift-panel__action" onclick="getRouteData()">Маршруты</button>
+                                <button type="button" id="routeShiftAddTrain" class="add-train-btn route-shift-compact__add route-header-trains-row__add" title="Добавить поезд" aria-label="Добавить поезд">+</button>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="routeShiftRoutesMenu" class="route-shift-routes-menu" role="dialog" aria-label="Маршруты графика" hidden>
+                <div class="route-shift-routes-menu__search-wrap">
+                    <input type="search" id="routeShiftRoutesMenuSearch" class="route-shift-routes-menu__search" inputmode="numeric" placeholder="Поиск: 78, Н70…" autocomplete="off" aria-label="Поиск маршрута">
+                </div>
+                <ul id="routeShiftRoutesMenuList" class="route-shift-routes-menu__list" role="listbox"></ul>
             </div>
             <div id="scheduleHeader" class="schedule-glass-body" style="display:none;" hidden></div>
         </div>
@@ -451,7 +448,9 @@
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
-                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                <div class="clock-wrap time-box header-clock-stack">
+                    <div class="clock-wrap__time app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
@@ -516,7 +515,9 @@
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
-                <div class="route-time schedule-route-time header-clock app-header__clock app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                <div class="clock-wrap time-box header-clock-stack">
+                    <div class="clock-wrap__time app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
@@ -678,12 +679,15 @@
     <div class="phone-screen instructions-app-wrap">
         <div class="instr-sticky-header-wrap">
             <header class="app-screen-header">
-                <div class="app-header-bar instr-header-bar">
-                    <div class="app-header-bar-brand instr-header-brand">
+                <div class="app-header-bar route-header-bar">
+                    <div class="app-header-bar-brand route-header-brand">
                         <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
-                        <span class="app-brand-text instr-header-brand-text">Цифровой помощник</span>
+                        <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                     </div>
-                    <button type="button" class="app-donate-trigger app-donate-trigger--header instr-header-donate instr-header-chip" data-donate-open aria-label="Поддержать проект">Поддержать</button>
+                    <div class="clock-wrap time-box header-clock-stack">
+                        <div class="clock-wrap__time app-header-bar-clock" id="instructionsLiveClock" aria-live="off">--:--:--</div>
+                    </div>
+                    <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
                 </div>
                 <p class="instr-test-banner" hidden>Тестовая версия модуля «Инструкции». Записи, документы и контакты не несут служебной информации.</p>
             </header>
@@ -940,7 +944,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '4.1.2';
+    const APP_RELEASE_VERSION = '4.1.3';
     const CLIENT_CACHE_VERSION = 'da_v4_1_3';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/bag_rep_bot';
@@ -1224,10 +1228,11 @@
         if (stored?.dateKey === dateKey && Number.isFinite(stored.shiftIndex) && shifts[stored.shiftIndex]) {
             return stored.shiftIndex;
         }
-        const nightOn = document.getElementById('nightMode')?.checked === true;
-        if (nightOn) {
-            const nightIdx = shifts.findIndex(s => isNightRoute(s.route));
-            if (nightIdx >= 0) return nightIdx;
+        if (stored?.dateKey === dateKey && stored?.shift?.route) {
+            const routeIdx = shifts.findIndex((s) =>
+                normalizeCalendarRouteKey(s.route) === normalizeCalendarRouteKey(stored.shift.route)
+            );
+            if (routeIdx >= 0) return routeIdx;
         }
         return 0;
     }
@@ -1636,8 +1641,6 @@
         const slotValues = getTrainNumbersIncludingEmptySlots();
 
         compact.hidden = false;
-        const chevron = document.getElementById('routeShiftToggleChevron');
-        if (chevron) chevron.hidden = false;
 
         if (ctx) {
             const enriched = enrichShiftFromDepotTemplate(ctx.shift, ctx.dateKey);
@@ -1695,8 +1698,80 @@
         if (legacy && !document.getElementById('routeShiftCompactWrap')?.classList.contains('is-expanded')) {
             legacy.hidden = true;
         }
+        syncNightModeFromRouteContext();
         syncRouteShiftChipHighlight();
         requestAnimationFrame(updateScheduleStickyOffset);
+    }
+
+    function syncNightModeFromRouteContext() {
+        const ctx = resolveRouteShiftContext();
+        const night = ctx?.shift?.route ? isNightRoute(ctx.shift.route) : userStorageGet('nightMode') === '1';
+        setNightModeEnabled(night, { silent: true });
+    }
+
+    function pickActiveRouteTrainHighlight(nowDate) {
+        if (!nowDate || !Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) return null;
+        const selectedDate = getSelectedDate();
+        if (!selectedDate || !isScheduleContextActive(nowDate, selectedDate)) return null;
+
+        let turnaroundTrain = null;
+        let turnaroundPhase = null;
+        for (const train of routeNotificationTrains) {
+            if (train.nextDeparture && train.nextDepartureDate && train.arrival) {
+                const arrDt = buildRouteEventDateTime(train.arrivalDate, train.arrival);
+                const depNextDt = buildRouteEventDateTime(train.nextDepartureDate, train.nextDeparture);
+                if (arrDt && depNextDt) {
+                    const nowMs = nowDate.getTime();
+                    if (nowMs >= arrDt.getTime() && nowMs < depNextDt.getTime()) {
+                        const diffMin = (depNextDt.getTime() - nowMs) / 60000;
+                        turnaroundTrain = train;
+                        if (diffMin <= 3) turnaroundPhase = 'red';
+                        else if (diffMin <= 10) turnaroundPhase = 'yellow';
+                        else turnaroundPhase = 'green';
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (turnaroundTrain && turnaroundPhase) {
+            return {
+                trainIndex: (turnaroundTrain.index ?? 0) + 1,
+                phase: turnaroundPhase,
+            };
+        }
+
+        let transitTrain = null;
+        let upcomingTrain = null;
+        let upcomingPhase = null;
+        let upcomingDiffMs = Infinity;
+
+        for (const train of routeNotificationTrains) {
+            const phase = resolveRouteTrainPhase(nowDate, train);
+            if (phase === 'transit') {
+                transitTrain = train;
+                break;
+            }
+            if (phase === 'green' || phase === 'yellow' || phase === 'red') {
+                const depDt = buildRouteEventDateTime(train.departureDate, train.departure);
+                if (!depDt) continue;
+                const diffMs = depDt.getTime() - nowDate.getTime();
+                if (diffMs < upcomingDiffMs) {
+                    upcomingDiffMs = diffMs;
+                    upcomingTrain = train;
+                    upcomingPhase = phase;
+                }
+            }
+        }
+
+        const activeTrain = transitTrain || upcomingTrain;
+        const activePhase = transitTrain ? 'transit' : upcomingPhase;
+        if (!activeTrain || !activePhase) return null;
+
+        return {
+            trainIndex: activeTrain.index,
+            phase: activePhase,
+        };
     }
 
     function syncRouteShiftChipHighlight() {
@@ -1705,15 +1780,210 @@
         chipsEl.querySelectorAll('.route-shift-compact__chip').forEach(chip => {
             chip.classList.remove('active');
         });
+
         const grid = document.getElementById('routeGrid');
-        if (!grid) return;
-        const activeCard = grid.querySelector(
+        let idx = null;
+        const activeCard = grid?.querySelector(
             '.route-card.route-card--phase-green, .route-card.route-card--phase-yellow, .route-card.route-card--phase-red, .route-card.route-card--phase-transit'
         );
-        const idx = activeCard?.dataset?.trainIndex;
+        if (activeCard?.dataset?.trainIndex != null && activeCard.dataset.trainIndex !== '') {
+            idx = activeCard.dataset.trainIndex;
+        } else {
+            const picked = pickActiveRouteTrainHighlight(getScheduleLiveDate());
+            if (picked?.trainIndex != null && picked.trainIndex !== '') {
+                idx = String(picked.trainIndex);
+            }
+        }
+
         if (idx == null || idx === '') return;
         const chip = chipsEl.querySelector(`.route-shift-compact__chip[data-index="${idx}"]`);
         chip?.classList.add('active');
+    }
+
+    let routeShiftRoutesMenuDocHandler = null;
+    let routeShiftMenuOptionsCacheKey = '';
+    let routeShiftMenuOptionsCache = [];
+
+    function invalidateRouteShiftMenuOptionsCache() {
+        routeShiftMenuOptionsCacheKey = '';
+        routeShiftMenuOptionsCache = [];
+    }
+
+    function getRouteShiftMenuOptions(dateKey) {
+        const key = dateKey || getRouteTabDateKey();
+        if (routeShiftMenuOptionsCacheKey === key && routeShiftMenuOptionsCache.length) {
+            return routeShiftMenuOptionsCache;
+        }
+        routeShiftMenuOptionsCacheKey = key;
+        routeShiftMenuOptionsCache = getConstructorRouteOptions(key).filter((option) => {
+            return getShiftRouteKind(option.route) !== 'rest';
+        });
+        return routeShiftMenuOptionsCache;
+    }
+
+    function filterRouteShiftMenuOptions(query, options) {
+        const raw = String(query || '').trim();
+        if (!raw) return options.slice(0, 250);
+        const digitsOnly = raw.replace(/\s/g, '');
+        if (/^\d+$/.test(digitsOnly)) {
+            return options.filter((option) => {
+                const routeDigits = String(option.route || '').replace(/\D/g, '');
+                const labelDigits = String(option.label || '').replace(/\D/g, '');
+                return routeDigits.includes(digitsOnly) || labelDigits.includes(digitsOnly);
+            }).slice(0, 250);
+        }
+        return filterConstructorRouteOptions(raw, options).slice(0, 250);
+    }
+
+    function positionRouteShiftRoutesMenu(anchorEl) {
+        const menu = document.getElementById('routeShiftRoutesMenu');
+        if (!menu || !anchorEl) return;
+        const rect = anchorEl.getBoundingClientRect();
+        const margin = 8;
+        const maxWidth = Math.min(320, window.innerWidth - margin * 2);
+        menu.style.width = `${maxWidth}px`;
+        menu.style.left = `${Math.max(margin, Math.min(rect.left, window.innerWidth - maxWidth - margin))}px`;
+        const top = rect.bottom + 6;
+        menu.style.top = `${top}px`;
+        const maxHeight = Math.min(320, window.innerHeight - top - margin);
+        menu.style.maxHeight = `${maxHeight}px`;
+    }
+
+    function closeRouteShiftRoutesMenu() {
+        const menu = document.getElementById('routeShiftRoutesMenu');
+        const btn = document.getElementById('routeShiftRoutesDropdown');
+        const search = document.getElementById('routeShiftRoutesMenuSearch');
+        if (menu) menu.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (search) search.value = '';
+        if (routeShiftRoutesMenuDocHandler) {
+            document.removeEventListener('click', routeShiftRoutesMenuDocHandler);
+            routeShiftRoutesMenuDocHandler = null;
+        }
+    }
+
+    function renderRouteShiftRoutesMenuList(query = '') {
+        const list = document.getElementById('routeShiftRoutesMenuList');
+        if (!list) return;
+
+        const dateKey = getRouteTabDateKey();
+        const options = getRouteShiftMenuOptions(dateKey);
+        const filtered = filterRouteShiftMenuOptions(query, options);
+        const ctx = resolveRouteShiftContext();
+        const selectedSignature = ctx?.shift
+            ? buildRouteIdentitySignature(ctx.shift)
+            : '';
+
+        if (!options.length) {
+            if (depotTemplatesLoadState === 'loading') {
+                list.innerHTML = '<li class="route-shift-routes-menu__empty" role="presentation">Загрузка маршрутов…</li>';
+                return;
+            }
+            if (depotTemplatesLoadState === 'error') {
+                list.innerHTML = '<li class="route-shift-routes-menu__empty route-shift-routes-menu__empty--retry" role="presentation">Не удалось загрузить базу. Нажмите, чтобы повторить.</li>';
+                return;
+            }
+            list.innerHTML = '<li class="route-shift-routes-menu__empty" role="presentation">Маршруты не найдены для выбранного дня</li>';
+            return;
+        }
+
+        if (!filtered.length) {
+            list.innerHTML = '<li class="route-shift-routes-menu__empty" role="presentation">Ничего не найдено</li>';
+            return;
+        }
+
+        list.innerHTML = filtered.map((option) => {
+            const isSelected = option.signature === selectedSignature ? ' is-selected' : '';
+            const routeLabel = escapeHtml(option.label || option.route || '—');
+            return `<li class="route-shift-routes-menu__option${isSelected}" role="option" tabindex="-1" data-route="${escapeAttr(option.route)}" data-signature="${escapeAttr(option.signature)}">${routeLabel}</li>`;
+        }).join('');
+    }
+
+    function applyRouteShiftRouteSelection(route, signature = '') {
+        const dateKey = getRouteTabDateKey();
+        if (!dateKey || !route) return false;
+
+        applyNormativeForDateKey(dateKey);
+        loadGlobalShiftTemplates();
+
+        let template = signature ? constructorRouteOptions.get(signature) : null;
+        if (!template) template = findShiftTemplate(depotShiftTemplates, route, dateKey);
+        if (!template) {
+            const matched = findConstructorRouteOption(dateKey, route);
+            template = matched?.template || null;
+        }
+        if (!template) return false;
+
+        const shift = buildCalendarShiftFromTemplate(template);
+        applyShiftToCalendarDay(dateKey, shift);
+        persistUserShifts();
+
+        const shifts = getStoredDayShifts(dateKey);
+        const shiftIndex = shifts.findIndex((item) =>
+            normalizeCalendarRouteKey(item.route) === normalizeCalendarRouteKey(shift.route)
+        );
+        const resolvedIndex = shiftIndex >= 0 ? shiftIndex : pickRouteShiftIndex(dateKey, shifts);
+
+        saveRouteShiftContext({
+            dateKey,
+            shift: { ...shifts[resolvedIndex] || shift },
+            shiftIndex: resolvedIndex,
+        });
+
+        setNightModeEnabled(isNightRoute(shift.route), { silent: true });
+        syncRouteTrainsFromShiftDraft(shifts[resolvedIndex] || shift, dateKey);
+        renderRouteShiftCompact();
+        refreshRouteShiftEditorIfOpen(dateKey);
+        refreshCalendarConstructorForDate(dateKey);
+
+        closeRouteShiftRoutesMenu();
+        getRouteData();
+        return true;
+    }
+
+    function toggleRouteShiftRoutesMenu() {
+        if (isScheduleMaintenanceOn()) return;
+        const menu = document.getElementById('routeShiftRoutesMenu');
+        const btn = document.getElementById('routeShiftRoutesDropdown');
+        const search = document.getElementById('routeShiftRoutesMenuSearch');
+        if (!menu || !btn) return;
+
+        const willOpen = menu.hidden;
+        if (!willOpen) {
+            closeRouteShiftRoutesMenu();
+            return;
+        }
+
+        closeAllSummaryRouteLists();
+        closeRouteCombobox();
+        applyNormativeForDateKey(getRouteTabDateKey());
+        loadGlobalShiftTemplates();
+        positionRouteShiftRoutesMenu(btn);
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        const templatesReady = isValidGlobalTemplateCache(depotShiftTemplates);
+        if (!templatesReady) {
+            depotTemplatesLoadState = 'loading';
+        }
+        renderRouteShiftRoutesMenuList('');
+        if (!templatesReady) {
+            void ensureDepotTemplatesLoaded().then(() => renderRouteShiftRoutesMenuList(search?.value || ''));
+        }
+
+        if (routeShiftRoutesMenuDocHandler) {
+            document.removeEventListener('click', routeShiftRoutesMenuDocHandler);
+        }
+        routeShiftRoutesMenuDocHandler = (e) => {
+            const target = e.target;
+            if (menu.contains(target) || btn.contains(target)) return;
+            closeRouteShiftRoutesMenu();
+        };
+        document.addEventListener('click', routeShiftRoutesMenuDocHandler);
+
+        requestAnimationFrame(() => {
+            search?.focus();
+            search?.select();
+        });
     }
 
     let routeTrainChipFocusIndex = -1;
@@ -1959,10 +2229,43 @@
         if (routeShiftCompactListenersBound) return;
         routeShiftCompactListenersBound = true;
 
-        document.getElementById('routeShiftToggleChevron')?.addEventListener('click', (e) => {
+        document.getElementById('routeShiftRoutesDropdown')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            toggleRouteShiftExpanded();
-            e.currentTarget.blur();
+            toggleRouteShiftRoutesMenu();
+        });
+
+        document.getElementById('routeShiftRoutesMenuSearch')?.addEventListener('input', (e) => {
+            renderRouteShiftRoutesMenuList(e.target.value);
+        });
+        document.getElementById('routeShiftRoutesMenuSearch')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeRouteShiftRoutesMenu();
+            }
+        });
+
+        document.getElementById('routeShiftRoutesMenuList')?.addEventListener('click', (e) => {
+            const retry = e.target.closest('.route-shift-routes-menu__empty--retry');
+            if (retry) {
+                void ensureDepotTemplatesLoaded({ force: true }).then(() => {
+                    renderRouteShiftRoutesMenuList(document.getElementById('routeShiftRoutesMenuSearch')?.value || '');
+                });
+                return;
+            }
+            const option = e.target.closest('.route-shift-routes-menu__option');
+            if (!option) return;
+            e.stopPropagation();
+            applyRouteShiftRouteSelection(
+                option.getAttribute('data-route') || '',
+                option.getAttribute('data-signature') || ''
+            );
+        });
+
+        window.addEventListener('resize', () => {
+            const menu = document.getElementById('routeShiftRoutesMenu');
+            if (menu && !menu.hidden) {
+                positionRouteShiftRoutesMenu(document.getElementById('routeShiftRoutesDropdown'));
+            }
         });
 
         document.getElementById('routeShiftCompact')?.addEventListener('click', (e) => {
@@ -2091,6 +2394,8 @@
 
         dateInput.addEventListener('change', () => {
             setSelectedDateIso(dateInput.value);
+            invalidateRouteShiftMenuOptionsCache();
+            closeRouteShiftRoutesMenu();
             renderRouteShiftCompact();
             refreshRouteShiftEditorIfOpen();
             renderRoutesFromCacheIfVisible();
@@ -2110,10 +2415,10 @@
         if (userStorageGet('nightMode') === '1') {
             nightModeInput.checked = true;
         }
+        syncNightModeFromRouteContext();
         nightModeInput.addEventListener('change', () => {
             userStorageSet('nightMode', nightModeInput.checked ? '1' : '0');
             updateScheduleDateHint();
-            renderRouteShiftCompact();
             refreshRouteShiftEditorIfOpen();
             renderRoutesFromCacheIfVisible();
             renderScheduleFromCacheIfVisible();
@@ -2170,6 +2475,7 @@
         getOrCreateAnonymousDeviceUuid();
         initSwipeNavigation();
         initScheduleLiveClockResume();
+        syncScheduleLiveClock();
         window.TrainMotionTimer?.init?.({
             findTimelineStationPhases,
             buildStopLiveWindow,
@@ -2269,6 +2575,11 @@
         'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря'
     ];
 
+    const MONTHS_RU_SHORT = [
+        'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+    ];
+
     function formatShiftDateDisplay(iso) {
         if (!iso) return '';
         const parts = iso.split(DASH_CHAR).map(Number);
@@ -2278,9 +2589,20 @@
         return `${day} ${monthLabel} ${year}`;
     }
 
+    /** Короткая дата в шапке смены: «24 окт» (без года). */
+    function formatRouteShiftHeaderDate(iso) {
+        if (!iso) return '';
+        const parts = iso.split(DASH_CHAR).map(Number);
+        if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return '';
+        const [, month, day] = parts;
+        const monthShort = MONTHS_RU_SHORT[month - 1] || '';
+        if (!monthShort) return '';
+        return `${day} ${monthShort}`;
+    }
+
     function updateDateDisplayText(iso) {
         const el = document.getElementById('dateDisplayText');
-        if (el) el.textContent = formatShiftDateDisplay(iso);
+        if (el) el.textContent = formatRouteShiftHeaderDate(iso) || formatShiftDateDisplay(iso);
     }
 
     function updateScheduleDateHint() {
@@ -3147,83 +3469,13 @@
 
         const grid = document.getElementById('routeGrid');
         const nowDate = getScheduleLiveDate();
-        const selectedDate = getSelectedDate();
-        if (!grid || !nowDate || !selectedDate || !isScheduleContextActive(nowDate, selectedDate)) {
-            syncRouteShiftChipHighlight();
-            return;
-        }
-        if (!Array.isArray(routeNotificationTrains) || !routeNotificationTrains.length) {
+        if (!grid || !nowDate) {
             syncRouteShiftChipHighlight();
             return;
         }
 
-        let transitTrain = null;
-        let upcomingTrain = null;
-        let upcomingPhase = null;
-        let upcomingDiffMs = Infinity;
-        let turnaroundTrain = null;
-        let turnaroundPhase = null;
-
-        for (const train of routeNotificationTrains) {
-            if (train.nextDeparture && train.nextDepartureDate && train.arrival) {
-                const arrDt = buildRouteEventDateTime(train.arrivalDate, train.arrival);
-                const depNextDt = buildRouteEventDateTime(train.nextDepartureDate, train.nextDeparture);
-                if (arrDt && depNextDt) {
-                    const nowMs = nowDate.getTime();
-                    if (nowMs >= arrDt.getTime() && nowMs < depNextDt.getTime()) {
-                        const diffMin = (depNextDt.getTime() - nowMs) / 60000;
-                        turnaroundTrain = train;
-                        if (diffMin <= 3) turnaroundPhase = 'red';
-                        else if (diffMin <= 10) turnaroundPhase = 'yellow';
-                        else turnaroundPhase = 'green';
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (turnaroundTrain && turnaroundPhase) {
-            const nextIndex = (turnaroundTrain.index ?? 0) + 1;
-            const card = grid.querySelector(`.route-card[data-train-index="${nextIndex}"]`);
-            if (card) {
-                const classMap = {
-                    green: 'route-card--phase-green',
-                    yellow: 'route-card--phase-yellow',
-                    red: 'route-card--phase-red',
-                };
-                card.classList.add(classMap[turnaroundPhase]);
-            }
-            syncRouteShiftChipHighlight();
-            return;
-        }
-
-        for (const train of routeNotificationTrains) {
-            const phase = resolveRouteTrainPhase(nowDate, train);
-            if (phase === 'transit') {
-                transitTrain = train;
-                break;
-            }
-            if (phase === 'green' || phase === 'yellow' || phase === 'red') {
-                const depDt = buildRouteEventDateTime(train.departureDate, train.departure);
-                if (!depDt) continue;
-                const diffMs = depDt.getTime() - nowDate.getTime();
-                if (diffMs < upcomingDiffMs) {
-                    upcomingDiffMs = diffMs;
-                    upcomingTrain = train;
-                    upcomingPhase = phase;
-                }
-            }
-        }
-
-        const activeTrain = transitTrain || upcomingTrain;
-        const activePhase = transitTrain ? 'transit' : upcomingPhase;
-        if (!activeTrain || !activePhase) {
-            syncRouteShiftChipHighlight();
-            return;
-        }
-
-        const card = grid.querySelector(`.route-card[data-train-index="${activeTrain.index}"]`);
-        if (!card) {
+        const picked = pickActiveRouteTrainHighlight(nowDate);
+        if (!picked) {
             syncRouteShiftChipHighlight();
             return;
         }
@@ -3232,9 +3484,16 @@
             green: 'route-card--phase-green',
             yellow: 'route-card--phase-yellow',
             red: 'route-card--phase-red',
-            transit: 'route-card--phase-transit'
+            transit: 'route-card--phase-transit',
         };
-        card.classList.add(classMap[activePhase]);
+        const phaseClass = classMap[picked.phase];
+        if (!phaseClass) {
+            syncRouteShiftChipHighlight();
+            return;
+        }
+
+        const card = grid.querySelector(`.route-card[data-train-index="${picked.trainIndex}"]`);
+        if (card) card.classList.add(phaseClass);
         syncRouteShiftChipHighlight();
     }
 
@@ -6184,6 +6443,8 @@
     }
 
     function isNightMode() {
+        const ctx = resolveRouteShiftContext();
+        if (ctx?.shift?.route) return isNightRoute(ctx.shift.route);
         return document.getElementById('nightMode')?.checked === true;
     }
 
@@ -8818,15 +9079,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Полное обновление расписания',
-            'Обновление маршрутов',
-            'Доработка логики'
+            'Мелкие правки интерфейса'
         ],
         highlights: [
-            'Полное обновление расписания',
-            'Обновление маршрутов',
-            'Доработка логики',
-            'Расписание в супер-тестовом режиме: ближайшую неделю смотрите, но не верьте — проверяйте каждый поезд'
+            'Мелкие правки интерфейса'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -10933,6 +11189,7 @@
         if (changed) {
             activeNormativeId = nextId;
             constructorRouteOptions = new Map();
+            invalidateRouteShiftMenuOptionsCache();
             renderRouteComboboxListIfOpen();
         }
         return bundle;
@@ -11642,12 +11899,20 @@
         renderRouteComboboxList(input?.value || '');
     }
 
+    function renderRouteShiftRoutesMenuIfOpen() {
+        const menu = document.getElementById('routeShiftRoutesMenu');
+        if (!menu || menu.hidden) return;
+        const search = document.getElementById('routeShiftRoutesMenuSearch');
+        renderRouteShiftRoutesMenuList(search?.value || '');
+    }
+
     async function ensureDepotTemplatesLoaded(options = {}) {
         await loadLocalShiftTemplatesBundle();
         applyNormativeForDateKey(getShiftContextDateKey());
         const ready = isValidGlobalTemplateCache(depotShiftTemplates);
         depotTemplatesLoadState = ready ? 'ready' : 'error';
         renderRouteComboboxListIfOpen();
+        renderRouteShiftRoutesMenuIfOpen();
         return ready;
     }
 

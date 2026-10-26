@@ -1222,15 +1222,15 @@
    Плановые события — панель в hero личного кабинета
    ========================================================= */
 :root {
-    --pe-panel-bg: #1e222a;
-    --pe-panel-border: #303746;
-    --pe-tile-bg: #21252e;
-    --pe-tile-border: #303746;
-    --pe-tile-border-hover: #49546b;
-    --pe-text: #f1f5f9;
-    --pe-muted: #8f9aa9;
-    --pe-accent: #34d399;
-    --pe-accent-line: #22a699;
+    --pe-panel-bg: rgba(0, 0, 0, 0.12);
+    --pe-panel-border: rgba(255, 255, 255, 0.06);
+    --pe-tile-bg: rgba(255, 255, 255, 0.04);
+    --pe-tile-border: rgba(255, 255, 255, 0.08);
+    --pe-tile-border-hover: rgba(6, 199, 133, 0.35);
+    --pe-text: var(--app-text);
+    --pe-muted: var(--app-muted);
+    --pe-accent: var(--brand-grad-light);
+    --pe-accent-line: var(--brand-grad-dark);
     --pe-cyan: #38c8de;
     --pe-green: #2ea874;
     --pe-orange: #dd6b20;
@@ -1244,19 +1244,19 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    margin-top: 2px;
-    padding: 10px 8px 8px;
+    margin-top: 0;
+    padding: 10px 10px 8px;
     background: var(--pe-panel-bg);
-    border: 1.5px solid var(--pe-panel-border);
-    border-radius: 18px;
+    border: 1px solid var(--pe-panel-border);
+    border-radius: var(--app-radius);
     box-sizing: border-box;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 28px rgba(0, 0, 0, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     overflow: hidden;
 }
 
 #screen-profile .profile-events-panel-head {
     display: flex;
-    justify-content: flex-start;
+    justify-content: stretch;
     margin-bottom: 8px;
 }
 
@@ -1264,22 +1264,25 @@
     appearance: none;
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    min-height: 36px;
-    padding: 6px 16px;
-    background: #272c36;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 9999px;
-    color: #fff;
+    width: 100%;
+    min-height: 33px;
+    padding: 0 12px;
+    background: var(--brand-grad);
+    border: none;
+    border-radius: var(--app-radius);
+    color: #ffffff;
     font: inherit;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    box-shadow:
+        0 0 18px rgba(6, 199, 133, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    transition: filter 0.15s ease, transform 0.12s ease;
 }
 
 #screen-profile .panel-pill-header:hover {
-    background: #2e3440;
-    border-color: rgba(255, 255, 255, 0.16);
+    filter: brightness(1.06);
 }
 
 #screen-profile .panel-pill-header:active {
@@ -1287,14 +1290,14 @@
 }
 
 #screen-profile .panel-pill-header__text {
-    font-size: 13.5px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     white-space: nowrap;
 }
 
 #screen-profile .panel-pill-header__chev {
-    color: #d1d5db;
+    color: rgba(255, 255, 255, 0.92);
     flex-shrink: 0;
     transition: transform 0.2s ease;
 }
@@ -1331,11 +1334,11 @@
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(44px, auto);
     gap: 8px;
     padding: 0 6px 4px;
-    font-size: 9px;
+    font-size: var(--font-xs);
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--pe-muted, #7a8596);
+    color: var(--app-caption);
     line-height: 1.2;
 }
 
@@ -1353,9 +1356,9 @@
     margin: 0;
     padding: 8px 6px;
     border: none;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--pe-text, #e8edf5);
+    border-radius: var(--app-radius);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--app-text);
     font: inherit;
     text-align: left;
     cursor: pointer;

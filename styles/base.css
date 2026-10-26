@@ -1264,10 +1264,11 @@ body {
     box-sizing: border-box;
 }
 
-/* Верхняя строка: логотип | часы | Поддержать (маршрут, календарь, профиль) */
+/* Верхняя строка: логотип | часы | Поддержать (все основные экраны) */
 #screen-schedule .route-sticky-header-wrap .app-header-bar.route-header-bar,
 #screen-profile .profile-screen-header .app-header-bar.route-header-bar,
-#screen-calendar .app-screen-header .app-header-bar.route-header-bar {
+#screen-calendar .app-screen-header .app-header-bar.route-header-bar,
+#screen-instructions .instr-sticky-header-wrap .app-header-bar.route-header-bar {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center !important;
@@ -1288,7 +1289,8 @@ body {
 
 #screen-schedule .route-sticky-header-wrap .route-header-brand,
 #screen-profile .profile-screen-header .route-header-brand,
-#screen-calendar .app-screen-header .route-header-brand {
+#screen-calendar .app-screen-header .route-header-brand,
+#screen-instructions .instr-sticky-header-wrap .route-header-brand {
     justify-self: start;
     display: inline-flex !important;
     align-items: center !important;
@@ -1305,7 +1307,8 @@ body {
 
 #screen-schedule .route-sticky-header-wrap .route-header-brand-text,
 #screen-profile .profile-screen-header .route-header-brand-text,
-#screen-calendar .app-screen-header .route-header-brand-text {
+#screen-calendar .app-screen-header .route-header-brand-text,
+#screen-instructions .instr-sticky-header-wrap .route-header-brand-text {
     font-size: 11px !important;
     font-weight: 600 !important;
     line-height: 1.15 !important;
@@ -1315,19 +1318,18 @@ body {
 
 #screen-schedule .route-sticky-header-wrap .route-header-brand .app-brand-logo,
 #screen-profile .profile-screen-header .route-header-brand .app-brand-logo,
-#screen-calendar .app-screen-header .route-header-brand .app-brand-logo {
+#screen-calendar .app-screen-header .route-header-brand .app-brand-logo,
+#screen-instructions .instr-sticky-header-wrap .route-header-brand .app-brand-logo {
     width: 26px !important;
     height: 26px !important;
 }
 
 #screen-schedule .route-sticky-header-wrap .clock-wrap.time-box,
-#screen-profile .profile-screen-header .app-header-bar-clock,
-#screen-calendar .app-screen-header .app-header-bar-clock {
+#screen-profile .profile-screen-header .clock-wrap.time-box,
+#screen-calendar .app-screen-header .clock-wrap.time-box,
+#screen-instructions .instr-sticky-header-wrap .clock-wrap.time-box {
     justify-self: center;
     grid-column: 2;
-}
-
-#screen-schedule .route-sticky-header-wrap .clock-wrap.time-box {
     background: rgba(14, 20, 32, 0.92) !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
     border-radius: 10px !important;
@@ -1338,7 +1340,13 @@ body {
 
 #screen-schedule .route-sticky-header-wrap .clock-wrap .app-header-bar-clock,
 #screen-schedule .route-sticky-header-wrap .clock-wrap__time,
-#screen-schedule .route-sticky-header-wrap #scheduleLiveClock {
+#screen-schedule .route-sticky-header-wrap #scheduleLiveClock,
+#screen-profile .profile-screen-header .clock-wrap .app-header-bar-clock,
+#screen-profile .profile-screen-header .clock-wrap__time,
+#screen-calendar .app-screen-header .clock-wrap .app-header-bar-clock,
+#screen-calendar .app-screen-header .clock-wrap__time,
+#screen-instructions .instr-sticky-header-wrap .clock-wrap .app-header-bar-clock,
+#screen-instructions .instr-sticky-header-wrap .clock-wrap__time {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -1362,27 +1370,10 @@ body {
     font-feature-settings: "tnum" !important;
 }
 
-#screen-profile .profile-screen-header .app-header-bar-clock,
-#screen-calendar .app-screen-header .app-header-bar-clock {
-    font-family: "Cascadia Mono", "SF Mono", Consolas, monospace !important;
-    font-variant-numeric: tabular-nums !important;
-    font-size: 20px !important;
-    font-weight: 700 !important;
-    color: #00f59b !important;
-    background: rgba(6, 199, 133, 0.08) !important;
-    border: 1px solid rgba(6, 199, 133, 0.35) !important;
-    border-radius: 12px !important;
-    padding: 4px 14px !important;
-    box-shadow: 0 0 20px rgba(6, 199, 133, 0.15) !important;
-    line-height: 1.1 !important;
-    width: auto !important;
-    text-align: center;
-    white-space: nowrap;
-}
-
 #screen-schedule .route-sticky-header-wrap .route-header-donate,
 #screen-profile .profile-screen-header .route-header-donate,
-#screen-calendar .app-screen-header .route-header-donate {
+#screen-calendar .app-screen-header .route-header-donate,
+#screen-instructions .instr-sticky-header-wrap .route-header-donate {
     justify-self: end;
     grid-column: 3;
     display: inline-flex !important;
@@ -1401,10 +1392,16 @@ body {
     box-shadow: none !important;
 }
 
+#screen-schedule .route-sticky-header-wrap .app-screen-header,
+#screen-instructions .instr-sticky-header-wrap .app-screen-header {
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
 #screen-schedule .route-sticky-header-wrap .app-screen-header {
     padding-left: 12px;
     padding-right: 12px;
-    box-sizing: border-box;
 }
 
 #screen-schedule .route-sticky-header-wrap .schedule-glass-stack {
