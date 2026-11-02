@@ -1536,16 +1536,32 @@
         if (stage) stage.innerHTML = '';
     }
 
-    const WALL_STORAGE_KEY = 'da_crew_wall_v1';
+    const WALL_STORAGE_KEY = 'da_crew_wall_v2';
+    const WALL_API_CATEGORY = {
+        machines: 'Машины',
+        line: 'Линия',
+        office: 'Офис',
+        contacts: 'Контакты'
+    };
+    const WALL_API_CATEGORY_REVERSE = {
+        'Машины': 'machines',
+        'Линия': 'line',
+        'Офис': 'office',
+        'Контакты': 'contacts'
+    };
     const WALL_HAMMER_VOTES_KEY = 'da_wall_hammer_my_votes_v1';
+    const WALL_LIKE_VOTES_KEY = 'da_wall_like_my_votes_v1';
+    const WALL_HAMMER_ARCHIVE_AT = 10;
+    const WALL_COMMENTS_STORAGE_KEY = 'da_wall_comments_v1';
+    const WALL_DETAIL_HISTORY_KEY = 'daInstrWallDetail';
     const WALL_FORM_CONFIG = {
         machines: {
             chips: ['Двери', 'Тормоза', 'Климат', 'Тяга', 'Радиостанция', 'Камеры'],
             series: ['ЭГЭ2Тв', 'ЭП2Д', 'ЭД4М'],
-            parts: ['Голова', 'Хвост', 'Вагон', 'Весь состав']
+            parts: ['Голова', 'Хвост', 'Весь состав']
         },
         line: {
-            chips: ['Юз', 'Негабарит', 'Короткая платформа', 'Платформа', 'Сигнал', 'Ремонт']
+            chips: ['Юз', 'Негабарит', 'Платформа', 'Сигнал', 'Ремонт']
         },
         office: {
             chips: ['Роспись в журнале', 'Инструктаж', 'Другое', 'Нарядчики']
@@ -1555,6 +1571,33 @@
         }
     };
 
+    const WALL_CHIP_URGENT = ['негабарит', 'сигнал', 'опасно', 'срочно'];
+    const WALL_CHIP_FAULT = ['двери', 'климат', 'тормоза', 'тяга', 'камеры', 'радиостанция', 'юз'];
+    const WALL_CHIP_PLACE = ['голова', 'хвост', 'вагон', 'состав', 'платформа', 'короткая', 'путь', 'перегон', 'станция', 'тупик', 'км', 'пк'];
+    const WALL_CHIP_OFFICE = ['роспись', 'инструктаж', 'другое', 'нарядчики', 'приказ', 'срок', 'тема', 'офис'];
+    const WALL_CHIP_CONTACT = ['депо', 'ремонт', 'станции', 'контакт', 'вызов', 'нарядчик'];
+
+    function wallChipToneForLabel(label, formType) {
+        const n = normalizeText(label);
+        if (!n) return 'neutral';
+        if (WALL_CHIP_URGENT.some((k) => n.includes(k))) return 'urgent';
+        if (formType === 'contacts') return 'contact';
+        if (WALL_CHIP_FAULT.some((k) => n.includes(k))) return 'fault';
+        if (WALL_CHIP_PLACE.some((k) => n.includes(k))
+            || /\d+\s*путь/.test(n)
+            || /\d+[\.,]?\d*\s*(км|km|пк|pk)/.test(n)) {
+            return 'place';
+        }
+        if (WALL_FORM_CONFIG.machines.series.some((s) => normalizeText(s) === n)) return 'office';
+        if (formType === 'office' || WALL_CHIP_OFFICE.some((k) => n.includes(k))) return 'office';
+        return 'neutral';
+    }
+
+    function wallFormChipButton(label, formType, isActive, dataAttr) {
+        const tone = wallChipToneForLabel(label, formType);
+        return `<button type="button" class="wall-chip wall-tone-${tone}${isActive ? ' is-active' : ''}" ${dataAttr}>${escapeHtml(label)}</button>`;
+    }
+
     let instrMainMode = 'wall';
     let wallItems = [];
     let activeWallCategory = 'all';
@@ -1562,18 +1605,63 @@
     let currentFormType = 'machines';
     let selectedChipTag = WALL_FORM_CONFIG.machines.chips[0];
     let selectedMachinePart = 'Голова';
+    let selectedMachineSeries = WALL_FORM_CONFIG.machines.series[0];
     let wallEditingId = null;
+    let wallDetailPostId = null;
+    let wallDetailComments = [];
+    let wallDetailHistoryActive = false;
+    let wallDetailPopstateBound = false;
+
+    const WALL_DESC_PLACEHOLDER = 'Опишите неисправность или примечание для смены';
+
+    function wallFormDescBlock(labelText) {
+        const label = labelText || 'Что случилось';
+        return `
+                <div class="wall-field wall-field--desc">
+                    <label>${label}</label>
+                    <textarea id="f_desc" rows="3" placeholder="${WALL_DESC_PLACEHOLDER}"></textarea>
+                </div>`;
+    }
+
+    function parseMachineTitleForForm(objectTitle) {
+        const title = String(objectTitle || '').trim().replace(/^Машина\s+/i, '');
+        const seriesList = WALL_FORM_CONFIG.machines.series || [];
+        let series = seriesList.find((s) => title.toUpperCase().startsWith(String(s).toUpperCase()));
+        if (!series) series = selectedMachineSeries || seriesList[0] || '';
+        let number = title;
+        if (series) {
+            number = title.slice(series.length).trim();
+        }
+        number = number.replace(/^[-–—\s]+/, '').trim();
+        return { series, number };
+    }
+
+    function buildWallObjectTitle(formType) {
+        if (formType === 'machines') {
+            const num = ($('f_machine_num')?.value || '').trim();
+            const series = selectedMachineSeries || WALL_FORM_CONFIG.machines.series[0] || '';
+            if (series && num) return cleanWallDanglingDashes(`${series} ${num}`);
+            if (series) return cleanWallDanglingDashes(series);
+            if (num) return cleanWallDanglingDashes(`Машина ${num}`);
+            return 'Машина';
+        }
+        if (formType === 'line') {
+            const place = ($('f_place')?.value || '').trim();
+            if (place) return cleanWallDanglingDashes(place);
+            return selectedChipTag || 'Линия';
+        }
+        if (formType === 'office') {
+            return cleanWallDanglingDashes(selectedChipTag || 'Офис');
+        }
+        if (formType === 'contacts') {
+            const name = ($('f_contact_name')?.value || '').trim();
+            return cleanWallDanglingDashes(name) || 'Контакт';
+        }
+        return 'Запись';
+    }
 
     function defaultWallItems() {
-        return [
-            { id: 1, category: 'machines', objectTitle: 'Машина 045', subMeta: 'Хвост • Вагон 03', tag: 'Климат', text: 'Климат в салоне 3 вагона дует только на +28.', extraLine: 'Решение: перезагрузка шкафа не помогает, автомат в тамбуре не трогать.', time: 'Сегодня, 14:20', resolved: false },
-            { id: 2, category: 'machines', objectTitle: 'Поезд 6270 (Борт 0142)', subMeta: '2 тупик', tag: 'Сдача смены', text: 'Поставили во 2 тупике. Башмаки уложены с хвоста по описи.', extraLine: 'Ключи и реверсивку передали дежурной по вокзалу.', time: 'Сегодня, 13:50', resolved: false },
-            { id: 3, category: 'line', objectTitle: 'Мытищи → Пушкино', subMeta: '2 путь • 28.4 км', tag: 'Негабарит / Ветки', text: 'После ветра ветки свисают близко к габариту справа.', extraLine: 'Внимание: по правому зеркалу смотреть аккуратнее.', time: 'Сегодня, 11:10', resolved: false },
-            { id: 4, category: 'line', objectTitle: 'Платформа Яуза', subMeta: 'На Москву', tag: 'Короткая платформа', text: 'Последний вагон не дотягивает до настила полметра при обычной остановке.', extraLine: 'Ориентир: протягивать состав вплотную до рейки.', time: 'Вчера, 19:05', resolved: false },
-            { id: 5, category: 'office', objectTitle: 'Приказ №42 (осенняя подготовка)', subMeta: 'Срок: 17.10.2026', tag: 'Роспись в журнале', text: 'Обязательная личная подпись в ведомости инструктажа.', extraLine: 'Где лежит: кабинет зам по эксплуатации, журнал №3 на столе.', time: 'Сегодня, 09:30', urgent: true },
-            { id: 6, category: 'contacts', objectTitle: 'Василич', subMeta: 'Иванов', tag: 'Ремонт', phone: '+7 (916) 450 22 18', text: 'Прямой мобильный, если ночью депо не отвечает по селектору.', time: 'Закреплено' },
-            { id: 7, category: 'contacts', objectTitle: 'Дежурный ЭЧ', subMeta: 'Петров', tag: 'Станции', phone: '+7 (903) 711 84 90', text: 'Оперативная связь при просадке напряжения или срабатывании БВ.', time: 'Закреплено' }
-        ];
+        return [];
     }
 
     function formatResolveVotes(count) {
@@ -1584,6 +1672,54 @@
         if (mod10 === 1 && mod100 !== 11) return `${n} человек проголосовал`;
         if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} человека проголосовало`;
         return `${n} человек проголосовало`;
+    }
+
+    function getWallCurrentTab() {
+        return String(window.DaCrewApi?.getTabNumber?.() || '').trim();
+    }
+
+    function wallIsCurrentUserAuthor(item) {
+        if (!item) return false;
+        const mySync = getWallMySyncUserId();
+        const authorSync = String(item.authorSyncUserId || item.author_sync_user_id || '').trim();
+        if (mySync && authorSync && mySync === authorSync) return true;
+        const myTab = getWallCurrentTab();
+        const authorTab = String(item.authorTab || '').trim();
+        if (myTab && authorTab && myTab === authorTab) return true;
+        return false;
+    }
+
+    function wallHammerCount(item) {
+        if (!item) return 0;
+        if (!item._fromServer && Array.isArray(item.hammers)) {
+            return item.hammers.length;
+        }
+        return Math.max(0, Number(item.hammerCount ?? item.resolveVotes) || 0);
+    }
+
+    function wallLikesCount(item) {
+        return Math.max(0, Number(item.likesCount) || 0);
+    }
+
+    function loadMyLikeVotes() {
+        try {
+            const raw = localStorage.getItem(WALL_LIKE_VOTES_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function saveMyLikeVotes(map) {
+        try {
+            localStorage.setItem(WALL_LIKE_VOTES_KEY, JSON.stringify(map || {}));
+        } catch (_) { /* quota */ }
+    }
+
+    function hasMyLikeVote(id, item) {
+        if (item && item.myLike) return true;
+        return Boolean(loadMyLikeVotes()[String(id)]);
     }
 
     function loadMyHammerVotes() {
@@ -1616,75 +1752,425 @@
         return map;
     }
 
-    function hasMyHammerVote(id) {
+    function hasMyHammerVote(id, item) {
+        const voter = wallHammerVoterId();
+        if (item && Array.isArray(item.hammers) && voter && item.hammers.includes(voter)) return true;
+        if (item && item.myHammer) return true;
         return Boolean(loadMyHammerVotes()[String(id)]);
     }
 
-    function toggleWallHammerVote(id) {
+    function ensurePostHammers(post) {
+        if (!post) return [];
+        if (!Array.isArray(post.hammers)) post.hammers = [];
+        return post.hammers;
+    }
+
+    function syncPostHammerCount(post) {
+        if (!post) return;
+        const hammers = ensurePostHammers(post);
+        const voter = wallHammerVoterId();
+        post.myHammer = Boolean(voter && hammers.includes(voter));
+        if (!post._fromServer) {
+            post.hammerCount = hammers.length;
+            return;
+        }
+        post.hammerCount = Math.max(0, Number(post.hammerCount) || 0);
+    }
+
+    function patchWallHammerUi(postId) {
+        const item = wallItems.find((x) => x.id === Number(postId));
+        if (!item) return;
+        const count = wallHammerCount(item);
+        const voted = hasMyHammerVote(item.id, item);
+        document.querySelectorAll(`#wallFeedContainer [data-wall-hammer="${item.id}"]`).forEach((btn) => {
+            const counter = btn.querySelector('.vote-btn__count');
+            if (counter) {
+                counter.textContent = String(count);
+                counter.classList.toggle('is-muted', count === 0);
+            }
+            btn.classList.toggle('active', voted);
+            btn.classList.toggle('is-voted', voted);
+            btn.setAttribute('aria-pressed', voted ? 'true' : 'false');
+        });
+    }
+
+    function wallHammerVoterId() {
+        const sync = getWallMySyncUserId();
+        if (sync) return sync;
+        const tab = getWallCurrentTab();
+        if (tab) return `tab:${tab}`;
+        return 'local-anon';
+    }
+
+    function removeWallPostFromFeed(id) {
+        wallItems = wallItems.filter((x) => x.id !== id);
+        const voteMap = loadMyHammerVotes();
+        delete voteMap[String(id)];
+        saveMyHammerVotes(voteMap);
+        const likeMap = loadMyLikeVotes();
+        delete likeMap[String(id)];
+        saveMyLikeVotes(likeMap);
+        saveWallItems();
+        if (wallDetailPostId === id) closeWallDetail(false);
+        renderWall();
+    }
+
+    function archiveWallPostWithFade(id) {
+        const item = wallItems.find((x) => x.id === id);
+        if (item) {
+            item.isArchived = true;
+            saveWallItems();
+        }
+        const card = document.querySelector(`#wallFeedContainer [data-wall-open="${id}"]`);
+        if (card) {
+            card.classList.add('wall-card--archiving');
+            window.setTimeout(() => removeWallPostFromFeed(id), 340);
+            return;
+        }
+        removeWallPostFromFeed(id);
+    }
+
+    function applyWallHammerThreshold(item) {
+        if (!item) return;
+        if (wallHammerCount(item) >= WALL_HAMMER_ARCHIVE_AT) {
+            archiveWallPostWithFade(item.id);
+        }
+    }
+
+    function snapshotHammerState(item) {
+        return {
+            hammers: Array.isArray(item.hammers) ? item.hammers.slice() : [],
+            hammerCount: item.hammerCount,
+            myHammer: item.myHammer,
+        };
+    }
+
+    function restoreHammerState(item, snap) {
+        if (!item || !snap) return;
+        item.hammers = snap.hammers.slice();
+        item.hammerCount = snap.hammerCount;
+        item.myHammer = snap.myHammer;
+        const map = loadMyHammerVotes();
+        if (item.myHammer) map[String(item.id)] = true;
+        else delete map[String(item.id)];
+        saveMyHammerVotes(map);
+        saveWallItems();
+    }
+
+    function applyHammerServerState(item, data) {
+        if (!item || !data) return;
+        const count = Math.max(0, Number(data.hammer_count) || 0);
+        const userHammered = Boolean(
+            data.user_hammered != null ? data.user_hammered : data.my_hammer
+        );
+        item.hammerCount = count;
+        item.myHammer = userHammered;
+        const voter = wallHammerVoterId();
+        const hammers = ensurePostHammers(item);
+        if (voter) {
+            const idx = hammers.indexOf(voter);
+            if (userHammered && idx < 0) hammers.push(voter);
+            if (!userHammered && idx >= 0) hammers.splice(idx, 1);
+        }
+        if (!item._fromServer) {
+            item.hammerCount = hammers.length;
+        }
+        const map = loadMyHammerVotes();
+        if (userHammered) map[String(item.id)] = true;
+        else delete map[String(item.id)];
+        saveMyHammerVotes(map);
+        saveWallItems();
+    }
+
+    function wallHammerErrorText(err) {
+        const msg = err?.payload?.message;
+        if (msg && String(msg).trim()) return String(msg).trim();
+        if (err?.payload?.error === 'post_not_found') {
+            return 'Запись не найдена или уже снята со стены.';
+        }
+        if (err?.payload?.error === 'wall_hammer_schema_missing') {
+            return 'На сервере не настроены молотки. Нужна миграция crew-api.';
+        }
+        if (err?.status === 404 || err?.payload?.error === 'not_found') {
+            return 'Молоток недоступен: обновите crew-api на сервере (POST …/hammer).';
+        }
+        return 'Не удалось поставить молоток. Попробуйте позже.';
+    }
+
+    function toggleHammerLocalState(item) {
+        const voter = wallHammerVoterId();
+        const hammers = ensurePostHammers(item);
+        const map = loadMyHammerVotes();
+        const key = String(item.id);
+        const already = voter && hammers.includes(voter);
+        let count = wallHammerCount(item);
+
+        if (already) {
+            const idx = hammers.indexOf(voter);
+            if (idx >= 0) hammers.splice(idx, 1);
+            delete map[key];
+            count = Math.max(0, count - 1);
+        } else if (voter) {
+            hammers.push(voter);
+            map[key] = true;
+            count += 1;
+        }
+
+        item.hammerCount = count;
+        syncPostHammerCount(item);
+        if (!item._fromServer) {
+            item.hammerCount = hammers.length;
+        }
+        saveMyHammerVotes(map);
+        saveWallItems();
+        return !already;
+    }
+
+    async function handleHammerClick(postId) {
+        const id = Number(postId);
         const item = wallItems.find((x) => x.id === id);
         if (!item) return;
-        const map = loadMyHammerVotes();
+
+        if (wallPostUsesServerApi(item)) {
+            const snap = snapshotHammerState(item);
+            toggleHammerLocalState(item);
+            patchWallHammerUi(id);
+            renderWall();
+            try {
+                const data = await window.DaCrewApi.postWallHammer(id);
+                applyHammerServerState(item, data);
+                patchWallHammerUi(id);
+                const archived = Boolean(
+                    data?.is_archived != null ? data.is_archived : data?.archived
+                );
+                if (archived) {
+                    archiveWallPostWithFade(id);
+                } else {
+                    renderWall();
+                }
+            } catch (err) {
+                restoreHammerState(item, snap);
+                patchWallHammerUi(id);
+                renderWall();
+                setStatus(wallHammerErrorText(err));
+                window.setTimeout(() => setStatus(''), 4000);
+            }
+            return;
+        }
+
+        toggleHammerLocalState(item);
+        if (wallHammerCount(item) >= WALL_HAMMER_ARCHIVE_AT) {
+            applyWallHammerThreshold(item);
+            return;
+        }
+        patchWallHammerUi(id);
+        renderWall();
+    }
+
+    function applyWallHammerVote(id) {
+        handleHammerClick(id);
+    }
+
+    async function toggleWallLikeVote(id) {
+        const item = wallItems.find((x) => x.id === id);
+        if (!item) return;
+
+        if (wallPostUsesServerApi(item)) {
+            try {
+                const data = await window.DaCrewApi.postWallLike(id);
+                item.likesCount = Math.max(0, Number(data?.likes_count) || 0);
+                item.myLike = Boolean(data?.my_like);
+                const map = loadMyLikeVotes();
+                if (item.myLike) map[String(id)] = true;
+                else delete map[String(id)];
+                saveMyLikeVotes(map);
+                saveWallItems();
+                renderWall();
+            } catch (err) {
+                console.warn('[wall] like', err);
+            }
+            return;
+        }
+
+        const map = loadMyLikeVotes();
         const key = String(id);
-        const votes = Math.max(0, Number(item.resolveVotes) || 0);
-        if (map[key]) {
+        const voted = Boolean(map[key]);
+        if (voted) {
             delete map[key];
-            item.resolveVotes = Math.max(0, votes - 1);
+            item.likesCount = Math.max(0, wallLikesCount(item) - 1);
+            item.myLike = false;
         } else {
             map[key] = true;
-            item.resolveVotes = votes + 1;
+            item.likesCount = wallLikesCount(item) + 1;
+            item.myLike = true;
         }
-        item.resolved = item.resolveVotes > 0;
-        saveMyHammerVotes(map);
+        saveMyLikeVotes(map);
         saveWallItems();
         renderWall();
     }
 
+    function toggleWallHammerVote(id) {
+        handleHammerClick(id);
+    }
+
     function normalizeWallItem(item) {
         const row = item && typeof item === 'object' ? { ...item } : {};
-        row.resolveVotes = Math.max(0, Number(row.resolveVotes) || 0);
-        row.resolved = row.resolveVotes > 0 || Boolean(row.resolved);
-        if (row.canManage === undefined) {
-            row.canManage = Number(row.id) !== 2;
+        if (!Array.isArray(row.hammers)) row.hammers = [];
+        if (!row._fromServer) {
+            row.hammerCount = row.hammers.length;
+        } else {
+            row.hammerCount = Math.max(0, Number(row.hammerCount ?? row.resolveVotes) || 0);
         }
+        const voter = wallHammerVoterId();
+        const votedInMap = Boolean(loadMyHammerVotes()[String(row.id)]);
+        row.myHammer = Boolean(voter && row.hammers.includes(voter))
+            || votedInMap
+            || Boolean(row.myHammer);
+        if (row.myHammer && voter && !row.hammers.includes(voter)) {
+            row.hammers.push(voter);
+        }
+        if (!row.myHammer && voter) {
+            const rm = row.hammers.indexOf(voter);
+            if (rm >= 0) row.hammers.splice(rm, 1);
+        }
+        if (!row._fromServer) {
+            row.hammerCount = row.hammers.length;
+        }
+        row.likesCount = wallLikesCount(row);
+        row.commentsCount = Math.max(0, Number(row.commentsCount) || 0);
+        row.isArchived = Boolean(row.isArchived || row.is_archived);
+        row.resolved = false;
         return row;
     }
 
     function loadWallItems() {
         try {
+            localStorage.removeItem('da_crew_wall_v1');
+        } catch (_) { /* ignore */ }
+        try {
             const raw = localStorage.getItem(WALL_STORAGE_KEY);
             const parsed = raw ? JSON.parse(raw) : null;
-            if (Array.isArray(parsed) && parsed.length) {
+            if (Array.isArray(parsed)) {
                 return parsed.map((item) => normalizeWallItem(item));
             }
-        } catch (_) { /* seed */ }
+        } catch (_) { /* empty */ }
         return defaultWallItems();
     }
 
-    const WALL_HAMMER_INLINE = '<svg class="hammer-inline-svg" width="28" height="28" viewBox="0 0 48 48" fill="none" aria-hidden="true"><g transform="translate(24 24) rotate(-45) translate(-24 -24)"><rect x="20.5" y="24" width="7" height="20" rx="3.5" fill="#F59E0B"/><rect x="5" y="10" width="38" height="11" rx="5.5" fill="#F59E0B"/></g></svg>';
+    const WALL_HAMMER_INLINE = '<svg class="hammer-inline-svg" width="14" height="14" viewBox="0 0 48 48" fill="none" aria-hidden="true"><g transform="translate(24 24) rotate(-45) translate(-24 -24)"><rect x="20.5" y="24" width="7" height="20" rx="3.5" fill="currentColor"/><rect x="5" y="10" width="38" height="11" rx="5.5" fill="currentColor"/></g></svg>';
+
+    const WALL_EDIT_ICON = '<svg class="wall-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+
+    const WALL_DELETE_ICON = '<svg class="wall-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+
+    const WALL_COMMENTS_ICON = '<svg class="wall-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M21 15a4 4 0 01-4 4H8l-5 3V7a4 4 0 014-4h10a4 4 0 014 4z"/></svg>';
+
+    const WALL_LIKE_ICON = '<svg class="wall-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>';
+
+    function renderWallCommentsButton(item) {
+        const n = Math.max(0, Number(item.commentsCount) || 0);
+        return `<button type="button" class="action-btn wall-comments-btn wall-action-btn" data-wall-comments-open="${item.id}" aria-label="Комментарии, ${n}">
+                ${WALL_COMMENTS_ICON}
+                <span class="wall-comments-btn__count">${n}</span>
+            </button>`;
+    }
+
+    function renderWallLikeButton(item) {
+        const n = wallLikesCount(item);
+        const voted = hasMyLikeVote(item.id, item);
+        const countClass = n ? '' : ' is-muted';
+        return `<button type="button" class="action-btn wall-like-btn wall-action-btn${voted ? ' active is-liked' : ''}" data-wall-like="${item.id}" aria-pressed="${voted ? 'true' : 'false'}" aria-label="Нравится, ${n}">
+                ${WALL_LIKE_ICON}
+                <span class="wall-like-btn__count${countClass}" aria-hidden="true">${n}</span>
+            </button>`;
+    }
 
     function renderWallHammerBlock(item) {
-        const showHammer = item.category === 'machines' || item.category === 'line' || item.category === 'office';
-        if (!showHammer) return '';
-        const votes = Math.max(0, Number(item.resolveVotes) || 0);
-        const voted = hasMyHammerVote(item.id);
-        const label = voted ? 'Убрать подтверждение' : 'Подтвердить актуальность';
+        const votes = wallHammerCount(item);
+        const voted = hasMyHammerVote(item.id, item);
+        const countClass = votes ? '' : ' is-muted';
+        const label = voted ? 'Вы отметили запись как неактуальную' : 'Неактуально, спам или ошибка';
         return `
-            <button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--hammer btn-hammer wall-action-btn${voted ? ' is-voted' : ''}" data-wall-hammer="${item.id}" aria-pressed="${voted ? 'true' : 'false'}" aria-label="${label}" title="Подтвердить">
+            <button type="button" class="action-btn vote-btn wall-action-btn btn-hammer${voted ? ' active is-voted' : ''}" data-wall-hammer="${item.id}" aria-pressed="${voted ? 'true' : 'false'}" aria-label="${label}" title="Молоток — неактуально / спам">
                 <span class="hammer-icon-wrap" aria-hidden="true">${WALL_HAMMER_INLINE}</span>
-                <span class="hammer-divider" aria-hidden="true"></span>
-                <span class="hammer-count">${votes}</span>
+                <span class="vote-btn__count${countClass}" aria-hidden="true">${votes}</span>
             </button>`;
     }
 
     function renderWallIconActions(item) {
+        const comments = renderWallCommentsButton(item);
+        const like = renderWallLikeButton(item);
         const hammer = renderWallHammerBlock(item);
-        const canManage = item.canManage !== false;
-        if (!canManage) {
-            return `<div class="wall-card__icon-actions event-actions-bar">${hammer}</div>`;
+        const canManage = wallIsCurrentUserAuthor(item);
+        const editBtn = canManage
+            ? `<button type="button" class="action-btn edit-btn wall-action-btn btn-doc" data-wall-edit="${item.id}" aria-label="Редактировать" title="Редактировать">${WALL_EDIT_ICON}</button>`
+            : '';
+        const deleteBtn = canManage
+            ? `<button type="button" class="action-btn delete-btn wall-action-btn btn-delete" data-wall-delete="${item.id}" aria-label="Удалить" title="Удалить">${WALL_DELETE_ICON}</button>`
+            : '';
+        return `<div class="wall-card-actions">${comments}${like}${hammer}${editBtn}${deleteBtn}</div>`;
+    }
+
+    function wallCardMetaChipValues(item) {
+        const chips = [];
+        if (item?.tag) chips.push(String(item.tag).trim());
+        const sub = cleanWallDanglingDashes(item?.subMeta);
+        if (sub) {
+            sub.split(/[•|]/).map((s) => s.trim()).filter(Boolean).forEach((part) => chips.push(part));
         }
-        const editBtn = `<button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--edit btn-doc wall-action-btn" data-wall-edit="${item.id}" aria-label="Редактировать" title="Редактировать"></button>`;
-        const deleteBtn = `<button type="button" class="event-btn wall-card__icon-btn wall-card__icon-btn--delete btn-delete wall-action-btn" data-wall-delete="${item.id}" aria-label="Удалить" title="Удалить"></button>`;
-        return `<div class="wall-card__icon-actions event-actions-bar">${editBtn}${hammer}${deleteBtn}</div>`;
+        if (item?.text && item?.extraLine) {
+            String(item.extraLine).split(/[•|;,]/).map((s) => s.trim()).filter(Boolean)
+                .slice(0, 3).forEach((part) => chips.push(part));
+        }
+        if (item?.urgent) chips.push('Срочно');
+        const seen = new Set();
+        return chips.filter((c) => {
+            const key = c.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).slice(0, 8);
+    }
+
+    function renderWallMetaChips(item) {
+        const values = wallCardMetaChipValues(item);
+        if (!values.length) return '';
+        return `<div class="wall-card-tags">${values.map((v) => {
+            const tone = wallChipToneForLabel(v, item.category);
+            return `<span class="wall-meta-chip wall-tone-${tone}">${escapeHtml(v)}</span>`;
+        }).join('')}</div>`;
+    }
+
+    function renderWallCardHeader(item) {
+        const time = wallCardTimeLabel(item);
+        return `
+                    <header class="wall-card-header">
+                        <span class="wall-card-title">${escapeHtml(wallCardTitle(item))}</span>
+                        ${time ? `<time class="wall-card-time" datetime="">${escapeHtml(time)}</time>` : '<span class="wall-card-time" aria-hidden="true"></span>'}
+                    </header>`;
+    }
+
+    function renderWallEventCard(item, iconActions, opts = {}) {
+        const detail = opts.detail ? ' wall-card--detail' : '';
+        const openable = opts.detail ? '' : ' wall-card--clickable';
+        const openAttr = opts.detail ? '' : ` data-wall-open="${item.id}"`;
+        const body = item.text || (!item.text && item.extraLine ? item.extraLine : '');
+        const footer = iconActions
+            ? `<footer class="wall-card-footer">
+                        <div class="author-tag">${escapeHtml(resolveWallAuthorTag(item))}</div>
+                        ${iconActions}
+                    </footer>`
+            : `<footer class="wall-card-footer wall-card-footer--readonly">
+                        <div class="author-tag">${escapeHtml(resolveWallAuthorTag(item))}</div>
+                    </footer>`;
+        return `
+                <article class="wall-card wall-card--event${detail}${openable}${detail ? ' wall-card--pinned' : ''}${item.resolved ? ' is-resolved' : ''}${item.urgent ? ' is-urgent' : ''}"${openAttr}>
+                    ${renderWallCardHeader(item)}
+                    ${renderWallMetaChips(item)}
+                    ${body ? `<div class="wall-card-content">${escapeHtml(body)}</div>` : ''}
+                    ${footer}
+                </article>
+            `;
     }
 
     function syncWallHintsCollapsedUi() {
@@ -1732,14 +2218,23 @@
         const wallHints = $('wallTagExtra');
         if (wallHints) wallHints.hidden = !isWall;
         $('wallHintsGrab')?.toggleAttribute('hidden', !isWall);
+        $('wallMetaBar')?.toggleAttribute('hidden', !isWall);
         updateSearchChrome();
         wallBtn?.classList.toggle('active', isWall);
         pdfBtn?.classList.toggle('active', !isWall);
         wallBtn?.setAttribute('aria-selected', isWall ? 'true' : 'false');
         pdfBtn?.setAttribute('aria-selected', isWall ? 'false' : 'true');
         setFabMenuOpen(false);
-        if (isWall) renderWall();
-        else refreshUi().catch(() => {});
+        if (isWall) {
+            renderWall();
+            scheduleWallRulesOnboarding();
+        } else {
+            if (wallRulesOnboardTimer) {
+                window.clearTimeout(wallRulesOnboardTimer);
+                wallRulesOnboardTimer = null;
+            }
+            refreshUi().catch(() => {});
+        }
     }
 
     function updateSearchChrome() {
@@ -1785,7 +2280,58 @@
         return a === b || a.includes(b) || b.includes(a);
     }
 
-    let wallTagsExpanded = true;
+    let wallTagsExpanded = false;
+
+    function formatWallPostTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        if (d.toDateString() === now.toDateString()) return `Сегодня, ${hm}`;
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) return `Вчера, ${hm}`;
+        return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}, ${hm}`;
+    }
+
+    function wallCardTimeLabel(item) {
+        if (item?.time && String(item.time).trim()) return String(item.time).trim();
+        if (item?.createdAt) {
+            const fromTs = formatWallPostTime(new Date(item.createdAt).toISOString());
+            if (fromTs) return fromTs;
+        }
+        return '';
+    }
+
+    function cleanWallDanglingDashes(text) {
+        let s = String(text || '').trim();
+        if (!s) return '';
+        s = s.replace(/(?:\s*[-–—/•·]\s*)+$/g, '').trim();
+        s = s.replace(/^(?:\s*[-–—/•·]\s*)+/g, '').trim();
+        s = s.replace(/([-–—])\s*$/g, '').trim();
+        return s;
+    }
+
+    function wallCardTitle(item) {
+        return cleanWallDanglingDashes(item?.objectTitle) || 'Запись';
+    }
+
+    function wallCardSubLine(item) {
+        const parts = [];
+        const sub = cleanWallDanglingDashes(item?.subMeta);
+        if (sub) parts.push(sub);
+        const time = wallCardTimeLabel(item);
+        if (time) parts.push(time);
+        return parts.join(' • ');
+    }
+
+    function resolveWallAuthorTag(item) {
+        const tab = String(item?.authorTab || '').trim();
+        if (tab) return `Таб. ${tab}`;
+        return item?.authorDepot || 'Депо';
+    }
 
     function updateWallTagsToggle(tags) {
         const toggle = $('wallTagsToggle');
@@ -1805,9 +2351,11 @@
         if (!row) return;
         const tags = tagsForCategory(activeWallCategory);
         if (activeWallTag && !tags.some((t) => t.value === activeWallTag)) activeWallTag = '';
-        row.innerHTML = tags.map((t) => (
-            `<button type="button" class="wall-filter-tag${t.value === activeWallTag ? ' is-active' : ''}${t.kind === 'series' ? ' is-series' : ''}" data-wall-filter-tag="${escapeHtml(t.value)}">${escapeHtml(t.value)}</button>`
-        )).join('');
+        row.innerHTML = tags.map((t) => {
+            const cat = t.kind === 'series' ? 'machines' : (t.kind || activeWallCategory);
+            const tone = wallChipToneForLabel(t.value, cat === 'all' ? 'machines' : cat);
+            return `<button type="button" class="wall-filter-tag wall-tone-${tone}${t.value === activeWallTag ? ' is-active' : ''}${t.kind === 'series' ? ' is-series' : ''}" data-wall-filter-tag="${escapeHtml(t.value)}">${escapeHtml(t.value)}</button>`;
+        }).join('');
         row.hidden = instrMainMode !== 'wall' || !tags.length;
         updateWallTagsToggle(tags);
         syncWallHintsCollapsedUi();
@@ -1837,6 +2385,7 @@
         const query = normalizeText($('instrSearchInput')?.value || '');
 
         const filtered = wallItems.filter((item) => {
+            if (item.isArchived) return false;
             if (activeWallCategory === 'all' && !query && !activeWallTag && item.category === 'contacts') return false;
             if (activeWallCategory !== 'all' && item.category !== activeWallCategory) return false;
             if (!itemMatchesTag(item, activeWallTag)) return false;
@@ -1846,7 +2395,7 @@
         });
 
         if (countLabel) {
-            countLabel.textContent = `Всего записей: ${filtered.length}`;
+            countLabel.textContent = `Записей: ${filtered.length}`;
         }
 
         if (!filtered.length) {
@@ -1859,55 +2408,24 @@
             if (item.category === 'contacts') {
                 const tel = String(item.phone || '').replace(/[^\d+]/g, '');
                 return `
-                    <article class="wall-card wall-card--contact">
-                        <div class="wall-card__body">
-                            <div class="wall-card__head">
-                                <div class="wall-card__head-main">
-                                    <h3 class="wall-card__title">${escapeHtml(item.objectTitle)}</h3>
-                                    <span class="wall-card__tag">${escapeHtml(item.tag)}</span>
-                                </div>
-                                ${item.subMeta ? `<p class="wall-card__sub">${escapeHtml(item.subMeta)}</p>` : ''}
-                            </div>
-                            <div class="wall-card__phone">${escapeHtml(item.phone || '')}</div>
-                            ${item.text ? `<p class="wall-card__text">${escapeHtml(item.text)}</p>` : ''}
-                            <div class="wall-card__foot wall-card__foot--contact">
-                                ${iconActions}
-                            </div>
+                    <article class="wall-card wall-card--contact wall-card--clickable" data-wall-open="${item.id}">
+                        ${renderWallCardHeader(item)}
+                        ${renderWallMetaChips(item)}
+                        <div class="wall-contact-phone-row">
+                            <a class="wall-card-phone" href="tel:${escapeHtml(tel)}">${escapeHtml(item.phone || '')}</a>
+                            <a class="wall-call" href="tel:${escapeHtml(tel)}" aria-label="Позвонить">
+                                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                            </a>
                         </div>
-                        <a class="wall-call" href="tel:${escapeHtml(tel)}" aria-label="Позвонить">
-                            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                        </a>
+                        ${item.text ? `<div class="wall-card-content wall-card-content--contact">${escapeHtml(item.text)}</div>` : ''}
+                        <footer class="wall-card-footer wall-card-footer--contact">
+                            <div class="author-tag">${escapeHtml(resolveWallAuthorTag(item))}</div>
+                            ${iconActions}
+                        </footer>
                     </article>
                 `;
             }
-            const tagClass = item.category === 'line'
-                ? ' is-line'
-                : item.category === 'office'
-                    ? ' is-office'
-                    : item.category === 'machines'
-                        ? ' is-machines'
-                        : '';
-            const eventBody = item.extraLine || item.text || '';
-            const headBlock = `
-                    <div class="wall-card__head">
-                        <div class="wall-card__head-main">
-                            <h3 class="wall-card__title">${escapeHtml(item.objectTitle)}</h3>
-                            <span class="wall-card__tag wall-card__tag--outline${tagClass}">${escapeHtml(item.tag)}</span>
-                        </div>
-                        ${item.subMeta ? `<p class="wall-card__sub">${escapeHtml(item.subMeta)}</p>` : ''}
-                    </div>`;
-            const extraBlock = eventBody
-                ? `<div class="wall-card__extra"><span class="wall-card__extra-label">Описание события</span><span class="wall-card__extra-text">${escapeHtml(eventBody)}</span></div>`
-                : '';
-            return `
-                <article class="wall-card wall-card--event">
-                    ${headBlock}
-                    ${extraBlock}
-                    <div class="wall-card__foot">
-                        ${iconActions}
-                    </div>
-                </article>
-            `;
+            return renderWallEventCard(item, iconActions);
         }).join('');
     }
 
@@ -1931,9 +2449,21 @@
 
     function syncMachineSeriesHighlight(title) {
         const value = String(title || '');
+        const seriesList = WALL_FORM_CONFIG.machines.series || [];
+        if (!value && selectedMachineSeries) {
+            document.querySelectorAll('[data-wall-series]').forEach((el) => {
+                el.classList.toggle('is-active', el.dataset.wallSeries === selectedMachineSeries);
+            });
+            return;
+        }
         document.querySelectorAll('[data-wall-series]').forEach((el) => {
             const series = el.dataset.wallSeries || '';
-            el.classList.toggle('is-active', series && value.toLowerCase().startsWith(`${series.toLowerCase()}-`));
+            el.classList.toggle('is-active', series && (
+                value.toLowerCase().startsWith(`${series.toLowerCase()} `)
+                || value.toLowerCase().startsWith(`${series.toLowerCase()}-`)
+                || value.toLowerCase() === series.toLowerCase()
+                || series === selectedMachineSeries
+            ));
         });
     }
 
@@ -1941,7 +2471,9 @@
         const value = String(subMeta || '');
         let matched = '';
         (WALL_FORM_CONFIG.machines.parts || []).forEach((part) => {
-            if (value.toLowerCase().startsWith(`${part.toLowerCase()}-`) || value.toLowerCase() === part.toLowerCase()) {
+            if (value.toLowerCase().startsWith(`${part.toLowerCase()} `)
+                || value.toLowerCase().startsWith(`${part.toLowerCase()}-`)
+                || value.toLowerCase() === part.toLowerCase()) {
                 matched = part;
             }
         });
@@ -1955,26 +2487,25 @@
         if (!item) return;
         const chips = WALL_FORM_CONFIG[item.category]?.chips || [];
         selectedChipTag = chips.includes(item.tag) ? item.tag : (chips[0] || item.tag || '');
-        const textEl = $('f_text');
-        const extraEl = $('f_extra');
+        const descEl = $('f_desc');
         const filler = 'Добавлено с линии';
-        if (textEl) textEl.value = item.text && item.text !== filler ? item.text : '';
-        if (extraEl) extraEl.value = item.extraLine || '';
+        const descParts = [item.text, item.extraLine].filter((s) => s && String(s).trim() && String(s).trim() !== filler);
+        if (descEl) descEl.value = descParts.join('\n');
 
         if (item.category === 'machines') {
-            const titleEl = $('f_title');
+            const parsed = parseMachineTitleForForm(item.objectTitle);
+            selectedMachineSeries = parsed.series || selectedMachineSeries;
+            const numEl = $('f_machine_num');
             const subEl = $('f_sub');
-            if (titleEl) {
-                titleEl.value = String(item.objectTitle || '').replace(/^Машина\s+/i, '');
-                syncMachineSeriesHighlight(titleEl.value);
-            }
+            if (numEl) numEl.value = parsed.number || '';
             if (subEl) {
                 subEl.value = item.subMeta || '';
                 syncMachinePartHighlight(subEl.value);
             }
+            syncMachineSeriesHighlight(item.objectTitle || selectedMachineSeries);
         } else if (item.category === 'line') {
-            const titleEl = $('f_title');
-            if (titleEl) titleEl.value = item.objectTitle || '';
+            const placeEl = $('f_place');
+            if (placeEl) placeEl.value = item.objectTitle || '';
             const meta = String(item.subMeta || '');
             const pathMatch = meta.match(/(\d+)\s*путь/i);
             const kmPart = meta.split('•').map((s) => s.trim()).filter(Boolean).find((s) => !/путь/i.test(s));
@@ -1983,19 +2514,16 @@
             if (pathEl && pathMatch) pathEl.value = pathMatch[1];
             if (kmEl && kmPart) kmEl.value = kmPart;
         } else if (item.category === 'office') {
-            const titleEl = $('f_title');
-            if (titleEl) titleEl.value = item.objectTitle || '';
             const dateEl = $('f_date');
             const deadline = String(item.subMeta || '').match(/(\d{2})\.(\d{2})\.(\d{4})/);
             if (dateEl && deadline) {
                 dateEl.value = `${deadline[3]}-${deadline[2]}-${deadline[1]}`;
             }
         } else if (item.category === 'contacts') {
-            const titleEl = $('f_title');
-            const subEl = $('f_sub');
+            const nameEl = $('f_contact_name');
             const phoneEl = $('f_phone');
-            if (titleEl) titleEl.value = item.objectTitle || '';
-            if (subEl) subEl.value = item.subMeta || '';
+            const nameParts = [item.objectTitle, item.subMeta].filter(Boolean).map((s) => String(s).trim());
+            if (nameEl) nameEl.value = nameParts.join(' ').trim();
             if (phoneEl) phoneEl.value = item.phone || '+7 ';
         }
         syncWallChipActiveState();
@@ -2007,7 +2535,7 @@
         wallEditingId = editId ? Number(editId) : null;
         if (wallEditingId) {
             const item = wallItems.find((x) => x.id === wallEditingId);
-            if (!item) {
+            if (!item || !wallIsCurrentUserAuthor(item)) {
                 wallEditingId = null;
             } else {
                 currentFormType = item.category;
@@ -2044,6 +2572,10 @@
     function selectWallFormType(type) {
         currentFormType = WALL_FORM_CONFIG[type] ? type : 'machines';
         selectedChipTag = WALL_FORM_CONFIG[currentFormType].chips[0];
+        if (currentFormType === 'machines') {
+            selectedMachineSeries = WALL_FORM_CONFIG.machines.series[0];
+            selectedMachinePart = WALL_FORM_CONFIG.machines.parts[0];
+        }
         document.querySelectorAll('.wall-form-tab').forEach((btn) => {
             btn.classList.toggle('is-active', btn.dataset.formType === currentFormType);
         });
@@ -2063,21 +2595,12 @@
     }
 
     function applyMachineSeries(series) {
-        const input = $('f_title');
-        if (!input || !series) return;
-        const list = WALL_FORM_CONFIG.machines.series || [];
-        let rest = String(input.value || '').trim();
-        list.forEach((s) => {
-            rest = rest.replace(new RegExp(`^\\+?${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-?`, 'i'), '');
-        });
-        rest = rest.replace(/^\s+/, '');
-        input.value = `${series}-${rest}`;
-        input.focus();
-        const pos = input.value.length;
-        try { input.setSelectionRange(pos, pos); } catch (_) { /* ignore */ }
+        if (!series) return;
+        selectedMachineSeries = series;
         document.querySelectorAll('[data-wall-series]').forEach((el) => {
             el.classList.toggle('is-active', el.dataset.wallSeries === series);
         });
+        $('f_machine_num')?.focus();
     }
 
     function applyMachinePart(part) {
@@ -2090,7 +2613,7 @@
             rest = rest.replace(new RegExp(`^\\+?${esc}-?`, 'i'), '');
         });
         rest = rest.replace(/^\s+/, '');
-        input.value = rest ? `${part}-${rest}` : `${part}-`;
+        input.value = rest ? `${part} ${rest}` : part;
         selectedMachinePart = part;
         input.focus();
         const pos = input.value.length;
@@ -2104,85 +2627,461 @@
         const box = $('wallDynamicFields');
         if (!box) return;
         const chipsHtml = WALL_FORM_CONFIG[currentFormType].chips.map((c) => (
-            `<button type="button" class="wall-chip${c === selectedChipTag ? ' is-active' : ''}" data-wall-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+            wallFormChipButton(c, currentFormType, c === selectedChipTag, `data-wall-chip="${escapeHtml(c)}"`)
         )).join('');
 
         if (currentFormType === 'machines') {
             const partsHtml = WALL_FORM_CONFIG.machines.parts.map((p) => (
-                `<button type="button" class="wall-series wall-part${p === selectedMachinePart ? ' is-active' : ''}" data-wall-part="${escapeHtml(p)}">+${escapeHtml(p)}</button>`
+                `<button type="button" class="wall-series wall-part wall-tone-place${p === selectedMachinePart ? ' is-active' : ''}" data-wall-part="${escapeHtml(p)}">${escapeHtml(p)}</button>`
             )).join('');
             const seriesHtml = WALL_FORM_CONFIG.machines.series.map((s) => (
-                `<button type="button" class="wall-series" data-wall-series="${escapeHtml(s)}">+${escapeHtml(s)}</button>`
+                `<button type="button" class="wall-series wall-tone-office${s === selectedMachineSeries ? ' is-active' : ''}" data-wall-series="${escapeHtml(s)}">${escapeHtml(s)}</button>`
             )).join('');
             box.innerHTML = `
                 <div class="wall-field">
-                    <label>Укажите машину</label>
-                    <div class="wall-chip-row wall-series-row">${seriesHtml}</div>
-                    <input id="f_title" type="text" autocomplete="off">
+                    <label>Машина</label>
+                    <div class="wall-machine-row">
+                        <div class="wall-chip-row wall-form-chip-scroll">${seriesHtml}</div>
+                        <input id="f_machine_num" type="text" inputmode="numeric" autocomplete="off" placeholder="Номер (045)">
+                    </div>
                 </div>
                 <div class="wall-field">
                     <label>Вагон</label>
-                    <div class="wall-chip-row wall-series-row wall-part-row">${partsHtml}</div>
-                    <input id="f_sub" type="text" autocomplete="off">
+                    <div class="wall-chip-row wall-form-chip-scroll wall-part-row">${partsHtml}</div>
+                    <input id="f_sub" type="text" autocomplete="off" placeholder="Или укажите номер вагона">
                 </div>
                 <div class="wall-field">
                     <label>Неисправность</label>
-                    <div class="wall-chip-row">${chipsHtml}</div>
+                    <div class="wall-chip-row wall-form-chip-scroll">${chipsHtml}</div>
                 </div>
-                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
-                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+                ${wallFormDescBlock('Описание')}
             `;
         } else if (currentFormType === 'line') {
             box.innerHTML = `
                 <div class="wall-field">
-                    <label>Платформа или перегон</label>
-                    <div class="wall-chip-row">${chipsHtml}</div>
-                    <input id="f_title" type="text">
+                    <label>Объект</label>
+                    <div class="wall-chip-row wall-form-chip-scroll">${chipsHtml}</div>
+                    <input id="f_place" type="text" placeholder="Станция или перегон">
                 </div>
                 <div class="wall-grid-2">
-                    <div class="wall-field"><label>Путь</label><input id="f_path" type="text" inputmode="numeric" placeholder="2"></div>
-                    <div class="wall-field"><label>КМ / ПК</label><input id="f_km" type="text" placeholder="28.4"></div>
+                    <div class="wall-field"><label>Путь</label><input id="f_path" type="text" inputmode="numeric" placeholder="Путь (1, 2)"></div>
+                    <div class="wall-field"><label>КМ / ПК</label><input id="f_km" type="text" placeholder="Км / Пк"></div>
                 </div>
-                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
-                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+                ${wallFormDescBlock('Суть замечания')}
             `;
         } else if (currentFormType === 'office') {
             const today = new Date();
             const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             box.innerHTML = `
                 <div class="wall-field">
-                    <label>Приказ / Тема</label>
-                    <div class="wall-chip-row">${chipsHtml}</div>
-                    <input id="f_title" type="text">
+                    <label>Тема</label>
+                    <div class="wall-chip-row wall-form-chip-scroll">${chipsHtml}</div>
                 </div>
-                <div class="wall-field"><label>Дедлайн</label><input id="f_date" type="date" value="${iso}"></div>
-                <div class="wall-field"><label>Заголовок</label><input id="f_text" type="text"></div>
-                <div class="wall-field"><label>Описание</label><input id="f_extra" type="text"></div>
+                <div class="wall-field"><label>Срок</label><input id="f_date" type="date" value="${iso}"></div>
+                ${wallFormDescBlock('Описание')}
             `;
         } else {
             box.innerHTML = `
-                <div class="wall-grid-2">
-                    <div class="wall-field"><label>Имя</label><input id="f_title" type="text" autocomplete="given-name"></div>
-                    <div class="wall-field"><label>Фамилия</label><input id="f_sub" type="text" autocomplete="family-name"></div>
+                <div class="wall-field">
+                    <label>ФИО или должность</label>
+                    <input id="f_contact_name" type="text" autocomplete="name" placeholder="Например: Дежурный по депо, Нарядчик">
                 </div>
-                <div class="wall-field"><label>Служба</label><div class="wall-chip-row">${chipsHtml}</div></div>
+                <div class="wall-field"><label>Служба</label><div class="wall-chip-row wall-form-chip-scroll">${chipsHtml}</div></div>
                 <div class="wall-field"><label>Телефон</label><input id="f_phone" type="tel" value="+7 " placeholder="+7 (999) 000 00 00"></div>
-                <div class="wall-field"><label>Пометка</label><input id="f_text" type="text" placeholder="По каким вопросам звонить..."></div>
+                <div class="wall-field wall-field--desc">
+                    <label>Пометка</label>
+                    <textarea id="f_desc" rows="2" placeholder="По каким вопросам обращаться"></textarea>
+                </div>
             `;
         }
     }
 
+    function buildWallApiCardFromSubmit(payload, formType) {
+        const category = WALL_API_CATEGORY[formType] || WALL_API_CATEGORY.machines;
+        let train_series = null;
+        let machine_number = null;
+        const title = String(payload.objectTitle || '').trim();
+        if (formType === 'machines') {
+            const seriesList = WALL_FORM_CONFIG.machines.series || [];
+            seriesList.forEach((s) => {
+                if (title.toUpperCase().includes(String(s).toUpperCase())) train_series = s;
+            });
+            const numMatch = title.match(/(\d{2,4})/);
+            machine_number = numMatch ? numMatch[1] : title.replace(/^Машина\s+/i, '').trim();
+        }
+        const description = String(payload.text || '').trim();
+        return {
+            category,
+            train_series,
+            machine_number,
+            car_part: payload.subMeta || null,
+            issue_tag: payload.tag || null,
+            title,
+            description: description || title
+        };
+    }
+
+    function mapApiWallRowToLocal(row) {
+        const category = WALL_API_CATEGORY_REVERSE[row.category] || 'machines';
+        return {
+            id: Number(row.id) || Date.now(),
+            category,
+            objectTitle: cleanWallDanglingDashes(row.title || '') || 'Запись',
+            subMeta: cleanWallDanglingDashes(row.car_part || ''),
+            tag: row.issue_tag || '',
+            text: row.description || '',
+            extraLine: '',
+            time: formatWallPostTime(row.created_at) || 'Стена депо',
+            authorTab: row.author_tab_number || '',
+            authorSyncUserId: row.author_sync_user_id || '',
+            createdAt: row.created_at ? Date.parse(row.created_at) : undefined,
+            hammerCount: Math.max(0, Number(row.hammer_count) || 0),
+            hammers: [],
+            myHammer: Boolean(row.my_hammer),
+            likesCount: Math.max(0, Number(row.likes_count) || 0),
+            myLike: Boolean(row.my_like),
+            commentsCount: Number(row.comments_count) || 0,
+            isArchived: Boolean(row.is_archived),
+            resolved: false,
+            _fromServer: true
+        };
+    }
+
+    window.daCrewWallApplySync = function daCrewWallApplySync(rows) {
+        const prevAll = loadWallItems();
+        const prevById = new Map(prevAll.map((p) => [p.id, p]));
+        const serverItems = (Array.isArray(rows) ? rows : []).map(mapApiWallRowToLocal);
+        const hammerMap = loadMyHammerVotes();
+        const likeMap = loadMyLikeVotes();
+        const voter = wallHammerVoterId();
+        serverItems.forEach((item) => {
+            const prev = prevById.get(item.id);
+            if (prev && Array.isArray(prev.hammers) && prev.hammers.length) {
+                item.hammers = prev.hammers.slice();
+                item.hammerCount = item.hammers.length;
+            } else {
+                ensurePostHammers(item);
+                if (item.myHammer && voter && !item.hammers.includes(voter)) {
+                    item.hammers.push(voter);
+                }
+                item.hammerCount = Math.max(Number(item.hammerCount) || 0, item.hammers.length);
+            }
+            syncPostHammerCount(item);
+            if (item.myHammer) hammerMap[String(item.id)] = true;
+            if (item.myLike) likeMap[String(item.id)] = true;
+        });
+        saveMyHammerVotes(hammerMap);
+        saveMyLikeVotes(likeMap);
+        const apiOn = Boolean(window.DaCrewApi?.isEnabled?.());
+        if (apiOn) {
+            wallItems = serverItems.map((item) => normalizeWallItem(item));
+        } else {
+            const localOnly = prevAll.filter((item) => !item._fromServer && !item.isArchived);
+            wallItems = [...serverItems, ...localOnly];
+        }
+        saveWallItems();
+        renderWall();
+    };
+
+    function getWallMySyncUserId() {
+        if (window.DaCrewApi?.getSyncUserId) {
+            return String(window.DaCrewApi.getSyncUserId() || '').trim();
+        }
+        return typeof getOrCreateSyncUserId === 'function' ? String(getOrCreateSyncUserId() || '').trim() : '';
+    }
+
+    function loadLocalWallCommentsMap() {
+        try {
+            const raw = localStorage.getItem(WALL_COMMENTS_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function saveLocalWallCommentsMap(map) {
+        try {
+            localStorage.setItem(WALL_COMMENTS_STORAGE_KEY, JSON.stringify(map || {}));
+        } catch (_) { /* quota */ }
+    }
+
+    function getLocalWallComments(postId) {
+        const map = loadLocalWallCommentsMap();
+        const list = map[String(postId)];
+        return Array.isArray(list) ? list.slice() : [];
+    }
+
+    function appendLocalWallComment(postId, comment) {
+        const map = loadLocalWallCommentsMap();
+        const key = String(postId);
+        const list = Array.isArray(map[key]) ? map[key].slice() : [];
+        list.push(comment);
+        map[key] = list;
+        saveLocalWallCommentsMap(map);
+        return list;
+    }
+
+    function wallPostUsesServerApi(item) {
+        return Boolean(item && item._fromServer && window.DaCrewApi?.isEnabled?.());
+    }
+
+    function wallDetailScreenTitle(item) {
+        return `${wallCardTitle(item)} • Обсуждение`;
+    }
+
+    function wallCommentAuthorLabel(c) {
+        const tab = String(c.user_tab_number || c.userTab || '').trim();
+        if (tab) return `Таб. ${tab}`;
+        const role = String(c.author_role || c.authorRole || '').trim();
+        if (role) return role;
+        return 'Депо';
+    }
+
+    function wallCommentInitials(c) {
+        const tab = String(c.user_tab_number || c.userTab || '').trim();
+        if (tab.length >= 2) return tab.slice(-2);
+        const role = String(c.author_role || c.authorRole || 'Д').trim();
+        return role.slice(0, 2).toUpperCase();
+    }
+
+    function mapApiCommentRow(row) {
+        return {
+            id: Number(row.id),
+            postId: Number(row.post_id),
+            userSyncId: String(row.user_sync_id || ''),
+            userTab: row.user_tab_number || '',
+            authorRole: row.author_role || '',
+            messageText: row.message_text || '',
+            createdAt: row.created_at || new Date().toISOString()
+        };
+    }
+
+    function bumpWallItemCommentCount(postId, delta) {
+        const item = wallItems.find((x) => x.id === postId);
+        if (!item) return;
+        item.commentsCount = Math.max(0, (Number(item.commentsCount) || 0) + (delta || 0));
+        saveWallItems();
+    }
+
+    function wallCommentTimeShort(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function renderWallDetailContactCard(item) {
+        const tel = String(item.phone || '').replace(/[^\d+]/g, '');
+        return `
+            <article class="wall-card wall-card--contact wall-card--detail wall-card--pinned${item.resolved ? ' is-resolved' : ''}">
+                ${renderWallCardHeader(item)}
+                ${renderWallMetaChips(item)}
+                <div class="wall-contact-phone-row">
+                    <a class="wall-card-phone" href="tel:${escapeHtml(tel)}">${escapeHtml(item.phone || '')}</a>
+                </div>
+                ${item.text ? `<div class="wall-card-content wall-card-content--contact">${escapeHtml(item.text)}</div>` : ''}
+                <footer class="wall-card-footer wall-card-footer--readonly">
+                    <div class="author-tag">${escapeHtml(resolveWallAuthorTag(item))}</div>
+                </footer>
+            </article>`;
+    }
+
+    function renderWallDetailPost(item) {
+        if (item.category === 'contacts') {
+            return renderWallDetailContactCard(item);
+        }
+        return renderWallEventCard(item, '', { detail: true });
+    }
+
+    function renderWallDetailComment(c) {
+        const mine = c.userSyncId && c.userSyncId === getWallMySyncUserId();
+        const time = wallCommentTimeShort(c.createdAt) || '';
+        const text = escapeHtml(c.messageText || '');
+        const timeHtml = time ? `<time class="wall-detail-msg__time" datetime="">${escapeHtml(time)}</time>` : '';
+        if (mine) {
+            return `
+            <div class="wall-detail-msg is-mine">
+                <div class="wall-detail-msg__bubble">
+                    <span class="wall-detail-msg__text">${text}</span>${timeHtml}
+                </div>
+            </div>`;
+        }
+        const author = escapeHtml(wallCommentAuthorLabel(c));
+        return `
+            <div class="wall-detail-msg">
+                <span class="wall-detail-msg__avatar" aria-hidden="true">${escapeHtml(wallCommentInitials(c))}</span>
+                <div class="wall-detail-msg__bubble">
+                    <div class="wall-detail-msg__author">${author}</div>
+                    <span class="wall-detail-msg__text">${text}</span>${timeHtml}
+                </div>
+            </div>`;
+    }
+
+    function renderWallDetailThread() {
+        const host = $('wallDetailThread');
+        if (!host) return;
+        if (!wallDetailComments.length) {
+            host.innerHTML = '<p class="wall-detail__empty">Пока нет комментариев. Напишите уточнение или ответ.</p>';
+            return;
+        }
+        host.innerHTML = wallDetailComments.map(renderWallDetailComment).join('');
+    }
+
+    function scrollWallDetailToBottom() {
+        const sc = $('wallDetailScroll');
+        if (!sc) return;
+        window.requestAnimationFrame(() => {
+            sc.scrollTop = sc.scrollHeight;
+        });
+    }
+
+    function setWallDetailOpen(open) {
+        const layer = $('wallDetailLayer');
+        if (!layer) return;
+        layer.hidden = !open;
+        layer.setAttribute('aria-hidden', open ? 'false' : 'true');
+        layer.classList.toggle('is-open', open);
+        document.documentElement.classList.toggle('wall-detail-open', open);
+        document.body.classList.toggle('wall-detail-open', open);
+        if (open) setFabMenuOpen(false);
+    }
+
+    async function loadWallDetailComments(postId) {
+        const item = wallItems.find((x) => x.id === postId);
+        if (!item) {
+            wallDetailComments = [];
+            renderWallDetailThread();
+            return;
+        }
+        if (wallPostUsesServerApi(item)) {
+            try {
+                const data = await window.DaCrewApi.fetchWallComments(postId);
+                wallDetailComments = (data.comments || []).map(mapApiCommentRow);
+                const serverCount = wallDetailComments.length;
+                if ((Number(item.commentsCount) || 0) !== serverCount) {
+                    item.commentsCount = serverCount;
+                    saveWallItems();
+                    renderWall();
+                }
+            } catch (err) {
+                console.warn('[wall] comments load', err);
+                wallDetailComments = getLocalWallComments(postId);
+            }
+        } else {
+            wallDetailComments = getLocalWallComments(postId);
+        }
+        renderWallDetailThread();
+        scrollWallDetailToBottom();
+    }
+
+    function openWallDetail(postId, options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        const id = Number(postId);
+        const item = wallItems.find((x) => x.id === id);
+        if (!item) return;
+        wallDetailPostId = id;
+        const titleEl = $('wallDetailTitle');
+        const postHost = $('wallDetailPost');
+        if (titleEl) titleEl.textContent = wallDetailScreenTitle(item);
+        if (postHost) postHost.innerHTML = renderWallDetailPost(item);
+        setWallDetailOpen(true);
+        if (!opts.skipHistory && !wallDetailHistoryActive) {
+            const state = { [WALL_DETAIL_HISTORY_KEY]: id };
+            history.pushState(state, '', `#wall/${id}`);
+            wallDetailHistoryActive = true;
+        } else if (opts.skipHistory) {
+            wallDetailHistoryActive = true;
+        }
+        loadWallDetailComments(id);
+        const input = $('wallCommentInput');
+        if (input && !opts.skipHistory) {
+            window.setTimeout(() => input.focus(), 280);
+        }
+    }
+
+    function closeWallDetail(fromPopstate) {
+        wallDetailPostId = null;
+        wallDetailComments = [];
+        setWallDetailOpen(false);
+        const input = $('wallCommentInput');
+        if (input) input.value = '';
+        if (wallDetailHistoryActive && !fromPopstate) {
+            wallDetailHistoryActive = false;
+            history.back();
+            return;
+        }
+        wallDetailHistoryActive = false;
+    }
+
+    function onWallDetailPopstate(ev) {
+        const st = ev.state;
+        if (wallDetailPostId != null && (!st || st[WALL_DETAIL_HISTORY_KEY] == null)) {
+            wallDetailPostId = null;
+            wallDetailComments = [];
+            setWallDetailOpen(false);
+            const input = $('wallCommentInput');
+            if (input) input.value = '';
+            wallDetailHistoryActive = false;
+        } else if (st && st[WALL_DETAIL_HISTORY_KEY] != null) {
+            openWallDetail(st[WALL_DETAIL_HISTORY_KEY], { skipHistory: true });
+        }
+    }
+
+    async function submitWallDetailComment() {
+        const postId = wallDetailPostId;
+        if (!postId) return;
+        const input = $('wallCommentInput');
+        const text = String(input?.value || '').trim();
+        if (!text) return;
+        const item = wallItems.find((x) => x.id === postId);
+        if (!item) return;
+        const sendBtn = $('wallCommentSend');
+        if (sendBtn) sendBtn.disabled = true;
+
+        const optimistic = {
+            id: Date.now(),
+            postId,
+            userSyncId: getWallMySyncUserId(),
+            userTab: window.DaCrewApi?.getTabNumber?.() || '',
+            authorRole: '',
+            messageText: text,
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            if (wallPostUsesServerApi(item)) {
+                const data = await window.DaCrewApi.postWallComment(postId, text);
+                const row = data.comment ? mapApiCommentRow(data.comment) : optimistic;
+                wallDetailComments.push(row);
+            } else {
+                appendLocalWallComment(postId, optimistic);
+                wallDetailComments.push(optimistic);
+            }
+            bumpWallItemCommentCount(postId, 1);
+            if (input) input.value = '';
+            renderWallDetailThread();
+            renderWall();
+            scrollWallDetailToBottom();
+        } catch (err) {
+            console.warn('[wall] comment send', err);
+            setStatus('Не удалось отправить комментарий');
+            window.setTimeout(() => setStatus(''), 2500);
+        } finally {
+            if (sendBtn) sendBtn.disabled = false;
+            input?.focus();
+        }
+    }
+
     function submitWallItem() {
-        const titleEl = $('f_title');
         const subEl = $('f_sub');
         const pathEl = $('f_path');
         const kmEl = $('f_km');
-        const textEl = $('f_text');
-        const extraEl = $('f_extra');
+        const descEl = $('f_desc');
         const dateEl = $('f_date');
         const phoneEl = $('f_phone');
-        const rawTitle = (titleEl && titleEl.value.trim()) || 'Без названия';
-        const rawText = (textEl && textEl.value.trim()) || '';
+        const rawText = (descEl && descEl.value.trim()) || '';
         let subMeta = subEl ? subEl.value.trim() : '';
         if (currentFormType === 'machines') {
             subMeta = subEl ? subEl.value.trim() : '';
@@ -2193,40 +3092,98 @@
         } else if (currentFormType === 'office' && dateEl && dateEl.value) {
             const parts = dateEl.value.split('-');
             subMeta = `Срок: ${parts[2]}.${parts[1]}.${parts[0]}`;
+        } else if (currentFormType === 'contacts') {
+            subMeta = '';
         }
+        const defaultText = currentFormType === 'contacts' ? '' : 'Добавлено с линии';
         const payload = {
             category: currentFormType,
-            objectTitle: currentFormType === 'machines' && /^\d+$/.test(rawTitle) ? `Машина ${rawTitle}` : rawTitle,
-            subMeta,
+            objectTitle: buildWallObjectTitle(currentFormType),
+            subMeta: cleanWallDanglingDashes(subMeta),
             tag: selectedChipTag,
-            text: rawText || 'Добавлено с линии',
-            extraLine: extraEl && extraEl.value.trim() ? extraEl.value.trim() : '',
+            text: rawText || defaultText,
+            extraLine: '',
             phone: phoneEl ? phoneEl.value.trim() : '',
         };
+        const authorTab = String(window.DaCrewApi?.getTabNumber?.() || '').trim();
+        const authorSyncUserId = getWallMySyncUserId();
         if (wallEditingId) {
             const idx = wallItems.findIndex((x) => x.id === wallEditingId);
-            if (idx >= 0) {
+            if (idx >= 0 && wallIsCurrentUserAuthor(wallItems[idx])) {
                 wallItems[idx] = {
                     ...wallItems[idx],
                     ...payload,
-                    time: wallItems[idx].time || 'Только что',
+                    authorTab: wallItems[idx].authorTab || authorTab,
+                    time: wallItems[idx].time || wallCardTimeLabel({ createdAt: Date.now() }) || 'Только что',
                 };
             }
         } else {
             wallItems.unshift({
                 id: Date.now(),
                 ...payload,
-                time: 'Только что',
+                authorTab,
+                authorSyncUserId,
+                createdAt: Date.now(),
+                time: formatWallPostTime(new Date().toISOString()) || 'Только что',
+                hammerCount: 0,
+                hammers: [],
+                likesCount: 0,
                 resolved: false,
-                resolveVotes: 0,
             });
         }
         const wasEdit = Boolean(wallEditingId);
         saveWallItems();
+        if (!wasEdit && window.DaCrewApi?.isEnabled?.()) {
+            const apiCard = buildWallApiCardFromSubmit(payload, currentFormType);
+            window.DaCrewApi.postToWall(apiCard).catch((err) => {
+                console.warn('[crew-api] wall post', err);
+            });
+        }
         closeWallModal();
         setWallCategory(currentFormType);
         setStatus(wasEdit ? 'Запись обновлена' : 'Запись добавлена на Стену');
         window.setTimeout(() => setStatus(''), 2000);
+    }
+
+    const WALL_RULES_SEEN_KEY = 'wall_rules_seen_v1';
+    let wallRulesOnboardTimer = null;
+
+    function markWallRulesSeen() {
+        try {
+            localStorage.setItem(WALL_RULES_SEEN_KEY, 'true');
+        } catch (_) { /* quota */ }
+    }
+
+    function openWallRulesModal() {
+        const modal = $('wallRulesModal');
+        if (!modal) return;
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('release-overlay-open');
+    }
+
+    function closeWallRulesModal() {
+        const modal = $('wallRulesModal');
+        if (!modal) return;
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('release-overlay-open');
+        markWallRulesSeen();
+    }
+
+    function scheduleWallRulesOnboarding() {
+        try {
+            if (localStorage.getItem(WALL_RULES_SEEN_KEY)) return;
+        } catch (_) { /* ignore */ }
+        if (wallRulesOnboardTimer) window.clearTimeout(wallRulesOnboardTimer);
+        wallRulesOnboardTimer = window.setTimeout(() => {
+            wallRulesOnboardTimer = null;
+            if (instrMainMode !== 'wall') return;
+            try {
+                if (localStorage.getItem(WALL_RULES_SEEN_KEY)) return;
+            } catch (_) { /* ignore */ }
+            openWallRulesModal();
+        }, 400);
     }
 
     function bindWallUi() {
@@ -2270,34 +3227,74 @@
         });
         $('wallSubmitBtn')?.addEventListener('click', submitWallItem);
         $('wallFeedContainer')?.addEventListener('click', (e) => {
+            const hammerBtn = e.target.closest('[data-wall-hammer]');
+            if (hammerBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleHammerClick(Number(hammerBtn.dataset.wallHammer));
+                return;
+            }
+            const likeBtn = e.target.closest('[data-wall-like]');
+            if (likeBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                void toggleWallLikeVote(Number(likeBtn.dataset.wallLike));
+                return;
+            }
             const edit = e.target.closest('[data-wall-edit]');
             if (edit) {
+                e.stopPropagation();
                 openWallModal(Number(edit.dataset.wallEdit));
                 return;
             }
             const del = e.target.closest('[data-wall-delete]');
             if (del) {
+                e.stopPropagation();
                 const id = Number(del.dataset.wallDelete);
                 const item = wallItems.find((x) => x.id === id);
-                if (!item) return;
+                if (!item || !wallIsCurrentUserAuthor(item)) return;
                 const ok = window.confirm(`Удалить запись «${item.objectTitle}»?`);
                 if (!ok) return;
-                wallItems = wallItems.filter((x) => x.id !== id);
-                const voteMap = loadMyHammerVotes();
-                delete voteMap[String(id)];
-                saveMyHammerVotes(voteMap);
-                saveWallItems();
-                renderWall();
+                removeWallPostFromFeed(id);
                 return;
             }
-            const hammerBtn = e.target.closest('[data-wall-hammer]');
-            if (hammerBtn) {
-                toggleWallHammerVote(Number(hammerBtn.dataset.wallHammer));
+            const commentsOpen = e.target.closest('[data-wall-comments-open]');
+            if (commentsOpen) {
+                e.stopPropagation();
+                openWallDetail(Number(commentsOpen.dataset.wallCommentsOpen));
+                return;
+            }
+            const card = e.target.closest('[data-wall-open]');
+            if (card) {
+                if (e.target.closest('.wall-card-actions')) return;
+                if (e.target.closest('a.wall-call, a.wall-card-phone')) return;
+                openWallDetail(Number(card.dataset.wallOpen));
+                return;
             }
         });
+        $('openWallRulesBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openWallRulesModal();
+        });
+        $('wallRulesModal')?.addEventListener('click', (e) => {
+            if (e.target.closest('[data-wall-rules-close]')) closeWallRulesModal();
+        });
+        $('wallDetailBack')?.addEventListener('click', () => closeWallDetail(false));
+        $('wallCommentSend')?.addEventListener('click', () => { submitWallDetailComment(); });
+        $('wallCommentInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitWallDetailComment();
+            }
+        });
+        if (!wallDetailPopstateBound) {
+            wallDetailPopstateBound = true;
+            window.addEventListener('popstate', onWallDetailPopstate);
+        }
         updateSearchChrome();
         renderWallTagRow();
         renderWall();
+        scheduleWallRulesOnboarding();
     }
 
     function bindUi() {

@@ -28,6 +28,103 @@
     line-height: 1.4;
 }
 
+.route-pending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.route-pending-icon {
+    color: #38bdf8;
+    flex-shrink: 0;
+}
+
+#stationsList .route-pending-badge {
+    margin-top: 10px;
+    margin-bottom: 6px;
+}
+
+.route-card.is-pending-stops {
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.03) 0%, rgba(20, 24, 33, 0.6) 100%);
+}
+
+.route-card-middle-head__times {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.route-pending-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #f59e0b;
+}
+
+.route-pending-mark__icon {
+    display: block;
+    width: 14px;
+    height: 14px;
+}
+
+.route-card.is-pending-stops.is-expanded .route-pending-mark {
+    opacity: 0.55;
+}
+
+.route-pending-expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s ease;
+}
+
+.route-card.is-pending-stops.is-expanded .route-pending-expand {
+    grid-template-rows: 1fr;
+}
+
+.route-pending-expand__inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.route-card.is-pending-stops:not(.is-expanded) .route-pending-expand .route-pending-badge {
+    margin-top: 0;
+    margin-bottom: 0;
+    opacity: 0;
+}
+
+.route-card.is-pending-stops.is-expanded .route-pending-expand .route-pending-badge {
+    margin-top: 10px;
+    margin-bottom: 0;
+    opacity: 1;
+    transition: opacity 0.22s ease 0.06s;
+}
+
+.route-card.is-pending-stops:not(.is-expanded) .route-card-bottom {
+    display: none;
+}
+
+.route-card.is-pending-stops.is-expanded .route-card-bottom {
+    display: grid;
+}
+
 @keyframes fadeInScale {
     from {
         opacity: 0; /* Карточка появляется прозрачной */
@@ -1169,33 +1266,27 @@
     align-items: center;
     justify-content: flex-start;
     width: 100%;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 1px solid rgba(142, 197, 255, 0.24);
-    background:
-        linear-gradient(135deg, rgba(120, 188, 255, 0.16) 0%, rgba(70, 130, 210, 0.1) 100%),
-        rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-        0 4px 16px rgba(0, 0, 0, 0.18);
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: transparent !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease;
+    transition: opacity 0.15s ease;
 }
 
 #screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass:hover {
-    border-color: rgba(160, 210, 255, 0.42);
-    background:
-        linear-gradient(135deg, rgba(140, 200, 255, 0.22) 0%, rgba(90, 150, 230, 0.14) 100%),
-        rgba(255, 255, 255, 0.06);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.14),
-        0 6px 20px rgba(80, 140, 220, 0.16);
+    border: none;
+    background: transparent !important;
+    box-shadow: none;
+    opacity: 0.92;
 }
 
 #screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass:active {
-    transform: scale(0.99);
+    transform: none;
+    opacity: 0.85;
 }
 
 #screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass .trains-chip-panel__list {
@@ -1213,7 +1304,7 @@
     border-radius: 0;
     background: transparent;
     border: none;
-    color: #e8f4ff;
+    color: #e2e8f0;
 }
 
 #screen-profile .nearest-shift-trains .trains-chip-panel--profile-glass .trains-chip-panel__overflow {

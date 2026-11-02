@@ -1,7 +1,6 @@
-// Версия кэша приложения — меняется при обновлении оболочки. v4.1.4
-const CACHE_VERSION = 'da_v4_1_4';
+// Service Worker — Цифровой помощник v5.0 — da_v5_0_0
+const CACHE_NAME = 'da_v5_0_0';
 const NOTIFICATION_ICON = './assets/app-icon.png';
-const CACHE_NAME = `digital_assistant_${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
     './',
@@ -20,6 +19,9 @@ const PRECACHE_ASSETS = [
     './data/trains-uids.json',
     './data/release-notes.json',
     './js/app-config.js',
+    './js/sync-user-id.js',
+    './js/da-auth-session.js',
+    './js/crew-api-client.js',
     './js/schedule-maintenance.js',
     './js/hard-reset-app.js',
     './js/app-data-source.js',
@@ -132,6 +134,33 @@ function isProfileModuleRequest(pathname) {
         || pathname.endsWith('profile-compliance.js')
         || pathname.endsWith('/styles/profile.css')
         || pathname.endsWith('profile.css');
+}
+
+/** Расписание ЦППК — network-first, иначе залипает старый код (8792, daily doc) */
+function isSheduleMaxModuleRequest(pathname) {
+    return pathname.endsWith('/js/shedule-max-source.js')
+        || pathname.endsWith('shedule-max-source.js');
+}
+
+function isCrewApiClientRequest(pathname) {
+    return pathname.endsWith('/js/crew-api-client.js')
+        || pathname.endsWith('crew-api-client.js');
+}
+
+function isDaAuthSessionRequest(pathname) {
+    return pathname.endsWith('/js/da-auth-session.js')
+        || pathname.endsWith('da-auth-session.js');
+}
+
+function isSyncUserIdModuleRequest(pathname) {
+    return pathname.endsWith('/js/sync-user-id.js')
+        || pathname.endsWith('sync-user-id.js');
+}
+
+/** Маршруты — network-first, иначе залипают pending-карточки и routes.css */
+function isRoutesModuleRequest(pathname) {
+    return pathname.endsWith('/styles/routes.css')
+        || pathname.endsWith('routes.css');
 }
 
 async function networkFirst(request) {
@@ -292,7 +321,7 @@ self.addEventListener('notificationclick', (event) => {
 function isSheduleMaxDataRequest(url) {
     const host = String(url.hostname || '');
     const path = String(url.pathname || '');
-    if (host.endsWith('s3.cloud.ru') && /cache_(schedule|stops)/.test(path)) return true;
+    if (host.endsWith('s3.cloud.ru') && /cache_(schedule|stops)|cppk_export\/stops/.test(path)) return true;
     return false;
 }
 
@@ -327,6 +356,19 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isProfileModuleRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    if (isSheduleMaxModuleRequest(url.pathname)
+        || isCrewApiClientRequest(url.pathname)
+        || isDaAuthSessionRequest(url.pathname)
+        || isSyncUserIdModuleRequest(url.pathname)) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    if (isRoutesModuleRequest(url.pathname)) {
         event.respondWith(networkFirst(request));
         return;
     }

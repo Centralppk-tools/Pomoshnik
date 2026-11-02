@@ -533,6 +533,12 @@
         }
     }
 
+    function resetMotionForNavigation() {
+        clearTimelineMotion();
+        resetRouteCardLiveFooters();
+        setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
+    }
+
     global.TrainMotionTimer = {
         init(api) {
             deps = api || null;
@@ -540,6 +546,7 @@
         updateTimers,
         clearTimelineMotion,
         resetRouteCardLiveFooters,
+        resetMotionForNavigation,
         formatMmSs,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

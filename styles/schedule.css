@@ -2032,3 +2032,27 @@ body.app-offline::after {
     clip-path: polygon(0% 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 0% 100%) !important;
     border-radius: 0 !important;
 }
+
+.schedule-data-pane {
+    position: relative;
+    min-height: 96px;
+}
+
+.schedule-data-pane.is-loading > .data-pane-loader {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    margin: 0;
+    padding: 24px 16px;
+    border-radius: var(--app-radius, 12px);
+    background: rgba(12, 18, 28, 0.82);
+    backdrop-filter: blur(6px);
+}
+
+.schedule-data-pane.is-loading #routeGrid,
+.schedule-data-pane.is-loading #scheduleResults,
+.schedule-data-pane.is-loading #scheduleHeader {
+    visibility: hidden;
+    pointer-events: none;
+}

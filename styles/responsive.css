@@ -650,13 +650,12 @@
     }
 
     #screen-profile .profile-qr-frame {
-        max-width: 168px;
-        min-height: 108px;
-        padding: 10px;
+        max-width: 260px;
+        padding: 8px;
     }
 
     #screen-profile .profile-qr-preview {
-        max-height: 112px;
+        max-height: 260px;
     }
 
     #screen-profile .profile-qr-action-btn {

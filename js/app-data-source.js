@@ -32,14 +32,18 @@
     function urlsFor(localPath) {
         const rel = String(localPath || '').trim();
         const urls = [];
-        if (useDirectS3()) {
-            urls.push(s3UrlForRel(rel));
-        }
         if (isLocalDevHost()) {
             const local = rel.startsWith('./') || rel.startsWith('/') ? rel : `./${rel}`;
             urls.push(local);
         }
-        return urls.length ? urls : [rel];
+        if (useDirectS3()) {
+            urls.push(s3UrlForRel(rel));
+        }
+        if (!urls.length) {
+            const local = rel.startsWith('./') || rel.startsWith('/') ? rel : `./${rel}`;
+            urls.push(local);
+        }
+        return urls;
     }
 
     function resolveAssetUrl(relOrAbs) {

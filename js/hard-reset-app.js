@@ -63,42 +63,6 @@
             }
         }
 
-        const timestamp = Date.now();
-        let freshData = null;
-        const sm = global.APP_CONFIG?.sheduleMax || {};
-        const s3Base = String(sm.s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
-        const dailyUrls = [
-            `${s3Base}/data/schedule_yar_daily.json?ts=${timestamp}`,
-        ];
-        const apiBase = String(sm.apiBaseUrl || '').replace(/\/$/, '');
-        if (apiBase) {
-            dailyUrls.push(`${apiBase}/data/schedule_yar_daily.json?ts=${timestamp}`);
-        }
-        if (/^(127\.0\.0\.1|localhost)$/i.test(String(global.location?.hostname || ''))) {
-            dailyUrls.push(`/data/schedule_yar_daily.json?ts=${timestamp}`);
-        }
-        for (const url of dailyUrls) {
-            try {
-                const response = await fetch(url, {
-                    cache: 'no-store',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        Pragma: 'no-cache',
-                    },
-                });
-                if (response.ok) {
-                    freshData = await response.json();
-                    break;
-                }
-            } catch (err) {
-                console.warn('[hardReset] schedule_yar_daily.json', url, err);
-            }
-        }
-
-        if (freshData) {
-            await saveScheduleToLocalDb(freshData);
-        }
-
         if (options.reload !== false) {
             global.location.reload();
         }

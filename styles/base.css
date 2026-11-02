@@ -552,8 +552,68 @@ transform: translateX(20px);
 #screen-schedule .screen-card--schedule .app-community-footer {
     margin-top: 4px;
     margin-bottom: var(--bottom-tabbar-clearance);
-    padding: 0 12px;
-    box-sizing: border-box;
+}
+
+.app-email-upgrade-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9200;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-top, 0px));
+    background: linear-gradient(135deg, rgba(6, 199, 133, 0.18), rgba(2, 76, 78, 0.95));
+    border-bottom: 1px solid rgba(6, 199, 133, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.app-email-upgrade-banner[hidden] {
+    display: none !important;
+}
+
+.app-email-upgrade-banner__text {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: #ecfdf5;
+}
+
+.app-email-upgrade-banner__action {
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 10px;
+    padding: 7px 12px;
+    background: var(--brand-grad, linear-gradient(135deg, #06c785, #024c4e));
+    color: #ecfdf5;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.app-email-upgrade-banner__close {
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+body.has-email-upgrade-banner .main-screens-stage {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
+}
+
+body.has-email-upgrade-banner #screen-auth {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
 }
 
 #screen-schedule .schedule-tabs-stage:not(.is-transitioning):not(.is-dragging) {

@@ -1,4 +1,4 @@
-window.APP_BUILD_ID = '4.1.4';
+window.APP_BUILD_ID = '5.0';
 
 window.APP_CONFIG = {
     APP_BUILD_ID: window.APP_BUILD_ID,
@@ -11,9 +11,12 @@ window.APP_CONFIG = {
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee',
     scheduleMaintenance: false,
     scheduleMaintenanceMessage: 'Ведутся технические работы',
+    crewApi: {
+        baseUrl: 'https://api.digipom.ru',
+        enabled: true
+    },
     sheduleMax: {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
-        apiBaseUrl: 'http://127.0.0.1:8792',
         functionUrl: '',
         useDirectS3: true,
         preferStopsApi: false,
