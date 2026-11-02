@@ -956,6 +956,17 @@ body.has-email-upgrade-banner #screen-auth {
     color: #f87171;
 }
 
+.clock-wrap__sub.crew-sync-badge {
+    color: #38bdf8;
+    font-size: 0.72rem;
+    opacity: 1;
+    transition: opacity 0.35s ease;
+}
+
+.clock-wrap__sub.crew-sync-badge.is-hiding {
+    opacity: 0;
+}
+
 .schedule-route-card-footer {
     padding-top: 8px;
     padding-bottom: 10px;

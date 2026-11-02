@@ -300,6 +300,7 @@
             </div>
             <p id="profileEmailBindError" class="user-auth-error" role="alert"></p>
             <button type="button" class="user-auth-btn da-modal-submit" id="profileEmailBindSave" data-action="submit-bind" data-auth-submit="bind" disabled>Получить код</button>
+            <button type="button" class="user-auth-link-btn user-auth-link-btn--bind" id="profileEmailBindLoginLink">Уже есть аккаунт? Войти по email</button>
         </div>
     </div>
 </div>
@@ -347,6 +348,7 @@
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
                     <div class="clock-wrap__time app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                    <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                     <div class="clock-wrap__sub" id="scheduleMotionBadge" hidden></div>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
@@ -361,11 +363,19 @@
             <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
                 <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
                     <div id="routeShiftCompact" class="route-header-card header-card route-shift-compact--sticky" role="region" aria-label="Параметры смены и поезда">
-                        <p id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</p>
                         <div class="header-top-row">
                             <div class="shift-meta shift-info">
-                                <button type="button" id="routeShiftCodeBtn" class="route-badge badge-shift route-shift-compact__code" aria-label="Сменить шаблон смены">—</button>
+                                <div class="route-shift-compact__leading">
+                                    <button type="button" id="routeShiftRefreshBtn" class="route-shift-compact__code-unified badge-shift route-shift-compact__code" aria-label="Обновить время из норматива" title="Обновить время из норматива">
+                                        <span id="routeShiftCodeLabel" class="route-shift-compact__code-label">—</span>
+                                        <svg class="route-shift-compact__refresh-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+                                            <polyline points="21 3 21 9 15 9"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <span id="routeShiftWorkLine" class="shift-time shift-times route-shift-compact__work">—</span>
+                                <span id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</span>
                             </div>
                             <div class="date-controls">
                                 <label class="date-badge date-display" id="datePickerLabel" title="Выбрать дату смены">
@@ -579,6 +589,7 @@
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
                     <div class="clock-wrap__time app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                    <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
@@ -646,6 +657,7 @@
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
                     <div class="clock-wrap__time app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                    <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
@@ -852,6 +864,7 @@
                     </div>
                     <div class="clock-wrap time-box header-clock-stack">
                         <div class="clock-wrap__time app-header-bar-clock" id="instructionsLiveClock" aria-live="off">--:--:--</div>
+                        <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                     </div>
                     <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
                 </div>
@@ -1196,6 +1209,72 @@
     const SHIFT_BUNDLE_SESSION_AT_KEY = 'cppk_shift_templates_session_at';
     let shiftBundleSessionTimer = null;
     let shiftBundleBackgroundBusy = false;
+    const POST_AUTH_BG_STEP_TIMEOUT_MS = 7000;
+    let crewSyncHideTimer = null;
+
+    function isBackgroundSyncAllowed() {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+        return true;
+    }
+
+    function withBgStepTimeout(promise, label) {
+        return Promise.race([
+            promise,
+            new Promise((_resolve, reject) => {
+                window.setTimeout(
+                    () => reject(new Error(`bg_timeout:${label || 'step'}`)),
+                    POST_AUTH_BG_STEP_TIMEOUT_MS,
+                );
+            }),
+        ]);
+    }
+
+    function setCrewSyncIndicator(active) {
+        const badges = document.querySelectorAll('.crew-sync-badge');
+        if (crewSyncHideTimer) {
+            clearTimeout(crewSyncHideTimer);
+            crewSyncHideTimer = null;
+        }
+        badges.forEach((el) => {
+            if (active) {
+                el.classList.remove('is-hiding');
+                el.hidden = false;
+                return;
+            }
+            if (el.hidden) return;
+            el.classList.add('is-hiding');
+        });
+        if (!active && badges.length) {
+            crewSyncHideTimer = window.setTimeout(() => {
+                crewSyncHideTimer = null;
+                badges.forEach((el) => {
+                    el.hidden = true;
+                    el.classList.remove('is-hiding');
+                });
+            }, 380);
+        }
+    }
+
+    function bindBackgroundSyncVisibilityGuard() {
+        if (window.__bgSyncVisibilityGuardBound) return;
+        window.__bgSyncVisibilityGuardBound = true;
+        document.addEventListener('visibilitychange', () => {
+            if (!isBackgroundSyncAllowed()) {
+                if (shiftBundleSessionTimer) {
+                    clearTimeout(shiftBundleSessionTimer);
+                    shiftBundleSessionTimer = null;
+                }
+                return;
+            }
+            scheduleShiftBundleSessionRefresh();
+        });
+        window.addEventListener('online', () => {
+            if (isBackgroundSyncAllowed()) {
+                scheduleShiftBundleSessionRefresh();
+            }
+        });
+    }
 
     // Состояние календаря — до initUserAuth() (loadUserShifts при старте сессии).
     let calendarUserShifts = {};
@@ -1914,7 +1993,8 @@
     function renderRouteShiftCompact() {
         const compact = document.getElementById('routeShiftCompact');
         const chipsEl = document.getElementById('routeShiftTrainChips');
-        const codeBtn = document.getElementById('routeShiftCodeBtn');
+        const refreshBtn = document.getElementById('routeShiftRefreshBtn');
+        const codeLabel = document.getElementById('routeShiftCodeLabel');
         const workLine = document.getElementById('routeShiftWorkLine');
         const lunchLine = document.getElementById('routeShiftLunchLine');
         const addBtn = document.getElementById('routeShiftAddTrain');
@@ -1930,14 +2010,14 @@
         if (ctx) {
             const enriched = enrichShiftFromDepotTemplate(ctx.shift, ctx.dateKey);
             const code = formatRouteShiftCompactCodeLabel(enriched, ctx.dateKey);
-            if (codeBtn) {
-                codeBtn.textContent = code || 'Смена';
-                codeBtn.className = 'badge-shift route-shift-compact__code';
+            if (refreshBtn && codeLabel) {
+                codeLabel.textContent = code || 'Смена';
+                refreshBtn.className = 'route-shift-compact__code-unified badge-shift route-shift-compact__code';
                 if (String(code).includes('/')) {
-                    codeBtn.classList.add('route-shift-compact__code--night-pair');
+                    refreshBtn.classList.add('route-shift-compact__code--night-pair');
                 }
                 getShiftColorClass(enriched).split(/\s+/).filter(Boolean).forEach(cls => {
-                    codeBtn.classList.add(cls);
+                    refreshBtn.classList.add(cls);
                 });
             }
             if (workLine) {
@@ -1946,15 +2026,20 @@
             if (lunchLine) {
                 const lunchText = formatRouteShiftCompactLunchLine(enriched, ctx.dateKey);
                 lunchLine.textContent = lunchText;
-                lunchLine.hidden = !lunchText;
+                const showLunch = Boolean(lunchText);
+                lunchLine.hidden = !showLunch;
+                lunchLine.setAttribute('aria-hidden', showLunch ? 'false' : 'true');
             }
         } else {
-            if (codeBtn) {
-                codeBtn.textContent = 'Смена';
-                codeBtn.className = 'badge-shift route-shift-compact__code';
+            if (refreshBtn && codeLabel) {
+                codeLabel.textContent = 'Смена';
+                refreshBtn.className = 'route-shift-compact__code-unified badge-shift route-shift-compact__code';
             }
             if (workLine) workLine.textContent = trains.length ? 'Поезда смены' : 'Добавьте поезда';
-            if (lunchLine) lunchLine.hidden = true;
+            if (lunchLine) {
+                lunchLine.hidden = true;
+                lunchLine.setAttribute('aria-hidden', 'true');
+            }
         }
 
         chipsEl.innerHTML = '';
@@ -2223,6 +2308,58 @@
 
         closeRouteShiftRoutesMenu();
         getRouteData();
+        return true;
+    }
+
+    function refreshRouteShiftTimesFromTemplate() {
+        if (isScheduleMaintenanceOn()) return false;
+        const ctx = resolveRouteShiftContext();
+        if (!ctx?.shift?.route) {
+            showDaActionToast('Смена не выбрана');
+            return false;
+        }
+        const { dateKey, shift, shiftIndex } = ctx;
+        applyNormativeForDateKey(dateKey);
+        loadGlobalShiftTemplates();
+        const tmpl = findShiftTemplate(depotShiftTemplates, shift.route, dateKey);
+        if (!tmpl) {
+            showDaActionToast('Норматив не найден');
+            return false;
+        }
+
+        const next = { ...shift };
+        if (tmpl.startTime) {
+            next.startTime = tmpl.startTime;
+            next.reportTime = tmpl.startTime;
+        }
+        if (tmpl.endTime) next.endTime = tmpl.endTime;
+        if (!isMorningRoute(next.route) && tmpl.lunch) {
+            next.lunch = tmpl.lunch;
+        }
+        const tmplWork = tmpl.workHours || tmpl.hours;
+        if (tmplWork != null && String(tmplWork).trim() !== '') {
+            next.hours = String(tmplWork);
+        }
+        if (tmpl.nightHours) next.nightHours = tmpl.nightHours;
+        if (tmpl.morningRoute) next.morningRoute = tmpl.morningRoute;
+
+        const shifts = getStoredDayShifts(dateKey);
+        const idx = Number.isFinite(shiftIndex) && shifts[shiftIndex]
+            ? shiftIndex
+            : pickRouteShiftIndex(dateKey, shifts);
+        const prepared = prepareShiftForCalendar(dateKey, next);
+        if (shifts.length) {
+            shifts[idx] = prepared;
+            setStoredDayShifts(dateKey, shifts);
+        } else {
+            setStoredDayShifts(dateKey, [prepared]);
+        }
+        persistUserShifts();
+        syncRouteContextFromCalendar(dateKey, prepared, idx, { remountEditor: false });
+        refreshRouteShiftEditorIfOpen(dateKey);
+        refreshCalendarConstructorForDate(dateKey);
+        getRouteData();
+        showDaActionToast('Время из норматива');
         return true;
     }
 
@@ -2517,6 +2654,18 @@
         document.getElementById('routeShiftRoutesDropdown')?.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleRouteShiftRoutesMenu();
+        });
+
+        document.getElementById('routeShiftRefreshBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+            if (btn?.classList.contains('is-busy')) return;
+            btn?.classList.add('is-busy');
+            try {
+                refreshRouteShiftTimesFromTemplate();
+            } finally {
+                window.setTimeout(() => btn?.classList.remove('is-busy'), 650);
+            }
         });
 
         document.getElementById('routeShiftRoutesMenuSearch')?.addEventListener('input', (e) => {
@@ -3415,7 +3564,8 @@
         });
     }
 
-    function updateScheduleLiveClockDisplay() {
+    function updateScheduleLiveClockDisplay(options = {}) {
+        const withMotion = options.motion !== false;
         const clocks = document.querySelectorAll('.app-header-bar-clock');
         if (!clocks.length) return;
         const label = (!scheduleLiveClockSynced || !scheduleLiveClockTime)
@@ -3425,6 +3575,7 @@
             el.textContent = label;
             if (scheduleLiveClockSynced && scheduleLiveClockTime) el.title = '';
         });
+        if (!withMotion) return;
         if (!scheduleLiveClockSynced || !scheduleLiveClockTime) {
             clearScheduleActiveStationHighlight();
             clearRouteCardsHighlight();
@@ -3466,11 +3617,20 @@
         return formatLiveClockTime(nowDate);
     }
 
+    function isScheduleLiveUiActive() {
+        if (typeof document !== 'undefined' && document.hidden) return false;
+        const screen = document.getElementById('screen-schedule');
+        if (!screen || screen.classList.contains('hidden')) return false;
+        return true;
+    }
+
     function tickScheduleLiveClock() {
         if (!scheduleLiveClockSynced) return;
         scheduleLiveClockTime = new Date();
-        updateScheduleLiveClockDisplay();
-        checkSchedulePushNotifications();
+        updateScheduleLiveClockDisplay({ motion: isScheduleLiveUiActive() });
+        if (isScheduleLiveUiActive()) {
+            checkSchedulePushNotifications();
+        }
     }
 
     function syncScheduleLiveClock() {
@@ -3508,13 +3668,23 @@
 
     function initScheduleLiveClockResume() {
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) return;
+            if (document.hidden) {
+                if (scheduleLiveClockTimer) {
+                    clearInterval(scheduleLiveClockTimer);
+                    scheduleLiveClockTimer = null;
+                }
+                return;
+            }
             resumeScheduleLiveClockIfNeeded();
-            checkSchedulePushNotifications();
+            if (isScheduleLiveUiActive()) {
+                checkSchedulePushNotifications();
+            }
         });
         window.addEventListener('pageshow', () => {
             resumeScheduleLiveClockIfNeeded();
-            checkSchedulePushNotifications();
+            if (isScheduleLiveUiActive()) {
+                checkSchedulePushNotifications();
+            }
         });
     }
 
@@ -12107,8 +12277,8 @@
         const prev = formatSyncMonthFromDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
         const opts = options && typeof options === 'object' ? options : {};
         try {
-            await syncCrewApiMonth(prev, { replaceShifts: true });
             await syncCrewApiMonth(cur, opts);
+            await syncCrewApiMonth(prev, { replaceShifts: true });
         } catch (err) {
             console.warn('[crew-api] sync adjacent months', err);
         }
@@ -12696,9 +12866,21 @@
         ).trim();
     }
 
+    function hadCloudAccountFlag() {
+        try {
+            return localStorage.getItem('da_had_cloud_account') === '1';
+        } catch (_) {
+            return false;
+        }
+    }
+
     function needsEmailUpgradeCore() {
         if (!window.DaCrewApi?.isEnabled?.()) return false;
         if (window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) return false;
+        if (hadCloudAccountFlag()) return false;
+        const jwt = window.DaAuthSession?.getJwt?.();
+        const stored = window.DaAuthSession?.getStoredUser?.();
+        if (jwt && stored && String(stored.email || '').trim()) return false;
         const tab = normalizeTabNumber(
             getLegacyLocalTab()
             || localStorage.getItem(DEPOT_TAB_KEY)
@@ -13066,11 +13248,90 @@
         if (String(err && err.message || '').includes('ETIMEDOUT')) {
             return 'Не удалось связаться с сервером входа. Проверьте интернет и повторите через минуту.';
         }
+        const rawMsg = String(err && err.message || '').trim();
+        if (/^(load failed|failed to fetch|networkerror|network request failed)$/i.test(rawMsg)) {
+            return 'Не удалось связаться с сервером (api.digipom.ru). Проверьте интернет, Wi‑Fi или попробуйте через минуту.';
+        }
         if (String(code).startsWith('http_')) {
             const status = code.replace('http_', '');
             return `Ошибка сервера (${status}). Попробуйте позже.`;
         }
         return err && err.message ? String(err.message) : 'Не удалось войти.';
+    }
+
+    async function runPostAuthBackgroundSync(ctx) {
+        if (!isBackgroundSyncAllowed()) return;
+        const {
+            tabNumber,
+            displayName,
+            role,
+            preClaimSyncId,
+        } = ctx || {};
+        setCrewSyncIndicator(true);
+        try {
+            if (!Object.keys(calendarUserShifts || {}).length) {
+                await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShifts');
+            }
+            flushPendingShiftPersist();
+            let localShifts = [];
+            try {
+                localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
+            } catch (shiftErr) {
+                console.warn('[auth] offline shifts export skipped', shiftErr);
+            }
+
+            if (window.DaCrewApi?.isEnabled?.()) {
+                await withBgStepTimeout(
+                    window.DaCrewApi.claimAndSync({
+                        tabNumber: tabNumber || null,
+                        name: displayName,
+                        role,
+                        syncUserId: preClaimSyncId,
+                        shifts: localShifts,
+                    }),
+                    'claimAndSync',
+                );
+            } else if (typeof getOrCreateSyncUserId === 'function') {
+                getOrCreateSyncUserId();
+            }
+
+            const finalSyncId = typeof getOrCreateSyncUserId === 'function'
+                ? getOrCreateSyncUserId()
+                : preClaimSyncId;
+            migrateLocalShiftsStorageAfterClaim(preClaimSyncId, finalSyncId, tabNumber);
+
+            if (window.DaCrewApi?.isEnabled?.() && isBackgroundSyncAllowed()) {
+                await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShiftsAfterClaim');
+                const hasLocalShifts = Object.keys(calendarUserShifts || {}).length > 0;
+                if (hasLocalShifts) {
+                    await withBgStepTimeout(
+                        pushLocalShiftsToCrewApiFromMap(calendarUserShifts),
+                        'pushShifts',
+                    );
+                }
+                await withBgStepTimeout(
+                    syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts }),
+                    'syncMonths',
+                );
+                await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShiftsFinal');
+                clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
+                calendarUserShiftsLoadedOnce = true;
+                refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
+                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+                void window.DaCrewApi.maybeRunCloudMigration?.();
+            } else {
+                loadUserShifts();
+                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+            }
+        } catch (syncErr) {
+            console.warn('[auth] post-login background sync', syncErr);
+            try {
+                loadUserShifts();
+                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+            } catch (_) { /* */ }
+        } finally {
+            setCrewSyncIndicator(false);
+        }
     }
 
     async function completeAuthSessionAfterApi(authData, options) {
@@ -13118,61 +13379,19 @@
         unlockAppAuth({ fromLogin: true, skipLoadShifts: true });
         syncEmailUpgradeUi();
         if (opts.toast) showDaActionToast(opts.toast);
-        if (window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) {
-            try {
-                localStorage.setItem('da_had_cloud_account', '1');
-            } catch (_) { /* */ }
-        }
-
         try {
-            if (!Object.keys(calendarUserShifts || {}).length) {
-                await loadUserShifts({ force: true });
-            }
-            flushPendingShiftPersist();
-            let localShifts = [];
-            try {
-                localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
-            } catch (shiftErr) {
-                console.warn('[auth] offline shifts export skipped', shiftErr);
-            }
+            localStorage.setItem('da_had_cloud_account', '1');
+        } catch (_) { /* */ }
 
-            if (window.DaCrewApi?.isEnabled?.()) {
-                await window.DaCrewApi.claimAndSync({
-                    tabNumber: tabNumber || null,
-                    name: displayName,
-                    role,
-                    syncUserId: preClaimSyncId,
-                    shifts: localShifts,
-                });
-            } else if (typeof getOrCreateSyncUserId === 'function') {
-                getOrCreateSyncUserId();
-            }
+        loadUserShifts();
+        calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
 
-            const finalSyncId = typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : preClaimSyncId;
-            migrateLocalShiftsStorageAfterClaim(preClaimSyncId, finalSyncId, tabNumber);
-
-            if (window.DaCrewApi?.isEnabled?.()) {
-                await loadUserShifts({ force: true });
-                const hasLocalShifts = Object.keys(calendarUserShifts || {}).length > 0;
-                if (hasLocalShifts) {
-                    await pushLocalShiftsToCrewApiFromMap(calendarUserShifts);
-                }
-                await syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts });
-                await loadUserShifts({ force: true });
-                clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
-                calendarUserShiftsLoadedOnce = true;
-                refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
-                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-                void DaCrewApi.maybeRunCloudMigration?.();
-            } else {
-                loadUserShifts();
-                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-            }
-        } catch (syncErr) {
-            console.warn('[auth] post-login sync deferred', syncErr);
-            loadUserShifts();
-            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-        }
+        void runPostAuthBackgroundSync({
+            tabNumber,
+            displayName,
+            role,
+            preClaimSyncId,
+        });
         void ensureWebPushSubscription(true);
     }
 
@@ -13395,6 +13614,9 @@
         });
         bindAuthFormValidation();
         document.getElementById('profileEmailBindSave')?.addEventListener('click', submitProfileEmailBind);
+        document.getElementById('profileEmailBindLoginLink')?.addEventListener('click', () => {
+            redirectMigrationToLoginForm({});
+        });
         document.getElementById('profileEmailBindModal')?.addEventListener('click', (e) => {
             e.stopPropagation();
         });
@@ -13416,6 +13638,7 @@
 
     function initUserAuth() {
         migrateAuthSession();
+        bindBackgroundSyncVisibilityGuard();
         bindAuthListeners();
         bindAuthRoleControls();
         initDaCrewApiLayer();
@@ -13438,7 +13661,17 @@
             syncEmailUpgradeUi();
             void ensureWebPushSubscription();
             void ensureDepotTemplatesLoaded();
-        } else if (sessionTab && window.DaAuthSession?.getJwt?.()) {
+        } else if (window.DaAuthSession?.getJwt?.()) {
+            if (!window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) {
+                void window.DaAuthSession.fetchMe?.().then(() => {
+                    syncEmailUpgradeUi();
+                    if (window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) {
+                        try {
+                            localStorage.setItem('da_had_cloud_account', '1');
+                        } catch (_) { /* */ }
+                    }
+                }).catch(() => { /* offline */ });
+            }
             unlockAppAuth();
             void ensureWebPushSubscription();
             void ensureDepotTemplatesLoaded();
@@ -13527,6 +13760,7 @@
             clearTimeout(shiftBundleSessionTimer);
             shiftBundleSessionTimer = null;
         }
+        if (!isBackgroundSyncAllowed()) return;
         let anchor = Date.now();
         try {
             const raw = localStorage.getItem(SHIFT_BUNDLE_SESSION_AT_KEY);
@@ -13537,18 +13771,23 @@
             anchor + APP_DATA_SESSION_TTL_MS - APP_DATA_SESSION_PREFETCH_LEAD_MS - Date.now()
         );
         shiftBundleSessionTimer = setTimeout(() => {
+            shiftBundleSessionTimer = null;
             void refreshShiftTemplatesBundleBackground();
         }, delay);
     }
 
     async function refreshShiftTemplatesBundleBackground() {
+        if (!isBackgroundSyncAllowed()) return;
         if (shiftBundleBackgroundBusy) return;
         shiftBundleBackgroundBusy = true;
         const prevNormatives = localShiftNormatives;
         const prevMeta = localShiftTemplatesMeta;
         try {
             localShiftTemplatesPromise = null;
-            await loadLocalShiftTemplatesBundle({ forceRefresh: true, silent: true });
+            await withBgStepTimeout(
+                loadLocalShiftTemplatesBundle({ forceRefresh: true, silent: true }),
+                'shiftTemplates',
+            );
         } catch (err) {
             console.warn('[shift-templates] background refresh', err);
             localShiftNormatives = prevNormatives;
@@ -13556,7 +13795,9 @@
             ensureShiftTemplatesMemoryFromPersisted();
         } finally {
             shiftBundleBackgroundBusy = false;
-            markShiftBundleSessionFresh();
+            if (isBackgroundSyncAllowed()) {
+                markShiftBundleSessionFresh();
+            }
             applyNormativeForDateKey(getShiftContextDateKey());
         }
     }
@@ -14560,9 +14801,7 @@
             setStoredDayShifts(dateKey, shifts);
         });
         loadGlobalShiftTemplates();
-        if (presetMigration || syncMaterializedMorningShifts()) {
-            persistUserShifts({ immediate: true });
-        }
+        syncMaterializedMorningShifts();
         if (options.renderAfterLoad) {
             calendarRenderCalendar({
                 keepSelectedDay: true,
@@ -20237,9 +20476,7 @@
         }
 
         loadGlobalShiftTemplates();
-        if (syncMaterializedMorningShifts()) {
-            persistUserShifts();
-        }
+        syncMaterializedMorningShifts();
 
         for (let d = 1; d <= totalDays; d++) {
             const div = document.createElement('div');

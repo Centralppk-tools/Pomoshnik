@@ -330,6 +330,11 @@ body.auth-locked .screen:not(#screen-auth) {
     color: #8b949e;
 }
 
+.user-auth-link-btn--bind {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
 .user-auth-link-btn {
     display: block;
     width: 100%;

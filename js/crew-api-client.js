@@ -29,7 +29,30 @@
     let sessionAnchorAt = 0;
     const SESSION_TTL_MS = 30 * 60 * 1000;
     const SESSION_PREFETCH_LEAD_MS = 10 * 1000;
-    const CREW_BG_SYNC_TIMEOUT_MS = 6500;
+    const CREW_BG_SYNC_TIMEOUT_MS = 7000;
+
+    function bgSyncAllowed() {
+        if (typeof global.document !== 'undefined' && global.document.visibilityState !== 'visible') {
+            return false;
+        }
+        if (typeof global.navigator !== 'undefined' && global.navigator.onLine === false) {
+            return false;
+        }
+        return true;
+    }
+
+    function bindCrewBackgroundVisibilityGuard() {
+        if (global.__daCrewBgVisibilityBound) return;
+        global.__daCrewBgVisibilityBound = true;
+        const onWake = () => {
+            if (!bgSyncAllowed()) return;
+            scheduleCrewSessionRefresh();
+        };
+        if (typeof global.document !== 'undefined') {
+            global.document.addEventListener('visibilitychange', onWake);
+        }
+        global.addEventListener('online', onWake);
+    }
 
     function resolveCrewApiBaseUrl(c) {
         const configured = String(c.baseUrl || '').replace(/\/$/, '');
@@ -297,6 +320,7 @@
         const { enabled } = cfg();
         const syncUserId = hooks.getSyncUserId?.() || '';
         if (!enabled || !syncUserId || !global.navigator.onLine) return Promise.resolve(null);
+        if (!bgSyncAllowed()) return Promise.resolve(null);
         if (isCloudMigratedForSyncUser(syncUserId)) return Promise.resolve(null);
         if (cloudMigrationPromise) return cloudMigrationPromise;
         cloudMigrationPromise = migrateAllDataToCloud()
@@ -355,16 +379,26 @@
 
     function scheduleCrewSessionRefresh() {
         if (sessionRefreshTimer) clearTimeout(sessionRefreshTimer);
+        sessionRefreshTimer = null;
+        if (!bgSyncAllowed()) return;
         const delay = Math.max(
             1000,
             sessionAnchorAt + SESSION_TTL_MS - SESSION_PREFETCH_LEAD_MS - Date.now()
         );
         sessionRefreshTimer = setTimeout(() => {
+            sessionRefreshTimer = null;
             void refreshCrewSessionBackground();
         }, delay);
     }
 
     async function refreshCrewSessionBackground() {
+        if (!bgSyncAllowed()) {
+            if (sessionRefreshTimer) {
+                clearTimeout(sessionRefreshTimer);
+                sessionRefreshTimer = null;
+            }
+            return;
+        }
         const { enabled } = cfg();
         if (!enabled || !hooks.getSyncUserId?.()) {
             scheduleCrewSessionRefresh();
@@ -382,6 +416,7 @@
         } catch (e) {
             console.warn('[crew-api] background sync', e);
         } finally {
+            if (!bgSyncAllowed()) return;
             try {
                 await markCrewSessionFresh();
             } catch (err) {
@@ -829,6 +864,7 @@
 
     function configure(nextHooks) {
         Object.assign(hooks, nextHooks || {});
+        bindCrewBackgroundVisibilityGuard();
         void bootstrapCrewSessionAnchor();
     }
 
@@ -858,6 +894,7 @@
     };
 
     global.addEventListener('online', () => {
+        if (!bgSyncAllowed()) return;
         flushOfflineQueue().catch(() => {});
     });
 })(typeof window !== 'undefined' ? window : globalThis);
