@@ -1187,7 +1187,7 @@
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '5.0';
-    const CLIENT_CACHE_VERSION = 'da_v5_0_0';
+    const CLIENT_CACHE_VERSION = 'da_v5_0_1';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -3626,6 +3626,9 @@
 
     function tickScheduleLiveClock() {
         if (!scheduleLiveClockSynced) return;
+        if (!scheduleLiveClockTimer) {
+            scheduleLiveClockTimer = setInterval(tickScheduleLiveClock, 1000);
+        }
         scheduleLiveClockTime = new Date();
         updateScheduleLiveClockDisplay({ motion: isScheduleLiveUiActive() });
         if (isScheduleLiveUiActive()) {
@@ -3668,13 +3671,7 @@
 
     function initScheduleLiveClockResume() {
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                if (scheduleLiveClockTimer) {
-                    clearInterval(scheduleLiveClockTimer);
-                    scheduleLiveClockTimer = null;
-                }
-                return;
-            }
+            if (document.hidden) return;
             resumeScheduleLiveClockIfNeeded();
             if (isScheduleLiveUiActive()) {
                 checkSchedulePushNotifications();
@@ -6299,13 +6296,8 @@
     }
 
     function resetScheduleMotionState() {
-        if (scheduleLiveClockTimer) {
-            clearInterval(scheduleLiveClockTimer);
-            scheduleLiveClockTimer = null;
-        }
-        scheduleLiveClockSynced = false;
-        scheduleLiveClockTime = null;
         clearScheduleActiveStationHighlight();
+        clearRouteCardsHighlight();
         window.TrainMotionTimer?.resetMotionForNavigation?.();
         const motionBadge = document.getElementById('scheduleMotionBadge');
         if (motionBadge) {
@@ -11013,7 +11005,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261030a')
+        navigator.serviceWorker.register('./sw.js?v=20261103a')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
