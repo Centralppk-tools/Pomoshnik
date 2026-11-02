@@ -105,7 +105,7 @@
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=20261030c"></script>
+<script src="js/da-auth-session.js?v=5.0.1"></script>
 <script src="js/crew-api-client.js?v=20261030b"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
@@ -11977,8 +11977,14 @@
         if (user.events != null && typeof window.importProfileComplianceSnapshot === 'function') {
             window.importProfileComplianceSnapshot(getAuthSessionTab(), user.events);
         }
-        if (window.DaAuthSession?.persistSession && user.tab_number) {
-            DaAuthSession.persistSession(DaAuthSession.getJwt(), user);
+        const authUser = window.DaAuthSession?.getStoredUser?.();
+        if (authUser && window.DaAuthSession?.persistSession && user.tab_number) {
+            window.DaAuthSession.persistSession(window.DaAuthSession.getJwt(), {
+                ...authUser,
+                tab_number: user.tab_number || authUser.tab_number,
+                name: user.name || authUser.name,
+                role: user.role || authUser.role,
+            });
         }
         syncProfileEmailBindBanner();
         const nameInput = document.getElementById('profileUserNameInput');
@@ -13043,7 +13049,7 @@
         void ensureWebPushSubscription(true);
         syncEmailUpgradeUi();
         if (opts.toast) showDaActionToast(opts.toast);
-        if (user.email && String(user.email).trim()) {
+        if (window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) {
             try {
                 localStorage.setItem('da_had_cloud_account', '1');
             } catch (_) { /* */ }

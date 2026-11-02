@@ -30,9 +30,21 @@
             global.localStorage.setItem(JWT_KEY, String(token));
         }
         if (user && typeof user === 'object') {
-            global.localStorage.setItem(USER_KEY, JSON.stringify(user));
-            const verified = user.email_verified_at != null && String(user.email_verified_at).trim() !== '';
-            if (verified && user.email && String(user.email).trim()) {
+            const prev = getStoredUser();
+            let merged = user;
+            if (prev && typeof prev === 'object') {
+                merged = { ...prev, ...user };
+                // Ответ /api/v1/sync не отдаёт email_verified_at — не затираем после миграции.
+                if (prev.email_verified_at && (user.email_verified_at == null || String(user.email_verified_at).trim() === '')) {
+                    merged.email_verified_at = prev.email_verified_at;
+                }
+                if (prev.email && (user.email == null || String(user.email).trim() === '')) {
+                    merged.email = prev.email;
+                }
+            }
+            global.localStorage.setItem(USER_KEY, JSON.stringify(merged));
+            const verified = merged.email_verified_at != null && String(merged.email_verified_at).trim() !== '';
+            if (verified && merged.email && String(merged.email).trim()) {
                 try {
                     global.localStorage.setItem('da_had_cloud_account', '1');
                 } catch (_) { /* */ }
