@@ -454,7 +454,7 @@
             }
         }
         if (typeof hooks.applySyncPayload === 'function') {
-            hooks.applySyncPayload(data, opts);
+            hooks.applySyncPayload(data, { ...opts, syncMonth: m });
         }
         await markCrewSessionFresh();
         return data;

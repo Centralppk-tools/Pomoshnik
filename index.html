@@ -11665,6 +11665,33 @@
         const enriched = typeof enrichShiftFromDepotTemplate === 'function'
             ? enrichShiftFromDepotTemplate(shift, dateKey)
             : shift;
+        const notes = getShiftNotesList(enriched);
+        let note_text = notes.map((n) => n.text).filter(Boolean).join('\n')
+            || String(enriched.note || '').trim();
+        const warnings = loadShiftWarnings().map((w) => ({
+            km: w.km,
+            pk: w.pk,
+            speed: w.speed,
+            dir: w.dir
+        }));
+
+        if (isAveragePayShift(enriched)) {
+            const pay = getCalendarShiftPayment(enriched, dateKey);
+            if (!note_text.includes('[da:average_pay]')) {
+                note_text = note_text ? `${note_text}\n[da:average_pay]` : '[da:average_pay]';
+            }
+            return {
+                shift_date: iso,
+                route_code: 'О',
+                work_time: null,
+                trains: [],
+                hours_text: null,
+                salary_amount: pay > 0 ? Math.round(pay) : null,
+                note_text: note_text || '[da:average_pay]',
+                warnings
+            };
+        }
+
         const route_code = String(enriched.route || enriched.name || '').trim();
         if (!route_code) return null;
         const trains = extractTrainNumbers(getShiftTrainsText(enriched));
@@ -11673,15 +11700,6 @@
             ? formatShiftHoursCompact(hoursVal)
             : String(enriched.hours || '').trim();
         const pay = getCalendarShiftPayment(enriched, dateKey);
-        const notes = getShiftNotesList(enriched);
-        const note_text = notes.map((n) => n.text).filter(Boolean).join('\n')
-            || String(enriched.note || '').trim();
-        const warnings = loadShiftWarnings().map((w) => ({
-            km: w.km,
-            pk: w.pk,
-            speed: w.speed,
-            dir: w.dir
-        }));
         return {
             shift_date: iso,
             route_code,
@@ -12046,12 +12064,62 @@
         }
     }
 
+    function calendarDateKeyToSyncMonth(dateKey) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return '';
+        return `${parts[2]}-${parts[1]}`;
+    }
+
+    function clearCalendarShiftsForSyncMonth(monthKey) {
+        if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return;
+        Object.keys(calendarUserShifts || {}).forEach((dateKey) => {
+            if (calendarDateKeyToSyncMonth(dateKey) === monthKey) {
+                delete calendarUserShifts[dateKey];
+            }
+        });
+    }
+
+    function formatSyncMonthFromDate(date) {
+        const d = date instanceof Date ? date : new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    async function syncCrewApiMonth(monthKey, options) {
+        if (!window.DaCrewApi?.isEnabled?.() || !monthKey) return null;
+        return DaCrewApi.sync(monthKey, options);
+    }
+
+    async function syncVisibleCalendarMonthFromCrewApi() {
+        if (!window.DaCrewApi?.isEnabled?.()) return;
+        const monthKey = formatSyncMonthFromDate(calendarCurrentDate);
+        try {
+            await syncCrewApiMonth(monthKey, { replaceShifts: true });
+        } catch (err) {
+            console.warn('[crew-api] sync visible month', err);
+        }
+    }
+
+    async function syncCrewApiAdjacentMonths(anchorDate, options) {
+        if (!window.DaCrewApi?.isEnabled?.()) return;
+        const d = anchorDate instanceof Date ? anchorDate : new Date();
+        const cur = formatSyncMonthFromDate(d);
+        const prev = formatSyncMonthFromDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+        const opts = options && typeof options === 'object' ? options : {};
+        try {
+            await syncCrewApiMonth(prev, { replaceShifts: true });
+            await syncCrewApiMonth(cur, opts);
+        } catch (err) {
+            console.warn('[crew-api] sync adjacent months', err);
+        }
+    }
+
     function applyCrewApiSyncPayload(data, options) {
         const opts = options && typeof options === 'object' ? options : {};
         if (!data || data.ok === false) return;
         if (data.user) applyCrewApiProfileUser(data.user);
         if (Array.isArray(data.shifts)) {
             const serverRows = data.shifts;
+            const syncMonth = String(opts.syncMonth || data.month || '').trim();
             if (opts.replaceShifts) {
                 const localBackup = collectLocalShiftsMapForSyncGuard();
                 const localCount = Object.keys(localBackup).length;
@@ -12067,7 +12135,11 @@
                     }
                     return;
                 }
-                calendarUserShifts = {};
+                if (syncMonth && /^\d{4}-\d{2}$/.test(syncMonth)) {
+                    clearCalendarShiftsForSyncMonth(syncMonth);
+                } else {
+                    calendarUserShifts = {};
+                }
             }
             if (!serverRows.length) {
                 if (!opts.replaceShifts) {
@@ -12094,12 +12166,18 @@
                     const trainsText = trainNumbers.join(' ');
 
                     const base = existing ? { ...existing } : {};
-                    const routeCode = String(row.route_code || base.route || base.name || '').trim();
+                    let routeCode = String(row.route_code || base.route || base.name || '').trim();
+                    const noteRaw = String(row.note_text || base.note || '').trim();
+                    const isAveragePay = routeCode.toLowerCase() === 'о'
+                        || routeCode.toLowerCase() === 'отпуск'
+                        || noteRaw.includes('[da:average_pay]');
+                    const userNote = noteRaw.replace(/\n?\[da:average_pay\]/g, '').trim();
 
                     calendarUserShifts[dateKey] = syncShiftTrainFields({
                         ...base,
-                        route: routeCode || base.route || '',
-                        name: routeCode || base.name || base.route || '',
+                        route: isAveragePay ? (routeCode || 'О') : (routeCode || base.route || ''),
+                        name: isAveragePay ? 'О' : (routeCode || base.name || base.route || ''),
+                        shiftStatus: isAveragePay ? 'average_pay' : base.shiftStatus,
                         startTime: tm ? tm[1] : (base.startTime || ''),
                         endTime: tm ? tm[2] : (base.endTime || ''),
                         trains: trainsText,
@@ -12107,9 +12185,7 @@
                         hours: row.hours_text != null && String(row.hours_text).trim() !== ''
                             ? row.hours_text
                             : (base.hours || ''),
-                        note: row.note_text != null && String(row.note_text).trim() !== ''
-                            ? row.note_text
-                            : (base.note || '')
+                        note: userNote || (isAveragePay ? '' : (base.note || ''))
                     });
                 });
                 persistUserShiftsLocalOnly();
@@ -13034,8 +13110,7 @@
             if (hasLocalShifts) {
                 await pushLocalShiftsToCrewApiFromMap(calendarUserShifts);
             }
-            await DaCrewApi.syncCurrentMonth(new Date(), { replaceShifts: !hasLocalShifts })
-                .catch((err) => console.warn('[crew-api] login sync', err));
+            await syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts });
             await loadUserShifts({ force: true });
             clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
             calendarUserShiftsLoadedOnce = true;
@@ -14465,7 +14540,7 @@
         }
         try {
             await DaCrewApi.flushOfflineQueue();
-            await DaCrewApi.syncCurrentMonth(undefined, options.syncOptions);
+            await syncCrewApiAdjacentMonths(calendarCurrentDate, options.syncOptions || {});
         } catch (err) {
             console.warn('[crew-api] startCalendar sync', err);
         }
@@ -20171,6 +20246,7 @@
         calendarCurrentDate.setDate(1);
         calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + direction);
         calendarRenderCalendar();
+        void syncVisibleCalendarMonthFromCrewApi();
     }
 
     function calendarFormatMonthGenitive(monthIndex) {
