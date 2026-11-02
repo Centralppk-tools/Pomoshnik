@@ -735,3 +735,13 @@ body.email-upgrade-blocking .app-community-footer {
 body.email-upgrade-blocking #profileEmailBindModal:not(.hidden) {
     pointer-events: auto;
 }
+
+body.email-upgrade-blocking.email-upgrade-use-login #profileEmailBindModal {
+    display: none !important;
+}
+
+body.email-upgrade-blocking.email-upgrade-use-login #screen-auth {
+    z-index: 6600;
+    visibility: visible;
+    pointer-events: auto;
+}

@@ -210,6 +210,7 @@
                     </button>
                 </div>
                 <button type="button" class="user-auth-link-btn" id="authForgotBtn">Забыли пароль?</button>
+                <button type="button" class="user-auth-link-btn hidden" id="authBackToEmailBindBtn" hidden>Вернуться к привязке email</button>
                 <p id="authErrorLogin" class="user-auth-error" role="alert" aria-live="polite"></p>
                 <button type="button" id="authLoginBtn" class="user-auth-btn" data-auth-submit="login" disabled>Войти</button>
                 <p class="user-auth-footnote">Ваши данные надежно защищены и привязаны к аккаунту</p>
@@ -12729,17 +12730,29 @@
 
         const modal = document.getElementById('profileEmailBindModal');
         if (!modal) return;
+        const loginRedirect = document.body.classList.contains('email-upgrade-use-login');
         if (blocking) {
-            resetProfileEmailBindUi();
-            modal.classList.add('da-modal-overlay--bind');
-            modal.classList.remove('hidden');
-            modal.setAttribute('aria-hidden', 'false');
-            const input = document.getElementById('profileEmailBindInput');
-            if (input && document.activeElement !== input) {
-                requestAnimationFrame(() => input.focus());
+            if (!loginRedirect) {
+                resetProfileEmailBindUi();
+                modal.classList.add('da-modal-overlay--bind');
+                modal.classList.remove('hidden');
+                modal.setAttribute('aria-hidden', 'false');
+                const input = document.getElementById('profileEmailBindInput');
+                if (input && document.activeElement !== input) {
+                    requestAnimationFrame(() => input.focus());
+                }
+            } else {
+                modal.classList.add('hidden');
+                modal.setAttribute('aria-hidden', 'true');
             }
             refreshAuthSubmitStates();
         } else {
+            document.body.classList.remove('email-upgrade-use-login');
+            const backBtn = document.getElementById('authBackToEmailBindBtn');
+            if (backBtn) {
+                backBtn.hidden = true;
+                backBtn.classList.add('hidden');
+            }
             modal.classList.remove('da-modal-overlay--bind');
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
@@ -12768,10 +12781,49 @@
         document.getElementById('profileEmailBindModal')?.classList.add('hidden');
     }
 
-    async function tryLoginAfterBindConflict(email, password) {
-        const mail = String(email || '').trim();
-        if (!mail) throw new Error('invalid_credentials');
-        return window.DaAuthSession.login({ login: mail, password });
+    function getAuthErrorCode(err) {
+        return String(err?.payload?.error || err?.message || '').trim();
+    }
+
+    function isRegisteredEmailConflict(err) {
+        const code = getAuthErrorCode(err);
+        return code === 'email_taken' || code === 'account_already_registered';
+    }
+
+    function redirectMigrationToLoginForm({ email, password, reasonCode }) {
+        resetProfileEmailBindUi();
+        document.body.classList.add('email-upgrade-use-login');
+        document.getElementById('profileEmailBindModal')?.classList.add('hidden');
+        clearAuthErrors();
+        setAuthPanel('authPanelLogin');
+        const loginInput = document.getElementById('authLoginInput');
+        const passInput = document.getElementById('authPasswordInput');
+        if (loginInput && email) loginInput.value = String(email).trim();
+        if (passInput && password != null) passInput.value = String(password);
+        lockAppAuth();
+        const msg = reasonCode === 'account_already_registered'
+            ? 'Аккаунт на этом устройстве уже есть. Войдите по email и паролю.'
+            : 'Этот email уже зарегистрирован. Войдите по нему — код из письма для новой привязки не нужен.';
+        setAuthError('authErrorLogin', msg);
+        const backBtn = document.getElementById('authBackToEmailBindBtn');
+        if (backBtn) {
+            backBtn.hidden = false;
+            backBtn.classList.remove('hidden');
+        }
+        refreshAuthSubmitStates();
+        passInput?.focus();
+        setAuthButtonsLoading(false);
+    }
+
+    function leaveEmailUpgradeLoginRedirect() {
+        document.body.classList.remove('email-upgrade-use-login');
+        const backBtn = document.getElementById('authBackToEmailBindBtn');
+        if (backBtn) {
+            backBtn.hidden = true;
+            backBtn.classList.add('hidden');
+        }
+        unlockAppAuth({ skipCrewSync: true });
+        syncEmailUpgradeUi();
     }
 
     function resetProfileEmailBindUi() {
@@ -12876,28 +12928,13 @@
             showDaActionToast('Код отправлен');
             return;
         } catch (err) {
-            const code = String(err?.payload?.error || err?.message || '').trim();
-            if (
-                !profileBindAwaitingCode
-                && (code === 'account_already_registered' || code === 'email_taken')
-                && window.DaAuthSession?.login
-            ) {
-                try {
-                    const authData = await tryLoginAfterBindConflict(email, password);
-                    await completeAuthSessionAfterApi(authData, {
-                        toast: 'Вход выполнен',
-                        roleKind,
-                        role,
-                    });
-                    resetProfileEmailBindUi();
-                    syncEmailUpgradeUi();
-                    return;
-                } catch (loginErr) {
-                    if (errEl) {
-                        errEl.textContent = formatAuthLoginError(loginErr);
-                    }
-                    return;
-                }
+            if (isRegisteredEmailConflict(err)) {
+                redirectMigrationToLoginForm({
+                    email,
+                    password,
+                    reasonCode: getAuthErrorCode(err),
+                });
+                return;
             }
             const msg = formatAuthLoginError(err);
             if (errEl) errEl.textContent = msg;
@@ -13072,56 +13109,13 @@
         }
 
         const isNewUser = !getUserByTab(tabNumber);
-        if (!Object.keys(calendarUserShifts || {}).length) {
-            await loadUserShifts({ force: true });
-        }
-        flushPendingShiftPersist();
-        let localShifts = [];
-        try {
-            localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
-        } catch (shiftErr) {
-            console.warn('[auth] offline shifts export skipped', shiftErr);
-        }
-
-        if (window.DaCrewApi?.isEnabled?.()) {
-            await window.DaCrewApi.claimAndSync({
-                tabNumber: tabNumber || null,
-                name: displayName,
-                role,
-                syncUserId: preClaimSyncId,
-                shifts: localShifts,
-            });
-        } else if (typeof getOrCreateSyncUserId === 'function') {
-            getOrCreateSyncUserId();
-        }
-
         if (isNewUser) {
             saveUserRecord(tabNumber, { tabNumber, createdAt: new Date().toISOString() });
         }
 
-        const finalSyncId = typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : preClaimSyncId;
-        migrateLocalShiftsStorageAfterClaim(preClaimSyncId, finalSyncId, tabNumber);
         setAuthSessionTab(tabNumber, { skipCrewSync: true });
+        document.body.classList.remove('email-upgrade-use-login');
         unlockAppAuth({ fromLogin: true, skipLoadShifts: true });
-
-        if (window.DaCrewApi?.isEnabled?.()) {
-            await loadUserShifts({ force: true });
-            const hasLocalShifts = Object.keys(calendarUserShifts || {}).length > 0;
-            if (hasLocalShifts) {
-                await pushLocalShiftsToCrewApiFromMap(calendarUserShifts);
-            }
-            await syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts });
-            await loadUserShifts({ force: true });
-            clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
-            calendarUserShiftsLoadedOnce = true;
-            refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
-            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-            void DaCrewApi.maybeRunCloudMigration?.();
-        } else {
-            loadUserShifts();
-            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-        }
-        void ensureWebPushSubscription(true);
         syncEmailUpgradeUi();
         if (opts.toast) showDaActionToast(opts.toast);
         if (window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) {
@@ -13129,6 +13123,57 @@
                 localStorage.setItem('da_had_cloud_account', '1');
             } catch (_) { /* */ }
         }
+
+        try {
+            if (!Object.keys(calendarUserShifts || {}).length) {
+                await loadUserShifts({ force: true });
+            }
+            flushPendingShiftPersist();
+            let localShifts = [];
+            try {
+                localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
+            } catch (shiftErr) {
+                console.warn('[auth] offline shifts export skipped', shiftErr);
+            }
+
+            if (window.DaCrewApi?.isEnabled?.()) {
+                await window.DaCrewApi.claimAndSync({
+                    tabNumber: tabNumber || null,
+                    name: displayName,
+                    role,
+                    syncUserId: preClaimSyncId,
+                    shifts: localShifts,
+                });
+            } else if (typeof getOrCreateSyncUserId === 'function') {
+                getOrCreateSyncUserId();
+            }
+
+            const finalSyncId = typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : preClaimSyncId;
+            migrateLocalShiftsStorageAfterClaim(preClaimSyncId, finalSyncId, tabNumber);
+
+            if (window.DaCrewApi?.isEnabled?.()) {
+                await loadUserShifts({ force: true });
+                const hasLocalShifts = Object.keys(calendarUserShifts || {}).length > 0;
+                if (hasLocalShifts) {
+                    await pushLocalShiftsToCrewApiFromMap(calendarUserShifts);
+                }
+                await syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts });
+                await loadUserShifts({ force: true });
+                clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
+                calendarUserShiftsLoadedOnce = true;
+                refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
+                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+                void DaCrewApi.maybeRunCloudMigration?.();
+            } else {
+                loadUserShifts();
+                calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+            }
+        } catch (syncErr) {
+            console.warn('[auth] post-login sync deferred', syncErr);
+            loadUserShifts();
+            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+        }
+        void ensureWebPushSubscription(true);
     }
 
     async function handleAuthLogin() {
@@ -13146,6 +13191,7 @@
                 return;
             }
             const authData = await window.DaAuthSession.login({ login, password });
+            setAuthButtonsLoading(false);
             await completeAuthSessionAfterApi(authData);
         } catch (err) {
             console.error('Ошибка входа:', err);
@@ -13323,6 +13369,9 @@
             resetAuthForgotPanelUi();
             setAuthPanel('authPanelForgot');
             refreshAuthSubmitStates();
+        });
+        document.getElementById('authBackToEmailBindBtn')?.addEventListener('click', () => {
+            leaveEmailUpgradeLoginRedirect();
         });
         document.getElementById('authForgotBackBtn')?.addEventListener('click', () => {
             resetAuthForgotPanelUi();

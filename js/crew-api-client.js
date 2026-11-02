@@ -626,18 +626,39 @@
             'Content-Type': 'application/json',
             ...(global.DaAuthSession?.authHeaders?.() || {})
         };
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: claimHeaders,
-            body: JSON.stringify({
-                tab_number: tab || null,
-                name: name || null,
-                role,
-                sync_user_id: syncUserId,
-                shifts
-            }),
-            cache: 'no-store'
-        });
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutMs = 45000;
+        const timeoutId = controller
+            ? setTimeout(() => controller.abort(), timeoutMs)
+            : null;
+        let res;
+        try {
+            res = await fetch(url, {
+                method: 'POST',
+                headers: claimHeaders,
+                body: JSON.stringify({
+                    tab_number: tab || null,
+                    name: name || null,
+                    role,
+                    sync_user_id: syncUserId,
+                    shifts
+                }),
+                cache: 'no-store',
+                signal: controller ? controller.signal : undefined,
+            });
+        } catch (fetchErr) {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (fetchErr && fetchErr.name === 'AbortError') {
+                const err = new Error('claim_sync_timeout');
+                err.payload = {
+                    error: 'claim_sync_timeout',
+                    message: 'Сервер долго не отвечает. Вход выполнен — синхронизация повторится позже.',
+                };
+                throw err;
+            }
+            throw fetchErr;
+        }
+        if (timeoutId) clearTimeout(timeoutId);
         let data = null;
         try {
             data = await res.json();
