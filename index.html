@@ -105,7 +105,7 @@
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=5.0.2"></script>
+<script src="js/da-auth-session.js?v=5.0.3"></script>
 <script src="js/crew-api-client.js?v=20261030b"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
@@ -1187,7 +1187,7 @@
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '5.0';
-    const CLIENT_CACHE_VERSION = 'da_v5_0_2';
+    const CLIENT_CACHE_VERSION = 'da_v5_0_3';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -13534,8 +13534,13 @@
 
     async function handleAuthResetSubmit(resetToken) {
         clearAuthErrors();
+        const token = String(resetToken || parsePasswordResetTokenFromUrl() || '').trim();
         const p1 = String(document.getElementById('authResetPasswordInput')?.value || '');
         const p2 = String(document.getElementById('authResetPassword2Input')?.value || '');
+        if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
+            setAuthError('authErrorReset', 'Ссылка повреждена — скопируйте её из письма целиком или запросите новую.');
+            return;
+        }
         if (!p1 || p1.length < 6) {
             setAuthError('authErrorReset', 'Пароль не короче 6 символов.');
             return;
@@ -13546,16 +13551,65 @@
         }
         setAuthButtonsLoading(true);
         try {
-            const authData = await window.DaAuthSession.resetPassword(resetToken, p1);
-            const url = new URL(window.location.href);
-            url.searchParams.delete('reset_token');
-            window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+            const authData = await window.DaAuthSession.resetPassword(token, p1);
+            clearPasswordResetTokenFromUrl();
             await completeAuthSessionAfterApi(authData, { toast: 'Пароль обновлён' });
         } catch (err) {
             setAuthError('authErrorReset', err?.payload?.message || formatAuthLoginError(err));
         } finally {
             setAuthButtonsLoading(false);
         }
+    }
+
+    const DA_RESET_TOKEN_STORAGE_KEY = 'da_password_reset_token';
+
+    function parsePasswordResetTokenFromUrl() {
+        try {
+            const path = String(window.location.pathname || '');
+            const pathMatch = path.match(/\/r\/([a-f0-9]{64})\/?$/i);
+            if (pathMatch) {
+                return String(pathMatch[1]).toLowerCase();
+            }
+            const fromQuery = new URLSearchParams(window.location.search).get('reset_token');
+            if (fromQuery) {
+                const t = String(fromQuery).trim();
+                if (/^[a-f0-9]{64}$/i.test(t)) {
+                    return t.toLowerCase();
+                }
+                return t;
+            }
+            const stored = sessionStorage.getItem(DA_RESET_TOKEN_STORAGE_KEY);
+            if (stored && /^[a-f0-9]{64}$/i.test(stored)) {
+                return String(stored).toLowerCase();
+            }
+        } catch (_) { /* */ }
+        return null;
+    }
+
+    function rememberPasswordResetToken(token) {
+        const t = String(token || '').trim();
+        if (!/^[a-f0-9]{64}$/i.test(t)) return;
+        try {
+            sessionStorage.setItem(DA_RESET_TOKEN_STORAGE_KEY, t.toLowerCase());
+        } catch (_) { /* */ }
+    }
+
+    function clearPasswordResetTokenFromUrl() {
+        try {
+            sessionStorage.removeItem(DA_RESET_TOKEN_STORAGE_KEY);
+        } catch (_) { /* */ }
+        const path = String(window.location.pathname || '');
+        if (/\/r\/[a-f0-9]{64}\/?$/i.test(path)) {
+            window.history.replaceState({}, '', '/');
+            return;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reset_token');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
+    function getPasswordResetTokenForAuth() {
+        return parsePasswordResetTokenFromUrl();
     }
 
     let authPendingVerifyEmail = '';
@@ -13568,8 +13622,18 @@
         authResetLinkValid = null;
         refreshAuthSubmitStates();
         setAuthError('authErrorReset', '');
+        const token = String(resetToken || '').trim();
+        if (token && !/^[a-f0-9]{64}$/i.test(token)) {
+            authResetLinkValid = false;
+            setAuthError(
+                'authErrorReset',
+                'Ссылка повреждена — скопируйте её из письма целиком или запросите новую.',
+            );
+            refreshAuthSubmitStates();
+            return;
+        }
         try {
-            const data = await window.DaAuthSession.checkResetToken(resetToken);
+            const data = await window.DaAuthSession.checkResetToken(token);
             if (data && data.valid === false) {
                 authResetLinkValid = false;
                 setAuthError(
@@ -13578,9 +13642,11 @@
                 );
             } else {
                 authResetLinkValid = true;
+                rememberPasswordResetToken(token);
             }
         } catch (_) {
             authResetLinkValid = true;
+            rememberPasswordResetToken(token);
         }
         refreshAuthSubmitStates();
     }
@@ -13643,10 +13709,10 @@
             if (e.key === 'Enter') handleAuthLogin();
         });
 
-        const resetToken = new URLSearchParams(window.location.search).get('reset_token');
+        const resetToken = getPasswordResetTokenForAuth();
         if (resetToken) {
             document.getElementById('authResetSubmitBtn')?.addEventListener('click', () => {
-                void handleAuthResetSubmit(resetToken);
+                void handleAuthResetSubmit(getPasswordResetTokenForAuth());
             });
         }
     }
@@ -13666,7 +13732,7 @@
         }
 
         const sessionTab = getAuthSessionTab();
-        const resetToken = new URLSearchParams(window.location.search).get('reset_token');
+        const resetToken = getPasswordResetTokenForAuth();
         if (resetToken) {
             lockAppAuth();
             setAuthPanel('authPanelReset');
