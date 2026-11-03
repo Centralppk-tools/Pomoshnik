@@ -187,6 +187,21 @@
         return data;
     }
 
+    async function checkResetToken(token) {
+        let data;
+        try {
+            data = await authFetch('/api/auth/check-reset-token', {
+                body: { token: String(token || '').trim() }
+            });
+        } catch (err) {
+            if (err?.status === 404) {
+                return { ok: true, valid: true };
+            }
+            throw err;
+        }
+        return data;
+    }
+
     async function bindEmail(email) {
         const data = await authFetch('/api/auth/bind-email', {
             body: { email: String(email || '').trim() }
@@ -241,6 +256,7 @@
         login,
         forgotPassword,
         resetPassword,
+        checkResetToken,
         bindEmail,
         upgradeProfile,
         requestMigrationEmail,

@@ -105,7 +105,7 @@
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=5.0.1"></script>
+<script src="js/da-auth-session.js?v=5.0.2"></script>
 <script src="js/crew-api-client.js?v=20261030b"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
@@ -1187,7 +1187,7 @@
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '5.0';
-    const CLIENT_CACHE_VERSION = 'da_v5_0_1';
+    const CLIENT_CACHE_VERSION = 'da_v5_0_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -12014,7 +12014,7 @@
         const resetP2 = String(document.getElementById('authResetPassword2Input')?.value || '');
         setAuthSubmitButtonReady(
             document.getElementById('authResetSubmitBtn'),
-            resetP1.length >= 6 && resetP1 === resetP2,
+            authResetLinkValid !== false && resetP1.length >= 6 && resetP1 === resetP2,
         );
 
         const regCode = String(document.getElementById('authRegisterCodeInput')?.value || '').replace(/\D/g, '');
@@ -13561,6 +13561,29 @@
     let authPendingVerifyEmail = '';
     let profileBindAwaitingCode = false;
     let authListenersBound = false;
+    /** @type {boolean|null} null пока идёт проверка reset_token */
+    let authResetLinkValid = true;
+
+    async function validateAuthResetTokenOnLoad(resetToken) {
+        authResetLinkValid = null;
+        refreshAuthSubmitStates();
+        setAuthError('authErrorReset', '');
+        try {
+            const data = await window.DaAuthSession.checkResetToken(resetToken);
+            if (data && data.valid === false) {
+                authResetLinkValid = false;
+                setAuthError(
+                    'authErrorReset',
+                    data.message || 'Ссылка протухла — запросите новую.',
+                );
+            } else {
+                authResetLinkValid = true;
+            }
+        } catch (_) {
+            authResetLinkValid = true;
+        }
+        refreshAuthSubmitStates();
+    }
 
     function bindAuthListeners() {
         if (authListenersBound) return;
@@ -13647,6 +13670,7 @@
         if (resetToken) {
             lockAppAuth();
             setAuthPanel('authPanelReset');
+            void validateAuthResetTokenOnLoad(resetToken);
         } else if (needsEmailUpgradeCore()) {
             resetAuthForms();
             unlockAppAuth({ skipCrewSync: true });
