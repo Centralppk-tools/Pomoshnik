@@ -1,5 +1,5 @@
-// Service Worker — Цифровой помощник v5.1.0 — da_v5_1_0
-const CACHE_NAME = 'da_v5_1_0';
+// Service Worker — Цифровой помощник v5.1.1 — da_v5_1_1
+const CACHE_NAME = 'da_v5_1_1';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
