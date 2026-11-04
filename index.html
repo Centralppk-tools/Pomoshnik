@@ -110,17 +110,6 @@
     <link rel="stylesheet" href="styles/da-loading.css?v=20261104a">
 </head>
 <body class="auth-locked">
-<div id="daDevFileWarn" hidden style="position:fixed;inset:0;z-index:99999;padding:24px;background:#0b0e14;color:#e2e8f0;font:15px/1.5 Inter,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center">
-    <div>Локально открывайте только через <strong>npm run serve</strong> → <a href="http://127.0.0.1:8765/" style="color:#06c785">http://127.0.0.1:8765/</a> (не file:// и не Live Server из корня репо).</div>
-</div>
-<script>
-(function () {
-    if (location.protocol === 'file:') {
-        var el = document.getElementById('daDevFileWarn');
-        if (el) { el.hidden = false; el.removeAttribute('hidden'); }
-    }
-})();
-</script>
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
 <script src="js/da-auth-session.js?v=5.0.5"></script>
@@ -1213,8 +1202,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.1';
-    const CLIENT_CACHE_VERSION = 'da_v5_1_1';
+    const APP_RELEASE_VERSION = '5.1.2';
+    const CLIENT_CACHE_VERSION = 'da_v5_1_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -10313,10 +10302,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Fix локального запуска морды'
+            'Fix локального запуска морды',
+            'Fix: убран dev-экран в PWA'
         ],
         highlights: [
-            'Fix локального запуска морды'
+            'Fix локального запуска морды',
+            'Fix: убран dev-экран в PWA'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
