@@ -230,6 +230,13 @@ body.auth-locked .screen:not(#screen-auth) {
     box-shadow: 0 0 0 1000px #21262d inset !important;
     transition: background-color 5000s ease-in-out 0s;
     caret-color: #ffffff;
+    animation-name: daAuthAutofillStart;
+    animation-duration: 0.01s;
+}
+
+@keyframes daAuthAutofillStart {
+    from { opacity: 1; }
+    to { opacity: 1; }
 }
 
 .user-auth-password-field {
@@ -474,6 +481,10 @@ body.auth-locked .screen:not(#screen-auth) {
     color: #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     border-color: rgba(255, 255, 255, 0.08);
+}
+
+.user-auth-btn:not(.is-ready):not(:disabled) {
+    cursor: pointer;
 }
 
 .user-auth-btn {

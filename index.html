@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <base href="/">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <script>
@@ -101,13 +102,23 @@
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
     <link rel="stylesheet" href="styles/community.css?v=20261031d">
     <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
+    <link rel="stylesheet" href="styles/da-loading.css?v=20261104a">
 </head>
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=5.0.3"></script>
-<script src="js/crew-api-client.js?v=20261030b"></script>
+<script src="js/da-auth-session.js?v=5.0.5"></script>
+<script src="js/da-loading.js?v=20261104a"></script>
+<script src="js/crew-api-client.js?v=20261104a"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
+
+<div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
+    <div class="da-load-shell__card">
+        <div class="da-load-shell__spinner" aria-hidden="true"></div>
+        <p class="da-load-shell__title" id="daLoadTitle">Запуск приложения…</p>
+        <div class="da-load-tags" id="daLoadTags"><span class="da-load-tag">Инициализация</span></div>
+    </div>
+</div>
 
 <div id="daActionToast" class="da-action-toast" role="status" aria-live="polite" hidden>
     <p class="da-action-toast__text" id="daActionToastText"></p>
@@ -212,7 +223,7 @@
                 <button type="button" class="user-auth-link-btn" id="authForgotBtn">Забыли пароль?</button>
                 <button type="button" class="user-auth-link-btn hidden" id="authBackToEmailBindBtn" hidden>Вернуться к привязке email</button>
                 <p id="authErrorLogin" class="user-auth-error" role="alert" aria-live="polite"></p>
-                <button type="button" id="authLoginBtn" class="user-auth-btn" data-auth-submit="login" disabled>Войти</button>
+                <button type="button" id="authLoginBtn" class="user-auth-btn" data-auth-submit="login">Войти</button>
                 <p class="user-auth-footnote">Ваши данные надежно защищены и привязаны к аккаунту</p>
             </div>
 
@@ -1089,7 +1100,7 @@
 <script src="js/info-chip.js"></script>
 <script src="js/train-motion-timer.js"></script>
 <script src="js/instructions.js?v=20261030h"></script>
-<script src="js/profile-compliance.js?v=20261101c"></script>
+<script src="js/profile-compliance.js?v=20261104b"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
 
@@ -1186,8 +1197,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.0';
-    const CLIENT_CACHE_VERSION = 'da_v5_0_3';
+    const APP_RELEASE_VERSION = '5.1.0';
+    const CLIENT_CACHE_VERSION = 'da_v5_1_0';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1230,30 +1241,78 @@
         ]);
     }
 
-    function setCrewSyncIndicator(active) {
+    let crewSyncIndicatorDepth = 0;
+    let crewSyncIndicatorLabel = 'Синхронизация смен';
+    let crewSyncForceHideTimer = null;
+
+    function applyCrewSyncBadgeVisibility() {
+        const show = crewSyncIndicatorDepth > 0;
+        const label = crewSyncIndicatorLabel;
         const badges = document.querySelectorAll('.crew-sync-badge');
         if (crewSyncHideTimer) {
             clearTimeout(crewSyncHideTimer);
             crewSyncHideTimer = null;
         }
         badges.forEach((el) => {
-            if (active) {
+            if (show) {
+                el.textContent = label;
                 el.classList.remove('is-hiding');
+                el.classList.add('is-sync-active');
                 el.hidden = false;
+                el.setAttribute('aria-busy', 'true');
                 return;
             }
+            el.classList.remove('is-sync-active');
+            el.setAttribute('aria-busy', 'false');
             if (el.hidden) return;
             el.classList.add('is-hiding');
         });
-        if (!active && badges.length) {
+        if (!show && badges.length) {
             crewSyncHideTimer = window.setTimeout(() => {
                 crewSyncHideTimer = null;
                 badges.forEach((el) => {
                     el.hidden = true;
-                    el.classList.remove('is-hiding');
+                    el.classList.remove('is-hiding', 'is-sync-active');
                 });
             }, 380);
         }
+    }
+
+    function armCrewSyncIndicatorForceHide() {
+        if (crewSyncForceHideTimer) clearTimeout(crewSyncForceHideTimer);
+        crewSyncForceHideTimer = window.setTimeout(() => {
+            crewSyncForceHideTimer = null;
+            if (crewSyncIndicatorDepth <= 0) return;
+            console.warn('[crew-sync] indicator force hide (timeout)');
+            crewSyncIndicatorDepth = 0;
+            applyCrewSyncBadgeVisibility();
+        }, 120000);
+    }
+
+    function setCrewSyncIndicator(active, message) {
+        if (message) {
+            crewSyncIndicatorLabel = String(message).trim() || crewSyncIndicatorLabel;
+        }
+        if (active) {
+            crewSyncIndicatorDepth += 1;
+            armCrewSyncIndicatorForceHide();
+        } else {
+            crewSyncIndicatorDepth = Math.max(0, crewSyncIndicatorDepth - 1);
+            if (crewSyncIndicatorDepth === 0 && crewSyncForceHideTimer) {
+                clearTimeout(crewSyncForceHideTimer);
+                crewSyncForceHideTimer = null;
+            }
+        }
+        applyCrewSyncBadgeVisibility();
+    }
+
+    function resetCrewSyncIndicator() {
+        crewSyncIndicatorDepth = 0;
+        if (crewSyncForceHideTimer) {
+            clearTimeout(crewSyncForceHideTimer);
+            crewSyncForceHideTimer = null;
+        }
+        applyCrewSyncBadgeVisibility();
     }
 
     function bindBackgroundSyncVisibilityGuard() {
@@ -1410,6 +1469,61 @@
                 localStorage.removeItem(key);
             } catch (_) { /* */ }
         });
+    }
+
+    function localStorageKeyIsShiftStore(key) {
+        const k = String(key || '');
+        return k.startsWith('shifts_') || k.startsWith('shifts_tab_');
+    }
+
+    /** Освободить квоту для JWT/сессии, не трогая ключи shifts_* с календарём. */
+    function freeStorageForAuthSession() {
+        trimRedundantUserStorageKeys();
+        const removeExact = [
+            'da_crew_wall_v2',
+            'da_wall_comments_v1',
+            'da_wall_hammer_my_votes_v1',
+            'da_wall_like_my_votes_v1',
+            'daInstrWallDetail',
+            'wall_rules_seen_v1',
+        ];
+        removeExact.forEach((key) => {
+            try {
+                localStorage.removeItem(key);
+            } catch (_) { /* */ }
+        });
+        const tab = String(getAuthSessionTab() || normalizeTabNumber(localStorage.getItem(DEPOT_TAB_KEY)) || '').trim();
+        const toRemove = [];
+        try {
+            for (let i = 0; i < localStorage.length; i += 1) {
+                const key = localStorage.key(i);
+                if (!key || localStorageKeyIsShiftStore(key)) continue;
+                if (key === 'da_auth_jwt' || key === 'da_auth_user') continue;
+                if (key === USERS_DB_KEY || key === AUTH_SESSION_KEY) continue;
+                if (key === DEPOT_TAB_KEY || key === DEPOT_FIO_KEY || key === 'depotFio') continue;
+                if (key.includes('sync_user') || key === 'da_sync_user_id_migrated') continue;
+                if (/aspozhQr/i.test(key)) {
+                    toRemove.push(key);
+                    continue;
+                }
+                if (key.startsWith('da_instr_') || key.startsWith('instructions_')) {
+                    toRemove.push(key);
+                    continue;
+                }
+                if (key.startsWith('profile_compliance_') && tab && !key.includes(tab)) {
+                    toRemove.push(key);
+                }
+            }
+        } catch (_) { /* */ }
+        toRemove.forEach((key) => {
+            try {
+                localStorage.removeItem(key);
+            } catch (_) { /* */ }
+        });
+    }
+
+    if (typeof window !== 'undefined') {
+        window.DaAuthSessionFreeStorage = freeStorageForAuthSession;
     }
 
     function userStorageRemove(key) {
@@ -2286,7 +2400,7 @@
 
         const shift = buildCalendarShiftFromTemplate(template);
         applyShiftToCalendarDay(dateKey, shift);
-        persistUserShifts();
+        persistUserShifts({ immediate: true });
 
         const shifts = getStoredDayShifts(dateKey);
         const shiftIndex = shifts.findIndex((item) =>
@@ -6411,35 +6525,10 @@
             return paintRouteGridCommitted(routeEntries, paintOptions, requestId, 'primary');
         }
 
-        console.warn('[DEBUG ROUTE ABORT]', 'routeEntriesAllReady=false, пробуем emergency-fallback', {
-            notReady: summarizeRouteEntriesReadiness(routeEntries).filter((row) => !row.ready),
-        });
-
-        routeEntries = buildEmergencyRouteEntries(inputList, trainPlan, boardDate);
-        allReady = routeEntriesAllReady(routeEntries);
-
-        console.log('[DEBUG ROUTE]', {
-            routeEntriesCount: routeEntries.length,
-            routeEntriesAllReady: allReady,
-            boardReady,
-            trainsResolved: routeEntries.length,
-            phase: 'emergency-fallback',
-            trains: summarizeRouteEntriesReadiness(routeEntries),
-        });
-
-        if (paintRouteGridCommitted(routeEntries, paintOptions, requestId, 'emergency-fallback')) {
-            return true;
-        }
-
-        const reason = !boardReady
-            ? `табло не готово на ${boardDate}`
-            : `paintRouteGrid отклонил commit (requestId=${requestId})`;
-        console.warn('[DEBUG ROUTE]', `НЕ НАРИСОВАНО: ${reason}`);
-        if (!boardReady) {
-            setRoutePaneLoading(true, paintOptions.loadingMessage || 'Получение данных...', { clearGrid: false });
-        } else {
-            setRoutePaneLoading(false);
-        }
+        const trainLabel = inputList.length === 1
+            ? `поезда ${inputList[0]}`
+            : `поездов (${inputList.length})`;
+        setRoutePaneLoading(true, `Загрузка остановок ${trainLabel}…`, { clearGrid: false });
         return false;
     }
 
@@ -9423,13 +9512,30 @@
             if (committed) {
                 setRoutePaneLoading(false);
             } else if (stationBoardIsReady(baseDate)) {
-                setRoutePaneLoading(false);
+                setRoutePaneLoading(true, 'Загрузка остановок поездов…', { clearGrid: false });
             } else {
-                setRoutePaneLoading(true, 'Не удалось загрузить расписание. Проверьте сеть.', { clearGrid: false });
+                setRoutePaneLoading(true, 'Не удалось загрузить табло. Проверьте сеть.', { clearGrid: false });
+                showDaErrorToast('Не удалось загрузить расписание поездов');
             }
             if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
                 refreshBtn.classList.remove('is-loading');
             }
+        };
+
+        const commitRouteAfterBoards = () => {
+            if (requestId !== routeDataRequestId) return;
+            if (getSelectedDate() !== baseDate) return;
+            syncScheduleLiveClock();
+            const committed = tryCommitRouteGrid(requestId, inputs, searchOptions, trainPlan, paintOptions);
+            if (committed) {
+                setRoutePaneLoading(false);
+            }
+            if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
+                refreshBtn.classList.remove('is-loading');
+            }
+            const open = String(userStorageGet('lastSingleTrain') || '').trim();
+            if (open) getScheduleData(open, { fromCacheOnly: true });
+            void hydrateRouteStopsForRequest().finally(finalizeRouteLoad);
         };
 
         function hydrateRouteStopsForRequest() {
@@ -9477,20 +9583,6 @@
         }
 
         const boardLoadOptions = { forceRefresh: forceBoardRefresh };
-
-        const commitRouteAfterBoards = () => {
-            if (requestId !== routeDataRequestId) return;
-            if (getSelectedDate() !== baseDate) return;
-            syncScheduleLiveClock();
-            tryCommitRouteGrid(requestId, inputs, searchOptions, trainPlan, paintOptions);
-            setRoutePaneLoading(false);
-            if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
-                refreshBtn.classList.remove('is-loading');
-            }
-            const open = String(userStorageGet('lastSingleTrain') || '').trim();
-            if (open) getScheduleData(open, { fromCacheOnly: true });
-            void hydrateRouteStopsForRequest().finally(finalizeRouteLoad);
-        };
 
         void ensureStationBoardLoaded(baseDate, boardLoadOptions)
             .then(() => {
@@ -10205,14 +10297,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Переработка интерфейса',
-            'Защищенный сервер, вместо кеша',
-            'Авторизация и безопасность личных данных'
+            'Fix серверных связей'
         ],
         highlights: [
-            'Переработка интерфейса',
-            'Защищенный сервер, вместо кеша',
-            'Авторизация и безопасность личных данных'
+            'Fix серверных связей'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -11707,7 +11795,16 @@
     }
 
     function saveUsersDb(db) {
-        localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+        try {
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+        } catch (err) {
+            if (err && err.name === 'QuotaExceededError') {
+                freeStorageForAuthSession();
+                localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+                return;
+            }
+            throw err;
+        }
     }
 
     function getUserByTab(tabNumber) {
@@ -11729,8 +11826,18 @@
         const opts = options && typeof options === 'object' ? options : {};
         const prev = getAuthSessionTab();
         const tab = normalizeTabNumber(tabNumber);
-        localStorage.setItem(AUTH_SESSION_KEY, tab);
-        localStorage.setItem(DEPOT_TAB_KEY, tab);
+        try {
+            localStorage.setItem(AUTH_SESSION_KEY, tab);
+            localStorage.setItem(DEPOT_TAB_KEY, tab);
+        } catch (err) {
+            if (err && err.name === 'QuotaExceededError') {
+                freeStorageForAuthSession();
+                localStorage.setItem(AUTH_SESSION_KEY, tab);
+                localStorage.setItem(DEPOT_TAB_KEY, tab);
+            } else {
+                throw err;
+            }
+        }
         if (prev !== tab && window.DaCrewApi && !opts.skipCrewSync) {
             void DaCrewApi.onTabNumberChanged(prev, tab);
         }
@@ -11875,6 +11982,23 @@
         };
     }
 
+    function calendarDateKeyToIsoDate(dateKey) {
+        const nk = normalizeShiftStorageDateKey(dateKey);
+        if (!nk) return null;
+        const parts = String(nk).split('.');
+        if (parts.length !== 3) return null;
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
+    function crewApiDeleteShiftForDateKey(dateKey) {
+        if (!window.DaCrewApi?.deleteShift) return;
+        const iso = calendarDateKeyToIsoDate(dateKey);
+        if (!iso) return;
+        void window.DaCrewApi.deleteShift(iso).catch((err) => {
+            console.warn('[crew-api] deleteShift', dateKey, err);
+        });
+    }
+
     function collectOfflineCalendarShiftsMap() {
         flushPendingShiftPersist();
         if (calendarUserShifts && Object.keys(calendarUserShifts).length) {
@@ -11946,6 +12070,20 @@
         });
     }
 
+    /** Вход по email на телефоне с другим локальным id — не смешиваем с облаком аккаунта. */
+    function discardForeignLocalCalendarBeforeAccountLogin(preClaimSyncId, accountSyncId, tabNumber) {
+        const prev = String(preClaimSyncId || '').trim();
+        const account = String(accountSyncId || '').trim();
+        if (!account || !prev || prev === account) return;
+        calendarUserShifts = {};
+        calendarUserShiftsLoadedOnce = false;
+        clearPreClaimShiftStorageTail(prev, tabNumber);
+        const accountKey = resolveShiftsStorageKey(account, tabNumber);
+        try {
+            localStorage.removeItem(accountKey);
+        } catch (_) { /* quota */ }
+    }
+
     function getAuthLoginRoleKind() {
         if (typeof resolveProfilePositionKind === 'function') {
             return resolveProfilePositionKind(localStorage.getItem(DEPOT_POSITION_KEY));
@@ -11978,15 +12116,30 @@
     }
 
     function setAuthSubmitButtonReady(btn, ready) {
-        if (!btn || btn.dataset.loading === '1') return;
+        if (!btn) return;
+        const loginAlwaysClickable = btn.id === 'authLoginBtn';
+        if (btn.dataset.loading === '1') {
+            btn.disabled = true;
+            btn.classList.remove('is-ready');
+            return;
+        }
+        if (loginAlwaysClickable) {
+            btn.disabled = false;
+            btn.classList.toggle('is-ready', ready);
+            return;
+        }
         btn.disabled = !ready;
         btn.classList.toggle('is-ready', ready);
     }
 
-    function refreshAuthSubmitStates() {
+    function isAuthLoginFormReady() {
         const login = String(document.getElementById('authLoginInput')?.value || '').trim();
         const loginPass = String(document.getElementById('authPasswordInput')?.value || '');
-        setAuthSubmitButtonReady(document.getElementById('authLoginBtn'), Boolean(login && loginPass));
+        return Boolean(login && loginPass);
+    }
+
+    function refreshAuthSubmitStates() {
+        setAuthSubmitButtonReady(document.getElementById('authLoginBtn'), isAuthLoginFormReady());
 
         const pos = String(document.getElementById('authRegPositionSelect')?.value || '').trim();
         const regName = String(document.getElementById('authRegNameInput')?.value || '').trim();
@@ -12069,6 +12222,34 @@
         });
     }
 
+    function scheduleAuthSubmitStateRefresh() {
+        refreshAuthSubmitStates();
+        requestAnimationFrame(() => refreshAuthSubmitStates());
+        window.setTimeout(refreshAuthSubmitStates, 120);
+        window.setTimeout(refreshAuthSubmitStates, 400);
+    }
+
+    let authLoginPollTimer = null;
+    function startAuthLoginFieldPoll() {
+        if (authLoginPollTimer) return;
+        authLoginPollTimer = window.setInterval(() => {
+            const auth = document.getElementById('screen-auth');
+            if (!auth || auth.classList.contains('hidden')) {
+                stopAuthLoginFieldPoll();
+                return;
+            }
+            const panel = document.getElementById('authPanelLogin');
+            if (!panel?.classList.contains('active')) return;
+            refreshAuthSubmitStates();
+        }, 400);
+    }
+
+    function stopAuthLoginFieldPoll() {
+        if (!authLoginPollTimer) return;
+        clearInterval(authLoginPollTimer);
+        authLoginPollTimer = null;
+    }
+
     function bindAuthFormValidation() {
         [
             'authLoginInput',
@@ -12088,6 +12269,12 @@
             if (!el || el.dataset.authValidateBound === '1') return;
             el.dataset.authValidateBound = '1';
             el.addEventListener('input', refreshAuthSubmitStates);
+            el.addEventListener('change', refreshAuthSubmitStates);
+            el.addEventListener('animationstart', (ev) => {
+                if (ev.animationName === 'daAuthAutofillStart') {
+                    scheduleAuthSubmitStateRefresh();
+                }
+            });
         });
         const regSelect = document.getElementById('authRegPositionSelect');
         if (regSelect && regSelect.dataset.authValidateBound !== '1') {
@@ -12101,7 +12288,7 @@
             });
         }
         bindAuthPasswordToggles();
-        refreshAuthSubmitStates();
+        scheduleAuthSubmitStateRefresh();
     }
 
     function parseRegisterIdentity(raw) {
@@ -12252,24 +12439,49 @@
         return DaCrewApi.sync(monthKey, options);
     }
 
+    async function flushLocalShiftsBeforeCrewPull() {
+        if (!window.DaCrewApi?.isEnabled?.()) return;
+        flushPendingShiftPersist();
+        try {
+            await DaCrewApi.flushScheduledPushShifts(calendarUserShifts);
+            await DaCrewApi.flushOfflineQueue();
+        } catch (err) {
+            console.warn('[crew-api] flush before pull', err);
+        }
+    }
+
     async function syncVisibleCalendarMonthFromCrewApi() {
         if (!window.DaCrewApi?.isEnabled?.()) return;
-        const monthKey = formatSyncMonthFromDate(calendarCurrentDate);
+        setCrewSyncIndicator(true, 'Обновление месяца');
         try {
-            await syncCrewApiMonth(monthKey, { replaceShifts: true });
-        } catch (err) {
-            console.warn('[crew-api] sync visible month', err);
+            await flushLocalShiftsBeforeCrewPull();
+            const monthKey = formatSyncMonthFromDate(calendarCurrentDate);
+            try {
+                await syncCrewApiMonth(monthKey, { replaceShifts: true });
+            } catch (err) {
+                console.warn('[crew-api] sync visible month', err);
+                showDaErrorToast('Не удалось обновить смены за месяц');
+            }
+        } finally {
+            setCrewSyncIndicator(false);
         }
     }
 
     async function syncCrewApiAdjacentMonths(anchorDate, options) {
         if (!window.DaCrewApi?.isEnabled?.()) return;
+        await flushLocalShiftsBeforeCrewPull();
         const d = anchorDate instanceof Date ? anchorDate : new Date();
         const cur = formatSyncMonthFromDate(d);
         const prev = formatSyncMonthFromDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
         const opts = options && typeof options === 'object' ? options : {};
+        const cloudAccount = Boolean(
+            window.DaAuthSession?.getJwt?.()
+            && window.DaAuthSession?.hasVerifiedEmailOnAccount?.(),
+        );
+        const replaceCur = opts.replaceShifts === true
+            || (opts.replaceShifts !== false && cloudAccount);
         try {
-            await syncCrewApiMonth(cur, opts);
+            await syncCrewApiMonth(cur, replaceCur ? { replaceShifts: true } : opts);
             await syncCrewApiMonth(prev, { replaceShifts: true });
         } catch (err) {
             console.warn('[crew-api] sync adjacent months', err);
@@ -12781,6 +12993,7 @@
         const toast = document.getElementById('daActionToast');
         const textEl = document.getElementById('daActionToastText');
         if (!toast || !textEl) return;
+        toast.classList.remove('is-error');
         textEl.textContent = String(message || '');
         toast.hidden = false;
         toast.classList.add('is-visible');
@@ -12789,6 +13002,21 @@
             toast.classList.remove('is-visible');
             toast.hidden = true;
         }, durationMs || 3200);
+    }
+
+    function showDaErrorToast(message, durationMs) {
+        const toast = document.getElementById('daActionToast');
+        const textEl = document.getElementById('daActionToastText');
+        if (!toast || !textEl) return;
+        toast.classList.add('is-error');
+        textEl.textContent = String(message || '');
+        toast.hidden = false;
+        toast.classList.add('is-visible');
+        if (daActionToastTimer) clearTimeout(daActionToastTimer);
+        daActionToastTimer = setTimeout(() => {
+            toast.classList.remove('is-visible', 'is-error');
+            toast.hidden = true;
+        }, durationMs || 4800);
     }
 
     function setAuthPanel(panelId) {
@@ -12816,6 +13044,12 @@
         document.getElementById('authModeLoginTab')?.toggleAttribute('disabled', hideModes);
         document.getElementById('authModeRegisterTab')?.toggleAttribute('disabled', hideModes);
         refreshAuthSubmitStates();
+        if (panelId === 'authPanelLogin') {
+            scheduleAuthSubmitStateRefresh();
+            startAuthLoginFieldPoll();
+        } else {
+            stopAuthLoginFieldPoll();
+        }
     }
 
     function getLegacyLocalTab() {
@@ -12985,6 +13219,7 @@
             backBtn.classList.remove('hidden');
         }
         refreshAuthSubmitStates();
+        scheduleAuthSubmitStateRefresh();
         passInput?.focus();
         setAuthButtonsLoading(false);
     }
@@ -13069,6 +13304,7 @@
                     toast: 'Email привязан',
                     roleKind,
                     role,
+                    isNewAccount: true,
                 });
                 resetProfileEmailBindUi();
                 syncEmailUpgradeUi();
@@ -13157,10 +13393,13 @@
         document.body.classList.add('auth-locked');
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.remove('hidden');
+        scheduleAuthSubmitStateRefresh();
+        startAuthLoginFieldPoll();
     }
 
     function unlockAppAuth(options = {}) {
         document.body.classList.remove('auth-locked');
+        stopAuthLoginFieldPoll();
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
         void loadLocalShiftTemplatesBundle().then(() => {
@@ -13177,9 +13416,12 @@
         });
         void maybeShowReleaseNotesOverlay();
         if (options.skipLoadShifts) {
+            window.DaLoad?.releaseBoot?.();
             return;
         }
-        void startCalendar({ skipServerSync: options.skipCrewSync === true });
+        void startCalendar({ skipServerSync: options.skipCrewSync === true }).finally(() => {
+            window.DaLoad?.releaseBoot?.();
+        });
     }
 
     function migrateAuthSession() {
@@ -13248,6 +13490,9 @@
             const status = code.replace('http_', '');
             return `Ошибка сервера (${status}). Попробуйте позже.`;
         }
+        if (err?.name === 'QuotaExceededError' || /quota has been exceeded/i.test(rawMsg)) {
+            return 'Память приложения переполнена — освободили место без календаря. Нажмите «Войти» ещё раз. Если не помогло: закройте вкладку и откройте PWA снова.';
+        }
         return err && err.message ? String(err.message) : 'Не удалось войти.';
     }
 
@@ -13258,18 +13503,38 @@
             displayName,
             role,
             preClaimSyncId,
+            accountSyncId: accountSyncIdCtx,
+            isNewAccount,
         } = ctx || {};
-        setCrewSyncIndicator(true);
+        const accountSyncId = String(
+            accountSyncIdCtx
+            || (typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : '')
+            || '',
+        ).trim();
+        const deviceIdDiffersFromAccount = Boolean(
+            preClaimSyncId && accountSyncId && preClaimSyncId !== accountSyncId,
+        );
+        const uploadLocalOnce = isNewAccount === true && !deviceIdDiffersFromAccount;
+
+        setCrewSyncIndicator(true, 'Синхронизация смен');
         try {
-            if (!Object.keys(calendarUserShifts || {}).length) {
-                await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShifts');
+            if (uploadLocalOnce) {
+                if (!Object.keys(calendarUserShifts || {}).length) {
+                    await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShifts');
+                }
+            } else {
+                calendarUserShifts = {};
+                calendarUserShiftsLoadedOnce = false;
             }
             flushPendingShiftPersist();
+
             let localShifts = [];
-            try {
-                localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
-            } catch (shiftErr) {
-                console.warn('[auth] offline shifts export skipped', shiftErr);
+            if (uploadLocalOnce) {
+                try {
+                    localShifts = buildCrewApiShiftsPayloadFromMap(collectOfflineCalendarShiftsMap());
+                } catch (shiftErr) {
+                    console.warn('[auth] offline shifts export skipped', shiftErr);
+                }
             }
 
             if (window.DaCrewApi?.isEnabled?.()) {
@@ -13278,7 +13543,7 @@
                         tabNumber: tabNumber || null,
                         name: displayName,
                         role,
-                        syncUserId: preClaimSyncId,
+                        syncUserId: accountSyncId,
                         shifts: localShifts,
                     }),
                     'claimAndSync',
@@ -13287,26 +13552,19 @@
                 getOrCreateSyncUserId();
             }
 
-            const finalSyncId = typeof getOrCreateSyncUserId === 'function'
-                ? getOrCreateSyncUserId()
-                : preClaimSyncId;
-            migrateLocalShiftsStorageAfterClaim(preClaimSyncId, finalSyncId, tabNumber);
+            if (uploadLocalOnce) {
+                migrateLocalShiftsStorageAfterClaim(preClaimSyncId, accountSyncId, tabNumber);
+            } else if (deviceIdDiffersFromAccount) {
+                clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
+            }
 
             if (window.DaCrewApi?.isEnabled?.() && isBackgroundSyncAllowed()) {
                 await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShiftsAfterClaim');
-                const hasLocalShifts = Object.keys(calendarUserShifts || {}).length > 0;
-                if (hasLocalShifts) {
-                    await withBgStepTimeout(
-                        pushLocalShiftsToCrewApiFromMap(calendarUserShifts),
-                        'pushShifts',
-                    );
-                }
                 await withBgStepTimeout(
-                    syncCrewApiAdjacentMonths(new Date(), { replaceShifts: !hasLocalShifts }),
+                    syncCrewApiAdjacentMonths(new Date(), { replaceShifts: true }),
                     'syncMonths',
                 );
                 await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShiftsFinal');
-                clearPreClaimShiftStorageTail(preClaimSyncId, tabNumber);
                 calendarUserShiftsLoadedOnce = true;
                 refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
                 calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
@@ -13318,16 +13576,17 @@
         } catch (syncErr) {
             console.warn('[auth] post-login background sync', syncErr);
             try {
-                loadUserShifts();
+                await loadUserShifts({ force: true });
                 calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
             } catch (_) { /* */ }
         } finally {
-            setCrewSyncIndicator(false);
+            resetCrewSyncIndicator();
         }
     }
 
     async function completeAuthSessionAfterApi(authData, options) {
         const opts = options && typeof options === 'object' ? options : {};
+        freeStorageForAuthSession();
         const user = authData?.user || {};
         const displayName = String(user.name || getLocalProfileDisplayName() || '').trim();
         const tabNumber = normalizeTabNumber(user.tab_number);
@@ -13357,8 +13616,16 @@
         const preClaimSyncId = typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : '';
 
         const syncFromServer = String(authData?.sync_user_id || user.sync_user_id || '').trim();
+        const isNewAccount = opts.isNewAccount === true;
         if (syncFromServer && typeof setSyncUserId === 'function') {
             setSyncUserId(syncFromServer, { skipLegacyMigrate: true });
+        }
+
+        const accountSyncId = syncFromServer
+            || (typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : '');
+
+        if (!isNewAccount && preClaimSyncId && accountSyncId && preClaimSyncId !== accountSyncId) {
+            discardForeignLocalCalendarBeforeAccountLogin(preClaimSyncId, accountSyncId, tabNumber);
         }
 
         const isNewUser = !getUserByTab(tabNumber);
@@ -13375,7 +13642,12 @@
             localStorage.setItem('da_had_cloud_account', '1');
         } catch (_) { /* */ }
 
-        loadUserShifts();
+        if (isNewAccount) {
+            loadUserShifts();
+        } else {
+            calendarUserShifts = {};
+            calendarUserShiftsLoadedOnce = false;
+        }
         calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
 
         void runPostAuthBackgroundSync({
@@ -13383,12 +13655,15 @@
             displayName,
             role,
             preClaimSyncId,
+            accountSyncId,
+            isNewAccount,
         });
         void ensureWebPushSubscription(true);
     }
 
     async function handleAuthLogin() {
         clearAuthErrors();
+        refreshAuthSubmitStates();
         const login = String(document.getElementById('authLoginInput')?.value || '').trim();
         const password = String(document.getElementById('authPasswordInput')?.value || '');
         if (!login || !password) {
@@ -13401,7 +13676,20 @@
                 setAuthError('authErrorLogin', 'Авторизация недоступна.');
                 return;
             }
-            const authData = await window.DaAuthSession.login({ login, password });
+            freeStorageForAuthSession();
+            let authData;
+            try {
+                authData = await window.DaAuthSession.login({ login, password });
+            } catch (loginErr) {
+                const quotaLike = loginErr?.name === 'QuotaExceededError'
+                    || /quota has been exceeded/i.test(String(loginErr?.message || ''));
+                if (quotaLike) {
+                    freeStorageForAuthSession();
+                    authData = await window.DaAuthSession.login({ login, password });
+                } else {
+                    throw loginErr;
+                }
+            }
             setAuthButtonsLoading(false);
             await completeAuthSessionAfterApi(authData);
         } catch (err) {
@@ -13469,6 +13757,7 @@
                 toast: 'Аккаунт создан',
                 roleKind,
                 role: roleKind === 'assistant' ? 'помощник' : 'машинист',
+                isNewAccount: true,
             });
         } catch (err) {
             setAuthError('authErrorRegister', formatAuthLoginError(err));
@@ -13500,6 +13789,7 @@
                 toast: 'Email подтверждён',
                 roleKind,
                 role: roleKind === 'assistant' ? 'помощник' : 'машинист',
+                isNewAccount: true,
             });
         } catch (err) {
             setAuthError('authErrorRegisterVerify', formatAuthLoginError(err));
@@ -13566,7 +13856,7 @@
     function parsePasswordResetTokenFromUrl() {
         try {
             const path = String(window.location.pathname || '');
-            const pathMatch = path.match(/\/r\/([a-f0-9]{64})\/?$/i);
+            const pathMatch = path.match(/\/(?:r|t)\/([a-f0-9]{64})\/?$/i);
             if (pathMatch) {
                 return String(pathMatch[1]).toLowerCase();
             }
@@ -13599,7 +13889,7 @@
             sessionStorage.removeItem(DA_RESET_TOKEN_STORAGE_KEY);
         } catch (_) { /* */ }
         const path = String(window.location.pathname || '');
-        if (/\/r\/[a-f0-9]{64}\/?$/i.test(path)) {
+        if (/\/(?:r|t)\/[a-f0-9]{64}\/?$/i.test(path)) {
             window.history.replaceState({}, '', '/');
             return;
         }
@@ -13656,6 +13946,12 @@
         authListenersBound = true;
 
         document.getElementById('authLoginBtn')?.addEventListener('click', handleAuthLogin);
+        document.getElementById('authPasswordInput')?.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                void handleAuthLogin();
+            }
+        });
         document.getElementById('authRegisterBtn')?.addEventListener('click', handleAuthRegister);
         document.getElementById('authRegisterVerifyBtn')?.addEventListener('click', () => {
             void handleAuthRegisterVerify();
@@ -13769,10 +14065,14 @@
         }
         void window.DaCrewApi?.maybeRunCloudMigration?.();
         refreshAuthSubmitStates();
+        if (document.body.classList.contains('auth-locked')) {
+            window.DaLoad?.releaseBoot?.();
+        }
     }
 
     function handleLogout() {
         flushPendingShiftPersist();
+        resetCrewSyncIndicator();
         void unregisterWebPushSubscription();
         const hadCloudAccount = Boolean(
             window.DaAuthSession?.getStoredUser?.()?.email
@@ -14302,6 +14602,7 @@
         if (!forceRefresh && localShiftTemplatesPromise) return localShiftTemplatesPromise;
 
         localShiftTemplatesPromise = (async () => {
+            window.DaLoad?.start?.('shift-templates', 'База маршрутов…');
             try {
                 const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
                     || [LOCAL_SHIFT_TEMPLATES_URL];
@@ -14376,6 +14677,11 @@
                         lastUploadLabel: cached.lastUploadLabel || null,
                     };
                 }
+                if (!hasLocalShiftTemplates()) {
+                    showDaErrorToast('Не удалось загрузить базу маршрутов');
+                }
+            } finally {
+                window.DaLoad?.end?.('shift-templates');
             }
             return localShiftNormatives;
         })();
@@ -14897,26 +15203,37 @@
             calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
             return;
         }
-        if (!options.skipLoad) {
-            await loadUserShifts({ force: options.forceLoad === true });
-        }
-        calendarRenderCalendar({
-            keepSelectedDay: true,
-            skipConstructor: !calendarSelectedDateKey,
-        });
-        if (options.skipServerSync || !window.DaCrewApi?.isEnabled?.()) {
+        const run = async () => {
+            if (!options.skipLoad) {
+                await loadUserShifts({ force: options.forceLoad === true });
+            }
+            calendarRenderCalendar({
+                keepSelectedDay: true,
+                skipConstructor: !calendarSelectedDateKey,
+            });
+            if (options.skipServerSync || !window.DaCrewApi?.isEnabled?.()) {
+                applyNormativeForDateKey(getShiftContextDateKey());
+                return;
+            }
+            setCrewSyncIndicator(true, 'Синхронизация смен');
+            try {
+                await DaCrewApi.flushOfflineQueue();
+                await syncCrewApiAdjacentMonths(calendarCurrentDate, options.syncOptions || {});
+            } catch (err) {
+                console.warn('[crew-api] startCalendar sync', err);
+                showDaErrorToast('Не удалось синхронизировать смены с сервером');
+            } finally {
+                setCrewSyncIndicator(false);
+            }
+            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
             applyNormativeForDateKey(getShiftContextDateKey());
-            return;
+            updateProfileScreen();
+        };
+        if (window.DaLoad?.run) {
+            await DaLoad.run('calendar', 'Календарь смен', run);
+        } else {
+            await run();
         }
-        try {
-            await DaCrewApi.flushOfflineQueue();
-            await syncCrewApiAdjacentMonths(calendarCurrentDate, options.syncOptions || {});
-        } catch (err) {
-            console.warn('[crew-api] startCalendar sync', err);
-        }
-        calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-        applyNormativeForDateKey(getShiftContextDateKey());
-        updateProfileScreen();
     }
 
     let routeComboboxDocHandler = null;
@@ -16530,6 +16847,9 @@
         const nextLinked = linked.filter(s => s.linkedFromNightDateKey !== nightDateKey);
         if (nextLinked.length !== linked.length) {
             setStoredDayShifts(linkedKey, nextLinked);
+            if (!nextLinked.length) {
+                crewApiDeleteShiftForDateKey(linkedKey);
+            }
         }
     }
 
@@ -21063,6 +21383,9 @@
         calendarNotifyShiftsChanged(dateKey, { immediatePersist: true });
 
         const remaining = getStoredDayShifts(dateKey);
+        if (!remaining.length) {
+            crewApiDeleteShiftForDateKey(dateKey);
+        }
         if (remaining.length) {
             const shiftIndex = pickRouteShiftIndex(dateKey, remaining);
             syncRouteContextFromCalendar(dateKey, remaining[shiftIndex], shiftIndex, { remountEditor: true });

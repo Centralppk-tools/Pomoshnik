@@ -495,13 +495,42 @@
         return data;
     }
 
+    async function deleteShift(shiftDateIso) {
+        const date = String(shiftDateIso || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return { ok: false, skipped: true, reason: 'invalid_date' };
+        }
+        const syncUserId = hooks.getSyncUserId?.() || '';
+        if (!syncUserId) {
+            return { ok: true, skipped: true, reason: 'no_sync_user_id' };
+        }
+        const hashKey = `${syncUserId}:${date}`;
+        delete lastPushedHash[hashKey];
+
+        if (!global.navigator.onLine) {
+            await enqueueShiftPayload({ shift_date: date, _delete: true });
+            return { ok: true, queued: true };
+        }
+
+        try {
+            const data = await apiFetch('/api/v1/shifts/delete', {
+                method: 'POST',
+                body: { shift_date: date },
+            });
+            return data;
+        } catch (err) {
+            await enqueueShiftPayload({ shift_date: date, _delete: true });
+            throw err;
+        }
+    }
+
     async function saveShift(shiftOrList) {
         const syncUserId = hooks.getSyncUserId?.() || '';
         if (!syncUserId) {
             return { ok: true, skipped: true, reason: 'no_sync_user_id' };
         }
         const list = Array.isArray(shiftOrList) ? shiftOrList : [shiftOrList];
-        const clean = list.filter((s) => s && s.shift_date && s.route_code);
+        const clean = list.filter((s) => s && s.shift_date && s.route_code && !s._delete);
         if (!clean.length) return { ok: true, skipped: true };
 
         if (!global.navigator.onLine) {
@@ -788,49 +817,81 @@
         mine.forEach((row) => {
             if (row.payload?.shift_date) byDate.set(row.payload.shift_date, row);
         });
-        const payloads = [...byDate.values()].map((r) => r.payload);
+        const queueRows = [...byDate.values()];
+        const savePayloads = [];
         try {
-            await apiFetch('/api/v1/shifts/save', {
-                method: 'POST',
-                body: { shifts: payloads }
-            });
+            for (const row of queueRows) {
+                const p = row.payload;
+                if (p._delete) {
+                    await apiFetch('/api/v1/shifts/delete', {
+                        method: 'POST',
+                        body: { shift_date: p.shift_date },
+                    });
+                    delete lastPushedHash[`${syncUserId}:${p.shift_date}`];
+                } else {
+                    savePayloads.push(p);
+                }
+            }
+            if (savePayloads.length) {
+                await apiFetch('/api/v1/shifts/save', {
+                    method: 'POST',
+                    body: { shifts: savePayloads },
+                });
+                savePayloads.forEach((p) => {
+                    lastPushedHash[`${syncUserId}:${p.shift_date}`] = JSON.stringify(p);
+                });
+            }
             await deleteQueueIds(mine.map((r) => r.id));
-            payloads.forEach((p) => {
-                lastPushedHash[`${syncUserId}:${p.shift_date}`] = JSON.stringify(p);
-            });
         } catch (e) {
             console.warn('[crew-api] shift queue flush', e);
         }
     }
 
+    function buildPendingShiftPushPayloads(calendarShifts) {
+        const { enabled } = cfg();
+        if (!enabled || typeof hooks.buildShiftPayload !== 'function') return [];
+        const syncUserId = hooks.getSyncUserId?.() || '';
+        if (!syncUserId) return [];
+        const payloads = [];
+        const map = calendarShifts && typeof calendarShifts === 'object' ? calendarShifts : {};
+        Object.keys(map).forEach((dateKey) => {
+            const raw = map[dateKey];
+            const list = typeof global.normalizeDayShiftsRecord === 'function'
+                ? global.normalizeDayShiftsRecord(raw)
+                : (Array.isArray(raw) ? raw : raw ? [raw] : []);
+            list.forEach((shift) => {
+                const p = hooks.buildShiftPayload(dateKey, shift);
+                if (!p) return;
+                const h = JSON.stringify(p);
+                const hashKey = `${syncUserId}:${p.shift_date}`;
+                if (lastPushedHash[hashKey] === h) return;
+                payloads.push(p);
+            });
+        });
+        return payloads;
+    }
+
     function schedulePushShifts(calendarShifts) {
         const { enabled } = cfg();
         if (!enabled || typeof hooks.buildShiftPayload !== 'function') return;
-        const syncUserId = hooks.getSyncUserId?.() || '';
-        if (!syncUserId) return;
+        if (!hooks.getSyncUserId?.()) return;
         clearTimeout(pushTimer);
         pushTimer = setTimeout(() => {
-            const payloads = [];
-            const map = calendarShifts && typeof calendarShifts === 'object' ? calendarShifts : {};
-            Object.keys(map).forEach((dateKey) => {
-                const raw = map[dateKey];
-                const list = typeof global.normalizeDayShiftsRecord === 'function'
-                    ? global.normalizeDayShiftsRecord(raw)
-                    : (Array.isArray(raw) ? raw : raw ? [raw] : []);
-                list.forEach((shift) => {
-                    const p = hooks.buildShiftPayload(dateKey, shift);
-                    if (!p) return;
-                    const h = JSON.stringify(p);
-                    const hashKey = `${syncUserId}:${p.shift_date}`;
-                    if (lastPushedHash[hashKey] === h) return;
-                    payloads.push(p);
-                });
-            });
+            pushTimer = null;
+            const payloads = buildPendingShiftPushPayloads(calendarShifts);
             if (!payloads.length) return;
             saveShift(payloads).catch((err) => {
                 console.warn('[crew-api] saveShift', err);
             });
         }, 700);
+    }
+
+    async function flushScheduledPushShifts(calendarShifts) {
+        clearTimeout(pushTimer);
+        pushTimer = null;
+        const payloads = buildPendingShiftPushPayloads(calendarShifts);
+        if (!payloads.length) return { ok: true, skipped: true };
+        return saveShift(payloads);
     }
 
     function scheduleProfileUpdate() {
@@ -875,6 +936,7 @@
         loginByTab,
         claimAndSync,
         saveShift,
+        deleteShift,
         updateProfile,
         postToWall,
         fetchWallComments,
@@ -882,6 +944,7 @@
         postWallHammer,
         postWallLike,
         flushOfflineQueue,
+        flushScheduledPushShifts,
         schedulePushShifts,
         scheduleProfileUpdate,
         onTabNumberChanged,

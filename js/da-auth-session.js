@@ -26,8 +26,20 @@
     }
 
     function persistSession(token, user) {
+        function safeSet(key, value) {
+            try {
+                global.localStorage.setItem(key, value);
+            } catch (err) {
+                if (err && err.name === 'QuotaExceededError' && typeof global.DaAuthSessionFreeStorage === 'function') {
+                    global.DaAuthSessionFreeStorage();
+                    global.localStorage.setItem(key, value);
+                    return;
+                }
+                throw err;
+            }
+        }
         if (token) {
-            global.localStorage.setItem(JWT_KEY, String(token));
+            safeSet(JWT_KEY, String(token));
         }
         if (user && typeof user === 'object') {
             const prev = getStoredUser();
@@ -42,7 +54,7 @@
                     merged.email = prev.email;
                 }
             }
-            global.localStorage.setItem(USER_KEY, JSON.stringify(merged));
+            safeSet(USER_KEY, JSON.stringify(merged));
             const verified = merged.email_verified_at != null && String(merged.email_verified_at).trim() !== '';
             if (verified && merged.email && String(merged.email).trim()) {
                 try {

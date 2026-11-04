@@ -319,6 +319,27 @@
     line-height: 1.25;
 }
 
+#screen-profile .profile-unified-card .event-item-aside {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    max-width: 42%;
+}
+
+#screen-profile .profile-unified-card .event-item-days-chip {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    white-space: normal;
+    text-align: center;
+    box-sizing: border-box;
+}
+
 #screen-profile .profile-unified-card .text-muted { color: #64748b; }
 #screen-profile .profile-unified-card .text-success { color: #34d399; font-weight: 500; }
 

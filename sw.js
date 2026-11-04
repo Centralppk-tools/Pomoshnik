@@ -1,5 +1,5 @@
-// Service Worker — Цифровой помощник v5.0.3 — da_v5_0_3
-const CACHE_NAME = 'da_v5_0_3';
+// Service Worker — Цифровой помощник v5.1.0 — da_v5_1_0
+const CACHE_NAME = 'da_v5_1_0';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -16,11 +16,13 @@ const PRECACHE_ASSETS = [
     './styles/auth.css',
     './styles/community.css',
     './styles/instructions.css',
+    './styles/da-loading.css',
     './data/trains-uids.json',
     './data/release-notes.json',
     './js/app-config.js',
     './js/sync-user-id.js',
     './js/da-auth-session.js',
+    './js/da-loading.js',
     './js/crew-api-client.js',
     './js/schedule-maintenance.js',
     './js/hard-reset-app.js',

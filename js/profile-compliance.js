@@ -168,6 +168,25 @@
         return `<span class="${pillClass} plan-detail-days-badge">${escapeHtml(foot)}</span>`;
     }
 
+    function eventItemDaysRemaining(item, data) {
+        const q = getQuarterInfo();
+        if (item.kind === 'ot_eb') return daysUntil(data.otEb?.nextCheck);
+        if (item.kind === 'prmo') return daysUntil(data.pmo?.nextDeadline);
+        if (item.kind === 'quarter') {
+            if (data.quarter?.passedKey === q.key) return null;
+            return daysUntil(q.windowEndIso);
+        }
+        return daysUntil(getDateIsoFromData(data, item));
+    }
+
+    function eventItemDaysChipHtml(item, data) {
+        const days = eventItemDaysRemaining(item, data);
+        if (days === null || days === undefined) return '';
+        const pillClass = pillClassForDays(days);
+        const label = countdownFoot(days);
+        return `<span class="${pillClass} event-item-days-chip">${escapeHtml(label)}</span>`;
+    }
+
     function defaultReminderDays(cardId) {
         if (cardId === 'prmo') return 21;
         if (cardId === 'quarter') return 7;
@@ -198,9 +217,11 @@
     function ebGroupDisplay(groupText) {
         const s = String(groupText || '');
         const m = s.match(/\b([IV]+)\s*групп/i);
-        const roman = m ? m[1] : '—';
-        if (/1000/i.test(s)) return `Группа: ${roman} (до 1000В)`;
-        return roman !== '—' ? `Группа: ${roman}` : 'Группа не указана';
+        const roman = m ? m[1] : '';
+        if (!roman) return 'Группа не указана';
+        if (/выше\s*1000|и\s+выше/i.test(s)) return `Группа ${roman} (≥1000 В)`;
+        if (/1000/i.test(s)) return `Группа ${roman} (до 1000 В)`;
+        return `Группа ${roman}`;
     }
 
     function eventCardDataAttr(item) {
@@ -578,9 +599,9 @@
         if (item.kind === 'ot_eb') {
             const groupRaw = String(data.otEb?.ebGroup || '').trim();
             if (!groupRaw) {
-                return { text: 'группа не указана', success: false };
+                return { text: 'Группа не указана', success: false };
             }
-            return { text: ebGroupDisplay(groupRaw).toLowerCase(), success: true };
+            return { text: ebGroupDisplay(groupRaw), success: true };
         }
         if (item.kind === 'prmo') {
             if (data.pmo?.fit === false) {
@@ -605,12 +626,14 @@
         const iconClass = eventItemIconClass(item);
         const iconSvg = eventItemIconSvg(item);
         const dataEvent = eventCardDataAttr(item);
+        const daysChip = eventItemDaysChipHtml(item, data);
         return `<button type="button" class="profile-event-item" data-event="${escapeHtml(dataEvent)}" data-compliance-action="open-card" data-card-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(title)}">
   <div class="event-item-icon ${iconClass}" aria-hidden="true">${iconSvg}</div>
   <div class="event-item-text">
     <div class="event-item-title">${escapeHtml(title)}</div>
     <div class="event-item-status ${statusClass}">${escapeHtml(status.text)}</div>
   </div>
+  ${daysChip ? `<div class="event-item-aside">${daysChip}</div>` : ''}
 </button>`;
     }
 
