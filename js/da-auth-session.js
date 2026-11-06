@@ -172,7 +172,13 @@
     }
 
     async function login(payload) {
-        const data = await authFetch('/api/auth/login', { body: payload });
+        const body = payload && typeof payload === 'object' ? { ...payload } : {};
+        const loginVal = String(body.login || body.email || body.tab_number || '').trim();
+        const tabExtra = String(body.tab_number || '').trim();
+        if (loginVal.includes('@') && tabExtra) {
+            body.tab_number = tabExtra;
+        }
+        const data = await authFetch('/api/auth/login', { body });
         if (data.token) persistSession(data.token, data.user);
         return data;
     }

@@ -504,6 +504,13 @@
         if (!syncUserId) {
             return { ok: true, skipped: true, reason: 'no_sync_user_id' };
         }
+        const tabNum = String(hooks.getTabNumber?.() || '').trim();
+        const jwtUser = global.DaAuthSession?.getStoredUser?.();
+        const verified = jwtUser && jwtUser.email_verified_at != null && String(jwtUser.email_verified_at).trim() !== '';
+        const hasMail = jwtUser && String(jwtUser.email || '').trim();
+        if (verified && hasMail && !tabNum) {
+            return { ok: false, skipped: true, reason: 'tab_number_required' };
+        }
         const hashKey = `${syncUserId}:${date}`;
         delete lastPushedHash[hashKey];
 
@@ -529,11 +536,21 @@
         if (!syncUserId) {
             return { ok: true, skipped: true, reason: 'no_sync_user_id' };
         }
+        const tabNum = String(hooks.getTabNumber?.() || '').trim();
+        const jwtUser = global.DaAuthSession?.getStoredUser?.();
+        const verified = jwtUser && jwtUser.email_verified_at != null && String(jwtUser.email_verified_at).trim() !== '';
+        const hasMail = jwtUser && String(jwtUser.email || '').trim();
+        if (verified && hasMail && !tabNum) {
+            return { ok: false, skipped: true, reason: 'tab_number_required' };
+        }
         const list = Array.isArray(shiftOrList) ? shiftOrList : [shiftOrList];
         const clean = list.filter((s) => s && s.shift_date && s.route_code && !s._delete);
         if (!clean.length) return { ok: true, skipped: true };
 
         if (!global.navigator.onLine) {
+            if (verified && hasMail && !tabNum) {
+                return { ok: false, skipped: true, reason: 'tab_number_required' };
+            }
             for (const p of clean) await enqueueShiftPayload(p);
             return { ok: true, queued: clean.length };
         }
@@ -799,6 +816,12 @@
         if (!enabled || !global.navigator.onLine) return;
         const syncUserId = hooks.getSyncUserId?.() || '';
         if (!syncUserId) return;
+
+        const tabNum = String(hooks.getTabNumber?.() || '').trim();
+        const jwtUser = global.DaAuthSession?.getStoredUser?.();
+        const verified = jwtUser && jwtUser.email_verified_at != null && String(jwtUser.email_verified_at).trim() !== '';
+        const hasMail = jwtUser && String(jwtUser.email || '').trim();
+        if (verified && hasMail && !tabNum) return;
 
         const pendingProfile = await idbGetMetaScoped('profile_pending');
         if (pendingProfile) {

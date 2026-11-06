@@ -734,6 +734,23 @@ body.auth-locked .screen:not(#screen-auth) {
     backdrop-filter: blur(10px);
 }
 
+.da-modal-overlay--tab-required {
+    z-index: 6600;
+    background: rgba(1, 4, 9, 0.88);
+    backdrop-filter: blur(10px);
+}
+
+body.tab-required-blocking #mainScreensStage,
+body.tab-required-blocking .bottom-tabbar,
+body.tab-required-blocking .app-community-footer {
+    pointer-events: none;
+    user-select: none;
+}
+
+body.tab-required-blocking #tabRequiredModal:not(.hidden) {
+    pointer-events: auto;
+}
+
 .da-modal-overlay--bind .user-auth-card--bind {
     width: min(100%, 400px);
     max-height: calc(100dvh - 32px);

@@ -219,6 +219,7 @@
 
             <div id="authPanelLogin" class="user-auth-panel active">
                 <input type="text" id="authLoginInput" class="user-auth-input" placeholder="Email или Имя" autocomplete="username" enterkeyhint="next">
+                <input type="text" id="authLoginTabInput" class="user-auth-input user-auth-input--tab-for-email hidden" placeholder="Табельный номер" inputmode="numeric" autocomplete="username" enterkeyhint="next" aria-label="Табельный номер (для входа по email)">
                 <div class="user-auth-password-field">
                     <input type="password" id="authPasswordInput" class="user-auth-input user-auth-input--password" placeholder="Пароль" autocomplete="current-password" enterkeyhint="go">
                     <button type="button" class="user-auth-password-toggle" data-password-target="authPasswordInput" aria-label="Показать пароль" aria-pressed="false">
@@ -243,6 +244,7 @@
                 <p class="user-auth-field-note">Для более точного рассчёта заработной платы</p>
                 <input type="text" id="authRegNameInput" class="user-auth-input" placeholder="Введите Имя" autocomplete="name">
                 <input type="email" id="authRegEmailInput" class="user-auth-input" placeholder="Email" autocomplete="email">
+                <input type="text" id="authRegTabInput" class="user-auth-input" placeholder="Табельный номер" inputmode="numeric" autocomplete="off" enterkeyhint="next" aria-label="Табельный номер">
                 <div class="user-auth-password-field">
                     <input type="password" id="authRegPasswordInput" class="user-auth-input user-auth-input--password" placeholder="Пароль" autocomplete="new-password">
                     <button type="button" class="user-auth-password-toggle" data-password-target="authRegPasswordInput" aria-label="Показать пароль" aria-pressed="false">
@@ -286,6 +288,18 @@
                 <p id="authErrorReset" class="user-auth-error" role="alert" aria-live="polite"></p>
                 <button type="button" id="authResetSubmitBtn" class="user-auth-btn" data-auth-submit="reset" disabled>Сохранить</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="tabRequiredModal" class="da-modal-overlay da-modal-overlay--tab-required hidden" role="dialog" aria-modal="true" aria-labelledby="tabRequiredModalTitle" data-tab-required-modal>
+    <div class="da-modal-card user-auth-card">
+        <h2 class="da-modal-title" id="tabRequiredModalTitle">Нужен табельный номер</h2>
+        <p class="da-modal-hint" id="tabRequiredModalHint">Укажите ваш табельный номер для синхронизации смен с сервером.</p>
+        <input type="text" id="tabRequiredModalInput" class="user-auth-input" placeholder="Табельный номер" inputmode="numeric" autocomplete="off" aria-label="Табельный номер">
+        <p id="tabRequiredModalError" class="user-auth-error" role="alert" aria-live="polite"></p>
+        <div class="da-modal-actions">
+            <button type="button" class="user-auth-btn da-modal-submit" id="tabRequiredModalSave">Сохранить</button>
         </div>
     </div>
 </div>
@@ -1202,7 +1216,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.2';
+    const APP_RELEASE_VERSION = '5.1.3';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
@@ -10087,6 +10101,7 @@
     }
 
     function switchMainScreen(screen, options = {}) {
+        if (document.body.classList.contains('tab-required-blocking')) return false;
         if (document.body.classList.contains('email-upgrade-blocking')) return false;
         const {
             animate = false,
@@ -10302,12 +10317,12 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Fix локального запуска морды',
-            'Fix: убран dev-экран в PWA'
+            'Обязательный табельный при регистрации и входе по email; модалка если табель не задан',
+            'Сервер: автослияние сироты по табелю с аккаунтом с почтой'
         ],
         highlights: [
-            'Fix локального запуска морды',
-            'Fix: убран dev-экран в PWA'
+            'Обязательный табельный при регистрации и входе по email; модалка если табель не задан',
+            'Сервер: автослияние сироты по табелю с аккаунтом с почтой'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -10426,6 +10441,7 @@
 
     async function maybeShowReleaseNotesOverlay() {
         if (document.body.classList.contains('auth-locked')) return;
+        if (document.body.classList.contains('tab-required-blocking')) return;
         if (document.body.classList.contains('email-upgrade-blocking')) return;
 
         const notes = await loadReleaseNotes();
@@ -11100,7 +11116,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261103a')
+        navigator.serviceWorker.register('./sw.js?v=20261106a')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -11123,6 +11139,7 @@
 
     function isSwipeGloballyBlocked() {
         if (document.body.classList.contains('auth-locked')) return true;
+        if (document.body.classList.contains('tab-required-blocking')) return true;
         if (document.body.classList.contains('email-upgrade-blocking')) return true;
         if (document.getElementById('shiftWarningsModal')?.classList.contains('is-open')) return true;
         if (document.getElementById('shiftResetConfirm')?.classList.contains('is-open')) return true;
@@ -11833,6 +11850,12 @@
         const opts = options && typeof options === 'object' ? options : {};
         const prev = getAuthSessionTab();
         const tab = normalizeTabNumber(tabNumber);
+        if (!tab) {
+            try {
+                localStorage.removeItem(AUTH_SESSION_KEY);
+            } catch (_) { /* */ }
+            return;
+        }
         try {
             localStorage.setItem(AUTH_SESSION_KEY, tab);
             localStorage.setItem(DEPOT_TAB_KEY, tab);
@@ -12142,7 +12165,9 @@
     function isAuthLoginFormReady() {
         const login = String(document.getElementById('authLoginInput')?.value || '').trim();
         const loginPass = String(document.getElementById('authPasswordInput')?.value || '');
-        return Boolean(login && loginPass);
+        const tabForEmail = normalizeTabNumber(document.getElementById('authLoginTabInput')?.value || '');
+        const needTab = login.includes('@');
+        return Boolean(login && loginPass && (!needTab || tabForEmail));
     }
 
     function refreshAuthSubmitStates() {
@@ -12152,9 +12177,10 @@
         const regName = String(document.getElementById('authRegNameInput')?.value || '').trim();
         const regEmail = String(document.getElementById('authRegEmailInput')?.value || '').trim();
         const regPass = String(document.getElementById('authRegPasswordInput')?.value || '');
+        const regTab = normalizeTabNumber(document.getElementById('authRegTabInput')?.value || '');
         setAuthSubmitButtonReady(
             document.getElementById('authRegisterBtn'),
-            Boolean(pos && regName.length >= 2 && isValidAuthEmail(regEmail) && regPass.length >= 6),
+            Boolean(pos && regName.length >= 2 && isValidAuthEmail(regEmail) && regPass.length >= 6 && regTab),
         );
 
         const bindSaveBtn = document.getElementById('profileEmailBindSave');
@@ -12260,9 +12286,11 @@
     function bindAuthFormValidation() {
         [
             'authLoginInput',
+            'authLoginTabInput',
             'authPasswordInput',
             'authRegNameInput',
             'authRegEmailInput',
+            'authRegTabInput',
             'authRegPasswordInput',
             'authForgotInput',
             'profileEmailBindInput',
@@ -13026,6 +13054,28 @@
         }, durationMs || 4800);
     }
 
+    function getLegacyLocalTab() {
+        return normalizeTabNumber(
+            localStorage.getItem(AUTH_SESSION_KEY)
+            || localStorage.getItem(DEPOT_TAB_KEY)
+            || localStorage.getItem('rzd_auth_session')
+        );
+    }
+
+    function syncLoginTabFieldVisibility() {
+        const loginEl = document.getElementById('authLoginInput');
+        const tabEl = document.getElementById('authLoginTabInput');
+        if (!tabEl) return;
+        const login = String(loginEl?.value || '').trim();
+        const show = login.includes('@');
+        tabEl.classList.toggle('hidden', !show);
+        tabEl.toggleAttribute('hidden', !show);
+        if (show && !String(tabEl.value || '').trim()) {
+            const preset = getLegacyLocalTab();
+            if (preset) tabEl.value = preset;
+        }
+    }
+
     function setAuthPanel(panelId) {
         const ids = ['authPanelLogin', 'authPanelRegister', 'authPanelRegisterVerify', 'authPanelForgot', 'authPanelReset'];
         ids.forEach((id) => {
@@ -13050,6 +13100,16 @@
         document.getElementById('authModeRegisterTab')?.classList.toggle('is-active', panelId === 'authPanelRegister');
         document.getElementById('authModeLoginTab')?.toggleAttribute('disabled', hideModes);
         document.getElementById('authModeRegisterTab')?.toggleAttribute('disabled', hideModes);
+        if (panelId === 'authPanelRegister') {
+            const regTab = document.getElementById('authRegTabInput');
+            if (regTab && !String(regTab.value || '').trim()) {
+                const preset = getLegacyLocalTab();
+                if (preset) regTab.value = preset;
+            }
+        }
+        if (panelId === 'authPanelLogin') {
+            syncLoginTabFieldVisibility();
+        }
         refreshAuthSubmitStates();
         if (panelId === 'authPanelLogin') {
             scheduleAuthSubmitStateRefresh();
@@ -13057,14 +13117,6 @@
         } else {
             stopAuthLoginFieldPoll();
         }
-    }
-
-    function getLegacyLocalTab() {
-        return normalizeTabNumber(
-            localStorage.getItem(AUTH_SESSION_KEY)
-            || localStorage.getItem(DEPOT_TAB_KEY)
-            || localStorage.getItem('rzd_auth_session')
-        );
     }
 
     function openLocalProfileAuthEntry() {
@@ -13124,12 +13176,113 @@
         return true;
     }
 
+    /** Подтверждённый email без табельного в облачном профиле — блокируем работу до ввода табеля. */
+    function needsTabNumberForVerifiedEmailCore() {
+        if (!window.DaCrewApi?.isEnabled?.()) return false;
+        if (!window.DaAuthSession?.hasVerifiedEmailOnAccount?.()) return false;
+        if (document.body.classList.contains('auth-locked')) return false;
+        const u = window.DaAuthSession?.getStoredUser?.();
+        if (!u || !String(u.email || '').trim()) return false;
+        const tab = normalizeTabNumber(u.tab_number);
+        return !tab;
+    }
+
     function shouldOfferEmailUpgradeBanner() {
         return false;
     }
 
     function isEmailUpgradeBlockingActive() {
         return needsEmailUpgradeCore();
+    }
+
+    function syncTabRequiredModalUI() {
+        const needs = needsTabNumberForVerifiedEmailCore();
+        document.body.classList.toggle('tab-required-blocking', needs);
+        const modal = document.getElementById('tabRequiredModal');
+        if (!modal) return;
+        if (needs) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+            const inp = document.getElementById('tabRequiredModalInput');
+            const preset = normalizeTabNumber(
+                (inp && inp.value && inp.value.trim())
+                || getLegacyLocalTab()
+                || localStorage.getItem(DEPOT_TAB_KEY)
+                || '',
+            );
+            if (inp && preset && !String(inp.value || '').trim()) {
+                inp.value = preset;
+            }
+            if (inp && document.activeElement !== inp) {
+                requestAnimationFrame(() => inp.focus());
+            }
+        } else {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            const err = document.getElementById('tabRequiredModalError');
+            if (err) err.textContent = '';
+        }
+    }
+
+    async function submitTabRequiredModal() {
+        const errEl = document.getElementById('tabRequiredModalError');
+        const inp = document.getElementById('tabRequiredModalInput');
+        const btn = document.getElementById('tabRequiredModalSave');
+        const tab = normalizeTabNumber(inp?.value || '');
+        if (!tab) {
+            if (errEl) errEl.textContent = 'Укажите табельный номер.';
+            return;
+        }
+        if (!window.DaCrewApi?.updateProfile) {
+            if (errEl) errEl.textContent = 'Синхронизация недоступна. Обновите приложение.';
+            return;
+        }
+        if (btn) {
+            btn.disabled = true;
+            btn.dataset.prevText = btn.textContent;
+            btn.textContent = 'Сохранение…';
+        }
+        if (errEl) errEl.textContent = '';
+        try {
+            const data = await window.DaCrewApi.updateProfile({ tab_number: tab });
+            const u = data?.user || data;
+            if (u && typeof u === 'object') {
+                window.DaAuthSession?.persistSession?.(window.DaAuthSession?.getJwt?.(), u);
+                window.DaAuthSession?.applyUserToProfile?.(u);
+                setAuthSessionTab(tab, { skipCrewSync: true });
+            } else {
+                try {
+                    const me = await window.DaAuthSession.fetchMe();
+                    if (me?.user) {
+                        window.DaAuthSession?.applyUserToProfile?.(me.user);
+                        const t = normalizeTabNumber(me.user.tab_number);
+                        if (t) setAuthSessionTab(t, { skipCrewSync: true });
+                    }
+                } catch (_) { /* */ }
+            }
+            try {
+                localStorage.setItem(DEPOT_TAB_KEY, tab);
+            } catch (_) { /* */ }
+            showDaActionToast?.('Табельный сохранён');
+            syncTabRequiredModalUI();
+            syncEmailUpgradeUi();
+            void window.DaCrewApi?.flushScheduledPushShifts?.(calendarUserShifts);
+        } catch (err) {
+            const code = String(err?.payload?.error || err?.message || '').trim();
+            let msg = formatAuthLoginError(err);
+            if (code === 'tab_number_taken') {
+                msg = 'Этот табельный уже привязан к другому аккаунту. Проверьте номер или обратитесь к администратору.';
+            }
+            if (errEl) errEl.textContent = msg;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                if (btn.dataset.prevText) {
+                    btn.textContent = btn.dataset.prevText;
+                    delete btn.dataset.prevText;
+                }
+            }
+        }
     }
 
     function syncEmailUpgradeUi() {
@@ -13172,6 +13325,7 @@
             modal.classList.add('hidden');
             modal.setAttribute('aria-hidden', 'true');
         }
+        syncTabRequiredModalUI();
     }
 
     function syncProfileEmailBindBanner() {
@@ -13449,6 +13603,9 @@
         }
         const code = String(err && err.payload && err.payload.error || err && err.message || '').trim();
         if (code === 'invalid_tab_number') return 'Укажите табельный номер.';
+        if (code === 'tab_token_mismatch') {
+            return 'Табельный номер не совпадает с аккаунтом. Проверьте ввод или обратитесь к администратору.';
+        }
         if (code === 'invalid_credentials') return 'Неверный логин или пароль.';
         if (code === 'ambiguous_tab_number') {
             return 'С этим табельным зарегистрировано несколько сотрудников. Войдите по Email.';
@@ -13475,6 +13632,9 @@
         }
         if (code === 'missing_token' || code === 'invalid_token') {
             return 'Сессия истекла. Войдите снова.';
+        }
+        if (code === 'tab_number_required') {
+            return 'Укажите табельный номер в профиле — без него синхронизация смен недоступна.';
         }
         if (code === 'claim_and_sync_failed') {
             return 'Сервер входа временно недоступен. Попробуйте через минуту.';
@@ -13673,8 +13833,13 @@
         refreshAuthSubmitStates();
         const login = String(document.getElementById('authLoginInput')?.value || '').trim();
         const password = String(document.getElementById('authPasswordInput')?.value || '');
+        const loginTab = normalizeTabNumber(document.getElementById('authLoginTabInput')?.value || '');
         if (!login || !password) {
             setAuthError('authErrorLogin', 'Введите логин и пароль.');
+            return;
+        }
+        if (login.includes('@') && !loginTab) {
+            setAuthError('authErrorLogin', 'Укажите табельный номер.');
             return;
         }
         setAuthButtonsLoading(true);
@@ -13686,13 +13851,21 @@
             freeStorageForAuthSession();
             let authData;
             try {
-                authData = await window.DaAuthSession.login({ login, password });
+                authData = await window.DaAuthSession.login({
+                    login,
+                    password,
+                    tab_number: login.includes('@') ? loginTab : undefined,
+                });
             } catch (loginErr) {
                 const quotaLike = loginErr?.name === 'QuotaExceededError'
                     || /quota has been exceeded/i.test(String(loginErr?.message || ''));
                 if (quotaLike) {
                     freeStorageForAuthSession();
-                    authData = await window.DaAuthSession.login({ login, password });
+                    authData = await window.DaAuthSession.login({
+                        login,
+                        password,
+                        tab_number: login.includes('@') ? loginTab : undefined,
+                    });
                 } else {
                     throw loginErr;
                 }
@@ -13723,6 +13896,7 @@
         const name = String(document.getElementById('authRegNameInput')?.value || '').trim();
         const email = String(document.getElementById('authRegEmailInput')?.value || '').trim();
         const password = String(document.getElementById('authRegPasswordInput')?.value || '');
+        const tabNumber = normalizeTabNumber(document.getElementById('authRegTabInput')?.value || '');
         const roleKind = getAuthRegisterRoleKind();
         const role = roleKind === 'assistant' ? 'assistant' : 'driver';
         if (!name || name.length < 2) {
@@ -13731,6 +13905,10 @@
         }
         if (!email || !isValidAuthEmail(email)) {
             setAuthError('authErrorRegister', 'Укажите корректный email.');
+            return;
+        }
+        if (!tabNumber) {
+            setAuthError('authErrorRegister', 'Укажите табельный номер.');
             return;
         }
         if (!password || password.length < 6) {
@@ -13747,6 +13925,7 @@
                 email,
                 password,
                 role,
+                tab_number: tabNumber,
                 sync_user_id: typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : undefined,
             });
             if (authData?.needs_verification) {
@@ -14005,11 +14184,24 @@
             e.stopPropagation();
         });
 
+        document.getElementById('authLoginInput')?.addEventListener('input', syncLoginTabFieldVisibility);
         document.getElementById('authLoginInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleAuthLogin();
+        });
+        document.getElementById('authLoginTabInput')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') handleAuthLogin();
         });
         document.getElementById('authPasswordInput')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') handleAuthLogin();
+        });
+        document.getElementById('tabRequiredModalSave')?.addEventListener('click', () => {
+            void submitTabRequiredModal();
+        });
+        document.getElementById('tabRequiredModalInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') void submitTabRequiredModal();
+        });
+        document.getElementById('tabRequiredModal')?.addEventListener('click', (e) => {
+            e.stopPropagation();
         });
 
         const resetToken = getPasswordResetTokenForAuth();
