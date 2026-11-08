@@ -171,6 +171,15 @@
         return data;
     }
 
+    async function resendRegistrationCode(email, password) {
+        return authFetch('/api/auth/resend-registration-code', {
+            body: {
+                email: String(email || '').trim(),
+                password: String(password || ''),
+            },
+        });
+    }
+
     async function login(payload) {
         const body = payload && typeof payload === 'object' ? { ...payload } : {};
         const loginVal = String(body.login || body.email || body.tab_number || '').trim();
@@ -271,6 +280,7 @@
         authHeaders,
         register,
         verifyRegistration,
+        resendRegistrationCode,
         login,
         forgotPassword,
         resetPassword,

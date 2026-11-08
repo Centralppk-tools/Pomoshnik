@@ -24,6 +24,13 @@
 
     let pushTimer = null;
     const lastPushedHash = {};
+
+    function shiftPushHashKey(syncUserId, payload) {
+        const date = String(payload?.shift_date || '').slice(0, 10);
+        let slot = Number(payload?.shift_slot);
+        if (!Number.isFinite(slot) || slot < 0) slot = 0;
+        return `${syncUserId}:${date}:${slot}`;
+    }
     let profileTimer = null;
     let sessionRefreshTimer = null;
     let sessionAnchorAt = 0;
@@ -511,7 +518,7 @@
         if (verified && hasMail && !tabNum) {
             return { ok: false, skipped: true, reason: 'tab_number_required' };
         }
-        const hashKey = `${syncUserId}:${date}`;
+        const hashKey = shiftPushHashKey(syncUserId, { shift_date: date, shift_slot: 0 });
         delete lastPushedHash[hashKey];
 
         if (!global.navigator.onLine) {
@@ -561,7 +568,7 @@
                 body: clean.length === 1 ? clean[0] : { shifts: clean }
             });
             clean.forEach((p) => {
-                lastPushedHash[`${syncUserId}:${p.shift_date}`] = JSON.stringify(p);
+                lastPushedHash[shiftPushHashKey(syncUserId, p)] = JSON.stringify(p);
             });
             return data;
         } catch (err) {
@@ -838,7 +845,11 @@
 
         const byDate = new Map();
         mine.forEach((row) => {
-            if (row.payload?.shift_date) byDate.set(row.payload.shift_date, row);
+            const p = row.payload;
+            if (p?.shift_date) {
+                const key = shiftPushHashKey(syncUserId, p);
+                byDate.set(key, row);
+            }
         });
         const queueRows = [...byDate.values()];
         const savePayloads = [];
@@ -850,7 +861,7 @@
                         method: 'POST',
                         body: { shift_date: p.shift_date },
                     });
-                    delete lastPushedHash[`${syncUserId}:${p.shift_date}`];
+                    delete lastPushedHash[shiftPushHashKey(syncUserId, p)];
                 } else {
                     savePayloads.push(p);
                 }
@@ -861,7 +872,7 @@
                     body: { shifts: savePayloads },
                 });
                 savePayloads.forEach((p) => {
-                    lastPushedHash[`${syncUserId}:${p.shift_date}`] = JSON.stringify(p);
+                    lastPushedHash[shiftPushHashKey(syncUserId, p)] = JSON.stringify(p);
                 });
             }
             await deleteQueueIds(mine.map((r) => r.id));
@@ -879,14 +890,17 @@
         const map = calendarShifts && typeof calendarShifts === 'object' ? calendarShifts : {};
         Object.keys(map).forEach((dateKey) => {
             const raw = map[dateKey];
-            const list = typeof global.normalizeDayShiftsRecord === 'function'
+            let list = typeof global.normalizeDayShiftsRecord === 'function'
                 ? global.normalizeDayShiftsRecord(raw)
                 : (Array.isArray(raw) ? raw : raw ? [raw] : []);
-            list.forEach((shift) => {
-                const p = hooks.buildShiftPayload(dateKey, shift);
+            if (typeof global.sortDayShiftsForDisplay === 'function') {
+                list = global.sortDayShiftsForDisplay(list);
+            }
+            list.forEach((shift, index) => {
+                const p = hooks.buildShiftPayload(dateKey, shift, index);
                 if (!p) return;
                 const h = JSON.stringify(p);
-                const hashKey = `${syncUserId}:${p.shift_date}`;
+                const hashKey = shiftPushHashKey(syncUserId, p);
                 if (lastPushedHash[hashKey] === h) return;
                 payloads.push(p);
             });

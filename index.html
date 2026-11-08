@@ -258,10 +258,11 @@
 
             <div id="authPanelRegisterVerify" class="user-auth-panel">
                 <p class="user-auth-subtitle">Подтверждение email</p>
-                <p class="user-auth-hint" id="authRegisterVerifyHint">Введите 6-значный код из письма.</p>
+                <p class="user-auth-hint" id="authRegisterVerifyHint">Введите 6-значный код из письма. Код действует 15 минут.</p>
                 <input type="text" id="authRegisterCodeInput" class="user-auth-input" placeholder="Код из письма" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
                 <p id="authErrorRegisterVerify" class="user-auth-error" role="alert" aria-live="polite"></p>
                 <button type="button" id="authRegisterVerifyBtn" class="user-auth-btn">Подтвердить и войти</button>
+                <button type="button" class="user-auth-btn user-auth-btn--secondary" id="authRegisterResendBtn">Отправить код ещё раз</button>
                 <button type="button" class="user-auth-back" id="authRegisterVerifyBackBtn">Назад к регистрации</button>
             </div>
 
@@ -1216,7 +1217,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.3';
+    const APP_RELEASE_VERSION = '5.1.4';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
@@ -1260,13 +1261,44 @@
         ]);
     }
 
-    let crewSyncIndicatorDepth = 0;
-    let crewSyncIndicatorLabel = 'Синхронизация смен';
+    /** Счётчики по причинам — параллельные загрузки (смены + база маршрутов) не сбивают друг друга. */
+    const CREW_SYNC_REASON_PRIORITY = [
+        'crew-post-auth',
+        'crew-calendar',
+        'crew-month',
+        'shift-templates',
+    ];
+    const CREW_SYNC_LABEL_FALLBACK = 'Синхронизация смен';
+    const crewSyncReasonCounts = new Map();
+    const crewSyncReasonLabels = new Map();
     let crewSyncForceHideTimer = null;
 
+    function crewSyncActiveReasonCount() {
+        let n = 0;
+        crewSyncReasonCounts.forEach((v) => { n += v; });
+        return n;
+    }
+
+    function crewSyncBadgeLabel() {
+        for (const key of CREW_SYNC_REASON_PRIORITY) {
+            const c = crewSyncReasonCounts.get(key) || 0;
+            if (c > 0) {
+                const lab = crewSyncReasonLabels.get(key);
+                return (lab && String(lab).trim()) || CREW_SYNC_LABEL_FALLBACK;
+            }
+        }
+        for (const [key, c] of crewSyncReasonCounts) {
+            if (c > 0) {
+                const lab = crewSyncReasonLabels.get(key);
+                return (lab && String(lab).trim()) || CREW_SYNC_LABEL_FALLBACK;
+            }
+        }
+        return CREW_SYNC_LABEL_FALLBACK;
+    }
+
     function applyCrewSyncBadgeVisibility() {
-        const show = crewSyncIndicatorDepth > 0;
-        const label = crewSyncIndicatorLabel;
+        const show = crewSyncActiveReasonCount() > 0;
+        const label = crewSyncBadgeLabel();
         const badges = document.querySelectorAll('.crew-sync-badge');
         if (crewSyncHideTimer) {
             clearTimeout(crewSyncHideTimer);
@@ -1301,23 +1333,37 @@
         if (crewSyncForceHideTimer) clearTimeout(crewSyncForceHideTimer);
         crewSyncForceHideTimer = window.setTimeout(() => {
             crewSyncForceHideTimer = null;
-            if (crewSyncIndicatorDepth <= 0) return;
+            if (crewSyncActiveReasonCount() <= 0) return;
             console.warn('[crew-sync] indicator force hide (timeout)');
-            crewSyncIndicatorDepth = 0;
+            crewSyncReasonCounts.clear();
+            crewSyncReasonLabels.clear();
             applyCrewSyncBadgeVisibility();
         }, 120000);
     }
 
-    function setCrewSyncIndicator(active, message) {
-        if (message) {
-            crewSyncIndicatorLabel = String(message).trim() || crewSyncIndicatorLabel;
-        }
+    /**
+     * @param {boolean} active
+     * @param {string} [message]
+     * @param {string} [reasonKey] — уникальная причина (параллельные операции не перетирают состояние)
+     */
+    function setCrewSyncIndicator(active, message, reasonKey) {
+        const key = String(reasonKey || 'crew').trim() || 'crew';
+        const label = String(message || '').trim() || CREW_SYNC_LABEL_FALLBACK;
         if (active) {
-            crewSyncIndicatorDepth += 1;
+            const prev = crewSyncReasonCounts.get(key) || 0;
+            crewSyncReasonCounts.set(key, prev + 1);
+            crewSyncReasonLabels.set(key, label);
             armCrewSyncIndicatorForceHide();
         } else {
-            crewSyncIndicatorDepth = Math.max(0, crewSyncIndicatorDepth - 1);
-            if (crewSyncIndicatorDepth === 0 && crewSyncForceHideTimer) {
+            const prev = crewSyncReasonCounts.get(key) || 0;
+            const next = Math.max(0, prev - 1);
+            if (next === 0) {
+                crewSyncReasonCounts.delete(key);
+                crewSyncReasonLabels.delete(key);
+            } else {
+                crewSyncReasonCounts.set(key, next);
+            }
+            if (crewSyncActiveReasonCount() === 0 && crewSyncForceHideTimer) {
                 clearTimeout(crewSyncForceHideTimer);
                 crewSyncForceHideTimer = null;
             }
@@ -1326,7 +1372,8 @@
     }
 
     function resetCrewSyncIndicator() {
-        crewSyncIndicatorDepth = 0;
+        crewSyncReasonCounts.clear();
+        crewSyncReasonLabels.clear();
         if (crewSyncForceHideTimer) {
             clearTimeout(crewSyncForceHideTimer);
             crewSyncForceHideTimer = null;
@@ -10317,12 +10364,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Обязательный табельный при регистрации и входе по email; модалка если табель не задан',
-            'Сервер: автослияние сироты по табелю с аккаунтом с почтой'
+            'Выявлен баг календаря: вторая ночь (У+Н) не сбрасывается при выходе из приложения',
+            'Оптимизирован расчёт и вычитание времени обеда',
+            'Фиксы автосохранения маршрутов при синхронизации с crew-api',
+            'Вместо всплывающей загрузки — индикатор синхронизации в часах (офлайн-режим)'
         ],
         highlights: [
-            'Обязательный табельный при регистрации и входе по email; модалка если табель не задан',
-            'Сервер: автослияние сироты по табелю с аккаунтом с почтой'
+            'Выявлен баг календаря: вторая ночь (У+Н) не сбрасывается при выходе из приложения',
+            'Оптимизирован расчёт и вычитание времени обеда',
+            'Фиксы автосохранения маршрутов при синхронизации с crew-api',
+            'Вместо всплывающей загрузки — индикатор синхронизации в часах (офлайн-режим)'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -11116,7 +11167,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261106a')
+        navigator.serviceWorker.register('./sw.js?v=20261108a')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -11957,8 +12008,11 @@
         persistUserShiftsImmediate();
     }
 
-    function buildCrewApiShiftPayload(dateKey, shift) {
+    function buildCrewApiShiftPayload(dateKey, shift, shiftSlot) {
         if (!shift || !dateKey) return null;
+        let slot = Number(shiftSlot);
+        if (!Number.isFinite(slot) || slot < 0) slot = 0;
+        if (slot > 1) slot = 1;
         const parts = String(dateKey).split('.');
         if (parts.length !== 3) return null;
         const iso = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -11982,6 +12036,7 @@
             }
             return {
                 shift_date: iso,
+                shift_slot: slot,
                 route_code: 'О',
                 work_time: null,
                 trains: [],
@@ -12002,6 +12057,7 @@
         const pay = getCalendarShiftPayment(enriched, dateKey);
         return {
             shift_date: iso,
+            shift_slot: slot,
             route_code,
             work_time: getShiftWorkTimeLine(enriched, dateKey),
             trains,
@@ -12055,13 +12111,74 @@
     function buildCrewApiShiftsPayloadFromMap(shiftsMap) {
         const payloads = [];
         Object.keys(shiftsMap || {}).forEach((dateKey) => {
-            const list = normalizeDayShiftsRecord(shiftsMap[dateKey]);
-            list.forEach((shift) => {
-                const payload = buildCrewApiShiftPayload(dateKey, shift);
+            const list = sortDayShiftsForDisplay(normalizeDayShiftsRecord(shiftsMap[dateKey]));
+            list.forEach((shift, index) => {
+                const payload = buildCrewApiShiftPayload(dateKey, shift, index);
                 if (payload) payloads.push(payload);
             });
         });
         return payloads;
+    }
+
+    function calendarShiftFromCrewApiRow(row, existing, dateKey, opts) {
+        const replaceMode = Boolean(opts && opts.replaceShifts);
+        const wt = String(row.work_time || '');
+        const tm = wt.match(/(\d{1,2}:\d{2})\s*[–\-—]\s*(\d{1,2}:\d{2})/);
+        const base = existing && typeof existing === 'object' ? { ...existing } : {};
+        const localNumbers = existing ? extractTrainNumbers(getShiftTrainsText(existing)) : [];
+        const serverNumbers = parseCrewApiTrainsField(row.trains);
+        const trainNumbers = serverNumbers.length
+            ? serverNumbers
+            : (replaceMode ? [] : localNumbers);
+        const trainsText = trainNumbers.join(' ');
+
+        let routeCode = String(row.route_code || base.route || base.name || '').trim();
+        const noteRaw = String(row.note_text || base.note || '').trim();
+        const isAveragePay = routeCode.toLowerCase() === 'о'
+            || routeCode.toLowerCase() === 'отпуск'
+            || noteRaw.includes('[da:average_pay]');
+        const userNote = noteRaw.replace(/\n?\[da:average_pay\]/g, '').trim();
+
+        return syncShiftTrainFields({
+            ...base,
+            route: isAveragePay ? (routeCode || 'О') : (routeCode || base.route || ''),
+            name: isAveragePay ? 'О' : (routeCode || base.name || base.route || ''),
+            shiftStatus: isAveragePay ? 'average_pay' : base.shiftStatus,
+            startTime: tm ? tm[1] : (base.startTime || ''),
+            endTime: tm ? tm[2] : (base.endTime || ''),
+            trains: trainsText,
+            trainNum: trainsText,
+            hours: row.hours_text != null && String(row.hours_text).trim() !== ''
+                ? row.hours_text
+                : (base.hours || ''),
+            note: userNote || (isAveragePay ? '' : (base.note || ''))
+        });
+    }
+
+    function applyCrewApiShiftRowsToCalendar(serverRows, opts) {
+        const replaceMode = Boolean(opts && opts.replaceShifts);
+        const slotBuckets = new Map();
+
+        serverRows.forEach((row) => {
+            const dateKey = isoDateToCalendarKey(row.shift_date);
+            if (!dateKey) return;
+            let slot = Number(row.shift_slot);
+            if (!Number.isFinite(slot) || slot < 0) slot = 0;
+            if (slot > 1) slot = 1;
+
+            const existingRaw = calendarUserShifts[dateKey];
+            const existingList = replaceMode ? [] : normalizeDayShiftsRecord(existingRaw);
+            const existing = existingList[slot] || null;
+
+            if (!slotBuckets.has(dateKey)) slotBuckets.set(dateKey, []);
+            slotBuckets.get(dateKey)[slot] = calendarShiftFromCrewApiRow(row, existing, dateKey, opts);
+        });
+
+        slotBuckets.forEach((slots, dateKey) => {
+            const list = (Array.isArray(slots) ? slots : []).filter(Boolean).slice(0, 2);
+            if (!list.length) return;
+            calendarUserShifts[dateKey] = list.length === 1 ? list[0] : list;
+        });
     }
 
     function migrateLocalShiftsStorageAfterClaim(prevSyncId, nextSyncId, tabNumber) {
@@ -12487,7 +12604,7 @@
 
     async function syncVisibleCalendarMonthFromCrewApi() {
         if (!window.DaCrewApi?.isEnabled?.()) return;
-        setCrewSyncIndicator(true, 'Обновление месяца');
+        setCrewSyncIndicator(true, 'Обновление месяца', 'crew-month');
         try {
             await flushLocalShiftsBeforeCrewPull();
             const monthKey = formatSyncMonthFromDate(calendarCurrentDate);
@@ -12498,7 +12615,7 @@
                 showDaErrorToast('Не удалось обновить смены за месяц');
             }
         } finally {
-            setCrewSyncIndicator(false);
+            setCrewSyncIndicator(false, '', 'crew-month');
         }
     }
 
@@ -12558,46 +12675,8 @@
                     persistUserShiftsLocalOnly();
                 }
             } else {
-                serverRows.forEach((row) => {
-                    const dateKey = isoDateToCalendarKey(row.shift_date);
-                    if (!dateKey) return;
-                    const wt = String(row.work_time || '');
-                    const tm = wt.match(/(\d{1,2}:\d{2})\s*[–\-—]\s*(\d{1,2}:\d{2})/);
-                    const existingRaw = calendarUserShifts[dateKey];
-                    const existing = opts.replaceShifts
-                        ? null
-                        : (normalizeDayShiftsRecord(existingRaw)[0]
-                            || (existingRaw && typeof existingRaw === 'object' && !Array.isArray(existingRaw) ? existingRaw : null));
-                    const localNumbers = existing ? extractTrainNumbers(getShiftTrainsText(existing)) : [];
-                    const serverNumbers = parseCrewApiTrainsField(row.trains);
-                    const trainNumbers = serverNumbers.length
-                        ? serverNumbers
-                        : (opts.replaceShifts ? [] : localNumbers);
-                    const trainsText = trainNumbers.join(' ');
-
-                    const base = existing ? { ...existing } : {};
-                    let routeCode = String(row.route_code || base.route || base.name || '').trim();
-                    const noteRaw = String(row.note_text || base.note || '').trim();
-                    const isAveragePay = routeCode.toLowerCase() === 'о'
-                        || routeCode.toLowerCase() === 'отпуск'
-                        || noteRaw.includes('[da:average_pay]');
-                    const userNote = noteRaw.replace(/\n?\[da:average_pay\]/g, '').trim();
-
-                    calendarUserShifts[dateKey] = syncShiftTrainFields({
-                        ...base,
-                        route: isAveragePay ? (routeCode || 'О') : (routeCode || base.route || ''),
-                        name: isAveragePay ? 'О' : (routeCode || base.name || base.route || ''),
-                        shiftStatus: isAveragePay ? 'average_pay' : base.shiftStatus,
-                        startTime: tm ? tm[1] : (base.startTime || ''),
-                        endTime: tm ? tm[2] : (base.endTime || ''),
-                        trains: trainsText,
-                        trainNum: trainsText,
-                        hours: row.hours_text != null && String(row.hours_text).trim() !== ''
-                            ? row.hours_text
-                            : (base.hours || ''),
-                        note: userNote || (isAveragePay ? '' : (base.note || ''))
-                    });
-                });
+                applyCrewApiShiftRowsToCalendar(serverRows, opts);
+                syncMaterializedMorningShifts();
                 persistUserShiftsLocalOnly();
             }
             if (typeof calendarRenderCalendar === 'function') {
@@ -12626,6 +12705,7 @@
     function initDaCrewApiLayer() {
         if (!window.DaCrewApi) return;
         window.normalizeDayShiftsRecord = normalizeDayShiftsRecord;
+        window.sortDayShiftsForDisplay = sortDayShiftsForDisplay;
         DaCrewApi.configure({
             getSyncUserId: () => (typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : ''),
             getTabNumber: () => getAuthSessionTab() || localStorage.getItem(DEPOT_TAB_KEY) || '',
@@ -13624,6 +13704,19 @@
         }
         if (code === 'tab_number_taken') return 'Табельный номер уже привязан к другому аккаунту.';
         if (code === 'weak_password') return 'Пароль не короче 6 символов.';
+        if (code === 'invalid_or_expired_code') {
+            return `Код устарел или неверен (срок 15 мин.). Нажмите «Отправить код ещё раз» — нужен тот же пароль, что при регистрации.`;
+        }
+        if (code === 'resend_cooldown') {
+            const sec = Number(err?.payload?.retry_after_sec) || 60;
+            return `Подождите ${sec} с перед повторной отправкой.`;
+        }
+        if (code === 'password_required') {
+            return 'Для нового кода укажите пароль (экран входа или регистрации).';
+        }
+        if (code === 'email_not_verified') {
+            return 'Подтвердите email кодом из письма или запросите новый код.';
+        }
         if (code === 'invalid_email') return 'Укажите корректный email.';
         if (code === 'register_failed') return 'Не удалось создать аккаунт. Попробуйте позже.';
         if (code === 'upgrade_profile_failed') return 'Не удалось привязать email. Попробуйте позже.';
@@ -13683,7 +13776,7 @@
         );
         const uploadLocalOnce = isNewAccount === true && !deviceIdDiffersFromAccount;
 
-        setCrewSyncIndicator(true, 'Синхронизация смен');
+        setCrewSyncIndicator(true, 'Синхронизация смен', 'crew-post-auth');
         try {
             if (uploadLocalOnce) {
                 if (!Object.keys(calendarUserShifts || {}).length) {
@@ -13747,7 +13840,7 @@
                 calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
             } catch (_) { /* */ }
         } finally {
-            resetCrewSyncIndicator();
+            setCrewSyncIndicator(false, '', 'crew-post-auth');
         }
     }
 
@@ -13877,12 +13970,14 @@
             const code = String(err?.payload?.error || err?.message || '').trim();
             if (code === 'email_not_verified') {
                 authPendingVerifyEmail = String(err?.payload?.email || login).trim();
+                authPendingVerifyPassword = password;
                 const hint = document.getElementById('authRegisterVerifyHint');
                 if (hint && authPendingVerifyEmail) {
-                    hint.textContent = `Подтвердите ${authPendingVerifyEmail} кодом из письма.`;
+                    hint.textContent = `Подтвердите ${authPendingVerifyEmail}. Код действует 15 мин. — при необходимости запросите новый.`;
                 }
                 setAuthPanel('authPanelRegisterVerify');
                 document.getElementById('authRegisterCodeInput')?.focus();
+                void handleAuthResendRegistrationCode({ autoAfterLogin: true });
                 return;
             }
             setAuthError('authErrorLogin', formatAuthLoginError(err));
@@ -13930,9 +14025,10 @@
             });
             if (authData?.needs_verification) {
                 authPendingVerifyEmail = email;
+                authPendingVerifyPassword = password;
                 const hint = document.getElementById('authRegisterVerifyHint');
                 if (hint) {
-                    hint.textContent = `Код отправлен на ${email}. Введите 6 цифр из письма.`;
+                    hint.textContent = `Код отправлен на ${email}. Введите 6 цифр из письма (действует 15 мин.).`;
                 }
                 setAuthPanel('authPanelRegisterVerify');
                 document.getElementById('authRegisterCodeInput')?.focus();
@@ -13947,6 +14043,56 @@
             });
         } catch (err) {
             setAuthError('authErrorRegister', formatAuthLoginError(err));
+        } finally {
+            setAuthButtonsLoading(false);
+        }
+    }
+
+    async function handleAuthResendRegistrationCode(options = {}) {
+        const opts = options && typeof options === 'object' ? options : {};
+        setAuthError('authErrorRegisterVerify', '');
+        const email = authPendingVerifyEmail
+            || String(document.getElementById('authRegEmailInput')?.value || '').trim();
+        const password = authPendingVerifyPassword
+            || String(document.getElementById('authRegPasswordInput')?.value || '')
+            || String(document.getElementById('authPasswordInput')?.value || '');
+        if (!email) {
+            if (!opts.autoAfterLogin) {
+                setAuthError('authErrorRegisterVerify', 'Укажите email на экране регистрации.');
+            }
+            return;
+        }
+        if (!password || password.length < 6) {
+            if (!opts.autoAfterLogin) {
+                setAuthError(
+                    'authErrorRegisterVerify',
+                    'Для нового кода нужен пароль — введите его на экране входа и нажмите «Войти», либо на экране регистрации.',
+                );
+            }
+            return;
+        }
+        if (!window.DaAuthSession?.resendRegistrationCode) {
+            setAuthError('authErrorRegisterVerify', 'Повторная отправка недоступна. Обновите приложение.');
+            return;
+        }
+        setAuthButtonsLoading(true);
+        try {
+            const data = await window.DaAuthSession.resendRegistrationCode(email, password);
+            authPendingVerifyEmail = email;
+            authPendingVerifyPassword = password;
+            const hint = document.getElementById('authRegisterVerifyHint');
+            if (hint) {
+                hint.textContent = `Новый код отправлен на ${email}. Действует 15 минут.`;
+            }
+            document.getElementById('authRegisterCodeInput')?.focus();
+            if (!opts.autoAfterLogin) {
+                showDaActionToast(data?.message || 'Код отправлен');
+            }
+        } catch (err) {
+            const code = String(err?.payload?.error || '').trim();
+            if (!opts.autoAfterLogin || code !== 'resend_cooldown') {
+                setAuthError('authErrorRegisterVerify', formatAuthLoginError(err));
+            }
         } finally {
             setAuthButtonsLoading(false);
         }
@@ -13971,6 +14117,7 @@
             const roleKind = getAuthRegisterRoleKind();
             const authData = await window.DaAuthSession.verifyRegistration(email, code);
             authPendingVerifyEmail = '';
+            authPendingVerifyPassword = '';
             await completeAuthSessionAfterApi(authData, {
                 toast: 'Email подтверждён',
                 roleKind,
@@ -14089,6 +14236,7 @@
     }
 
     let authPendingVerifyEmail = '';
+    let authPendingVerifyPassword = '';
     let profileBindAwaitingCode = false;
     let authListenersBound = false;
     /** @type {boolean|null} null пока идёт проверка reset_token */
@@ -14141,6 +14289,9 @@
         document.getElementById('authRegisterBtn')?.addEventListener('click', handleAuthRegister);
         document.getElementById('authRegisterVerifyBtn')?.addEventListener('click', () => {
             void handleAuthRegisterVerify();
+        });
+        document.getElementById('authRegisterResendBtn')?.addEventListener('click', () => {
+            void handleAuthResendRegistrationCode();
         });
         document.getElementById('authRegisterVerifyBackBtn')?.addEventListener('click', () => {
             setAuthError('authErrorRegisterVerify', '');
@@ -14801,7 +14952,7 @@
         if (!forceRefresh && localShiftTemplatesPromise) return localShiftTemplatesPromise;
 
         localShiftTemplatesPromise = (async () => {
-            window.DaLoad?.start?.('shift-templates', 'База маршрутов…');
+            setCrewSyncIndicator(true, 'База маршрутов…', 'shift-templates');
             try {
                 const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
                     || [LOCAL_SHIFT_TEMPLATES_URL];
@@ -14880,7 +15031,7 @@
                     showDaErrorToast('Не удалось загрузить базу маршрутов');
                 }
             } finally {
-                window.DaLoad?.end?.('shift-templates');
+                setCrewSyncIndicator(false, '', 'shift-templates');
             }
             return localShiftNormatives;
         })();
@@ -15414,7 +15565,7 @@
                 applyNormativeForDateKey(getShiftContextDateKey());
                 return;
             }
-            setCrewSyncIndicator(true, 'Синхронизация смен');
+            setCrewSyncIndicator(true, 'Синхронизация смен', 'crew-calendar');
             try {
                 await DaCrewApi.flushOfflineQueue();
                 await syncCrewApiAdjacentMonths(calendarCurrentDate, options.syncOptions || {});
@@ -15422,17 +15573,14 @@
                 console.warn('[crew-api] startCalendar sync', err);
                 showDaErrorToast('Не удалось синхронизировать смены с сервером');
             } finally {
-                setCrewSyncIndicator(false);
+                setCrewSyncIndicator(false, '', 'crew-calendar');
             }
             calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
             applyNormativeForDateKey(getShiftContextDateKey());
             updateProfileScreen();
         };
-        if (window.DaLoad?.run) {
-            await DaLoad.run('calendar', 'Календарь смен', run);
-        } else {
-            await run();
-        }
+        // Не используем DaLoad.run — полноэкранная оболочка мешает; статус синхронизации — crew-sync-badge у часов (setCrewSyncIndicator).
+        await run();
     }
 
     let routeComboboxDocHandler = null;
@@ -16396,6 +16544,19 @@
         );
     }
 
+    function shouldSubtractLunchFromShift(shift, startTime, endTime) {
+        if (!shift) return false;
+        const marker = getLunchExclusionMarker(shift.lunch);
+        if (marker === '**') return false;
+        if (lunchBreakOverlapsShift(startTime, endTime, shift.lunch)) return true;
+        const lunchMin = parseLunchDurationMinutes(shift.lunch);
+        if (lunchMin <= 0) return false;
+        const spanMin = calculateShiftSpanMinutes(startTime, endTime);
+        if (spanMin == null) return false;
+        if (spanMin > 12 * 60) return true;
+        return false;
+    }
+
     function calculateShiftWorkHoursFromTimes(shift) {
         if (!shift) return null;
         if (isMorningRoute(shift.route)) {
@@ -16409,7 +16570,7 @@
         const spanMin = calculateShiftSpanMinutes(startRaw, endRaw);
         if (spanMin == null) return null;
 
-        const shouldSubtractLunch = lunchBreakOverlapsShift(startRaw, endRaw, shift.lunch);
+        const shouldSubtractLunch = shouldSubtractLunchFromShift(shift, startRaw, endRaw);
         const lunchMin = shouldSubtractLunch ? parseLunchDurationMinutes(shift.lunch) : 0;
         return Math.max(0, spanMin - lunchMin) / 60;
     }
@@ -16554,7 +16715,7 @@
         if (endMin == null || endMin > startMin) return resolveCalendarShiftHours(shift, dateKey);
 
         let minutesOnDay = 1440 - startMin;
-        const shouldSubtractLunch = lunchBreakOverlapsShift(startRaw, endRaw, enriched.lunch);
+        const shouldSubtractLunch = shouldSubtractLunchFromShift(enriched, startRaw, endRaw);
         if (shouldSubtractLunch) minutesOnDay -= parseLunchDurationMinutes(enriched.lunch);
         return Math.max(0, minutesOnDay) / 60;
     }
