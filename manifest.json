@@ -1,7 +1,9 @@
 {
   "name": "Цифровой помощник",
   "short_name": "Цифр. помощник",
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#0a1018",
   "theme_color": "#0a1018",

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Цифровой помощник</title>
+    <script>
+        (function () {
+            var path = location.pathname || '';
+            var m = path.match(/^\/Pomoshnik(\/.*)?$/i);
+            if (m) {
+                var tail = m[1];
+                if (!tail || tail === '/') {
+                    tail = '/';
+                }
+                location.replace(tail + location.search + location.hash);
+                return;
+            }
+            m = path.match(/^\/pomoshnik(\/.*)?$/i);
+            if (m) {
+                var tail2 = m[1];
+                if (!tail2 || tail2 === '/') {
+                    tail2 = '/';
+                }
+                location.replace(tail2 + location.search + location.hash);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <p>Страница не найдена. <a href="/">Открыть Цифровой помощник</a></p>
+</body>
+</html>
