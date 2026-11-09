@@ -7,6 +7,13 @@
     <script>
         (function () {
             var path = location.pathname || '';
+            var reset = path.match(/^\/(?:r|t)\/([a-f0-9]{64})\/?$/i);
+            if (reset) {
+                var q = new URLSearchParams(location.search);
+                q.set('reset_token', reset[1]);
+                location.replace('/?' + q.toString() + (location.hash || ''));
+                return;
+            }
             var m = path.match(/^\/Pomoshnik(\/.*)?$/i);
             if (m) {
                 var tail = m[1];
