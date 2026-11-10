@@ -108,6 +108,23 @@
     <link rel="stylesheet" href="styles/community.css?v=20261031d">
     <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
     <link rel="stylesheet" href="styles/da-loading.css?v=20261104a">
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+        ym(114172753, "init", {
+            clickmap:true,
+            trackLinks:true,
+            accurateTrackBounce:true,
+            webvisor:true
+        });
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/114172753" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
 </head>
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
@@ -10117,6 +10134,24 @@
         getScheduleData(trainNumber);
     }
 
+    const YM_COUNTER_ID = 114172753;
+    const YM_SCREEN_TITLES = {
+        calendar: 'Календарь',
+        schedule: 'Маршрут',
+        instructions: 'Инструкции',
+        profile: 'Я',
+    };
+
+    function trackYandexMetrikaScreen(screen) {
+        if (typeof ym !== 'function' || !screen) return;
+        const base = window.location.pathname || '/';
+        const hash = `#screen=${encodeURIComponent(screen)}`;
+        const title = YM_SCREEN_TITLES[screen] || screen;
+        try {
+            ym(YM_COUNTER_ID, 'hit', base + hash, { title: `Цифровой помощник — ${title}` });
+        } catch (_) { /* offline / blocked */ }
+    }
+
     function finishMainScreenTransition(fromEl, toEl, toScreen, options = {}) {
         const stage = document.getElementById('mainScreensStage');
         fromEl.classList.add('hidden');
@@ -10144,6 +10179,7 @@
         runScreenSideEffects(toScreen, {
             skipCalendarBootstrap: options.skipCalendarBootstrap === true,
         });
+        trackYandexMetrikaScreen(toScreen);
         requestAnimationFrame(applyMobileTextFit);
     }
 
@@ -10194,6 +10230,7 @@
             updateBottomTabbar(screen);
             if (typeof afterTransition === 'function') afterTransition();
             runScreenSideEffects(screen, sideOptions);
+            trackYandexMetrikaScreen(screen);
             return true;
         }
 
