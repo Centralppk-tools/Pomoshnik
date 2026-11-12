@@ -107,7 +107,7 @@
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
     <link rel="stylesheet" href="styles/community.css?v=20261031d">
     <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
-    <link rel="stylesheet" href="styles/da-loading.css?v=20261104a">
+    <link rel="stylesheet" href="styles/da-loading.css?v=20261112a">
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
         (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -129,9 +129,9 @@
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=5.0.5"></script>
-<script src="js/da-loading.js?v=20261104a"></script>
-<script src="js/crew-api-client.js?v=20261104a"></script>
+<script src="js/da-auth-session.js?v=20261112a"></script>
+<script src="js/da-loading.js?v=20261112a"></script>
+<script src="js/crew-api-client.js?v=20261112a"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
@@ -139,6 +139,9 @@
         <div class="da-load-shell__spinner" aria-hidden="true"></div>
         <p class="da-load-shell__title" id="daLoadTitle">Запуск приложения…</p>
         <div class="da-load-tags" id="daLoadTags"><span class="da-load-tag">Инициализация</span></div>
+        <div id="daLoadRecovery" class="da-load-shell__recovery" hidden>
+            <button type="button" class="da-load-shell__reset" id="daLoadResetBtn">Сбросить кэш и войти заново</button>
+        </div>
     </div>
 </div>
 
@@ -1234,7 +1237,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.4';
+    const APP_RELEASE_VERSION = '5.1.5';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
     const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
@@ -11204,7 +11207,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261108a')
+        navigator.serviceWorker.register('./sw.js?v=20261112b')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -13697,7 +13700,13 @@
             window.DaLoad?.releaseBoot?.();
             return;
         }
-        void startCalendar({ skipServerSync: options.skipCrewSync === true }).finally(() => {
+        const APP_BOOT_CALENDAR_MS = 7500;
+        void Promise.race([
+            startCalendar({ skipServerSync: options.skipCrewSync === true }),
+            new Promise((resolve) => window.setTimeout(resolve, APP_BOOT_CALENDAR_MS)),
+        ]).catch((err) => {
+            console.warn('[boot] startCalendar', err);
+        }).finally(() => {
             window.DaLoad?.releaseBoot?.();
         });
     }
@@ -13768,6 +13777,9 @@
         }
         if (code === 'claim_and_sync_failed') {
             return 'Сервер входа временно недоступен. Попробуйте через минуту.';
+        }
+        if (code === 'request_timeout' || code === 'TIMEOUT') {
+            return 'Сервер не ответил вовремя. Проверьте сеть и повторите.';
         }
         if (err && err.payload && err.payload.message) {
             const raw = String(err.payload.message);
@@ -14400,7 +14412,13 @@
         }
     }
 
+    const APP_BOOT_GUARD_MS = 8000;
+
     function initUserAuth() {
+        if (window.__daAppBootStarted) return;
+        window.__daAppBootStarted = true;
+        window.DaLoad?.armBootFailsafe?.(APP_BOOT_GUARD_MS);
+
         migrateAuthSession();
         bindBackgroundSyncVisibilityGuard();
         bindAuthListeners();
@@ -14450,10 +14468,29 @@
             resetAuthForms();
             openLocalProfileAuthEntry();
         }
-        void window.DaCrewApi?.maybeRunCloudMigration?.();
         refreshAuthSubmitStates();
-        if (document.body.classList.contains('auth-locked')) {
-            window.DaLoad?.releaseBoot?.();
+        void runAppBootFinalizeChain();
+    }
+
+    async function runAppBootFinalizeChain() {
+        if (window.__daAppBootFinalizeDone) return;
+        window.__daAppBootFinalizeDone = true;
+        try {
+            await Promise.race([
+                (async () => {
+                    if (!document.body.classList.contains('auth-locked')) {
+                        await Promise.resolve(window.DaCrewApi?.maybeRunCloudMigration?.());
+                    }
+                })(),
+                new Promise((resolve) => window.setTimeout(resolve, APP_BOOT_GUARD_MS)),
+            ]);
+        } catch (err) {
+            console.warn('[boot] finalize', err);
+            window.DaLoad?.showBootRecovery?.('Не удалось завершить инициализацию. Сбросьте кэш и войдите снова.');
+        } finally {
+            if (document.body.classList.contains('auth-locked')) {
+                window.DaLoad?.releaseBoot?.();
+            }
         }
     }
 
@@ -22354,7 +22391,7 @@
         el.dataset.state = 'loading';
         const started = performance.now();
         try {
-            const data = await window.DaAuthSession.fetchMe();
+            const data = await window.DaAuthSession.fetchMe({ force: false });
             const email = String(data?.user?.email || '').trim();
             el.textContent = email || '—';
             el.dataset.source = 'server';

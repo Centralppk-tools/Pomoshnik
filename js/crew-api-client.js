@@ -37,6 +37,9 @@
     const SESSION_TTL_MS = 30 * 60 * 1000;
     const SESSION_PREFETCH_LEAD_MS = 10 * 1000;
     const CREW_BG_SYNC_TIMEOUT_MS = 7000;
+    const CREW_FETCH_TIMEOUT_MS = 10000;
+    let sessionRefreshIdleStreak = 0;
+    const SESSION_REFRESH_IDLE_MAX = 5;
 
     function bgSyncAllowed() {
         if (typeof global.document !== 'undefined' && global.document.visibilityState !== 'visible') {
@@ -388,10 +391,21 @@
         if (sessionRefreshTimer) clearTimeout(sessionRefreshTimer);
         sessionRefreshTimer = null;
         if (!bgSyncAllowed()) return;
-        const delay = Math.max(
-            1000,
-            sessionAnchorAt + SESSION_TTL_MS - SESSION_PREFETCH_LEAD_MS - Date.now()
-        );
+        const syncUserId = hooks.getSyncUserId?.() || '';
+        let delay;
+        if (!syncUserId) {
+            sessionRefreshIdleStreak += 1;
+            if (sessionRefreshIdleStreak > SESSION_REFRESH_IDLE_MAX) {
+                return;
+            }
+            delay = Math.min(60000, 3000 * sessionRefreshIdleStreak);
+        } else {
+            sessionRefreshIdleStreak = 0;
+            delay = Math.max(
+                1000,
+                sessionAnchorAt + SESSION_TTL_MS - SESSION_PREFETCH_LEAD_MS - Date.now()
+            );
+        }
         sessionRefreshTimer = setTimeout(() => {
             sessionRefreshTimer = null;
             void refreshCrewSessionBackground();
@@ -411,6 +425,7 @@
             scheduleCrewSessionRefresh();
             return;
         }
+        sessionRefreshIdleStreak = 0;
         try {
             const now = new Date();
             const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -442,6 +457,24 @@
         scheduleCrewSessionRefresh();
     }
 
+    async function crewFetch(url, init, timeoutMs) {
+        const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : CREW_FETCH_TIMEOUT_MS;
+        const ac = new AbortController();
+        const timer = global.setTimeout(() => ac.abort(), ms);
+        try {
+            return await fetch(url, { ...init, signal: ac.signal });
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                const timeoutErr = new Error('request_timeout');
+                timeoutErr.code = 'TIMEOUT';
+                throw timeoutErr;
+            }
+            throw err;
+        } finally {
+            global.clearTimeout(timer);
+        }
+    }
+
     async function apiFetch(path, options = {}) {
         const { baseUrl, enabled } = cfg();
         if (!enabled) {
@@ -460,7 +493,7 @@
         if (options.body != null) {
             init.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
         }
-        const res = await fetch(url, init);
+        const res = await crewFetch(url, init, options.timeoutMs);
         let data = null;
         try {
             data = await res.json();

@@ -6,6 +6,11 @@
 
     const JWT_KEY = 'da_auth_jwt';
     const USER_KEY = 'da_auth_user';
+    const AUTH_FETCH_TIMEOUT_MS = 10000;
+    const FETCH_ME_MIN_INTERVAL_MS = 15000;
+
+    let fetchMeInflight = null;
+    let fetchMeLastAt = 0;
 
     function getJwt() {
         try {
@@ -114,6 +119,28 @@
         return p.startsWith('/') ? p : `/${p}`;
     }
 
+    async function fetchWithTimeout(url, init, timeoutMs) {
+        const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : AUTH_FETCH_TIMEOUT_MS;
+        const ac = new AbortController();
+        const timer = global.setTimeout(() => ac.abort(), ms);
+        try {
+            return await fetch(url, { ...init, signal: ac.signal });
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                const timeoutErr = new Error('request_timeout');
+                timeoutErr.code = 'TIMEOUT';
+                timeoutErr.payload = {
+                    error: 'request_timeout',
+                    message: 'Сервер не ответил вовремя. Проверьте сеть и повторите.',
+                };
+                throw timeoutErr;
+            }
+            throw err;
+        } finally {
+            global.clearTimeout(timer);
+        }
+    }
+
     async function authFetch(path, options) {
         const baseUrl = resolveCrewApiBaseUrl();
         if (!baseUrl) throw new Error('crew_api_disabled');
@@ -135,7 +162,7 @@
         if (opts.body != null) {
             init.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
         }
-        const res = await fetch(url, init);
+        const res = await fetchWithTimeout(url, init, opts.timeoutMs || AUTH_FETCH_TIMEOUT_MS);
         let data = null;
         try {
             data = await res.json();
@@ -253,10 +280,27 @@
         return data;
     }
 
-    async function fetchMe() {
-        const data = await authFetch('/api/auth/me', { method: 'GET' });
-        if (data?.user) persistSession(getJwt(), data.user);
-        return data;
+    async function fetchMe(options) {
+        const force = options && options.force === true;
+        const now = Date.now();
+        if (fetchMeInflight) {
+            return fetchMeInflight;
+        }
+        if (!force && fetchMeLastAt && now - fetchMeLastAt < FETCH_ME_MIN_INTERVAL_MS) {
+            const cached = getStoredUser();
+            return cached ? { ok: true, user: cached } : { ok: true, user: null };
+        }
+        fetchMeInflight = (async () => {
+            try {
+                const data = await authFetch('/api/auth/me', { method: 'GET' });
+                if (data?.user) persistSession(getJwt(), data.user);
+                fetchMeLastAt = Date.now();
+                return data;
+            } finally {
+                fetchMeInflight = null;
+            }
+        })();
+        return fetchMeInflight;
     }
 
     function hasVerifiedEmailOnAccount() {
