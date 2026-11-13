@@ -207,6 +207,7 @@
 
     function shouldSkipLocalStorageKeyForCloudDump(key) {
         if (!key || key.startsWith('__')) return true;
+        if (key === 'da_auth_jwt' || key === 'rzd_users') return true;
         if (REFERENCE_LOCAL_STORAGE_KEYS.has(key)) return true;
         if (key.startsWith('da_route_stop_v1:')) return true;
         if (key.endsWith('_trainThreadsCache') || key.endsWith('_stationScheduleCache')) return true;
@@ -993,6 +994,39 @@
         return sync(month, options);
     }
 
+    async function submitFeedback(body) {
+        const { baseUrl, enabled } = cfg();
+        if (!enabled) {
+            throw new Error('crew_api_disabled');
+        }
+        const url = `${baseUrl}/api/v1/feedback`;
+        const h = { 'Content-Type': 'application/json' };
+        const authH = global.DaAuthSession?.authHeaders?.() || {};
+        Object.assign(h, authH);
+        const syncUserId = hooks.getSyncUserId?.() || '';
+        if (syncUserId) h['x-sync-user-id'] = syncUserId;
+        const tab = hooks.getTabNumber?.() || '';
+        if (tab) h['x-tab-number'] = tab;
+        const res = await crewFetch(
+            url,
+            { method: 'POST', headers: h, body: JSON.stringify(body || {}) },
+            25000,
+        );
+        let data = null;
+        try {
+            data = await res.json();
+        } catch (_) {
+            data = null;
+        }
+        if (!res.ok) {
+            const err = new Error((data && data.message) || (data && data.error) || `http_${res.status}`);
+            err.status = res.status;
+            err.payload = data;
+            throw err;
+        }
+        return data;
+    }
+
     function configure(nextHooks) {
         Object.assign(hooks, nextHooks || {});
         bindCrewBackgroundVisibilityGuard();
@@ -1021,6 +1055,7 @@
         clearIndexedDbCaches,
         migrateAllDataToCloud,
         maybeRunCloudMigration,
+        submitFeedback,
         isEnabled: () => cfg().enabled,
         getSyncUserId: () => hooks.getSyncUserId?.() || '',
         getTabNumber: () => hooks.getTabNumber?.() || ''

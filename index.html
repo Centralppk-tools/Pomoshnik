@@ -89,6 +89,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mc.yandex.ru https://shedulemax-public.s3.cloud.ru https://*.s3.cloud.ru; connect-src 'self' https://api.digipom.ru https://shedulemax-public.s3.cloud.ru https://*.s3.cloud.ru https://mc.yandex.ru https://mdd.yandex.net wss://mc.yandex.ru https://api.cloudtips.ru http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mc.yandex.ru https://mdd.yandex.net https://pay.cloudtips.ru; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'">
     <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
     <link rel="stylesheet" href="styles/base.css?v=20261018i">
     <link rel="stylesheet" href="styles/routes.css?v=20261030t">
@@ -120,7 +121,7 @@
             clickmap:true,
             trackLinks:true,
             accurateTrackBounce:true,
-            webvisor:true
+            webvisor:false
         });
     </script>
     <noscript><div><img src="https://mc.yandex.ru/watch/114172753" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
@@ -128,6 +129,7 @@
 </head>
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
+<script src="js/da-client-diag.js?v=20261113a"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
 <script src="js/da-auth-session.js?v=20261112a"></script>
 <script src="js/da-loading.js?v=20261112a"></script>
@@ -205,7 +207,7 @@
                 <button type="button" id="feedbackSheetClose" class="donate-sheet-close" aria-label="Закрыть">✕</button>
             </div>
             <p class="feedback-sheet-intro">Опишите баг или идею доработки. Сообщение уйдёт разработчику напрямую.</p>
-            <textarea id="feedbackMessageInput" class="feedback-message-input" rows="5" maxlength="2000" placeholder="Что случилось или что улучшить?"></textarea>
+            <textarea id="feedbackMessageInput" class="feedback-message-input" rows="5" maxlength="4000" placeholder="Что случилось или что улучшить?"></textarea>
             <p id="feedbackSheetHint" class="feedback-sheet-hint" aria-live="polite"></p>
             <button type="button" id="feedbackSendBtn" class="donate-send-btn feedback-send-btn is-empty" disabled>
                 <span class="feedback-send-btn__spinner" aria-hidden="true"></span>
@@ -290,7 +292,7 @@
                 <p class="user-auth-subtitle">Восстановление доступа</p>
                 <p class="user-auth-hint">Введите email или имя — отправим ссылку для сброса пароля.</p>
                 <div id="authForgotFormBlock" class="user-auth-forgot-form">
-                    <input type="text" id="authForgotInput" class="user-auth-input" placeholder="Email или Имя" autocomplete="email">
+                    <input type="text" id="authForgotInput" class="user-auth-input" placeholder="Email или табельный номер" autocomplete="email">
                     <p id="authErrorForgot" class="user-auth-error" role="alert" aria-live="polite"></p>
                     <button type="button" id="authForgotSubmitBtn" class="user-auth-btn">Отправить ссылку</button>
                 </div>
@@ -1239,7 +1241,6 @@
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
     const APP_RELEASE_VERSION = '5.1.5';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
-    const DEPOT_API_URL = APP_CFG.depotApiUrl || '';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     let calendarIcsExportInProgress = false;
@@ -10145,6 +10146,30 @@
         profile: 'Я',
     };
 
+    function resolveYandexMetrikaUserId(user) {
+        if (!user || typeof user !== 'object') return '';
+        const raw = user.id;
+        if (raw == null || raw === '') return '';
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n <= 0) return '';
+        return String(Math.trunc(n));
+    }
+
+    function applyYandexMetrikaUserId(user) {
+        if (typeof ym !== 'function') return;
+        const uid = resolveYandexMetrikaUserId(user);
+        if (!uid) return;
+        try {
+            ym(YM_COUNTER_ID, 'setUserID', uid);
+            ym(YM_COUNTER_ID, 'userParams', { UserID: uid });
+        } catch (_) { /* blocked */ }
+    }
+
+    function syncYandexMetrikaUserFromSession() {
+        if (!window.DaAuthSession?.getJwt?.()) return;
+        applyYandexMetrikaUserId(window.DaAuthSession?.getStoredUser?.());
+    }
+
     function trackYandexMetrikaScreen(screen) {
         if (typeof ym !== 'function' || !screen) return;
         const base = window.location.pathname || '/';
@@ -10864,68 +10889,30 @@
     }
 
     function buildFeedbackPayload(message) {
-        return {
-            action: 'feedback',
-            message,
-            version: APP_RELEASE_VERSION,
-            user: getStoredProfileName(),
-            tab: (localStorage.getItem(DEPOT_TAB_KEY) || getCurrentUserTab() || '').trim(),
-            screen: getActiveMainScreen()
+        const authUser = window.DaAuthSession?.getStoredUser?.() || null;
+        const clientMeta = window.DaClientDiag?.buildClientMeta?.(APP_RELEASE_VERSION) || {
+            userAgent: String(navigator.userAgent || '').slice(0, 512),
+            standalone: false,
+            online: Boolean(navigator.onLine),
+            app_version: APP_RELEASE_VERSION,
+            recentErrors: [],
         };
-    }
-
-    function buildFeedbackApiUrl(payload) {
-        const qs = new URLSearchParams();
-        Object.entries(payload).forEach(([key, value]) => {
-            if (value != null && value !== '') qs.set(key, String(value));
-        });
-        return `${DEPOT_API_URL}?${qs.toString()}`;
-    }
-
-    function buildFeedbackFormBody(payload) {
-        const body = new URLSearchParams();
-        Object.entries(payload).forEach(([key, value]) => {
-            if (value != null && value !== '') body.set(key, String(value));
-        });
-        return body;
-    }
-
-    function isHtmlErrorPage(raw) {
-        const trimmed = String(raw || '').trim();
-        return trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html');
-    }
-
-    function parseFeedbackApiResponse(res, raw) {
-        if (isHtmlErrorPage(raw)) {
-            throw new Error(`HTTP ${res?.status || 404}`);
-        }
-        try {
-            return JSON.parse(raw);
-        } catch {
-            if (res?.ok) return { ok: true };
-            throw new Error(`HTTP ${res?.status || 502}`);
-        }
-    }
-
-    function isFeedbackApiResponseAlive(res, raw) {
-        if (isHtmlErrorPage(raw)) return false;
-        try {
-            const data = JSON.parse(raw);
-            if (data?.ok === false && /404|not found|unknown action/i.test(String(data?.error || ''))) {
-                return false;
-            }
-            return true;
-        } catch {
-            return Boolean(res?.ok);
-        }
-    }
-
-    function probeFeedbackApiHealth() {
-        return Promise.resolve(true);
-    }
-
-    function pingFeedbackApiHealth() {
-        return Promise.resolve(true);
+        return {
+            message: String(message || '').trim(),
+            screen: getActiveMainScreen(),
+            app_version: APP_RELEASE_VERSION,
+            user_name: authUser?.name
+                || getStoredProfileName()
+                || null,
+            tab_number: (authUser?.tab_number
+                || localStorage.getItem(DEPOT_TAB_KEY)
+                || getCurrentUserTab()
+                || '').trim() || null,
+            sync_user_id: (typeof getOrCreateSyncUserId === 'function'
+                ? getOrCreateSyncUserId()
+                : localStorage.getItem('app_sync_user_id')) || null,
+            client_meta: clientMeta,
+        };
     }
 
     function setFeedbackApiAvailability(isAvailable) {
@@ -10937,24 +10924,25 @@
 
     async function submitFeedbackMessage(message) {
         const payload = buildFeedbackPayload(message);
-        let res;
-        try {
-            res = await fetchWithTimeout(DEPOT_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                body: buildFeedbackFormBody(payload).toString()
-            }, 25000);
-        } catch (postErr) {
-            res = await fetchWithTimeout(buildFeedbackApiUrl(payload), {}, 25000);
+        if (!window.DaCrewApi?.submitFeedback) {
+            throw new Error('crew_api_disabled');
         }
-        const raw = await res.text();
-        return parseFeedbackApiResponse(res, raw);
+        return window.DaCrewApi.submitFeedback(payload);
     }
 
     function getFeedbackSendErrorHint(err) {
-        const msg = String(err?.message || err || '');
-        if (/HTTP 404/i.test(msg)) {
-            return 'Сервис временно недоступен. Попробуйте позже.';
+        const status = Number(err?.status);
+        if (status === 429) {
+            const sec = err?.payload?.retry_after_sec;
+            return sec
+                ? `Слишком много сообщений. Подождите ${sec} с.`
+                : 'Слишком много сообщений. Подождите немного.';
+        }
+        if (status === 400) {
+            return String(err?.payload?.message || 'Проверьте текст сообщения.');
+        }
+        if (!window.DaCrewApi?.isEnabled?.()) {
+            return 'Сервис обратной связи недоступен.';
         }
         return 'Не удалось отправить. Попробуйте ещё раз.';
     }
@@ -13967,6 +13955,7 @@
             accountSyncId,
             isNewAccount,
         });
+        applyYandexMetrikaUserId(user);
         void ensureWebPushSubscription(true);
     }
 
@@ -14453,9 +14442,11 @@
                             localStorage.setItem('da_had_cloud_account', '1');
                         } catch (_) { /* */ }
                     }
+                    syncYandexMetrikaUserFromSession();
                 }).catch(() => { /* offline */ });
             }
             unlockAppAuth();
+            syncYandexMetrikaUserFromSession();
             void ensureWebPushSubscription();
             void ensureDepotTemplatesLoaded();
             syncEmailUpgradeUi();
