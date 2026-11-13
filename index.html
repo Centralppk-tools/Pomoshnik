@@ -129,7 +129,9 @@
 </head>
 <body class="auth-locked">
 <script src="js/app-config.js?v=5.0"></script>
-<script src="js/da-client-diag.js?v=20261113a"></script>
+<script src="js/da-client-diag.js?v=20261113b"></script>
+<script src="js/vendor/modern-screenshot.js?v=4.6.8"></script>
+<script src="js/da-feedback-capture.js?v=20261113a"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
 <script src="js/da-auth-session.js?v=20261112a"></script>
 <script src="js/da-loading.js?v=20261112a"></script>
@@ -201,26 +203,49 @@
 
 <div id="feedbackSheet" class="donate-sheet-overlay feedback-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="feedbackSheetTitle">
     <div class="donate-sheet feedback-sheet">
+        <div class="feedback-sheet-handle" aria-hidden="true"></div>
         <div class="feedback-form" id="feedbackForm">
-            <div class="donate-sheet-header">
-                <h2 id="feedbackSheetTitle" class="donate-sheet-title feedback-sheet-title">Сообщить о проблеме</h2>
+            <div class="donate-sheet-header feedback-sheet-header">
+                <h2 id="feedbackSheetTitle" class="donate-sheet-title feedback-sheet-title">Сообщить об ошибке</h2>
                 <button type="button" id="feedbackSheetClose" class="donate-sheet-close" aria-label="Закрыть">✕</button>
             </div>
-            <p class="feedback-sheet-intro">Опишите баг или идею доработки. Сообщение уйдёт разработчику напрямую.</p>
-            <textarea id="feedbackMessageInput" class="feedback-message-input" rows="5" maxlength="4000" placeholder="Что случилось или что улучшить?"></textarea>
+            <div class="feedback-category-tabs" role="tablist" aria-label="Тип обращения">
+                <button type="button" class="feedback-category-tab is-active" id="feedbackCategoryBug" role="tab" aria-selected="true" data-feedback-type="bug">Баг</button>
+                <button type="button" class="feedback-category-tab" id="feedbackCategoryIdea" role="tab" aria-selected="false" data-feedback-type="idea">Идея</button>
+            </div>
+            <p id="feedbackSheetIntro" class="feedback-sheet-intro">Опишите, что сломалось или работает неправильно, сообщение уйдёт напрямую разработчику.</p>
+            <div class="feedback-compose">
+                <textarea id="feedbackMessageInput" class="feedback-message-input" rows="5" maxlength="1000" placeholder="Что именно пошло не так и на каком экране?" aria-describedby="feedbackCharCount"></textarea>
+                <span id="feedbackCharCount" class="feedback-char-count" aria-live="polite">0 / 1000</span>
+            </div>
+            <div class="feedback-attach-block">
+                <p id="feedbackScreenshotAutoLabel" class="feedback-screenshot-auto-label" hidden>Снимок экрана прикреплён автоматически</p>
+                <p id="feedbackScreenshotCaptureStatus" class="feedback-screenshot-status" hidden></p>
+                <div class="feedback-attach-row">
+                    <input type="file" id="feedbackScreenshotInput" class="feedback-screenshot-input" accept="image/jpeg,image/png,image/webp" hidden>
+                    <button type="button" id="feedbackAttachBtn" class="feedback-attach-btn">
+                        <span class="feedback-attach-btn__icon" aria-hidden="true">📎</span>
+                        <span class="feedback-attach-btn__label">Заменить снимок из галереи</span>
+                    </button>
+                    <div id="feedbackScreenshotPreview" class="feedback-screenshot-preview" hidden>
+                        <img id="feedbackScreenshotImg" class="feedback-screenshot-preview__img" alt="Превью скриншота">
+                        <button type="button" id="feedbackScreenshotRemove" class="feedback-screenshot-preview__remove" aria-label="Удалить скриншот">✕</button>
+                    </div>
+                </div>
+            </motion.div>
             <p id="feedbackSheetHint" class="feedback-sheet-hint" aria-live="polite"></p>
             <button type="button" id="feedbackSendBtn" class="donate-send-btn feedback-send-btn is-empty" disabled>
                 <span class="feedback-send-btn__spinner" aria-hidden="true"></span>
                 <span class="feedback-send-btn__label">Отправить</span>
             </button>
             <p class="feedback-sheet-telegram">
-                Либо напишите разработчику в Telegram:
+                Или напишите в Telegram
                 <a class="feedback-sheet-telegram__link" href="https://t.me/Dreammm_hunter" target="_blank" rel="noopener noreferrer">@Dreammm_hunter</a>
             </p>
         </div>
         <div id="feedbackSheetSuccess" class="feedback-success" aria-live="polite">
             <span class="feedback-success__icon" aria-hidden="true">✓</span>
-            <p class="feedback-success__text">Спасибо! Сообщение отправлено разработчику</p>
+            <p class="feedback-success__text">Спасибо! Сообщение отправлено</p>
         </div>
     </div>
 </div>
@@ -10804,10 +10829,158 @@
     let feedbackUiBound = false;
     let feedbackSendInFlight = false;
     let feedbackSendCooldownUntil = 0;
+    let feedbackCategoryType = 'bug';
+    let feedbackScreenshotDataUrl = null;
+    let feedbackScreenshotIsAuto = false;
+    let feedbackCaptureInFlight = false;
+
+    const FEEDBACK_COPY = {
+        bug: {
+            title: 'Сообщить об ошибке',
+            intro: 'Опишите, что сломалось или работает неправильно, сообщение уйдёт напрямую разработчику.',
+            placeholder: 'Что именно пошло не так и на каком экране?',
+        },
+        idea: {
+            title: 'Предложить улучшение',
+            intro: 'Поделитесь идеей или предложением по улучшению, сообщение уйдёт напрямую разработчику.',
+            placeholder: 'Какой функции не хватает или что можно сделать удобнее?',
+        },
+    };
+    const FEEDBACK_MESSAGE_MAX = 1000;
 
     function getFeedbackMessageValue() {
         const input = document.getElementById('feedbackMessageInput');
         return String(input?.value || '').trim();
+    }
+
+    function setFeedbackCategory(type) {
+        feedbackCategoryType = type === 'idea' ? 'idea' : 'bug';
+        const copy = FEEDBACK_COPY[feedbackCategoryType];
+        const title = document.getElementById('feedbackSheetTitle');
+        const intro = document.getElementById('feedbackSheetIntro');
+        const input = document.getElementById('feedbackMessageInput');
+        if (title) title.textContent = copy.title;
+        if (intro) intro.textContent = copy.intro;
+        if (input) input.placeholder = copy.placeholder;
+        document.querySelectorAll('.feedback-category-tab').forEach((tab) => {
+            const active = tab.dataset.feedbackType === feedbackCategoryType;
+            tab.classList.toggle('is-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+    }
+
+    function updateFeedbackCharCount() {
+        const input = document.getElementById('feedbackMessageInput');
+        const counter = document.getElementById('feedbackCharCount');
+        if (!input || !counter) return;
+        const len = String(input.value || '').length;
+        counter.textContent = `${len} / ${FEEDBACK_MESSAGE_MAX}`;
+        counter.classList.toggle('is-limit', len >= FEEDBACK_MESSAGE_MAX);
+    }
+
+    function setFeedbackCaptureStatus(text) {
+        const el = document.getElementById('feedbackScreenshotCaptureStatus');
+        if (!el) return;
+        const msg = String(text || '').trim();
+        el.hidden = !msg;
+        el.textContent = msg;
+    }
+
+    function setFeedbackAutoLabelVisible(visible) {
+        const el = document.getElementById('feedbackScreenshotAutoLabel');
+        if (el) el.hidden = !visible;
+    }
+
+    function clearFeedbackScreenshot() {
+        feedbackScreenshotDataUrl = null;
+        feedbackScreenshotIsAuto = false;
+        const preview = document.getElementById('feedbackScreenshotPreview');
+        const img = document.getElementById('feedbackScreenshotImg');
+        const fileInput = document.getElementById('feedbackScreenshotInput');
+        const attachBtn = document.getElementById('feedbackAttachBtn');
+        if (preview) preview.hidden = true;
+        if (img) img.removeAttribute('src');
+        if (fileInput) fileInput.value = '';
+        if (attachBtn) {
+            attachBtn.hidden = false;
+            const label = attachBtn.querySelector('.feedback-attach-btn__label');
+            if (label) label.textContent = 'Прикрепить скриншот';
+        }
+        setFeedbackAutoLabelVisible(false);
+        setFeedbackCaptureStatus('');
+    }
+
+    function showFeedbackScreenshotPreview(dataUrl, { auto = false } = {}) {
+        feedbackScreenshotDataUrl = dataUrl;
+        feedbackScreenshotIsAuto = Boolean(auto);
+        const preview = document.getElementById('feedbackScreenshotPreview');
+        const img = document.getElementById('feedbackScreenshotImg');
+        const attachBtn = document.getElementById('feedbackAttachBtn');
+        if (img) img.src = dataUrl;
+        if (preview) preview.hidden = false;
+        if (attachBtn) {
+            attachBtn.hidden = false;
+            const label = attachBtn.querySelector('.feedback-attach-btn__label');
+            if (label) {
+                label.textContent = auto
+                    ? 'Заменить снимок из галереи'
+                    : 'Заменить скриншот';
+            }
+        }
+        setFeedbackAutoLabelVisible(auto);
+        setFeedbackCaptureStatus('');
+    }
+
+    function resizeFeedbackImageFile(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => {
+                URL.revokeObjectURL(url);
+                const maxSide = 1400;
+                let { width, height } = image;
+                if (width > maxSide || height > maxSide) {
+                    const scale = maxSide / Math.max(width, height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('canvas_unavailable'));
+                    return;
+                }
+                ctx.drawImage(image, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                resolve(dataUrl);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('image_load_failed'));
+            };
+            image.src = url;
+        });
+    }
+
+    async function handleFeedbackScreenshotPick(file) {
+        if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+            setFeedbackHint('Поддерживаются только JPG, PNG или WebP.');
+            return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+            setFeedbackHint('Файл слишком большой. Выберите скриншот до 8 МБ.');
+            return;
+        }
+        setFeedbackHint('');
+        try {
+            const dataUrl = await resizeFeedbackImageFile(file);
+            showFeedbackScreenshotPreview(dataUrl, { auto: false });
+        } catch (err) {
+            console.warn('[feedback] screenshot', err);
+            setFeedbackHint('Не удалось обработать изображение.');
+        }
     }
 
     function updateFeedbackSendButtonState() {
@@ -10817,6 +10990,7 @@
         sendBtn.disabled = !ready;
         sendBtn.classList.toggle('is-ready', ready);
         sendBtn.classList.toggle('is-empty', !ready);
+        updateFeedbackCharCount();
     }
 
     function resetFeedbackSheetUi() {
@@ -10835,6 +11009,8 @@
             input.disabled = false;
             input.value = '';
         }
+        setFeedbackCategory('bug');
+        clearFeedbackScreenshot();
         updateFeedbackSendButtonState();
     }
 
@@ -10865,7 +11041,32 @@
         if (hint) hint.textContent = text || '';
     }
 
-    function openFeedbackSheet() {
+    async function captureFeedbackPageScreenshot() {
+        if (!window.DaFeedbackCapture?.capturePage) return null;
+        try {
+            return await window.DaFeedbackCapture.capturePage({ timeoutMs: 14000 });
+        } catch (err) {
+            console.warn('[feedback] autoshot', err);
+            return null;
+        }
+    }
+
+    async function requestOpenFeedbackSheet() {
+        if (feedbackCaptureInFlight) return;
+        feedbackCaptureInFlight = true;
+        const triggers = document.querySelectorAll('[data-feedback-open]');
+        triggers.forEach((btn) => { btn.disabled = true; });
+        let autoShot = null;
+        try {
+            autoShot = await captureFeedbackPageScreenshot();
+        } finally {
+            feedbackCaptureInFlight = false;
+            triggers.forEach((btn) => { btn.disabled = false; });
+        }
+        openFeedbackSheet({ autoScreenshot: autoShot });
+    }
+
+    function openFeedbackSheet(options = {}) {
         const overlay = document.getElementById('feedbackSheet');
         if (!overlay) return;
         resetFeedbackSheetUi();
@@ -10873,6 +11074,12 @@
         overlay.classList.add('is-open');
         overlay.setAttribute('aria-hidden', 'false');
         document.body.classList.add('feedback-sheet-open');
+        const autoShot = options.autoScreenshot;
+        if (autoShot) {
+            showFeedbackScreenshotPreview(autoShot, { auto: true });
+        } else {
+            setFeedbackCaptureStatus('Снимок недоступен. Можно прикрепить файл вручную.');
+        }
         const input = document.getElementById('feedbackMessageInput');
         requestAnimationFrame(() => input?.focus());
         setFeedbackApiAvailability(true);
@@ -10897,8 +11104,25 @@
             app_version: APP_RELEASE_VERSION,
             recentErrors: [],
         };
-        return {
+        const diagnostic = window.DaClientDiag?.buildFeedbackDiagnostic?.(
+            APP_RELEASE_VERSION,
+            getActiveMainScreen(),
+        );
+        if (diagnostic) {
+            clientMeta.feedbackDiagnostic = {
+                screen: diagnostic.screen,
+                viewport: diagnostic.viewport,
+                diagnosticText: diagnostic.diagnosticText,
+            };
+            clientMeta.recentErrors = diagnostic.recentErrors || clientMeta.recentErrors;
+        }
+        if (feedbackScreenshotDataUrl) {
+            clientMeta.hasScreenshot = true;
+            clientMeta.screenshotAuto = feedbackScreenshotIsAuto;
+        }
+        const payload = {
             message: String(message || '').trim(),
+            type: feedbackCategoryType,
             screen: getActiveMainScreen(),
             app_version: APP_RELEASE_VERSION,
             user_name: authUser?.name
@@ -10913,6 +11137,10 @@
                 : localStorage.getItem('app_sync_user_id')) || null,
             client_meta: clientMeta,
         };
+        if (feedbackScreenshotDataUrl) {
+            payload.screenshot = feedbackScreenshotDataUrl;
+        }
+        return payload;
     }
 
     function setFeedbackApiAvailability(isAvailable) {
@@ -10987,7 +11215,7 @@
             btn.dataset.feedbackBound = '1';
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
-                openFeedbackSheet();
+                void requestOpenFeedbackSheet();
             });
         });
     }
@@ -10997,6 +11225,7 @@
         feedbackUiBound = true;
 
         bindFeedbackOpenButtons();
+        setFeedbackCategory('bug');
 
         document.getElementById('feedbackSheetClose')?.addEventListener('click', closeFeedbackSheet);
         document.getElementById('feedbackSheet')?.addEventListener('click', (e) => {
@@ -11005,6 +11234,16 @@
         document.getElementById('feedbackMessageInput')?.addEventListener('input', updateFeedbackSendButtonState);
         document.getElementById('feedbackSendBtn')?.addEventListener('click', () => {
             void handleFeedbackSend();
+        });
+        document.getElementById('feedbackCategoryBug')?.addEventListener('click', () => setFeedbackCategory('bug'));
+        document.getElementById('feedbackCategoryIdea')?.addEventListener('click', () => setFeedbackCategory('idea'));
+        document.getElementById('feedbackAttachBtn')?.addEventListener('click', () => {
+            document.getElementById('feedbackScreenshotInput')?.click();
+        });
+        document.getElementById('feedbackScreenshotRemove')?.addEventListener('click', clearFeedbackScreenshot);
+        document.getElementById('feedbackScreenshotInput')?.addEventListener('change', (e) => {
+            const file = e.target?.files?.[0];
+            if (file) void handleFeedbackScreenshotPick(file);
         });
 
         setFeedbackApiAvailability(true);
