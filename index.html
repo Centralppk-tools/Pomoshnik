@@ -10931,16 +10931,23 @@
         setFeedbackCaptureStatus('');
     }
 
-    function resizeFeedbackImageFile(file) {
+    /** Relay Telegram через Worker стабилен лишь для маленьких multipart (~до ~20 КБ файла). */
+    const FEEDBACK_SHOT_MAX_BYTES = 22000;
+
+    function feedbackDataUrlByteSize(dataUrl) {
+        const b64 = String(dataUrl || '').split(',')[1] || '';
+        return Math.ceil(b64.length * 3 / 4);
+    }
+
+    function resizeFeedbackImageSource(src, { maxSide = 1400, quality = 0.82 } = {}) {
         return new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(file);
             const image = new Image();
             image.onload = () => {
-                URL.revokeObjectURL(url);
-                const maxSide = 1400;
+                const side = Math.max(320, Number(maxSide) || 1400);
+                const q = Math.min(0.92, Math.max(0.4, Number(quality) || 0.82));
                 let { width, height } = image;
-                if (width > maxSide || height > maxSide) {
-                    const scale = maxSide / Math.max(width, height);
+                if (width > side || height > side) {
+                    const scale = side / Math.max(width, height);
                     width = Math.round(width * scale);
                     height = Math.round(height * scale);
                 }
@@ -10953,15 +10960,39 @@
                     return;
                 }
                 ctx.drawImage(image, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-                resolve(dataUrl);
+                resolve(canvas.toDataURL('image/jpeg', q));
             };
-            image.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error('image_load_failed'));
-            };
-            image.src = url;
+            image.onerror = () => reject(new Error('image_load_failed'));
+            image.src = src;
         });
+    }
+
+    function resizeFeedbackImageFile(file) {
+        const url = URL.createObjectURL(file);
+        return resizeFeedbackImageSource(url, { maxSide: 1400, quality: 0.82 })
+            .finally(() => URL.revokeObjectURL(url));
+    }
+
+    async function compressFeedbackDataUrl(dataUrl) {
+        const src = String(dataUrl || '').trim();
+        if (!src.startsWith('data:image/')) return null;
+        let side = 1100;
+        let quality = 0.78;
+        let out = await resizeFeedbackImageSource(src, { maxSide: side, quality });
+        let guard = 0;
+        while (feedbackDataUrlByteSize(out) > FEEDBACK_SHOT_MAX_BYTES && guard < 12) {
+            guard += 1;
+            if (quality > 0.48) {
+                quality = Math.max(0.48, quality - 0.1);
+            } else if (side > 520) {
+                side -= 140;
+                quality = 0.72;
+            } else {
+                break;
+            }
+            out = await resizeFeedbackImageSource(src, { maxSide: side, quality });
+        }
+        return out;
     }
 
     async function handleFeedbackScreenshotPick(file) {
@@ -11058,7 +11089,15 @@
         triggers.forEach((btn) => { btn.disabled = true; });
         let autoShot = null;
         try {
-            autoShot = await captureFeedbackPageScreenshot();
+            const rawShot = await captureFeedbackPageScreenshot();
+            if (rawShot) {
+                try {
+                    autoShot = await compressFeedbackDataUrl(rawShot);
+                } catch (err) {
+                    console.warn('[feedback] compress autoshot', err);
+                    autoShot = rawShot;
+                }
+            }
         } finally {
             feedbackCaptureInFlight = false;
             triggers.forEach((btn) => { btn.disabled = false; });
