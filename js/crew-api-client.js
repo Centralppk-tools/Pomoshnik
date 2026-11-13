@@ -367,13 +367,52 @@
         });
     }
 
+    function resolveSyncUserIdFromSession() {
+        const fromUser = global.DaAuthSession?.getStoredUser?.();
+        const fromJwt = fromUser && fromUser.sync_user_id
+            ? String(fromUser.sync_user_id).trim()
+            : '';
+        if (fromJwt) return fromJwt;
+        return String(hooks.getSyncUserId?.() || '').trim();
+    }
+
+    function requireJwtOrLockApp() {
+        const jwt = global.DaAuthSession?.getJwt?.() || '';
+        if (jwt) return jwt;
+        try {
+            global.DaAuthSession?.clearSession?.();
+        } catch (_) { /* */ }
+        if (typeof global.lockAppAuth === 'function') {
+            global.lockAppAuth();
+        }
+        const err = new Error('missing_token');
+        err.status = 401;
+        err.payload = { error: 'missing_token', message: 'Требуется вход.' };
+        throw err;
+    }
+
+    function handleCrewUnauthorized(err) {
+        const status = err && err.status;
+        const code = err && err.payload && err.payload.error;
+        if (
+            status === 401
+            || code === 'missing_token'
+            || code === 'invalid_token'
+            || code === 'user_not_found'
+        ) {
+            try {
+                global.DaAuthSession?.clearSession?.();
+            } catch (_) { /* */ }
+            if (typeof global.lockAppAuth === 'function') {
+                global.lockAppAuth();
+            }
+        }
+    }
+
     function headers() {
-        const syncUserId = hooks.getSyncUserId?.() || '';
+        requireJwtOrLockApp();
         const tab = hooks.getTabNumber?.() || '';
-        const h = {
-            'Content-Type': 'application/json',
-            'x-sync-user-id': syncUserId
-        };
+        const h = { 'Content-Type': 'application/json' };
         if (tab) h['x-tab-number'] = tab;
         const authH = global.DaAuthSession?.authHeaders?.() || {};
         Object.assign(h, authH);
@@ -481,7 +520,8 @@
         if (!enabled) {
             throw new Error('crew_api_disabled');
         }
-        const syncUserId = hooks.getSyncUserId?.() || '';
+        requireJwtOrLockApp();
+        const syncUserId = resolveSyncUserIdFromSession();
         if (!syncUserId) {
             throw new Error('crew_api_no_sync_user_id');
         }
@@ -508,6 +548,7 @@
             if (res.status === 413) {
                 err.message = 'payload_too_large';
             }
+            handleCrewUnauthorized(err);
             throw err;
         }
         return data;
@@ -628,63 +669,6 @@
         await deleteQueueIds(rows.map((r) => r.id));
     }
 
-    async function loginByTab(tabNumber) {
-        const { baseUrl, enabled } = cfg();
-        const tab = String(tabNumber || '').trim();
-        if (!tab) {
-            throw new Error('invalid_tab_number');
-        }
-        if (!enabled) {
-            if (typeof global.getOrCreateSyncUserId === 'function') {
-                global.getOrCreateSyncUserId();
-            }
-            return { ok: true, skipped: true };
-        }
-        const url = `${baseUrl}/api/v1/auth/login`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tab_number: tab }),
-            cache: 'no-store'
-        });
-        let data = null;
-        try {
-            data = await res.json();
-        } catch (_) {
-            data = null;
-        }
-        if (!res.ok) {
-            const err = new Error((data && data.error) || `http_${res.status}`);
-            err.status = res.status;
-            err.payload = data;
-            throw err;
-        }
-        const syncId = String(
-            (data && data.sync_user_id) || (data && data.user && data.user.sync_user_id) || ''
-        ).trim();
-        if (!syncId) {
-            throw new Error('missing_sync_user_id');
-        }
-        if (typeof global.setSyncUserId === 'function') {
-            global.setSyncUserId(syncId, { skipLegacyMigrate: true });
-        } else {
-            try {
-                global.localStorage.setItem('app_sync_user_id', syncId);
-            } catch (_) { /* */ }
-        }
-        Object.keys(lastPushedHash).forEach((k) => delete lastPushedHash[k]);
-        await clearShiftQueueAll();
-        sessionAnchorAt = 0;
-        try {
-            await idbPutMetaScoped('crew_session_anchor_at', null);
-            await idbPutMetaScoped('last_sync_month', null);
-        } catch (_) { /* */ }
-        if (typeof hooks.onAccountSwitched === 'function') {
-            hooks.onAccountSwitched();
-        }
-        return data;
-    }
-
     async function applyClaimSyncSession(syncId, options) {
         const opts = options && typeof options === 'object' ? options : {};
         const id = String(syncId || '').trim();
@@ -744,6 +728,7 @@
             throw err;
         }
         const url = `${baseUrl}/api/v1/auth/claim-and-sync`;
+        requireJwtOrLockApp();
         const claimHeaders = {
             'Content-Type': 'application/json',
             ...(global.DaAuthSession?.authHeaders?.() || {})
@@ -791,6 +776,7 @@
             const err = new Error((data && data.error) || `http_${res.status}`);
             err.status = res.status;
             err.payload = data;
+            handleCrewUnauthorized(err);
             throw err;
         }
         const finalSyncId = String(
@@ -1000,11 +986,10 @@
             throw new Error('crew_api_disabled');
         }
         const url = `${baseUrl}/api/v1/feedback`;
+        requireJwtOrLockApp();
         const h = { 'Content-Type': 'application/json' };
         const authH = global.DaAuthSession?.authHeaders?.() || {};
         Object.assign(h, authH);
-        const syncUserId = hooks.getSyncUserId?.() || '';
-        if (syncUserId) h['x-sync-user-id'] = syncUserId;
         const tab = hooks.getTabNumber?.() || '';
         if (tab) h['x-tab-number'] = tab;
         const res = await crewFetch(
@@ -1022,6 +1007,7 @@
             const err = new Error((data && data.message) || (data && data.error) || `http_${res.status}`);
             err.status = res.status;
             err.payload = data;
+            handleCrewUnauthorized(err);
             throw err;
         }
         return data;
@@ -1037,7 +1023,6 @@
         configure,
         sync,
         syncCurrentMonth,
-        loginByTab,
         claimAndSync,
         saveShift,
         deleteShift,

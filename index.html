@@ -341,7 +341,7 @@
             <div id="profileEmailBindFormBlock">
             <input type="email" id="profileEmailBindInput" class="user-auth-input" placeholder="Email" autocomplete="email">
             <div class="user-auth-password-field">
-                <input type="password" id="profileEmailBindPasswordInput" class="user-auth-input user-auth-input--password" placeholder="Пароль" autocomplete="new-password" minlength="6">
+                <input type="password" id="profileEmailBindPasswordInput" class="user-auth-input user-auth-input--password" placeholder="Пароль" autocomplete="new-password" minlength="8">
                 <button type="button" class="user-auth-password-toggle" data-password-target="profileEmailBindPasswordInput" aria-label="Показать пароль" aria-pressed="false">
                     <svg class="user-auth-password-toggle__icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -13536,8 +13536,8 @@
             if (errEl) errEl.textContent = 'Укажите email.';
             return;
         }
-        if (password.length < 6) {
-            if (errEl) errEl.textContent = 'Пароль не короче 6 символов.';
+        if (password.length < 8) {
+            if (errEl) errEl.textContent = 'Пароль не короче 8 символов.';
             return;
         }
         const tabNumber = normalizeTabNumber(getLegacyLocalTab() || getAuthSessionTab());
@@ -13737,7 +13737,7 @@
             return 'Профиль устройства уже создан. Войдите по email или восстановите пароль.';
         }
         if (code === 'tab_number_taken') return 'Табельный номер уже привязан к другому аккаунту.';
-        if (code === 'weak_password') return 'Пароль не короче 6 символов.';
+        if (code === 'weak_password') return 'Пароль не короче 8 символов.';
         if (code === 'invalid_or_expired_code') {
             return `Код устарел или неверен (срок 15 мин.). Нажмите «Отправить код ещё раз» — нужен тот же пароль, что при регистрации.`;
         }
@@ -14044,8 +14044,8 @@
             setAuthError('authErrorRegister', 'Укажите табельный номер.');
             return;
         }
-        if (!password || password.length < 6) {
-            setAuthError('authErrorRegister', 'Пароль не короче 6 символов.');
+        if (!password || password.length < 8) {
+            setAuthError('authErrorRegister', 'Пароль не короче 8 символов.');
             return;
         }
         setAuthButtonsLoading(true);
@@ -14100,7 +14100,7 @@
             }
             return;
         }
-        if (!password || password.length < 6) {
+        if (!password || password.length < 8) {
             if (!opts.autoAfterLogin) {
                 setAuthError(
                     'authErrorRegisterVerify',
@@ -14202,8 +14202,8 @@
             setAuthError('authErrorReset', 'Ссылка повреждена — скопируйте её из письма целиком или запросите новую.');
             return;
         }
-        if (!p1 || p1.length < 6) {
-            setAuthError('authErrorReset', 'Пароль не короче 6 символов.');
+        if (!p1 || p1.length < 8) {
+            setAuthError('authErrorReset', 'Пароль не короче 8 символов.');
             return;
         }
         if (p1 !== p2) {

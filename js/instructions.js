@@ -2784,6 +2784,10 @@
     };
 
     function getWallMySyncUserId() {
+        const fromAccount = window.DaAuthSession?.getStoredUser?.();
+        if (fromAccount && fromAccount.sync_user_id) {
+            return String(fromAccount.sync_user_id).trim();
+        }
         if (window.DaCrewApi?.getSyncUserId) {
             return String(window.DaCrewApi.getSyncUserId() || '').trim();
         }
