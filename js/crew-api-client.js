@@ -376,37 +376,50 @@
         return String(hooks.getSyncUserId?.() || '').trim();
     }
 
-    function requireJwtOrLockApp() {
-        const jwt = global.DaAuthSession?.getJwt?.() || '';
-        if (jwt) return jwt;
+    function hasValidJwt() {
+        const jwt = String(global.DaAuthSession?.getJwt?.() || '').trim();
+        if (!jwt) return false;
+        const parts = jwt.split('.');
+        return parts.length === 3 && parts.every((p) => p.length > 0);
+    }
+
+    function forceAuthLock() {
         try {
             global.DaAuthSession?.clearSession?.();
         } catch (_) { /* */ }
         if (typeof global.lockAppAuth === 'function') {
             global.lockAppAuth();
         }
+    }
+
+    function requireJwtOrLockApp() {
+        if (hasValidJwt()) {
+            return global.DaAuthSession.getJwt();
+        }
+        forceAuthLock();
         const err = new Error('missing_token');
         err.status = 401;
         err.payload = { error: 'missing_token', message: 'Требуется вход.' };
         throw err;
     }
 
-    function handleCrewUnauthorized(err) {
-        const status = err && err.status;
-        const code = err && err.payload && err.payload.error;
-        if (
-            status === 401
-            || code === 'missing_token'
+    function shouldForceAuthLockFromResponse(err) {
+        if (!err) return false;
+        const status = err.status;
+        const code = String((err.payload && err.payload.error) || err.message || '').trim();
+        if (status === 401) return true;
+        if (status === 400 && code === 'missing_or_invalid_x_sync_user_id') return true;
+        return (
+            code === 'missing_token'
             || code === 'invalid_token'
             || code === 'user_not_found'
-        ) {
-            try {
-                global.DaAuthSession?.clearSession?.();
-            } catch (_) { /* */ }
-            if (typeof global.lockAppAuth === 'function') {
-                global.lockAppAuth();
-            }
-        }
+            || code === 'sync_user_id_spoof'
+        );
+    }
+
+    function handleCrewUnauthorized(err) {
+        if (!shouldForceAuthLockFromResponse(err)) return;
+        forceAuthLock();
     }
 
     function headers() {
@@ -431,6 +444,10 @@
         if (sessionRefreshTimer) clearTimeout(sessionRefreshTimer);
         sessionRefreshTimer = null;
         if (!bgSyncAllowed()) return;
+        if (!hasValidJwt()) return;
+        if (typeof global.document !== 'undefined' && global.document.body?.classList?.contains('auth-locked')) {
+            return;
+        }
         const syncUserId = hooks.getSyncUserId?.() || '';
         let delay;
         if (!syncUserId) {
@@ -465,6 +482,9 @@
             scheduleCrewSessionRefresh();
             return;
         }
+        if (!hasValidJwt()) {
+            return;
+        }
         sessionRefreshIdleStreak = 0;
         try {
             const now = new Date();
@@ -476,7 +496,11 @@
                 }),
             ]);
         } catch (e) {
-            console.warn('[crew-api] background sync', e);
+            if (shouldForceAuthLockFromResponse(e)) {
+                handleCrewUnauthorized(e);
+            } else {
+                console.warn('[crew-api] background sync', e);
+            }
         } finally {
             if (!bgSyncAllowed()) return;
             try {
@@ -523,7 +547,14 @@
         requireJwtOrLockApp();
         const syncUserId = resolveSyncUserIdFromSession();
         if (!syncUserId) {
-            throw new Error('crew_api_no_sync_user_id');
+            forceAuthLock();
+            const err = new Error('missing_token');
+            err.status = 401;
+            err.payload = {
+                error: 'missing_sync_user_id',
+                message: 'Нет привязки аккаунта. Войдите снова.',
+            };
+            throw err;
         }
         const url = `${baseUrl}${path}`;
         const init = {
