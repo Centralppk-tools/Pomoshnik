@@ -10832,6 +10832,8 @@
     let feedbackCategoryType = 'bug';
     let feedbackScreenshotDataUrl = null;
     let feedbackScreenshotIsAuto = false;
+    let feedbackScreenshotCaptureMeta = null;
+    let feedbackLastCaptureError = '';
     let feedbackCaptureInFlight = false;
 
     const FEEDBACK_COPY = {
@@ -10894,6 +10896,8 @@
     function clearFeedbackScreenshot() {
         feedbackScreenshotDataUrl = null;
         feedbackScreenshotIsAuto = false;
+        feedbackScreenshotCaptureMeta = null;
+        feedbackLastCaptureError = '';
         const preview = document.getElementById('feedbackScreenshotPreview');
         const img = document.getElementById('feedbackScreenshotImg');
         const fileInput = document.getElementById('feedbackScreenshotInput');
@@ -11073,10 +11077,15 @@
     }
 
     async function captureFeedbackPageScreenshot() {
-        if (!window.DaFeedbackCapture?.capturePage) return null;
+        feedbackLastCaptureError = '';
+        if (!window.DaFeedbackCapture?.capturePage) {
+            feedbackLastCaptureError = 'capture_lib_missing';
+            return null;
+        }
         try {
             return await window.DaFeedbackCapture.capturePage({ timeoutMs: 14000 });
         } catch (err) {
+            feedbackLastCaptureError = String(err?.message || err || 'capture_failed').slice(0, 200);
             console.warn('[feedback] autoshot', err);
             return null;
         }
@@ -11088,6 +11097,12 @@
         const triggers = document.querySelectorAll('[data-feedback-open]');
         triggers.forEach((btn) => { btn.disabled = true; });
         let autoShot = null;
+        let captureMeta = {
+            attempted: true,
+            ok: false,
+            auto: true,
+            reason: 'capture_empty',
+        };
         try {
             const rawShot = await captureFeedbackPageScreenshot();
             if (rawShot) {
@@ -11095,10 +11110,23 @@
                     autoShot = await compressFeedbackDataUrl(rawShot);
                 } catch (err) {
                     console.warn('[feedback] compress autoshot', err);
-                    autoShot = rawShot;
+                    feedbackLastCaptureError = String(err?.message || 'compress_failed').slice(0, 200);
+                    autoShot = null;
                 }
             }
+            if (autoShot) {
+                captureMeta = {
+                    attempted: true,
+                    ok: true,
+                    auto: true,
+                    bytes: feedbackDataUrlByteSize(autoShot),
+                    mime: 'image/jpeg',
+                };
+            } else if (feedbackLastCaptureError) {
+                captureMeta.reason = feedbackLastCaptureError;
+            }
         } finally {
+            feedbackScreenshotCaptureMeta = captureMeta;
             feedbackCaptureInFlight = false;
             triggers.forEach((btn) => { btn.disabled = false; });
         }
@@ -11155,9 +11183,32 @@
             };
             clientMeta.recentErrors = diagnostic.recentErrors || clientMeta.recentErrors;
         }
+        if (feedbackScreenshotCaptureMeta) {
+            clientMeta.screenshotCapture = {
+                attempted: Boolean(feedbackScreenshotCaptureMeta.attempted),
+                ok: Boolean(feedbackScreenshotCaptureMeta.ok),
+                auto: Boolean(feedbackScreenshotCaptureMeta.auto),
+                bytes: Number(feedbackScreenshotCaptureMeta.bytes) || 0,
+                mime: feedbackScreenshotCaptureMeta.mime
+                    ? String(feedbackScreenshotCaptureMeta.mime).slice(0, 32)
+                    : undefined,
+                reason: feedbackScreenshotCaptureMeta.reason
+                    ? String(feedbackScreenshotCaptureMeta.reason).slice(0, 240)
+                    : undefined,
+            };
+        }
         if (feedbackScreenshotDataUrl) {
             clientMeta.hasScreenshot = true;
             clientMeta.screenshotAuto = feedbackScreenshotIsAuto;
+            if (!clientMeta.screenshotCapture) {
+                clientMeta.screenshotCapture = {
+                    attempted: true,
+                    ok: true,
+                    auto: feedbackScreenshotIsAuto,
+                    bytes: feedbackDataUrlByteSize(feedbackScreenshotDataUrl),
+                    mime: 'image/jpeg',
+                };
+            }
         }
         const payload = {
             message: String(message || '').trim(),
