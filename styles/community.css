@@ -242,6 +242,26 @@ body.feedback-sheet-open {
 
 .feedback-sheet {
     padding-top: 8px;
+    max-height: min(92vh, 720px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+
+.feedback-sheet-overlay.is-open .feedback-sheet {
+    transform: translateY(0);
+}
+
+#feedbackSheet .feedback-category-tab,
+#feedbackSheet .donate-sheet-close,
+#feedbackSheet .feedback-attach-btn,
+#feedbackSheet .feedback-send-btn,
+#feedbackSheet .feedback-screenshot-preview__remove {
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+    box-sizing: border-box;
 }
 
 .feedback-sheet-handle {
@@ -345,6 +365,8 @@ body.feedback-sheet-open {
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
 }
 
 .feedback-attach-btn {
@@ -376,18 +398,29 @@ body.feedback-sheet-open {
 
 .feedback-screenshot-preview {
     position: relative;
-    width: 72px;
-    height: 72px;
-    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.45);
+    box-sizing: border-box;
+}
+
+.feedback-screenshot-preview:not([hidden]) {
+    display: block;
 }
 
 .feedback-screenshot-preview__img {
-    width: 72px;
-    height: 72px;
-    object-fit: cover;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
     display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    object-position: top center;
+    border-radius: 10px;
+    vertical-align: top;
 }
 
 .feedback-screenshot-preview__remove {

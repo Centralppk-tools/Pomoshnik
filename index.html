@@ -106,7 +106,7 @@
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
-    <link rel="stylesheet" href="styles/community.css?v=20261031d">
+    <link rel="stylesheet" href="styles/community.css?v=20261113c">
     <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
     <link rel="stylesheet" href="styles/da-loading.css?v=20261112a">
     <!-- Yandex.Metrika counter -->
@@ -225,12 +225,12 @@
                     <input type="file" id="feedbackScreenshotInput" class="feedback-screenshot-input" accept="image/jpeg,image/png,image/webp" hidden>
                     <button type="button" id="feedbackAttachBtn" class="feedback-attach-btn">
                         <span class="feedback-attach-btn__icon" aria-hidden="true">📎</span>
-                        <span class="feedback-attach-btn__label">Заменить снимок из галереи</span>
+                        <span class="feedback-attach-btn__label">Прикрепить скриншот</span>
                     </button>
-                    <div id="feedbackScreenshotPreview" class="feedback-screenshot-preview" hidden>
-                        <img id="feedbackScreenshotImg" class="feedback-screenshot-preview__img" alt="Превью скриншота">
-                        <button type="button" id="feedbackScreenshotRemove" class="feedback-screenshot-preview__remove" aria-label="Удалить скриншот">✕</button>
-                    </div>
+                </div>
+                <div id="feedbackScreenshotPreview" class="feedback-screenshot-preview" hidden>
+                    <img id="feedbackScreenshotImg" class="feedback-screenshot-preview__img" alt="Превью скриншота">
+                    <button type="button" id="feedbackScreenshotRemove" class="feedback-screenshot-preview__remove" aria-label="Удалить скриншот">✕</button>
                 </div>
             </div>
             <p id="feedbackSheetHint" class="feedback-sheet-hint" aria-live="polite"></p>
