@@ -1455,6 +1455,7 @@
     let calendarLocalRoutesPromise = null;
     let localShiftNormatives = [];
     let localShiftTemplatesMeta = null;
+    let localShiftTemplatesStamp = '';
     let localShiftTemplatesPromise = null;
     let activeNormativeId = null;
     let constructorRouteOptions = new Map();
@@ -5849,8 +5850,9 @@
     function resolveTrainSearchDatesForShift() {
         const baseDate = getSelectedDate();
         if (!baseDate) return [];
-        if (!isNightMode()) return [baseDate];
-        return [baseDate, addDaysToDateStr(baseDate, 1)];
+        const inputs = getTrainNumbersFromDom();
+        const trainPlan = resolveShiftTrainPlanForInputs(inputs);
+        return collectRouteBoardDatesForShift(trainPlan, baseDate, inputs);
     }
 
     async function findTrainOnStationBoards(trainNumber, date, options = {}) {
@@ -6037,10 +6039,39 @@
         return document.getElementById('dateInput').value;
     }
 
-    /** Дата смены для табло/ниток S3 — только поле «дата смены», без planEntry.scheduleDate. */
+    /** Календарный день смены (поле «дата»), не дата конкретного рейса. */
     function activeShiftScheduleDate(fallbackIso) {
         const iso = String(getSelectedDate() || fallbackIso || '').trim().slice(0, 10);
         return iso;
+    }
+
+    /** Даты табло для смены: день начала + следующий (ночь/утро) и даты из shiftTrainPlan. */
+    function collectRouteBoardDatesForShift(trainPlan, baseDate, trainNumbers) {
+        const shiftDay = activeShiftScheduleDate(baseDate);
+        if (!shiftDay) return [];
+        const dates = new Set([shiftDay]);
+        const needsNextDay = isNightMode()
+            || (Array.isArray(trainPlan) && trainPlan.some((item) =>
+                item?.segment === 'morning'
+                || item?.segment === 'both'
+                || item?.morningScheduleDate
+            ));
+        if (needsNextDay) {
+            const next = addDaysToDateStr(shiftDay, 1);
+            if (next) dates.add(next);
+        }
+        const nums = Array.isArray(trainNumbers) ? trainNumbers : [];
+        nums.forEach((trainNumber) => {
+            const d = resolveTrainScheduleDateForNumber(trainNumber, trainPlan, shiftDay);
+            if (d) dates.add(d);
+        });
+        if (Array.isArray(trainPlan)) {
+            trainPlan.forEach((item) => {
+                if (item?.scheduleDate) dates.add(item.scheduleDate);
+                if (item?.morningScheduleDate) dates.add(item.morningScheduleDate);
+            });
+        }
+        return [...dates];
     }
 
     function setSelectedDateIso(iso) {
@@ -6257,8 +6288,12 @@
             throw err;
         }
 
-        await ensureBoardReadyForTrainSearch(selectedDate, { forceRefresh: true });
-        const hit = lookupTrainOnStationBoard(input, selectedDate);
+        const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
+        const trainScheduleDay = resolveTrainScheduleDateForNumber(input, trainPlan, selectedDate);
+        const boardDates = collectRouteBoardDatesForShift(trainPlan, selectedDate, [input]);
+        await ensureStationBoardsForDates(boardDates, { forceRefresh: true });
+        await ensureBoardReadyForTrainSearch(trainScheduleDay, { forceRefresh: true });
+        const hit = lookupTrainOnStationBoard(input, trainScheduleDay);
         const uid = String(hit?.thread?.uid || '').trim();
         if (!uid) {
             const err = new Error(`Поезд ${input} не найден на табло`);
@@ -6267,14 +6302,13 @@
         }
 
         await window.SheduleMaxSource.loadTrainStops(
-            selectedDate,
+            trainScheduleDay,
             input,
             uid,
             resolveBoardDirectionForHit(hit),
             { fresh: true, bypassCache: options.bypassCache !== false },
         );
 
-        const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
         const trainMeta = resolveTrainLocalSync(input, { forceRefresh: true, trainPlan });
         if (!trainMeta || !Array.isArray(trainMeta.stops) || !trainMeta.stops.length) {
             const err = new Error('Нитка не применилась после загрузки');
@@ -6289,7 +6323,7 @@
         const paint = (meta) => {
             if (!meta?.stops?.length || !isTrainRouteDisplayReady(meta)) return;
             setSchedulePaneLoading(false);
-            renderTimelineFromData(meta.stops, meta.number || input, selectedDate);
+            renderTimelineFromData(meta.stops, meta.number || input, trainScheduleDay, meta);
             updateScheduleEmptyState();
         };
         paint(trainMeta);
@@ -6539,10 +6573,11 @@
     }
 
     function buildEmergencyRouteTrain(trainNumber, trainPlan, date) {
-        if (stationBoardIsReady(date)) {
-            const tablo = buildRouteTrainFromBoardTablo(trainNumber, date, trainPlan);
+        const searchDate = resolveTrainScheduleDateForNumber(trainNumber, trainPlan, date);
+        if (stationBoardIsReady(searchDate)) {
+            const tablo = buildRouteTrainFromBoardTablo(trainNumber, searchDate, trainPlan);
             if (tablo) return tablo;
-            const shiftGap = buildShiftOrderMissingBoardTrain(trainNumber, date, trainPlan);
+            const shiftGap = buildShiftOrderMissingBoardTrain(trainNumber, searchDate, trainPlan);
             if (shiftGap) return shiftGap;
         }
 
@@ -6552,11 +6587,11 @@
             return train;
         }
 
-        train = buildSkeletonRouteTrain(trainNumber, planEntry, date);
+        train = buildSkeletonRouteTrain(trainNumber, planEntry, searchDate);
         if (planEntry) {
             train = applyTrainPlanTimeOverrides(train, planEntry);
         }
-        return stampTrainSelectedDate(train, date);
+        return stampTrainSelectedDate(train, searchDate);
     }
 
     function buildEmergencyRouteEntries(inputs, trainPlan, date) {
@@ -6621,7 +6656,8 @@
 
         const resolvedTrains = inputList.map((trainNumber) => resolveTrainForRouteGrid(trainNumber, searchOptions));
         let routeEntries = buildRouteTrainEntries(inputList, resolvedTrains, trainPlan);
-        const boardReady = stationBoardIsReady(boardDate);
+        const routeBoardDates = collectRouteBoardDatesForShift(trainPlan, boardDate, inputList);
+        const boardReady = routeBoardDates.some((d) => stationBoardIsReady(d));
         let allReady = routeEntriesAllReady(routeEntries);
 
         console.log('[DEBUG ROUTE]', {
@@ -7515,7 +7551,7 @@
     }
 
     function formatTrainCardDate(scheduleDateIso) {
-        const iso = getSelectedDate() || scheduleDateIso;
+        const iso = String(scheduleDateIso || '').trim() || getSelectedDate();
         if (!iso) return '—';
         const parts = iso.split(DASH_CHAR);
         if (parts.length !== 3) return '—';
@@ -8208,7 +8244,7 @@
         ) {
             return 'Поезд серии 7000+. Отображаются базовые данные смены без нитки остановок';
         }
-        const day = activeShiftScheduleDate(train?.scheduleDate);
+        const day = String(train?.scheduleDate || '').trim() || activeShiftScheduleDate();
         const delta = calendarDaysFromTodayTo(day);
         if (delta != null && delta > 2) {
             return 'Подробный график остановок появится за 2 дня до рейса';
@@ -8228,7 +8264,7 @@
         ) {
             return 'Поезд серии 7000+. Отображаются базовые данные смены без нитки остановок.';
         }
-        const day = activeShiftScheduleDate(train?.scheduleDate);
+        const day = String(train?.scheduleDate || '').trim() || activeShiftScheduleDate();
         const delta = calendarDaysFromTodayTo(day);
         if (delta != null && delta > 2) {
             return 'Подробный график остановок появится за 2 дня до отправления (после синхронизации графика).';
@@ -8698,37 +8734,7 @@
     }
 
     function collectBoardDatesForShift(trainPlan, baseDate, trainNumbers) {
-        const dates = new Set();
-        const shiftDay = activeShiftScheduleDate(baseDate);
-        if (!shiftDay) return [];
-
-        if (window.SheduleMaxSource?.enabled?.()) {
-            dates.add(shiftDay);
-            if (isNightMode()) dates.add(addDaysToDateStr(shiftDay, 1));
-            return [...dates];
-        }
-
-        const numbers = Array.isArray(trainNumbers) ? trainNumbers : [];
-        const hasApiTrain = numbers.length === 0
-            || numbers.some(isYandexApiEligibleTrainNumber)
-            || (Array.isArray(trainPlan) && trainPlan.some(item =>
-                item?.number && isYandexApiEligibleTrainNumber(item.number)
-            ));
-
-        if (hasApiTrain && shiftDay) {
-            dates.add(shiftDay);
-            dates.add(addDaysToDateStr(shiftDay, 1));
-        }
-
-        if (Array.isArray(trainPlan) && trainPlan.length) {
-            trainPlan.forEach(item => {
-                if (!item?.number || !isYandexApiEligibleTrainNumber(item.number)) return;
-                if (item.scheduleDate) dates.add(item.scheduleDate);
-                if (item.morningScheduleDate) dates.add(item.morningScheduleDate);
-            });
-        }
-
-        return [...dates];
+        return collectRouteBoardDatesForShift(trainPlan, baseDate, trainNumbers);
     }
 
     function searchTrainByNumberSmart(trainNumber, options = {}) {
@@ -9086,6 +9092,30 @@
         )) || null;
     }
 
+    function resolveTrainScheduleDateForNumber(trainNumber, trainPlan, fallbackIso) {
+        const fallback = String(fallbackIso || activeShiftScheduleDate() || '').trim();
+        const planEntry = planEntryForNumber(trainPlan, trainNumber);
+        if (!planEntry) return fallback;
+        const primary = String(planEntry.scheduleDate || '').trim();
+        if (planEntry.segment === 'morning') {
+            return primary || fallback;
+        }
+        if (planEntry.segment === 'night') {
+            return primary || fallback;
+        }
+        if (planEntry.segment === 'both') {
+            const morningDate = String(
+                planEntry.morningScheduleDate
+                || (primary ? addDaysToDateStr(primary, 1) : addDaysToDateStr(fallback, 1))
+                || ''
+            ).trim();
+            const dep = planEntry.departure;
+            if (dep && isMorningNextShiftDeparture(dep) && morningDate) return morningDate;
+            return primary || fallback;
+        }
+        return primary || fallback;
+    }
+
     function buildSkeletonRouteTrain(trainNumber, planEntry, date) {
         const scheduleDate = date || getSelectedDate();
         const departure = planEntry?.departure || '';
@@ -9156,7 +9186,8 @@
     }
 
     function resolveTrainLocalSync(trainNumber, options = {}) {
-        const date = activeShiftScheduleDate();
+        const shiftDay = activeShiftScheduleDate();
+        const date = resolveTrainScheduleDateForNumber(trainNumber, options.trainPlan, shiftDay);
         const planEntry = planEntryForNumber(options.trainPlan, trainNumber);
         const registryEntry = findLocalTrainRegistryEntry(trainNumber);
 
@@ -9218,7 +9249,8 @@
 
     /** Карточка маршрута: табло/скелет, если нитка S3 неполная или бандла нет. */
     function resolveTrainForRouteGrid(trainNumber, searchOptions = {}) {
-        const date = activeShiftScheduleDate();
+        const shiftDay = activeShiftScheduleDate();
+        const date = resolveTrainScheduleDateForNumber(trainNumber, searchOptions.trainPlan, shiftDay);
         const planEntry = planEntryForNumber(searchOptions.trainPlan, trainNumber);
         const registryEntry = findLocalTrainRegistryEntry(trainNumber);
         const bundleMissing = window.SheduleMaxSource?.isDayStopsBundleUnavailable?.(date) === true;
@@ -9652,11 +9684,12 @@
 
         function hydrateRouteStopsForRequest() {
             if (!window.SheduleMaxSource?.loadTrainStops) return Promise.resolve();
-            const scheduleDay = activeShiftScheduleDate(baseDate);
             const fresh = searchOptions.forceRefresh === true;
             const bypassCache = searchOptions.forceRefresh === true;
+            const probeAvailable = window.SheduleMaxSource.dayStopsBundleAvailable;
 
             const loadTrains = () => Promise.all(inputs.map((trainNumber) => {
+                const scheduleDay = resolveTrainScheduleDateForNumber(trainNumber, trainPlan, baseDate);
                 const train = resolveTrainLocalSync(trainNumber, searchOptions);
                 const hit = lookupTrainOnStationBoard(trainNumber, scheduleDay);
                 const uid = String(
@@ -9666,7 +9699,7 @@
                 ).trim();
                 if (!uid) return Promise.resolve(null);
                 const direction = hit?._sheduleMax?.direction === 'to_moscow' ? 'to_moscow' : 'from_moscow';
-                return window.SheduleMaxSource.loadTrainStops(
+                const runLoad = () => window.SheduleMaxSource.loadTrainStops(
                     scheduleDay,
                     trainNumber,
                     uid,
@@ -9678,16 +9711,15 @@
                     }
                     return payload;
                 }).catch(() => null);
+
+                if (!probeAvailable) return runLoad();
+                return probeAvailable(scheduleDay, fresh || bypassCache).then((hasBundle) => {
+                    if (!hasBundle) return null;
+                    return runLoad();
+                });
             }));
 
-            const probe = window.SheduleMaxSource.dayStopsBundleAvailable
-                ? window.SheduleMaxSource.dayStopsBundleAvailable(scheduleDay, fresh || bypassCache)
-                : Promise.resolve(true);
-
-            return probe.then((hasBundle) => {
-                if (!hasBundle) return null;
-                return loadTrains();
-            }).then(() => {
+            return loadTrains().then(() => {
                 if (requestId !== routeDataRequestId) return;
                 if (getSelectedDate() !== baseDate) return;
                 tryCommitRouteGrid(requestId, inputs, searchOptions, trainPlan, paintOptions);
@@ -9695,19 +9727,21 @@
         }
 
         const boardLoadOptions = { forceRefresh: forceBoardRefresh };
+        const boardDates = collectRouteBoardDatesForShift(trainPlan, baseDate, inputs);
 
-        void ensureStationBoardLoaded(baseDate, boardLoadOptions)
+        void ensureStationBoardsForDates(boardDates, boardLoadOptions)
             .then(() => {
                 if (requestId !== routeDataRequestId) return;
                 if (getSelectedDate() !== baseDate) return;
-                if (!stationBoardIsReady(baseDate)) {
+                const anyReady = boardDates.some((d) => stationBoardIsReady(d));
+                if (!anyReady) {
                     finalizeRouteLoad();
                     return;
                 }
                 commitRouteAfterBoards();
             })
             .catch((err) => {
-                console.warn('[trains] board failed:', baseDate, err);
+                console.warn('[trains] board failed:', boardDates, err);
                 finalizeRouteLoad();
             });
     }
@@ -9771,7 +9805,8 @@
         const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
         const searchOpts = { ...options, trainPlan };
         const planEntry = planEntryForNumber(trainPlan, input);
-        const scheduleDay = activeShiftScheduleDate(selectedDate);
+        const scheduleDay = resolveTrainScheduleDateForNumber(input, trainPlan, selectedDate);
+        const scheduleBoardDates = collectRouteBoardDatesForShift(trainPlan, selectedDate, [input]);
 
         const commitSchedulePaint = () => {
             if (requestId !== scheduleDataRequestId) return false;
@@ -9782,7 +9817,7 @@
             if (!isTrainRouteDisplayReady(trainMeta)) return false;
 
             setSchedulePaneLoading(false);
-            renderTimelineFromData(trainMeta.stops, trainMeta.number || input, selectedDate, trainMeta);
+            renderTimelineFromData(trainMeta.stops, trainMeta.number || input, scheduleDay, trainMeta);
             updateScheduleEmptyState();
             syncScheduleLiveClock();
             return true;
@@ -9793,7 +9828,7 @@
             if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
             if (getSelectedDate() !== selectedDate) return;
             if (commitSchedulePaint()) return;
-            if (stationBoardIsReady(selectedDate)) {
+            if (stationBoardIsReady(scheduleDay)) {
                 setSchedulePaneLoading(false);
                 updateScheduleEmptyState();
                 return;
@@ -9861,12 +9896,10 @@
         };
 
         const run = async () => {
-            if (!stationBoardIsReady(selectedDate)) {
-                try {
-                    await ensureStationBoardLoaded(selectedDate);
-                } catch (err) {
-                    console.warn('[trains] board failed:', selectedDate, err);
-                }
+            try {
+                await ensureStationBoardsForDates(scheduleBoardDates);
+            } catch (err) {
+                console.warn('[trains] board failed:', scheduleBoardDates, err);
             }
             if (requestId !== scheduleDataRequestId) return;
             if (String(userStorageGet('lastSingleTrain') || '').trim() !== input) return;
@@ -12421,7 +12454,9 @@
             hours_text: hours_text || null,
             salary_amount: pay > 0 ? Math.round(pay) : null,
             note_text: note_text || null,
-            warnings
+            warnings,
+            normative_stamp: String(shift.normativeStamp || getShiftTemplatesStamp() || '').slice(0, 240) || null,
+            user_edited: shift.userEdited === true,
         };
     }
 
@@ -12496,18 +12531,38 @@
             || noteRaw.includes('[da:average_pay]');
         const userNote = noteRaw.replace(/\n?\[da:average_pay\]/g, '').trim();
 
+        const serverStamp = String(row.normative_stamp || '').trim();
+        const localStamp = String(base.normativeStamp || '').trim();
+        const serverEdited = row.user_edited === true;
+        const localEdited = base.userEdited === true;
+        const serverWinsTimes = !localEdited
+            || (serverEdited && isNormativeStampNewer(serverStamp, localStamp));
+        const startTime = (serverWinsTimes && tm) ? tm[1] : (base.startTime || (tm ? tm[1] : ''));
+        const endTime = (serverWinsTimes && tm) ? tm[2] : (base.endTime || (tm ? tm[2] : ''));
+        let hours = base.hours || '';
+        if (row.hours_text != null && String(row.hours_text).trim() !== '') {
+            if (serverWinsTimes) hours = row.hours_text;
+        }
+        const userEdited = serverWinsTimes
+            ? serverEdited
+            : (localEdited || base.userEdited === true);
+        const normativeStamp = serverWinsTimes
+            ? (serverStamp || localStamp)
+            : (localStamp || serverStamp);
+
         return syncShiftTrainFields({
             ...base,
             route: isAveragePay ? (routeCode || 'О') : (routeCode || base.route || ''),
             name: isAveragePay ? 'О' : (routeCode || base.name || base.route || ''),
             shiftStatus: isAveragePay ? 'average_pay' : base.shiftStatus,
-            startTime: tm ? tm[1] : (base.startTime || ''),
-            endTime: tm ? tm[2] : (base.endTime || ''),
+            startTime,
+            endTime,
+            reportTime: startTime || base.reportTime || '',
             trains: trainsText,
             trainNum: trainsText,
-            hours: row.hours_text != null && String(row.hours_text).trim() !== ''
-                ? row.hours_text
-                : (base.hours || ''),
+            hours,
+            userEdited,
+            normativeStamp,
             note: userNote || (isAveragePay ? '' : (base.note || ''))
         });
     }
@@ -14871,6 +14926,8 @@
             activeNormativeSummary: cached.activeNormativeSummary || null,
             lastWriteAt: cached.lastWriteAt || null,
         };
+        const cachedStamp = String(cached.normativeStamp || '').trim();
+        if (cachedStamp) localShiftTemplatesStamp = cachedStamp;
         return true;
     }
 
@@ -15222,6 +15279,87 @@
         ].join('|');
     }
 
+    function getShiftTemplatesStamp() {
+        return String(localShiftTemplatesStamp || '').trim();
+    }
+
+    function isNormativeStampNewer(candidate, baseline) {
+        const next = String(candidate || '').trim();
+        const prev = String(baseline || '').trim();
+        if (!next) return false;
+        if (!prev) return true;
+        return next > prev;
+    }
+
+    function stampFromShiftBundle(bundle) {
+        if (!bundle) return '';
+        return shiftBundleCacheStamp(bundle);
+    }
+
+    function applyFieldsFromTemplateToShift(storedShift, tmpl, dateKey) {
+        if (!tmpl) return null;
+        const shift = buildCalendarShiftFromTemplate(tmpl);
+        if (isNightRoute(tmpl.route)) {
+            const morningRouteName = resolveMorningRouteForNight(
+                tmpl.route,
+                dateKey,
+                { morningRoute: tmpl.morningRoute || shift.morningRoute }
+            );
+            if (morningRouteName) shift.morningRoute = morningRouteName;
+        }
+        copyShiftNotesFromSource(shift, storedShift);
+        shift.normativeStamp = getShiftTemplatesStamp();
+        shift.userEdited = false;
+        return shift;
+    }
+
+    function reconcileCalendarShiftsWithNormative(stamp) {
+        loadUserShifts();
+        let anyChanged = false;
+        Object.keys(calendarUserShifts || {}).forEach((dateKey) => {
+            const list = sortDayShiftsForDisplay(normalizeDayShiftsRecord(calendarUserShifts[dateKey]));
+            if (!list.length) return;
+
+            let dayChanged = false;
+            const next = list.map((shift) => {
+                if (!shift || shift.userEdited === true || isAveragePayShift(shift)) return shift;
+                const route = String(shift.route || '').trim();
+                if (!route || isRestDayRoute(route)) return shift;
+
+                applyNormativeForDateKey(dateKey);
+                loadGlobalShiftTemplates();
+                const tmpl = findShiftTemplate(depotShiftTemplates, route, dateKey);
+                if (!tmpl) return shift;
+
+                const stampOnShift = String(shift.normativeStamp || '').trim();
+                if (stampOnShift === String(stamp || '').trim() && shift.startTime && shift.endTime) {
+                    return shift;
+                }
+
+                dayChanged = true;
+                return prepareShiftForCalendar(dateKey, applyFieldsFromTemplateToShift(shift, tmpl, dateKey));
+            });
+
+            if (dayChanged) {
+                anyChanged = true;
+                calendarUserShifts[dateKey] = next.length === 1 ? next[0] : next;
+            }
+        });
+
+        if (anyChanged) {
+            persistUserShifts({ immediate: true });
+            if (typeof calendarRenderCalendar === 'function') {
+                calendarRenderCalendar({ skipConstructor: true });
+            }
+            if (typeof reapplyCalendarDaySelection === 'function') {
+                reapplyCalendarDaySelection();
+            }
+            if (typeof updateProfileScreen === 'function') updateProfileScreen();
+            showDaActionToast('График обновлён по новому нормативу', 4500);
+        }
+        return anyChanged;
+    }
+
     function normalizeShiftBundleData(data) {
         if (!data) return { normatives: [], meta: null, version: null, generatedAt: null };
         let normatives = Array.isArray(data.normatives)
@@ -15352,23 +15490,23 @@
                     || [LOCAL_SHIFT_TEMPLATES_URL];
                 const fetchers = shiftUrls.map((url) => fetchShiftTemplatesJson(url).catch(() => null));
 
-                const candidates = (await Promise.all(fetchers)).filter(Boolean);
+                const networkBundles = (await Promise.all(fetchers)).filter(Boolean);
                 const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
-                if (cachedBundle?.normatives?.length) {
-                    candidates.push({
+                let picked = networkBundles.length ? pickNewestShiftBundle(networkBundles) : null;
+                if (!picked && cachedBundle?.normatives?.length) {
+                    picked = {
                         normatives: cachedBundle.normatives,
                         meta: {
                             loadedUntilIso: cachedBundle.loadedUntilIso || null,
                             loadedUntilLabel: cachedBundle.loadedUntilLabel || null,
                             lastWriteAt: cachedBundle.lastWriteAt || null,
                             lastUploadLabel: cachedBundle.lastUploadLabel || null,
+                            activeNormativeId: cachedBundle.activeNormativeId || null,
                         },
                         version: cachedBundle.version || null,
                         generatedAt: cachedBundle.lastWriteAt || null,
-                    });
+                    };
                 }
-
-                const picked = pickNewestShiftBundle(candidates);
                 if (!picked) throw new Error('shift-templates unavailable');
 
                 const cachedStamp = cachedBundle ? shiftBundleCacheStamp({
@@ -15380,10 +15518,15 @@
                     version: cachedBundle.version,
                 }) : '';
                 const newStamp = shiftBundleCacheStamp(picked);
+                const prevStamp = getShiftTemplatesStamp() || cachedStamp;
                 if (cachedStamp && newStamp !== cachedStamp) {
                     activeNormativeId = null;
                     constructorRouteOptions = new Map();
                     depotShiftTemplates = [];
+                }
+                localShiftTemplatesStamp = newStamp;
+                if (isNormativeStampNewer(newStamp, prevStamp)) {
+                    reconcileCalendarShiftsWithNormative(newStamp);
                 }
 
                 localShiftNormatives = picked.normatives;
@@ -15401,6 +15544,7 @@
                     loadedUntilLabel: localShiftTemplatesMeta?.loadedUntilLabel || null,
                     lastWriteAt: localShiftTemplatesMeta?.lastWriteAt || picked.generatedAt || null,
                     lastUploadLabel: localShiftTemplatesMeta?.lastUploadLabel || null,
+                    normativeStamp: newStamp,
                 });
 
                 markShiftBundleSessionFresh();
@@ -16938,17 +17082,9 @@
         );
     }
 
-    function shouldSubtractLunchFromShift(shift, startTime, endTime) {
-        if (!shift) return false;
-        const marker = getLunchExclusionMarker(shift.lunch);
-        if (marker === '**') return false;
-        if (lunchBreakOverlapsShift(startTime, endTime, shift.lunch)) return true;
-        const lunchMin = parseLunchDurationMinutes(shift.lunch);
-        if (lunchMin <= 0) return false;
-        const spanMin = calculateShiftSpanMinutes(startTime, endTime);
-        if (spanMin == null) return false;
-        if (spanMin > 12 * 60) return true;
-        return false;
+    function shouldSubtractLunchFromShift(shift) {
+        if (!shift || isMorningRoute(shift.route)) return false;
+        return parseLunchDurationMinutes(shift.lunch) > 0;
     }
 
     function calculateShiftWorkHoursFromTimes(shift) {
@@ -16964,8 +17100,9 @@
         const spanMin = calculateShiftSpanMinutes(startRaw, endRaw);
         if (spanMin == null) return null;
 
-        const shouldSubtractLunch = shouldSubtractLunchFromShift(shift, startRaw, endRaw);
-        const lunchMin = shouldSubtractLunch ? parseLunchDurationMinutes(shift.lunch) : 0;
+        const lunchMin = shouldSubtractLunchFromShift(shift)
+            ? parseLunchDurationMinutes(shift.lunch)
+            : 0;
         return Math.max(0, spanMin - lunchMin) / 60;
     }
 
@@ -17000,15 +17137,26 @@
         const tmpl = findShiftTemplate(depotShiftTemplates, shift.route, dateKey);
         if (!tmpl) return merged;
 
+        const autoFromNormative = shift.userEdited !== true;
         merged = { ...merged };
-        if (!merged.startTime && !merged.reportTime) {
-            merged.startTime = tmpl.startTime || '';
+
+        const applyTime = (field, value) => {
+            if (!value) return;
+            if (autoFromNormative || !merged[field]) merged[field] = value;
+        };
+
+        applyTime('startTime', tmpl.startTime || '');
+        if (merged.startTime) merged.reportTime = merged.startTime;
+        else if (autoFromNormative) {
             merged.reportTime = tmpl.startTime || '';
         }
-        if (!merged.endTime) merged.endTime = tmpl.endTime || '';
+        applyTime('endTime', tmpl.endTime || '');
+
         if (!isMorningRoute(merged.route)) {
             const lunchRaw = String(merged.lunch ?? '').trim();
-            if (isShiftLunchFieldEmpty(lunchRaw)) {
+            if (autoFromNormative) {
+                merged.lunch = tmpl.lunch || lunchRaw;
+            } else if (isShiftLunchFieldEmpty(lunchRaw)) {
                 merged.lunch = tmpl.lunch || '';
             } else if (tmpl.lunch && /^\*{1,3}\s*$/.test(lunchRaw)) {
                 merged.lunch = tmpl.lunch;
@@ -17016,13 +17164,21 @@
         } else {
             merged.lunch = '';
         }
-        if (!merged.trainNum) merged.trainNum = tmpl.trainNum || tmpl.trains || '';
-        if (!merged.nightHours) merged.nightHours = tmpl.nightHours || '';
-        if (!merged.morningRoute) merged.morningRoute = tmpl.morningRoute || '';
 
-        const hoursEmpty = merged.hours == null || String(merged.hours).trim() === '';
+        if (autoFromNormative || !merged.trainNum) {
+            merged.trainNum = tmpl.trainNum || tmpl.trains || merged.trainNum || '';
+            merged.trains = merged.trainNum;
+        }
+        if (autoFromNormative || !merged.nightHours) merged.nightHours = tmpl.nightHours || '';
+        if (autoFromNormative || !merged.morningRoute) merged.morningRoute = tmpl.morningRoute || '';
+
         const tmplWork = tmpl.workHours || tmpl.hours || '';
-        if (hoursEmpty && tmplWork) merged.hours = tmplWork;
+        if (autoFromNormative && tmplWork) {
+            merged.hours = String(tmplWork);
+        } else {
+            const hoursEmpty = merged.hours == null || String(merged.hours).trim() === '';
+            if (hoursEmpty && tmplWork) merged.hours = tmplWork;
+        }
 
         return merged;
     }
@@ -17048,17 +17204,9 @@
         if (presetHours != null && presetHours >= 0) return presetHours;
 
         const normativeHours = parseShiftHours(enriched.hours || enriched.workHours);
-        const lunchMarker = getLunchExclusionMarker(enriched.lunch);
         const calculated = calculateShiftWorkHoursFromTimes(enriched);
 
-        if (lunchMarker === '**') {
-            if (normativeHours > 0) return normativeHours;
-            if (calculated != null && calculated > 0) return calculated;
-        }
-
-        if (calculated != null && calculated > 0) return calculated;
-        // Нулевая длительность по времени (напр. У92 23:00–23:00) важнее устаревших hours в storage.
-        if (calculated === 0) return 0;
+        if (calculated != null) return calculated;
 
         if (normativeHours > 0) return normativeHours;
 
@@ -19144,11 +19292,14 @@
             removeMaterializedMorningForNight(dateKey, stored);
         }
 
-        shifts[slotIndex] = prepareShiftForCalendar(dateKey, resetShift);
+        const prepared = prepareShiftForCalendar(dateKey, resetShift);
+        prepared.userEdited = false;
+        prepared.normativeStamp = getShiftTemplatesStamp();
+        shifts[slotIndex] = prepared;
         setStoredDayShifts(dateKey, shifts);
 
-        if (isNightRoute(resetShift.route)) {
-            materializeLinkedMorningShift(dateKey, resetShift);
+        if (isNightRoute(prepared.route)) {
+            materializeLinkedMorningShift(dateKey, prepared);
         }
 
         persistUserShifts();
@@ -20877,6 +21028,7 @@
             return nextShift;
         }
         const routeChanged = normalizeCalendarRouteKey(storedShift.route) !== normalizeCalendarRouteKey(route);
+        let templateApplied = false;
 
         if (routeChanged && route) {
             const signature = combobox?.querySelector('[data-summary-route-signature]')?.value?.trim() || '';
@@ -20884,6 +21036,7 @@
             if (!template) template = findShiftTemplate(depotShiftTemplates, route, dateKey);
             if (template) {
                 nextShift = buildCalendarShiftFromTemplate(template);
+                templateApplied = true;
                 copyShiftNotesFromSource(nextShift, storedShift);
             } else {
                 nextShift = { ...storedShift, route };
@@ -20920,6 +21073,35 @@
             if (tmpl?.lunch) nextShift.lunch = tmpl.lunch;
         }
         copyShiftNotesFromSource(nextShift, storedShift);
+
+        if (!isAveragePayShift(nextShift)) {
+            const startNorm = startRaw ? normalizeShiftTimeToken(startRaw) : '';
+            const endNorm = endRaw ? normalizeShiftTimeToken(endRaw) : '';
+            const storedStart = normalizeShiftTimeToken(storedShift.startTime || '');
+            const storedEnd = normalizeShiftTimeToken(storedShift.endTime || '');
+            const timesDiffer = hasTimeEditor && (startNorm !== storedStart || endNorm !== storedEnd);
+            const nextLunch = hasLunchEditor
+                ? composeLunchFieldFromEditor(
+                    lunchStart,
+                    lunchEnd,
+                    false,
+                    existingLunch.dutyPoint,
+                    nextShift.route
+                )
+                : String(nextShift.lunch || '');
+            const lunchDiffer = hasLunchEditor
+                && String(nextLunch).trim() !== String(storedShift.lunch || '').trim();
+            if (templateApplied) {
+                if (timesDiffer || lunchDiffer) nextShift.userEdited = true;
+            } else if (routeChanged || timesDiffer || lunchDiffer) {
+                nextShift.userEdited = true;
+            } else {
+                nextShift.userEdited = storedShift.userEdited === true;
+                if (!nextShift.normativeStamp) {
+                    nextShift.normativeStamp = storedShift.normativeStamp || getShiftTemplatesStamp();
+                }
+            }
+        }
 
         return nextShift;
     }
@@ -21294,7 +21476,9 @@
             nightHours: template.nightHours || '',
             morningRoute: template.morningRoute || '',
             reportTime: template.startTime || '',
-            templateSignature: buildRouteIdentitySignature(template)
+            templateSignature: buildRouteIdentitySignature(template),
+            normativeStamp: getShiftTemplatesStamp(),
+            userEdited: false,
         };
     }
 
