@@ -1,5 +1,7 @@
-// Service Worker — Цифровой помощник v5.1.5 — da_v5_1_5
-const CACHE_NAME = 'da_v5_1_5';
+// Service Worker — Цифровой помощник v5.1.6 — da_v5_1_6 (instant shell + network timeouts)
+const CACHE_NAME = 'da_v5_1_6';
+const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
+const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -11,6 +13,7 @@ const PRECACHE_ASSETS = [
     './styles/routes.css',
     './styles/schedule.css',
     './styles/calendar.css',
+    './styles/calendar-v2.css',
     './styles/profile.css',
     './styles/responsive.css',
     './styles/auth.css',
@@ -181,6 +184,66 @@ async function networkFirst(request) {
     }
 }
 
+async function networkFirstWithTimeout(request, timeoutMs) {
+    const cache = await caches.open(CACHE_NAME);
+    const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : APP_SHELL_NETWORK_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+
+    try {
+        const response = await fetch(request, { signal: controller.signal });
+        clearTimeout(timer);
+        if (response && response.ok) {
+            cache.put(request, response.clone());
+        }
+        return response;
+    } catch (err) {
+        clearTimeout(timer);
+        const cached = await matchCachedRequest(cache, request);
+        if (cached) return cached;
+        const fallback = await matchNavigationFallback(cache);
+        if (fallback) return fallback;
+        throw err;
+    }
+}
+
+/** Мгновенно из кэша, обновление в фоне — для офлайн F5 */
+async function staleWhileRevalidate(request) {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await matchCachedRequest(cache, request);
+
+    const networkUpdate = fetch(request)
+        .then((response) => {
+            if (response && response.ok) {
+                cache.put(request, response.clone());
+            }
+            return response;
+        })
+        .catch(() => null);
+
+    if (cached) {
+        revalidateInBackground(cache, request);
+        void networkUpdate;
+        return cached;
+    }
+
+    const response = await networkUpdate;
+    if (response) return response;
+
+    const fallback = await matchNavigationFallback(cache);
+    if (fallback) return fallback;
+    return networkFirstWithTimeout(request, APP_SHELL_NETWORK_TIMEOUT_MS);
+}
+
+function isAppShellModuleRequest(pathname) {
+    return isAppConfigRequest(pathname)
+        || isScheduleMaintenanceRequest(pathname)
+        || isRoutesModuleRequest(pathname)
+        || isCrewApiClientRequest(pathname)
+        || isDaAuthSessionRequest(pathname)
+        || isSyncUserIdModuleRequest(pathname);
+}
+
 async function cacheFirst(request) {
     const cache = await caches.open(CACHE_NAME);
     const cached = await matchCachedRequest(cache, request);
@@ -342,13 +405,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     if (isSheduleMaxDataRequest(url)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(networkFirstWithTimeout(request, SHEDULE_MAX_NETWORK_TIMEOUT_MS));
         return;
     }
     if (url.origin !== self.location.origin) return;
 
-    if (isAppConfigRequest(url.pathname) || isScheduleMaintenanceRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
+    if (isAppShellModuleRequest(url.pathname)) {
+        event.respondWith(staleWhileRevalidate(request));
         return;
     }
 
@@ -362,26 +425,18 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (isSheduleMaxModuleRequest(url.pathname)
-        || isCrewApiClientRequest(url.pathname)
-        || isDaAuthSessionRequest(url.pathname)
-        || isSyncUserIdModuleRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
-        return;
-    }
-
-    if (isRoutesModuleRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
+    if (isSheduleMaxModuleRequest(url.pathname)) {
+        event.respondWith(staleWhileRevalidate(request));
         return;
     }
 
     if (isReleaseNotesRequest(url.pathname) || isTrainUidsRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(staleWhileRevalidate(request));
         return;
     }
 
     if (isAppShellRequest(url.pathname, request.mode)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(staleWhileRevalidate(request));
         return;
     }
 

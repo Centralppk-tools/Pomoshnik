@@ -1,4 +1,11 @@
-/* Единый индикатор загрузки — DaLoad */
+/* Полноэкранный boot-shell снят — индикация в .crew-sync-badge у часов */
+#daLoadShell,
+.da-load-shell {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 .da-load-shell {
     position: fixed;
     inset: 0;
@@ -86,6 +93,46 @@
     flex-shrink: 0;
 }
 
+.clock-wrap__time-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.clock-mini-spinner {
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgba(16, 185, 129, 0.25);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: clockSpin 0.65s linear infinite;
+    display: none;
+    flex-shrink: 0;
+}
+
+.header-clock-stack.is-sync-active .clock-mini-spinner {
+    display: inline-block;
+}
+
+.header-clock-stack.is-sync-active.clock-wrap.time-box {
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 0 12px rgba(16, 185, 129, 0.22);
+    animation: clockCapsulePulse 1.4s ease-in-out infinite;
+}
+
+.header-clock-stack.is-sync-active .crew-sync-badge.is-sync-active::before {
+    display: none;
+}
+
+@keyframes clockSpin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes clockCapsulePulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.28), 0 0 8px rgba(16, 185, 129, 0.16); }
+    50% { box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.45), 0 0 14px rgba(16, 185, 129, 0.28); }
+}
+
 .crew-sync-badge.is-sync-active {
     display: inline-flex;
     align-items: center;
@@ -101,6 +148,24 @@
     border-radius: 50%;
     animation: daLoadSpin 0.7s linear infinite;
     flex-shrink: 0;
+}
+
+.crew-sync-badge.is-offline-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fbbf24;
+}
+
+.crew-sync-badge.is-offline-active::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f59e0b;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+    animation: none;
 }
 
 .da-action-toast.is-error {

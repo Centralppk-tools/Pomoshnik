@@ -103,6 +103,7 @@
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
     <link rel="stylesheet" href="styles/calendar.css?v=20261030t">
+    <link rel="stylesheet" href="styles/calendar-v2.css?v=20261115zj">
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
@@ -134,11 +135,68 @@
 <script src="js/da-feedback-capture.js?v=20261113a"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
 <script src="js/da-auth-session.js?v=20261112a"></script>
+<script>
+(function daEarlyAuthShellUnlock() {
+    try {
+        var url = new URL(window.location.href);
+        var resetToken = String(url.searchParams.get('reset_token') || '').trim();
+        if (resetToken) return;
+
+        function trimStore(key) {
+            return String(localStorage.getItem(key) || '').trim();
+        }
+
+        function sessionTab() {
+            return trimStore('currentUserTab')
+                || trimStore('rzd_auth_session')
+                || trimStore('depotTab');
+        }
+
+        function crewEnabled() {
+            var crew = window.APP_CONFIG && window.APP_CONFIG.crewApi;
+            return !!(crew && crew.enabled !== false);
+        }
+
+        function hadCloudAccount() {
+            return localStorage.getItem('da_had_cloud_account') === '1';
+        }
+
+        var jwt = window.DaAuthSession && window.DaAuthSession.getJwt
+            ? window.DaAuthSession.getJwt()
+            : trimStore('da_auth_jwt');
+
+        function needsEmailUpgradeEarly() {
+            if (!crewEnabled()) return false;
+            if (window.DaAuthSession && window.DaAuthSession.hasVerifiedEmailOnAccount
+                && window.DaAuthSession.hasVerifiedEmailOnAccount()) {
+                return false;
+            }
+            if (hadCloudAccount()) return false;
+            if (jwt) {
+                var user = window.DaAuthSession && window.DaAuthSession.getStoredUser
+                    ? window.DaAuthSession.getStoredUser()
+                    : null;
+                if (user && String(user.email || '').trim()) return false;
+            }
+            return !!sessionTab();
+        }
+
+        var shouldUnlock = Boolean(jwt)
+            || needsEmailUpgradeEarly()
+            || (sessionTab() && !crewEnabled());
+
+        if (!shouldUnlock) return;
+
+        document.body.classList.remove('auth-locked');
+        document.documentElement.classList.add('da-auth-early-unlock');
+    } catch (_) { /* storage / URL */ }
+})();
+</script>
 <script src="js/da-loading.js?v=20261112a"></script>
 <script src="js/crew-api-client.js?v=20261112a"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
 
-<div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
+<div id="daLoadShell" class="da-load-shell" hidden aria-hidden="true" aria-live="polite" aria-busy="false" role="status">
     <div class="da-load-shell__card">
         <div class="da-load-shell__spinner" aria-hidden="true"></div>
         <p class="da-load-shell__title" id="daLoadTitle">Запуск приложения…</p>
@@ -425,7 +483,10 @@
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
-                    <div class="clock-wrap__time app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                    <div class="clock-wrap__time-row">
+                        <span class="clock-mini-spinner" aria-hidden="true"></span>
+                        <div class="clock-wrap__time app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
+                    </div>
                     <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                     <div class="clock-wrap__sub" id="scheduleMotionBadge" hidden></div>
                 </div>
@@ -441,46 +502,49 @@
             <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
                 <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
                     <div id="routeShiftCompact" class="route-header-card header-card route-shift-compact--sticky" role="region" aria-label="Параметры смены и поезда">
-                        <div class="header-top-row">
-                            <div class="shift-meta shift-info">
-                                <div class="route-shift-compact__leading">
-                                    <button type="button" id="routeShiftRefreshBtn" class="route-shift-compact__code-unified badge-shift route-shift-compact__code" aria-label="Обновить время из норматива" title="Обновить время из норматива">
-                                        <span id="routeShiftCodeLabel" class="route-shift-compact__code-label">—</span>
-                                        <svg class="route-shift-compact__refresh-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-                                            <polyline points="21 3 21 9 15 9"></polyline>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <span id="routeShiftWorkLine" class="shift-time shift-times route-shift-compact__work">—</span>
-                                <span id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</span>
-                            </div>
-                            <div class="date-controls">
-                                <label class="date-badge date-display" id="datePickerLabel" title="Выбрать дату смены">
-                                    <span id="dateDisplayText" class="shift-date-display"></span>
-                                    <input type="date" id="dateInput" class="shift-date-input" aria-label="Дата смены">
-                                    <svg class="icon-calendar" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                                    </svg>
-                                </label>
-                            </div>
-                            <input type="checkbox" id="nightMode" class="route-shift-night-input" hidden tabindex="-1" aria-hidden="true">
-                        </div>
-                        <div class="header-bottom-row">
-                            <button type="button" id="routeShiftRoutesDropdown" class="routes-menu-btn route-shift-routes-dropdown" aria-haspopup="listbox" aria-expanded="false" aria-controls="routeShiftRoutesMenu" aria-label="Выбрать маршрут">
-                                <span class="routes-menu-btn__icon route-shift-routes-dropdown__icon" aria-hidden="true">≡</span>
-                                <span class="route-shift-routes-dropdown__label">Маршруты</span>
-                                <svg class="route-shift-routes-dropdown__chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
+                        <div class="route-header-top header-top-row">
+                            <button type="button"
+                                id="routeSelectorCapsule"
+                                class="shift-selector-btn route-shift-selector-capsule routes-menu-btn"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                                aria-controls="routeShiftRoutesMenu"
+                                aria-label="Выбрать маршрут"
+                                title="Выбрать или сменить маршрут">
+                                <span class="shift-left route-shift-compact__leading">
+                                    <span class="burger-icon routes-menu-btn__icon route-shift-routes-dropdown__icon" aria-hidden="true">≡</span>
+                                    <span id="headerRouteCode" class="route-code route-shift-compact__code-label">—</span>
+                                </span>
+                                <span class="shift-right-stack route-shift-compact__work-wrap">
+                                    <span class="shift-time-row-line">
+                                        <span class="edited-dot" title="Изменено вручную" aria-hidden="true"></span>
+                                        <span id="headerShiftTime" class="shift-time-row route-shift-compact__work">—</span>
+                                    </span>
+                                    <span id="headerLunchSub" class="header-lunch-sub" aria-hidden="true"></span>
+                                </span>
+                            </button>
+                            <button type="button" id="headerResetBtn" class="header-icon-btn route-shift-header-reset" aria-label="Сбросить время и поезда к нормативу" title="Сбросить время и поезда к нормативу">
+                                <svg class="reset-svg route-shift-compact__refresh-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
                                 </svg>
                             </button>
-                            <div class="trains-scroll-list route-shift-compact__trains route-header-trains-row" aria-label="Поезда смены">
-                                <div id="routeShiftTrainChips" class="trains-scroll route-shift-compact__chips" role="list"></div>
-                                <button type="button" id="routeShiftAddTrain" class="add-train-btn route-shift-compact__add route-header-trains-row__add" title="Добавить поезд" aria-label="Добавить поезд">+</button>
-                            </div>
+                            <button type="button" id="headerDatePickerBtn" class="date-chip-btn" title="Выбрать дату в календаре">
+                                <span id="headerDateLabel" class="shift-date-display"></span>
+                                <svg class="icon-calendar" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                            <input type="date" id="dateInput" class="shift-date-input route-shift-date-input-sr" aria-label="Дата смены" tabindex="-1">
+                            <span id="routeShiftLunchLine" class="route-shift-compact__lunch" hidden aria-hidden="true">—</span>
+                            <input type="checkbox" id="nightMode" class="route-shift-night-input" hidden tabindex="-1" aria-hidden="true">
+                        </div>
+                        <div class="trains-strip header-bottom-row trains-scroll-list route-shift-compact__trains route-header-trains-row" id="routeTrainsStrip" aria-label="Поезда смены">
+                            <div id="routeShiftTrainChips" class="trains-scroll route-shift-compact__chips" role="list"></div>
+                            <button type="button" id="routeShiftAddTrain" class="add-train-btn route-shift-compact__add route-header-trains-row__add" title="Добавить поезд" aria-label="Добавить поезд">+</button>
                         </div>
                     </div>
                 </div>
@@ -492,6 +556,24 @@
                 <ul id="routeShiftRoutesMenuList" class="route-shift-routes-menu__list" role="listbox"></ul>
             </div>
             <div id="scheduleHeader" class="schedule-glass-body" style="display:none;" hidden></div>
+        </div>
+    </div>
+
+    <div id="customCalBackdrop" class="custom-cal-backdrop" hidden>
+        <div class="custom-cal-card" role="dialog" aria-modal="true" aria-label="Выбор даты">
+            <div class="custom-cal-head">
+                <div class="custom-cal-nav">
+                    <button type="button" class="cal-nav-btn" id="calPrevMonth" aria-label="Предыдущий месяц">‹</button>
+                    <span class="custom-cal-title" id="calMonthTitle">—</span>
+                    <button type="button" class="cal-nav-btn" id="calNextMonth" aria-label="Следующий месяц">›</button>
+                </div>
+                <button type="button" class="cal-today-btn" id="calTodayBtn">Сегодня</button>
+            </div>
+            <div class="custom-cal-weekdays" aria-hidden="true">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span>
+                <span class="wknd">Сб</span><span class="wknd">Вс</span>
+            </div>
+            <div class="custom-cal-grid" id="customCalGrid" role="grid" aria-label="Дни месяца"></div>
         </div>
     </div>
 
@@ -657,57 +739,47 @@
 
 </div>
 
-<div id="screen-calendar" class="screen">
-    <div class="phone-screen calendar-app-wrap">
-        <header class="app-screen-header">
+<div id="screen-calendar" class="screen cal-screen">
+    <div class="cal-screen__shell phone-screen calendar-app-wrap">
+        <header class="cal-screen__top app-screen-header">
             <div class="app-header-bar route-header-bar">
                 <div class="app-header-bar-brand route-header-brand">
                     <img src="assets/brand-logo.png" alt="" class="app-brand-logo" width="28" height="28" aria-hidden="true">
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
-                    <div class="clock-wrap__time app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                    <div class="clock-wrap__time-row">
+                        <span class="clock-mini-spinner" aria-hidden="true"></span>
+                        <div class="clock-wrap__time app-header-bar-clock" id="calendarLiveClock" aria-live="off">--:--:--</div>
+                    </div>
                     <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
             </div>
         </header>
 
-        <div class="screen-card screen-card--calendar">
+        <div class="cal-screen__body">
+            <section class="cal-month" aria-label="Календарь на месяц">
+                <div class="cal-month__bar">
+                    <button type="button" class="cal-month__nav" onclick="calendarChangeMonth(-1)" aria-label="Предыдущий месяц">◀</button>
+                    <p id="monthTitle" class="cal-month__title">Май 2026</p>
+                    <button type="button" class="cal-month__nav" onclick="calendarChangeMonth(1)" aria-label="Следующий месяц">▶</button>
+                    <button type="button" id="calendarIcsExportBtn" class="cal-month__ics" aria-label="Экспорт в календарь">⎙</button>
+                </div>
+                <div class="cal-month__weekdays" aria-hidden="true">
+                    <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+                </div>
+                <div class="cal-month__grid calendar-grid" id="calendarGrid"></div>
+            </section>
 
-        <div class="calendar-top-block">
-            <div class="calendar-header">
-                <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(-1)" aria-label="Предыдущий месяц">◀</button>
-                <p id="monthTitle" class="calendar-month-title">Май 2026</p>
-                <button type="button" class="calendar-nav-btn" onclick="calendarChangeMonth(1)" aria-label="Следующий месяц">▶</button>
-            </div>
-            <div class="calendar-export-row">
-                <button type="button" id="calendarIcsExportBtn" class="calendar-export-btn">
-                    <svg class="calendar-export-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
-                        <path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
-                    </svg>
-                    <span class="calendar-sync-btn-label">Добавить в календарь</span>
-                </button>
-            </div>
-            <div class="calendar-grid" id="calendarGrid">
-                <div class="weekday">Пн</div><div class="weekday">Вт</div><div class="weekday">Ср</div>
-                <div class="weekday">Чт</div><div class="weekday">Пт</div><div class="weekday">Сб</div><div class="weekday">Вс</div>
-            </div>
-            <div class="calendar-legend" aria-hidden="true">
-                <span><i class="legend-dot legend-dot--day"></i> День</span>
-                <span><i class="legend-dot legend-dot--night"></i> Ночь</span>
-                <span><i class="legend-dot legend-dot--tech"></i> ТО</span>
-            </div>
-        </div>
-
-        <div class="shift-constructor" id="shiftConstructor">
-            <div class="shift-constructor-title" id="constructorTitle">Выберите день</div>
-            <div id="constructorContent">
-                <p class="shift-constructor-hint">Выберите день и маршрут из локальной базы часов смен.</p>
-            </div>
-        </div>
-
+            <section class="cal-day-card" id="calendarDayDock" aria-label="Выбранный день">
+                <div class="cal-day-card__inner shift-constructor" id="shiftConstructor">
+                    <span class="cal-day-card__sr-title" id="constructorTitle">Выберите день</span>
+                    <div id="constructorContent" class="cal-day-card__content calendar-day-dock__content">
+                        <p class="cal-day-card__hint shift-constructor-hint">Выберите день и маршрут из локальной базы часов смен.</p>
+                    </div>
+                </div>
+            </section>
         </div>
 
         <div id="shiftNoteSheet" class="shift-note-sheet-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="shiftNoteSheetTitle">
@@ -720,8 +792,6 @@
                 <button type="button" id="shiftNoteSaveBtn" class="shift-note-save-btn">Сохранить</button>
             </div>
         </div>
-
-        <div class="app-community-footer" data-app-footer aria-label="Новости и сообщество"></div>
     </div>
 </div>
 
@@ -734,7 +804,10 @@
                     <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                 </div>
                 <div class="clock-wrap time-box header-clock-stack">
-                    <div class="clock-wrap__time app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                    <div class="clock-wrap__time-row">
+                        <span class="clock-mini-spinner" aria-hidden="true"></span>
+                        <div class="clock-wrap__time app-header-bar-clock" id="profileLiveClock" aria-live="off">--:--:--</div>
+                    </div>
                     <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                 </div>
                 <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
@@ -941,7 +1014,10 @@
                         <span class="app-brand-text route-header-brand-text">Цифровой<br>Помощник</span>
                     </div>
                     <div class="clock-wrap time-box header-clock-stack">
-                        <div class="clock-wrap__time app-header-bar-clock" id="instructionsLiveClock" aria-live="off">--:--:--</div>
+                        <div class="clock-wrap__time-row">
+                            <span class="clock-mini-spinner" aria-hidden="true"></span>
+                            <div class="clock-wrap__time app-header-bar-clock" id="instructionsLiveClock" aria-live="off">--:--:--</div>
+                        </div>
                         <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                     </div>
                     <button type="button" class="app-donate-trigger app-donate-trigger--header route-header-donate" data-donate-open aria-label="Поддержать проект">Поддержать</button>
@@ -1264,7 +1340,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.5';
+    const APP_RELEASE_VERSION = '5.1.6';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
@@ -1309,12 +1385,18 @@
 
     /** Счётчики по причинам — параллельные загрузки (смены + база маршрутов) не сбивают друг друга. */
     const CREW_SYNC_REASON_PRIORITY = [
+        'ui-task',
+        'crew-post-reconnect',
         'crew-post-auth',
         'crew-calendar',
         'crew-month',
         'shift-templates',
+        'reference-data',
+        'route-data',
     ];
-    const CREW_SYNC_LABEL_FALLBACK = 'Синхронизация смен';
+    const CREW_SYNC_LABEL_FALLBACK = 'Синхронизация…';
+    const CREW_SYNC_FORCE_HIDE_MS = 12000;
+    const SHIFT_TEMPLATES_FETCH_TIMEOUT_MS = 4500;
     const crewSyncReasonCounts = new Map();
     const crewSyncReasonLabels = new Map();
     let crewSyncForceHideTimer = null;
@@ -1343,36 +1425,61 @@
     }
 
     function applyCrewSyncBadgeVisibility() {
-        const show = crewSyncActiveReasonCount() > 0;
-        const label = crewSyncBadgeLabel();
+        const syncActive = crewSyncActiveReasonCount() > 0;
+        const offline = isAppOffline();
+        const showSync = syncActive;
+        const showOffline = !showSync && offline;
+        const label = showOffline ? 'Офлайн' : crewSyncBadgeLabel();
         const badges = document.querySelectorAll('.crew-sync-badge');
         if (crewSyncHideTimer) {
             clearTimeout(crewSyncHideTimer);
             crewSyncHideTimer = null;
         }
+        const showAny = showSync || showOffline;
         badges.forEach((el) => {
-            if (show) {
+            if (showAny) {
                 el.textContent = label;
                 el.classList.remove('is-hiding');
-                el.classList.add('is-sync-active');
                 el.hidden = false;
-                el.setAttribute('aria-busy', 'true');
+                el.classList.toggle('is-sync-active', showSync);
+                el.classList.toggle('is-offline-active', showOffline);
+                el.setAttribute('aria-busy', showSync ? 'true' : 'false');
                 return;
             }
-            el.classList.remove('is-sync-active');
+            el.classList.remove('is-sync-active', 'is-offline-active');
             el.setAttribute('aria-busy', 'false');
             if (el.hidden) return;
             el.classList.add('is-hiding');
         });
-        if (!show && badges.length) {
+        if (!showAny && badges.length) {
             crewSyncHideTimer = window.setTimeout(() => {
                 crewSyncHideTimer = null;
                 badges.forEach((el) => {
                     el.hidden = true;
-                    el.classList.remove('is-hiding', 'is-sync-active');
+                    el.classList.remove('is-hiding', 'is-sync-active', 'is-offline-active');
                 });
             }, 380);
         }
+        document.querySelectorAll('.header-clock-stack').forEach((stack) => {
+            stack.classList.toggle('is-sync-active', showSync);
+        });
+    }
+
+    function runWithClockLoader(label, taskFn) {
+        setCrewSyncIndicator(true, label || 'Загрузка…', 'ui-task');
+        return new Promise((resolve, reject) => {
+            requestAnimationFrame(() => {
+                window.setTimeout(() => {
+                    Promise.resolve()
+                        .then(() => taskFn())
+                        .then(resolve)
+                        .catch(reject)
+                        .finally(() => {
+                            setCrewSyncIndicator(false, '', 'ui-task');
+                        });
+                }, 0);
+            });
+        });
     }
 
     function armCrewSyncIndicatorForceHide() {
@@ -1384,7 +1491,28 @@
             crewSyncReasonCounts.clear();
             crewSyncReasonLabels.clear();
             applyCrewSyncBadgeVisibility();
-        }, 120000);
+        }, CREW_SYNC_FORCE_HIDE_MS);
+    }
+
+    async function runOfflineReconnectSync() {
+        if (!navigator.onLine || !window.DaCrewApi?.isEnabled?.() || !getAuthSessionTab()) {
+            applyCrewSyncBadgeVisibility();
+            return;
+        }
+        setCrewSyncIndicator(true, 'Синхронизация…', 'crew-post-reconnect');
+        try {
+            await DaCrewApi.flushOfflineQueue();
+            await syncCrewApiAdjacentMonths(calendarCurrentDate, {});
+            calendarRenderCalendar({
+                keepSelectedDay: true,
+                skipConstructor: !calendarSelectedDateKey,
+            });
+            applyNormativeForDateKey(getShiftContextDateKey());
+        } catch (err) {
+            console.warn('[crew-sync] reconnect', err);
+        } finally {
+            setCrewSyncIndicator(false, '', 'crew-post-reconnect');
+        }
     }
 
     /**
@@ -1502,6 +1630,7 @@
 
     function syncOfflineModeUi() {
         document.body.classList.toggle('app-offline', isAppOffline());
+        applyCrewSyncBadgeVisibility();
     }
 
     function notifyOfflineModeIfNeeded() {
@@ -2006,6 +2135,197 @@
         return `${escapeHtml(parts[0].trim())} <span class="arrow" aria-hidden="true">-</span> ${escapeHtml(parts[1].trim())}`;
     }
 
+    function formatRouteShiftCompactWorkLineCapsule(shift, dateKey) {
+        const plain = formatRouteShiftCompactWorkLine(shift, dateKey);
+        if (!plain || plain === '—') return '—';
+        return plain.replace(/\s*-\s*/, ' · ');
+    }
+
+    function syncRouteHeaderCompactState(shift) {
+        const capsule = document.getElementById('routeSelectorCapsule');
+        const resetBtn = document.getElementById('headerResetBtn');
+        const isEdited = Boolean(shift?.userEdited);
+        capsule?.classList.toggle('is-edited', isEdited);
+        resetBtn?.classList.toggle('needs-reset', isEdited);
+    }
+
+    const routeCustomCalView = { year: 0, month: 0 };
+
+    function isoToRouteDateKey(iso) {
+        const parts = String(iso || '').split(DASH_CHAR);
+        if (parts.length !== 3) return '';
+        const [y, m, d] = parts.map((n) => parseInt(n, 10));
+        if (!y || !m || !d) return '';
+        return `${d}.${m}.${y}`;
+    }
+
+    function getTodayIsoDate() {
+        const today = new Date();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return `${today.getFullYear()}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
+    }
+
+    function resolveRouteCalDayShiftAccent(dateKey) {
+        const shifts = getStoredDayShifts(dateKey).filter((s) => s?.route && !isRestDayRoute(s.route));
+        if (!shifts.length) {
+            return { typeClass: '', edited: false };
+        }
+        const primary = shifts.find((s) => isWorkShiftRoute(s)) || shifts[0];
+        const typeClass = getShiftTypeAccentClass(primary);
+        const edited = shifts.some((s) => s.userEdited === true);
+        return { typeClass, edited };
+    }
+
+    function renderRouteCustomCalendarGrid() {
+        const titleEl = document.getElementById('calMonthTitle');
+        const grid = document.getElementById('customCalGrid');
+        if (!titleEl || !grid) return;
+
+        const { year, month } = routeCustomCalView;
+        const months = typeof CALENDAR_MONTHS_RU !== 'undefined'
+            ? CALENDAR_MONTHS_RU
+            : ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        titleEl.textContent = `${months[month]} ${year}`;
+
+        const selectedIso = getSelectedDate();
+        const todayIso = getTodayIsoDate();
+        const first = new Date(year, month, 1);
+        let startDow = first.getDay();
+        startDow = startDow === 0 ? 6 : startDow - 1;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const prevMonthDays = new Date(year, month, 0).getDate();
+        const cells = [];
+
+        for (let i = startDow - 1; i >= 0; i--) {
+            const day = prevMonthDays - i;
+            const mIdx = month === 0 ? 11 : month - 1;
+            const y = month === 0 ? year - 1 : year;
+            cells.push({ day, y, m: mIdx + 1, other: true });
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+            cells.push({ day: d, y: year, m: month + 1, other: false });
+        }
+        let trail = 1;
+        while (cells.length < 42) {
+            const mIdx = month === 11 ? 0 : month + 1;
+            const y = month === 11 ? year + 1 : year;
+            cells.push({ day: trail++, y, m: mIdx + 1, other: true });
+        }
+
+        grid.innerHTML = cells.map((cell) => {
+            const mm = String(cell.m).padStart(2, '0');
+            const dd = String(cell.day).padStart(2, '0');
+            const iso = `${cell.y}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
+            const dateKey = `${parseInt(cell.day, 10)}.${parseInt(cell.m, 10)}.${cell.y}`;
+            const accent = resolveRouteCalDayShiftAccent(dateKey);
+            const classes = ['cal-day-cell'];
+            if (cell.other) classes.push('other-month');
+            if (iso === todayIso) classes.push('is-today');
+            if (iso === selectedIso) classes.push('is-selected');
+            if (accent.edited) classes.push('has-user-edit');
+            if (accent.typeClass) classes.push(accent.typeClass);
+            const dot = accent.typeClass
+                ? '<span class="cal-day-dot" aria-hidden="true"></span>'
+                : '';
+            return `<button type="button" class="${classes.join(' ')}" data-iso="${escapeAttr(iso)}" role="gridcell">${cell.day}${dot}</button>`;
+        }).join('');
+    }
+
+    function syncRouteCustomCalViewFromIso(iso) {
+        const parts = String(iso || getSelectedDate() || getTodayIsoDate()).split(DASH_CHAR).map(Number);
+        if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+            const now = new Date();
+            routeCustomCalView.year = now.getFullYear();
+            routeCustomCalView.month = now.getMonth();
+            return;
+        }
+        routeCustomCalView.year = parts[0];
+        routeCustomCalView.month = parts[1] - 1;
+    }
+
+    function openRouteCustomDatePicker() {
+        closeRouteShiftRoutesMenu();
+        syncRouteCustomCalViewFromIso(getSelectedDate());
+        const backdrop = document.getElementById('customCalBackdrop');
+        if (!backdrop) return;
+        backdrop.hidden = false;
+        renderRouteCustomCalendarGrid();
+    }
+
+    function closeRouteCustomDatePicker() {
+        const backdrop = document.getElementById('customCalBackdrop');
+        if (backdrop) backdrop.hidden = true;
+    }
+
+    function applyRouteDateSelectionFromPicker(iso) {
+        if (!iso) return;
+        abortRouteScheduleLoadsForContextChange();
+        setSelectedDateIso(iso);
+        invalidateRouteShiftMenuOptionsCache();
+        closeRouteShiftRoutesMenu();
+        refreshRouteShiftEditorIfOpen();
+        renderRoutesFromCacheIfVisible();
+        renderScheduleFromCacheIfVisible();
+        closeRouteCustomDatePicker();
+    }
+
+    let routeCustomDatePickerBound = false;
+
+    function initRouteCustomDatePicker() {
+        if (routeCustomDatePickerBound) return;
+        routeCustomDatePickerBound = true;
+
+        document.getElementById('headerDatePickerBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openRouteCustomDatePicker();
+        });
+
+        document.getElementById('customCalBackdrop')?.addEventListener('click', (e) => {
+            if (e.target.id === 'customCalBackdrop') closeRouteCustomDatePicker();
+        });
+
+        document.getElementById('calPrevMonth')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            routeCustomCalView.month -= 1;
+            if (routeCustomCalView.month < 0) {
+                routeCustomCalView.month = 11;
+                routeCustomCalView.year -= 1;
+            }
+            renderRouteCustomCalendarGrid();
+        });
+
+        document.getElementById('calNextMonth')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            routeCustomCalView.month += 1;
+            if (routeCustomCalView.month > 11) {
+                routeCustomCalView.month = 0;
+                routeCustomCalView.year += 1;
+            }
+            renderRouteCustomCalendarGrid();
+        });
+
+        document.getElementById('calTodayBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            applyRouteDateSelectionFromPicker(getTodayIsoDate());
+        });
+
+        document.getElementById('customCalGrid')?.addEventListener('click', (e) => {
+            const btn = e.target.closest('.cal-day-cell');
+            if (!btn?.dataset.iso) return;
+            e.preventDefault();
+            applyRouteDateSelectionFromPicker(btn.dataset.iso);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const backdrop = document.getElementById('customCalBackdrop');
+            if (e.key === 'Escape' && backdrop && !backdrop.hidden) {
+                closeRouteCustomDatePicker();
+            }
+        });
+    }
+
     function formatRouteShiftCompactLunchLine(shift, dateKey) {
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         if (isNightShiftRoute(enriched?.route)) {
@@ -2155,7 +2475,7 @@
                 createFromRoute(getSummaryRouteComboboxValue(combobox));
             });
             routeList?.addEventListener('click', (e) => {
-                const option = e.target.closest('.route-combobox-option');
+                const option = closestRouteDropdownOption(e.target);
                 if (!option) return;
                 setSummaryRouteComboboxValue(combobox, option.dataset.route || '', option.dataset.signature || '');
                 routeList.hidden = true;
@@ -2220,9 +2540,11 @@
     function renderRouteShiftCompact() {
         const compact = document.getElementById('routeShiftCompact');
         const chipsEl = document.getElementById('routeShiftTrainChips');
-        const refreshBtn = document.getElementById('routeShiftRefreshBtn');
-        const codeLabel = document.getElementById('routeShiftCodeLabel');
-        const workLine = document.getElementById('routeShiftWorkLine');
+        const refreshBtn = document.getElementById('headerResetBtn');
+        const routeCapsule = document.getElementById('routeSelectorCapsule');
+        const codeLabel = document.getElementById('headerRouteCode');
+        const workLine = document.getElementById('headerShiftTime');
+        const lunchSub = document.getElementById('headerLunchSub');
         const lunchLine = document.getElementById('routeShiftLunchLine');
         const addBtn = document.getElementById('routeShiftAddTrain');
         const legacy = document.querySelector('.trains-dynamic--legacy');
@@ -2237,31 +2559,50 @@
         if (ctx) {
             const enriched = enrichShiftFromDepotTemplate(ctx.shift, ctx.dateKey);
             const code = formatRouteShiftCompactCodeLabel(enriched, ctx.dateKey);
-            if (refreshBtn && codeLabel) {
-                codeLabel.textContent = code || 'Смена';
-                refreshBtn.className = 'route-shift-compact__code-unified badge-shift route-shift-compact__code';
+            applyShiftTypeAccentClasses(routeCapsule, enriched);
+            if (codeLabel) {
+                codeLabel.textContent = code || 'Выбрать маршрут';
+                codeLabel.className = 'route-code route-shift-compact__code-label';
                 if (String(code).includes('/')) {
-                    refreshBtn.classList.add('route-shift-compact__code--night-pair');
+                    codeLabel.classList.add('route-shift-compact__code--night-pair');
                 }
-                getShiftColorClass(enriched).split(/\s+/).filter(Boolean).forEach(cls => {
-                    refreshBtn.classList.add(cls);
-                });
+            }
+            if (refreshBtn) {
+                refreshBtn.classList.remove('is-busy', 'spinning', 'needs-reset');
+                refreshBtn.className = 'header-icon-btn route-shift-header-reset';
             }
             if (workLine) {
-                workLine.innerHTML = formatRouteShiftCompactWorkLineHtml(enriched, ctx.dateKey);
+                workLine.textContent = formatRouteShiftCompactWorkLineCapsule(enriched, ctx.dateKey);
             }
+            let lunchText = '';
+            if (lunchSub) {
+                lunchText = formatRouteHeaderLunchSub(ctx.shift, ctx.dateKey);
+                lunchSub.textContent = lunchText;
+                lunchSub.setAttribute('aria-hidden', lunchText ? 'false' : 'true');
+            }
+            routeCapsule?.classList.toggle('shift-selector-btn--no-lunch', !lunchText);
+            syncRouteHeaderCompactState(ctx.shift);
             if (lunchLine) {
                 const lunchText = formatRouteShiftCompactLunchLine(enriched, ctx.dateKey);
                 lunchLine.textContent = lunchText;
-                const showLunch = Boolean(lunchText);
-                lunchLine.hidden = !showLunch;
-                lunchLine.setAttribute('aria-hidden', showLunch ? 'false' : 'true');
+                lunchLine.hidden = true;
+                lunchLine.setAttribute('aria-hidden', 'true');
             }
         } else {
-            if (refreshBtn && codeLabel) {
-                codeLabel.textContent = 'Смена';
-                refreshBtn.className = 'route-shift-compact__code-unified badge-shift route-shift-compact__code';
+            applyShiftTypeAccentClasses(routeCapsule, null);
+            if (codeLabel) {
+                codeLabel.textContent = 'Выбрать маршрут';
+                codeLabel.className = 'route-code route-shift-compact__code-label';
             }
+            if (refreshBtn) {
+                refreshBtn.className = 'header-icon-btn route-shift-header-reset';
+            }
+            if (lunchSub) {
+                lunchSub.textContent = '';
+                lunchSub.setAttribute('aria-hidden', 'true');
+            }
+            routeCapsule?.classList.add('shift-selector-btn--no-lunch');
+            syncRouteHeaderCompactState(null);
             if (workLine) workLine.textContent = trains.length ? 'Поезда смены' : 'Добавьте поезда';
             if (lunchLine) {
                 lunchLine.hidden = true;
@@ -2400,36 +2741,141 @@
     let routeShiftRoutesMenuDocHandler = null;
     let routeShiftMenuOptionsCacheKey = '';
     let routeShiftMenuOptionsCache = [];
+    const ROUTE_DROPDOWN_INITIAL_LIMIT = 50;
+    const ROUTE_DROPDOWN_SEARCH_LIMIT = 250;
+    const ROUTE_COMBOBOX_FILTER_DEBOUNCE_MS = 60;
+    let routeDropdownPreparedKey = '';
+    let routeDropdownPreparedAll = [];
+    let routeDropdownPreparedRouteTab = [];
+    let routeComboboxFilterTimer = null;
+    let routeShiftMenuFilterTimer = null;
+    const routeDropdownScrollBoundLists = new WeakSet();
+
+    function invalidateRouteDropdownPreparedCache() {
+        routeDropdownPreparedKey = '';
+        routeDropdownPreparedAll = [];
+        routeDropdownPreparedRouteTab = [];
+    }
 
     function invalidateRouteShiftMenuOptionsCache() {
         routeShiftMenuOptionsCacheKey = '';
         routeShiftMenuOptionsCache = [];
+        invalidateRouteDropdownPreparedCache();
+    }
+
+    function prepareRouteDropdownRow(option, dateKey) {
+        const shiftLike = { route: option.route, ...(option.template || {}) };
+        const enriched = enrichShiftWithDisplayLunch(shiftLike, dateKey);
+        const typeClass = getShiftTypeAccentClass(enriched) || '';
+        const codeRaw = String(option.label || option.route || '—').trim();
+        const timeRaw = formatRouteShiftCompactWorkLineCapsule(enriched, dateKey);
+        const lunchRaw = formatRouteShiftMenuLunchLine(enriched, dateKey);
+        const routeLower = String(option.route || '').toLowerCase();
+        const labelLower = codeRaw.toLowerCase();
+        return {
+            signature: option.signature,
+            route: option.route,
+            template: option.template,
+            typeClass,
+            codeHtml: escapeHtml(codeRaw),
+            timeHtml: escapeHtml(timeRaw === '—' ? '' : timeRaw),
+            lunchHtml: escapeHtml(lunchRaw),
+            searchKey: `${labelLower} ${routeLower}`,
+            routeDigits: String(option.route || '').replace(/\D/g, ''),
+            labelDigits: codeRaw.replace(/\D/g, ''),
+        };
+    }
+
+    function ensureRouteDropdownPrepared(dateKey) {
+        const key = String(dateKey || getShiftContextDateKey() || '').trim();
+        const cacheKey = `${key}\u0001${String(activeNormativeId || '')}`;
+        if (routeDropdownPreparedKey === cacheKey && routeDropdownPreparedAll.length) {
+            return routeDropdownPreparedAll;
+        }
+        routeDropdownPreparedKey = cacheKey;
+        const options = getConstructorRouteOptions(key);
+        routeDropdownPreparedAll = options.map((opt) => prepareRouteDropdownRow(opt, key));
+        routeDropdownPreparedRouteTab = routeDropdownPreparedAll.filter(
+            (row) => getShiftRouteKind(row.route) !== 'rest',
+        );
+        routeShiftMenuOptionsCacheKey = key;
+        routeShiftMenuOptionsCache = options.filter((option) => getShiftRouteKind(option.route) !== 'rest');
+        return routeDropdownPreparedAll;
+    }
+
+    function getRouteShiftMenuPreparedRows(dateKey) {
+        ensureRouteDropdownPrepared(dateKey || getRouteTabDateKey());
+        return routeDropdownPreparedRouteTab;
     }
 
     function getRouteShiftMenuOptions(dateKey) {
         const key = dateKey || getRouteTabDateKey();
-        if (routeShiftMenuOptionsCacheKey === key && routeShiftMenuOptionsCache.length) {
-            return routeShiftMenuOptionsCache;
-        }
-        routeShiftMenuOptionsCacheKey = key;
-        routeShiftMenuOptionsCache = getConstructorRouteOptions(key).filter((option) => {
-            return getShiftRouteKind(option.route) !== 'rest';
-        });
+        ensureRouteDropdownPrepared(key);
         return routeShiftMenuOptionsCache;
     }
 
-    function filterRouteShiftMenuOptions(query, options) {
+    function filterPreparedRouteDropdownRows(rows, query) {
         const raw = String(query || '').trim();
-        if (!raw) return options.slice(0, 250);
+        if (!raw) return rows;
+        const qLower = raw.toLowerCase();
         const digitsOnly = raw.replace(/\s/g, '');
         if (/^\d+$/.test(digitsOnly)) {
-            return options.filter((option) => {
-                const routeDigits = String(option.route || '').replace(/\D/g, '');
-                const labelDigits = String(option.label || '').replace(/\D/g, '');
-                return routeDigits.includes(digitsOnly) || labelDigits.includes(digitsOnly);
-            }).slice(0, 250);
+            return rows.filter((row) =>
+                row.routeDigits.includes(digitsOnly) || row.labelDigits.includes(digitsOnly));
         }
-        return filterConstructorRouteOptions(raw, options).slice(0, 250);
+        return rows.filter((row) => row.searchKey.includes(qLower));
+    }
+
+    function buildRouteDropdownRowHtml(row, isSelected) {
+        const selectedCls = isSelected ? ' is-selected active' : '';
+        const typeClass = row.typeClass ? ` ${row.typeClass}` : '';
+        return `<li class="route-shift-routes-menu__option route-dropdown-item${selectedCls}${typeClass}" role="option" tabindex="-1" data-route="${escapeAttr(row.route)}" data-signature="${escapeAttr(row.signature)}">
+            <div class="route-item-left">
+                <span class="route-color-bar" aria-hidden="true"></span>
+                <span class="route-item-code">${row.codeHtml}</span>
+            </div>
+            <div class="route-item-right">
+                <span class="route-item-time">${row.timeHtml || '—'}</span>
+                <span class="route-item-lunch">${row.lunchHtml}</span>
+            </div>
+        </li>`;
+    }
+
+    function bindRouteDropdownScrollLoad(listEl) {
+        if (!listEl || routeDropdownScrollBoundLists.has(listEl)) return;
+        routeDropdownScrollBoundLists.add(listEl);
+        listEl.addEventListener('scroll', () => {
+            const state = listEl.__routeDropdownState;
+            if (!state || state.hasQuery || state.visibleCount >= state.rows.length) return;
+            if (listEl.scrollTop + listEl.clientHeight < listEl.scrollHeight - 24) return;
+            state.visibleCount = Math.min(
+                state.visibleCount + ROUTE_DROPDOWN_INITIAL_LIMIT,
+                state.rows.length,
+            );
+            listEl.innerHTML = state.rows.slice(0, state.visibleCount).map((row) =>
+                buildRouteDropdownRowHtml(row, row.signature === state.selectedSignature),
+            ).join('');
+        }, { passive: true });
+    }
+
+    function paintRouteDropdownList(listEl, preparedRows, query, selectedSignature) {
+        if (!listEl) return;
+        const q = String(query || '').trim();
+        const filtered = filterPreparedRouteDropdownRows(preparedRows, q);
+        const hasQuery = Boolean(q);
+        const limit = hasQuery ? ROUTE_DROPDOWN_SEARCH_LIMIT : ROUTE_DROPDOWN_INITIAL_LIMIT;
+        const visibleCount = Math.min(filtered.length, limit);
+        listEl.innerHTML = filtered.slice(0, visibleCount).map((row) =>
+            buildRouteDropdownRowHtml(row, row.signature === selectedSignature),
+        ).join('');
+        listEl.__routeDropdownState = {
+            rows: filtered,
+            visibleCount,
+            selectedSignature,
+            hasQuery,
+        };
+        if (listEl.scrollTop > 0) listEl.scrollTop = 0;
+        bindRouteDropdownScrollLoad(listEl);
     }
 
     function positionRouteShiftRoutesMenu(anchorEl) {
@@ -2437,7 +2883,7 @@
         if (!menu || !anchorEl) return;
         const rect = anchorEl.getBoundingClientRect();
         const margin = 8;
-        const maxWidth = Math.min(320, window.innerWidth - margin * 2);
+        const maxWidth = Math.min(340, window.innerWidth - margin * 2);
         menu.style.width = `${maxWidth}px`;
         menu.style.left = `${Math.max(margin, Math.min(rect.left, window.innerWidth - maxWidth - margin))}px`;
         const top = rect.bottom + 6;
@@ -2448,7 +2894,7 @@
 
     function closeRouteShiftRoutesMenu() {
         const menu = document.getElementById('routeShiftRoutesMenu');
-        const btn = document.getElementById('routeShiftRoutesDropdown');
+        const btn = document.getElementById('routeSelectorCapsule');
         const search = document.getElementById('routeShiftRoutesMenuSearch');
         if (menu) menu.hidden = true;
         if (btn) btn.setAttribute('aria-expanded', 'false');
@@ -2464,14 +2910,13 @@
         if (!list) return;
 
         const dateKey = getRouteTabDateKey();
-        const options = getRouteShiftMenuOptions(dateKey);
-        const filtered = filterRouteShiftMenuOptions(query, options);
+        const preparedRows = getRouteShiftMenuPreparedRows(dateKey);
         const ctx = resolveRouteShiftContext();
         const selectedSignature = ctx?.shift
             ? buildRouteIdentitySignature(ctx.shift)
             : '';
 
-        if (!options.length) {
+        if (!preparedRows.length) {
             if (depotTemplatesLoadState === 'loading') {
                 list.innerHTML = '<li class="route-shift-routes-menu__empty" role="presentation">Загрузка маршрутов…</li>';
                 return;
@@ -2484,16 +2929,20 @@
             return;
         }
 
+        const filtered = filterPreparedRouteDropdownRows(preparedRows, query);
         if (!filtered.length) {
             list.innerHTML = '<li class="route-shift-routes-menu__empty" role="presentation">Ничего не найдено</li>';
             return;
         }
 
-        list.innerHTML = filtered.map((option) => {
-            const isSelected = option.signature === selectedSignature ? ' is-selected' : '';
-            const routeLabel = escapeHtml(option.label || option.route || '—');
-            return `<li class="route-shift-routes-menu__option${isSelected}" role="option" tabindex="-1" data-route="${escapeAttr(option.route)}" data-signature="${escapeAttr(option.signature)}">${routeLabel}</li>`;
-        }).join('');
+        paintRouteDropdownList(list, preparedRows, query, selectedSignature);
+    }
+
+    function scheduleRenderRouteShiftRoutesMenuList(query = '') {
+        clearTimeout(routeShiftMenuFilterTimer);
+        routeShiftMenuFilterTimer = window.setTimeout(() => {
+            renderRouteShiftRoutesMenuList(query);
+        }, ROUTE_COMBOBOX_FILTER_DEBOUNCE_MS);
     }
 
     function applyRouteShiftRouteSelection(route, signature = '') {
@@ -2593,7 +3042,7 @@
     function toggleRouteShiftRoutesMenu() {
         if (isScheduleMaintenanceOn()) return;
         const menu = document.getElementById('routeShiftRoutesMenu');
-        const btn = document.getElementById('routeShiftRoutesDropdown');
+        const btn = document.getElementById('routeSelectorCapsule');
         const search = document.getElementById('routeShiftRoutesMenuSearch');
         if (!menu || !btn) return;
 
@@ -2603,35 +3052,38 @@
             return;
         }
 
-        closeAllSummaryRouteLists();
-        closeRouteCombobox();
-        applyNormativeForDateKey(getRouteTabDateKey());
-        loadGlobalShiftTemplates();
-        positionRouteShiftRoutesMenu(btn);
-        menu.hidden = false;
-        btn.setAttribute('aria-expanded', 'true');
-        const templatesReady = isValidGlobalTemplateCache(depotShiftTemplates);
-        if (!templatesReady) {
-            depotTemplatesLoadState = 'loading';
-        }
-        renderRouteShiftRoutesMenuList('');
-        if (!templatesReady) {
-            void ensureDepotTemplatesLoaded().then(() => renderRouteShiftRoutesMenuList(search?.value || ''));
-        }
+        void runWithClockLoader('Маршруты…', async () => {
+            closeAllSummaryRouteLists();
+            closeRouteCombobox();
+            applyNormativeForDateKey(getRouteTabDateKey());
+            loadGlobalShiftTemplates();
+            positionRouteShiftRoutesMenu(btn);
+            const templatesReady = isValidGlobalTemplateCache(depotShiftTemplates);
+            if (!templatesReady) {
+                depotTemplatesLoadState = 'loading';
+            }
+            renderRouteShiftRoutesMenuList('');
+            if (!templatesReady) {
+                await ensureDepotTemplatesLoaded();
+                renderRouteShiftRoutesMenuList(search?.value || '');
+            }
+            menu.hidden = false;
+            btn.setAttribute('aria-expanded', 'true');
 
-        if (routeShiftRoutesMenuDocHandler) {
-            document.removeEventListener('click', routeShiftRoutesMenuDocHandler);
-        }
-        routeShiftRoutesMenuDocHandler = (e) => {
-            const target = e.target;
-            if (menu.contains(target) || btn.contains(target)) return;
-            closeRouteShiftRoutesMenu();
-        };
-        document.addEventListener('click', routeShiftRoutesMenuDocHandler);
+            if (routeShiftRoutesMenuDocHandler) {
+                document.removeEventListener('click', routeShiftRoutesMenuDocHandler);
+            }
+            routeShiftRoutesMenuDocHandler = (e) => {
+                const target = e.target;
+                if (menu.contains(target) || btn.contains(target)) return;
+                closeRouteShiftRoutesMenu();
+            };
+            document.addEventListener('click', routeShiftRoutesMenuDocHandler);
 
-        requestAnimationFrame(() => {
-            search?.focus();
-            search?.select();
+            requestAnimationFrame(() => {
+                search?.focus();
+                search?.select();
+            });
         });
     }
 
@@ -2878,25 +3330,34 @@
         if (routeShiftCompactListenersBound) return;
         routeShiftCompactListenersBound = true;
 
-        document.getElementById('routeShiftRoutesDropdown')?.addEventListener('click', (e) => {
+        document.getElementById('routeSelectorCapsule')?.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleRouteShiftRoutesMenu();
         });
 
-        document.getElementById('routeShiftRefreshBtn')?.addEventListener('click', (e) => {
+        document.getElementById('headerResetBtn')?.addEventListener('click', (e) => {
             e.stopPropagation();
             const btn = e.currentTarget;
             if (btn?.classList.contains('is-busy')) return;
-            btn?.classList.add('is-busy');
-            try {
+            btn.classList.add('is-busy');
+            btn.classList.remove('spinning');
+            void btn.offsetWidth;
+            btn.classList.add('spinning');
+            const ctx = resolveRouteShiftContext();
+            if (ctx?.shift?.route) {
+                calendarResetShiftToTemplate(ctx.shiftIndex, ctx.dateKey);
+                getRouteData();
+                showDaActionToast('Сброс к нормативу', 2800);
+            } else {
                 refreshRouteShiftTimesFromTemplate();
-            } finally {
-                window.setTimeout(() => btn?.classList.remove('is-busy'), 650);
             }
+            window.setTimeout(() => {
+                btn.classList.remove('is-busy', 'spinning');
+            }, 650);
         });
 
         document.getElementById('routeShiftRoutesMenuSearch')?.addEventListener('input', (e) => {
-            renderRouteShiftRoutesMenuList(e.target.value);
+            scheduleRenderRouteShiftRoutesMenuList(e.target.value);
         });
         document.getElementById('routeShiftRoutesMenuSearch')?.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -2925,7 +3386,7 @@
         window.addEventListener('resize', () => {
             const menu = document.getElementById('routeShiftRoutesMenu');
             if (menu && !menu.hidden) {
-                positionRouteShiftRoutesMenu(document.getElementById('routeShiftRoutesDropdown'));
+                positionRouteShiftRoutesMenu(document.getElementById('routeSelectorCapsule'));
             }
         });
 
@@ -3035,40 +3496,11 @@
         const initialIso = savedDate || `${yyyy}${DASH_CHAR}${mm}${DASH_CHAR}${dd}`;
         setSelectedDateIso(initialIso);
 
-        const datePickerLabel = document.getElementById('datePickerLabel');
-        const openDatePicker = () => {
-            if (typeof dateInput.showPicker === 'function') {
-                try {
-                    dateInput.showPicker();
-                    return;
-                } catch (err) {
-                    /* showPicker может быть заблокирован без user gesture */
-                }
-            }
-            dateInput.focus({ preventScroll: true });
-            dateInput.click();
-        };
-
-        datePickerLabel?.addEventListener('click', (e) => {
-            e.preventDefault();
-            openDatePicker();
-        });
-
         dateInput.addEventListener('change', () => {
-            abortRouteScheduleLoadsForContextChange();
-            setSelectedDateIso(dateInput.value);
-            invalidateRouteShiftMenuOptionsCache();
-            closeRouteShiftRoutesMenu();
-            renderRouteShiftCompact();
-            refreshRouteShiftEditorIfOpen();
-            renderRoutesFromCacheIfVisible();
-            renderScheduleFromCacheIfVisible();
+            applyRouteDateSelectionFromPicker(dateInput.value);
         });
 
-        dateInput.addEventListener('input', () => {
-            updateDateDisplayText(dateInput.value);
-            updateScheduleDateHint();
-        });
+        initRouteCustomDatePicker();
 
         updateScheduleDateHint();
 
@@ -3105,6 +3537,7 @@
         initProfileHeaderPersonalization();
         initProfilePositionSelect();
         initProfileMonthSelector();
+        ensureShiftTemplatesMemoryFromPersisted();
         initUserAuth();
         if (typeof window.initProfileComplianceUi === 'function') {
             window.initProfileComplianceUi();
@@ -3165,6 +3598,7 @@
         syncOfflineModeUi();
         window.addEventListener('online', () => {
             syncOfflineModeUi();
+            void runOfflineReconnectSync();
         });
         window.addEventListener('offline', () => {
             syncOfflineModeUi();
@@ -3271,7 +3705,7 @@
     }
 
     function updateDateDisplayText(iso) {
-        const el = document.getElementById('dateDisplayText');
+        const el = document.getElementById('headerDateLabel');
         if (el) el.textContent = formatRouteShiftHeaderDate(iso) || formatShiftDateDisplay(iso);
     }
 
@@ -5342,14 +5776,19 @@
     }
 
     async function loadReferenceData() {
-        sprDataCache = await fetchJsonAsset(
-            ['./spr.json', 'spr.json'],
-            REFERENCE_SPR_STORAGE_KEY,
-            {}
-        );
-        rebuildSprLookups();
+        setCrewSyncIndicator(true, 'Справочники…', 'reference-data');
+        try {
+            sprDataCache = await fetchJsonAsset(
+                ['./spr.json', 'spr.json'],
+                REFERENCE_SPR_STORAGE_KEY,
+                {}
+            );
+            rebuildSprLookups();
 
-        localTrainsCache = await loadTrainsLocalRegistry();
+            localTrainsCache = await loadTrainsLocalRegistry();
+        } finally {
+            setCrewSyncIndicator(false, '', 'reference-data');
+        }
     }
 
     async function loadTrainsLocalRegistry() {
@@ -6516,6 +6955,17 @@
         return trainEntries.every((entry) => isTrainRouteDisplayReady(entry.train));
     }
 
+    function canPaintRouteFromLocalCache(inputs, trainPlan, baseDate) {
+        const inputList = Array.isArray(inputs) ? inputs.filter(Boolean) : [];
+        if (!inputList.length || !baseDate) return false;
+        const cacheOpts = { fromCacheOnly: true, forceRefresh: false, threadsOnly: false };
+        const resolvedTrains = inputList.map((n) => resolveTrainForRouteGrid(n, cacheOpts));
+        const routeEntries = buildRouteTrainEntries(inputList, resolvedTrains, trainPlan);
+        if (routeEntriesAllReady(routeEntries)) return true;
+        const boardDates = collectRouteBoardDatesForShift(trainPlan, baseDate, inputList);
+        return boardDates.some((d) => stationBoardIsReady(d));
+    }
+
     function setRoutePaneLoading(active, message, options = {}) {
         const pane = document.getElementById('tab-route');
         const loader = document.getElementById('routeLoader');
@@ -6671,6 +7121,10 @@
 
         if (allReady) {
             return paintRouteGridCommitted(routeEntries, paintOptions, requestId, 'primary');
+        }
+
+        if (paintOptions.backgroundSync) {
+            return false;
         }
 
         const trainLabel = inputList.length === 1
@@ -9636,7 +10090,16 @@
         const requestId = ++routeDataRequestId;
         resetScheduleMotionState();
         window.TrainMotionTimer?.resetRouteCardLiveFooters?.();
-        setRoutePaneLoading(true, 'Получение данных...', { clearGrid: false });
+        const hasLocalRouteCache = canPaintRouteFromLocalCache(inputs, trainPlan, baseDate);
+        const useBackgroundRouteIndicator = fromCacheOnly || hasLocalRouteCache;
+        if (useBackgroundRouteIndicator) {
+            setRoutePaneLoading(false);
+            if (!fromCacheOnly) {
+                setCrewSyncIndicator(true, 'Обновление маршрута…', 'route-data');
+            }
+        } else {
+            setRoutePaneLoading(true, 'Получение данных...', { clearGrid: false });
+        }
 
         if (!fromCacheOnly || forceRefresh) {
             resetSchedulePushState();
@@ -9647,7 +10110,7 @@
         ensureScheduleNotificationPermission();
         userStorageSet('trainNumbers', inputs);
 
-        const paintOptions = { baseDate, fromCacheOnly };
+        const paintOptions = { baseDate, fromCacheOnly, backgroundSync: useBackgroundRouteIndicator };
 
         const finalizeRouteLoad = () => {
             if (requestId !== routeDataRequestId) return;
@@ -9655,6 +10118,12 @@
             const committed = tryCommitRouteGrid(requestId, inputs, searchOptions, trainPlan, paintOptions);
             if (committed) {
                 setRoutePaneLoading(false);
+                setCrewSyncIndicator(false, '', 'route-data');
+            } else if (useBackgroundRouteIndicator) {
+                setRoutePaneLoading(false);
+                if (!fromCacheOnly && navigator.onLine) {
+                    setCrewSyncIndicator(true, 'Загрузка остановок…', 'route-data');
+                }
             } else if (stationBoardIsReady(baseDate)) {
                 setRoutePaneLoading(true, 'Загрузка остановок поездов…', { clearGrid: false });
             } else {
@@ -9673,13 +10142,17 @@
             const committed = tryCommitRouteGrid(requestId, inputs, searchOptions, trainPlan, paintOptions);
             if (committed) {
                 setRoutePaneLoading(false);
+                setCrewSyncIndicator(false, '', 'route-data');
             }
             if (refreshBtn && refreshBtn.dataset.refreshBusy !== '1') {
                 refreshBtn.classList.remove('is-loading');
             }
             const open = String(userStorageGet('lastSingleTrain') || '').trim();
             if (open) getScheduleData(open, { fromCacheOnly: true });
-            void hydrateRouteStopsForRequest().finally(finalizeRouteLoad);
+            void hydrateRouteStopsForRequest().finally(() => {
+                finalizeRouteLoad();
+                setCrewSyncIndicator(false, '', 'route-data');
+            });
         };
 
         function hydrateRouteStopsForRequest() {
@@ -9800,10 +10273,29 @@
         const requestId = ++scheduleDataRequestId;
         resetScheduleMotionState();
         resetScheduleResults();
-        setSchedulePaneLoading(true, 'Загрузка остановок...');
 
         const trainPlan = resolveShiftTrainPlanForInputs(getTrainNumbersFromDom());
         const searchOpts = { ...options, trainPlan };
+        const cacheOpts = { ...searchOpts, fromCacheOnly: true };
+        const cachedTrain = resolveTrainLocalSync(input, cacheOpts);
+        const cacheReady = options.fromCacheOnly === true
+            || (cachedTrain && isTrainRouteDisplayReady(cachedTrain));
+        if (cacheReady) {
+            setSchedulePaneLoading(false);
+        } else {
+            setSchedulePaneLoading(true, 'Загрузка остановок...');
+        }
+        if (cachedTrain && isTrainRouteDisplayReady(cachedTrain)) {
+            renderTimelineFromData(
+                cachedTrain.stops,
+                cachedTrain.number || input,
+                resolveTrainScheduleDateForNumber(input, trainPlan, selectedDate),
+                cachedTrain,
+            );
+            updateScheduleEmptyState();
+            syncScheduleLiveClock();
+            if (options.fromCacheOnly) return;
+        }
         const planEntry = planEntryForNumber(trainPlan, input);
         const scheduleDay = resolveTrainScheduleDateForNumber(input, trainPlan, selectedDate);
         const scheduleBoardDates = collectRouteBoardDatesForShift(trainPlan, selectedDate, [input]);
@@ -10487,16 +10979,16 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Выявлен баг календаря: вторая ночь (У+Н) не сбрасывается при выходе из приложения',
-            'Оптимизирован расчёт и вычитание времени обеда',
-            'Фиксы автосохранения маршрутов при синхронизации с crew-api',
-            'Вместо всплывающей загрузки — индикатор синхронизации в часах (офлайн-режим)'
+            'Календарь: новая карточка дня — время явки/сдачи и обеда прямо в капсулах, без модалок',
+            'Заметка к смене в шапке карточки: строка ввода, копирование и очистка',
+            'Обед: единая капсула времени, крестик удаления внутри рамки',
+            'Шапка дня: дата слева, выбор маршрута справа; компактные итоги часов и оплаты'
         ],
         highlights: [
-            'Выявлен баг календаря: вторая ночь (У+Н) не сбрасывается при выходе из приложения',
-            'Оптимизирован расчёт и вычитание времени обеда',
-            'Фиксы автосохранения маршрутов при синхронизации с crew-api',
-            'Вместо всплывающей загрузки — индикатор синхронизации в часах (офлайн-режим)'
+            'Календарь: новая карточка дня — время явки/сдачи и обеда прямо в капсулах, без модалок',
+            'Заметка к смене в шапке карточки: строка ввода, копирование и очистка',
+            'Обед: единая капсула времени, крестик удаления внутри рамки',
+            'Шапка дня: дата слева, выбор маршрута справа; компактные итоги часов и оплаты'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -11557,7 +12049,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=20261112b')
+        navigator.serviceWorker.register('./sw.js?v=5.1.6')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -13096,6 +13588,15 @@
                     keepSelectedDay: true,
                     skipConstructor: !calendarSelectedDateKey,
                 });
+                if (calendarSelectedDateKey) {
+                    const mk = calendarSelectedDateKey.split('.');
+                    if (mk.length === 3) {
+                        const d = parseInt(mk[0], 10);
+                        const m = parseInt(mk[1], 10) - 1;
+                        const y = parseInt(mk[2], 10);
+                        renderShiftConstructor(calendarSelectedDateKey, d, m, y);
+                    }
+                }
             }
         }
         if (Array.isArray(data.wall) && typeof window.daCrewWallApplySync === 'function') {
@@ -14043,6 +14544,7 @@
     }
 
     function lockAppAuth() {
+        document.documentElement.classList.remove('da-auth-early-unlock');
         document.body.classList.add('auth-locked');
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.remove('hidden');
@@ -14051,10 +14553,13 @@
     }
 
     function unlockAppAuth(options = {}) {
+        document.documentElement.classList.remove('da-auth-early-unlock');
         document.body.classList.remove('auth-locked');
         stopAuthLoginFieldPoll();
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
+        ensureShiftTemplatesMemoryFromPersisted();
+        applyNormativeForDateKey(getShiftContextDateKey());
         void loadLocalShiftTemplatesBundle().then(() => {
             applyNormativeForDateKey(getShiftContextDateKey());
             if (isValidGlobalTemplateCache(depotShiftTemplates)) {
@@ -14069,18 +14574,11 @@
         });
         void maybeShowReleaseNotesOverlay();
         if (options.skipLoadShifts) {
-            window.DaLoad?.releaseBoot?.();
+            syncOfflineModeUi();
             return;
         }
-        const APP_BOOT_CALENDAR_MS = 7500;
-        void Promise.race([
-            startCalendar({ skipServerSync: options.skipCrewSync === true }),
-            new Promise((resolve) => window.setTimeout(resolve, APP_BOOT_CALENDAR_MS)),
-        ]).catch((err) => {
-            console.warn('[boot] startCalendar', err);
-        }).finally(() => {
-            window.DaLoad?.releaseBoot?.();
-        });
+        void startCalendar({ skipServerSync: options.skipCrewSync === true });
+        syncOfflineModeUi();
     }
 
     function migrateAuthSession() {
@@ -14790,7 +15288,6 @@
     function initUserAuth() {
         if (window.__daAppBootStarted) return;
         window.__daAppBootStarted = true;
-        window.DaLoad?.armBootFailsafe?.(APP_BOOT_GUARD_MS);
 
         migrateAuthSession();
         bindBackgroundSyncVisibilityGuard();
@@ -14861,11 +15358,6 @@
             ]);
         } catch (err) {
             console.warn('[boot] finalize', err);
-            window.DaLoad?.showBootRecovery?.('Не удалось завершить инициализацию. Сбросьте кэш и войдите снова.');
-        } finally {
-            if (document.body.classList.contains('auth-locked')) {
-                window.DaLoad?.releaseBoot?.();
-            }
         }
     }
 
@@ -15157,6 +15649,7 @@
             constructorRouteOptions = new Map();
             invalidateRouteShiftMenuOptionsCache();
             renderRouteComboboxListIfOpen();
+            renderRouteShiftRoutesMenuList(document.getElementById('routeShiftRoutesMenuSearch')?.value || '');
         }
         return bundle;
     }
@@ -15398,9 +15891,15 @@
     }
 
     async function fetchShiftTemplatesJson(url) {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return normalizeShiftBundleData(await res.json());
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), SHIFT_TEMPLATES_FETCH_TIMEOUT_MS);
+        try {
+            const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return normalizeShiftBundleData(await res.json());
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     function buildShiftHoursUpdateHighlights(meta) {
@@ -15484,7 +15983,7 @@
         if (!forceRefresh && localShiftTemplatesPromise) return localShiftTemplatesPromise;
 
         localShiftTemplatesPromise = (async () => {
-            setCrewSyncIndicator(true, 'База маршрутов…', 'shift-templates');
+            setCrewSyncIndicator(true, 'Обновление базы…', 'shift-templates');
             try {
                 const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
                     || [LOCAL_SHIFT_TEMPLATES_URL];
@@ -15570,6 +16069,7 @@
                 }
             } finally {
                 setCrewSyncIndicator(false, '', 'shift-templates');
+                invalidateRouteShiftMenuOptionsCache();
             }
             return localShiftNormatives;
         })();
@@ -15652,25 +16152,53 @@
         const mode = options.mode || (shift && isRestDayRoute(shift.route) ? 'replace' : 'default');
         const workPresets = mode === 'replace' ? getRestDayReplacePresets() : getQuickPresetGroups(shift).work;
         const presetActiveId = shift && isAveragePayShift(shift) ? '' : selectedPresetId;
-        const groupsHtml = buildShiftQuickRouteGroupsHtml(workPresets, shift, presetActiveId, { includeStatus: true });
+        const dockSingleRow = options.dockSingleRow === true;
+        const groupsInner = buildShiftQuickRouteGroupsHtml(workPresets, shift, presetActiveId, { includeStatus: true })
+            .replace(/^<div class="shift-card__quick-groups">/, '')
+            .replace(/<\/div>\s*$/, '');
+        const groupsClass = dockSingleRow
+            ? 'shift-card__quick-groups shift-card__quick-groups--single-row'
+            : 'shift-card__quick-groups';
+        const dockClass = dockSingleRow ? ' shift-card__quick-routes--dock' : '';
 
         if (mode === 'replace') {
             return `
-            <div class="shift-card__quick-routes shift-card__quick-routes--replace">
-                ${groupsHtml}
+            <div class="shift-card__quick-routes shift-card__quick-routes--replace${dockClass}">
+                <div class="${groupsClass}">${groupsInner}</div>
             </div>`;
         }
 
+        const labelHtml = dockSingleRow
+            ? '<span class="shift-card__quick-label shift-card__quick-label--dock">Быстрые</span>'
+            : '<span class="shift-card__quick-label">Быстрые маршруты</span>';
+
+        const rowClass = dockSingleRow ? ' calendar-local-routes-row' : '';
         return `
-            <div class="shift-card__quick-routes">
-                <span class="shift-card__quick-label">Быстрые маршруты</span>
-                ${groupsHtml}
+            <div class="shift-card__quick-routes${dockClass}${rowClass}">
+                ${labelHtml}
+                <div class="${groupsClass}">${groupsInner}</div>
             </div>`;
     }
 
-    function buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable) {
+    function buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable, options = {}) {
+        const dockCompact = options.calendarDockCompact === true;
         const routePickerHtml = editable
-            ? `<div class="shift-card__row shift-card__row--route shift-rest-panel__route">
+            ? (dockCompact
+                ? `<div class="shift-card__route-picker" data-dock-route-picker>
+                    <div class="shift-card__route-pill shift-card__route-pill--compact">
+                        <div class="route-combobox shift-summary__route" data-summary-route-combobox>
+                            <input type="text" class="route-combobox-input shift-summary__route-input shift-card__route-input" data-summary-route-input
+                                value="" placeholder="Н59" autocomplete="off"
+                                aria-label="Маршрут" aria-expanded="false" role="combobox">
+                            <input type="hidden" data-summary-route-value value="">
+                            <input type="hidden" data-summary-route-signature value="">
+                        </div>
+                        <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+                    </div>
+                    <ul class="route-combobox-list shift-summary__route-list" data-summary-route-list role="listbox" hidden></ul>
+                </div>
+                <div class="shift-card__row shift-card__row--dock-quick">${buildShiftPanelQuickRoutesInline('', null, { mode: 'replace', dockSingleRow: true })}</div>`
+                : `<div class="shift-card__row shift-card__row--route shift-rest-panel__route">
                 <span class="shift-card__label">Маршрут</span>
                 <div class="shift-card__field">
                     <div class="shift-card__route-area">
@@ -15690,7 +16218,7 @@
                         ${buildShiftPanelQuickRoutesInline('', null, { mode: 'replace' })}
                     </div>
                 </div>
-            </div>`
+            </div>`)
             : '';
 
         return `
@@ -15816,6 +16344,7 @@
         const shift = buildShiftFromLocalPreset(preset, customHours);
         delete shift.shiftStatus;
         applyShiftToCalendarDay(dateKey, shift);
+        syncLocalPresetUi(presetId);
         calendarNotifyShiftsChanged(dateKey);
 
         const shifts = getStoredDayShifts(dateKey);
@@ -15899,13 +16428,18 @@
     }
 
     function syncLocalPresetUi(presetId) {
-        const wrap = document.getElementById('constructorLocalRoutes');
-        if (!wrap) return;
         const preset = presetId ? getLocalRoutePresetById(presetId) : null;
-        wrap.querySelectorAll('.calendar-local-route-btn, .shift-day-panel__quick-btn').forEach(btn => {
-            const active = btn.dataset.localPreset === presetId;
-            btn.classList.toggle('is-active', active);
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        const scopes = [
+            document.getElementById('constructorLocalRoutes'),
+            document.getElementById('constructorContent'),
+        ].filter(Boolean);
+        scopes.forEach(wrap => {
+            wrap.querySelectorAll('.calendar-local-route-btn, .shift-card__quick-btn, [data-local-preset]').forEach(btn => {
+                const btnPresetId = btn.getAttribute('data-local-preset') || btn.dataset.localPreset || '';
+                const active = Boolean(presetId) && btnPresetId === presetId;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
         });
         const hoursWrap = document.getElementById('constructorCustomHoursWrap');
         if (hoursWrap) hoursWrap.hidden = !preset?.hoursEditable;
@@ -16086,39 +16620,48 @@
         }
     }
 
-    async function startCalendar(options = {}) {
+    function startCalendar(options = {}) {
         if (!getAuthSessionTab()) {
             calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
+            syncOfflineModeUi();
             return;
         }
-        const run = async () => {
-            if (!options.skipLoad) {
-                await loadUserShifts({ force: options.forceLoad === true });
-            }
-            calendarRenderCalendar({
-                keepSelectedDay: true,
-                skipConstructor: !calendarSelectedDateKey,
-            });
-            if (options.skipServerSync || !window.DaCrewApi?.isEnabled?.()) {
-                applyNormativeForDateKey(getShiftContextDateKey());
-                return;
-            }
-            setCrewSyncIndicator(true, 'Синхронизация смен', 'crew-calendar');
+        if (!options.skipLoad) {
+            void loadUserShifts({ force: options.forceLoad === true });
+        }
+        calendarRenderCalendar({
+            keepSelectedDay: true,
+            skipConstructor: !calendarSelectedDateKey,
+        });
+        applyNormativeForDateKey(getShiftContextDateKey());
+
+        if (options.skipServerSync || !window.DaCrewApi?.isEnabled?.()) {
+            syncOfflineModeUi();
+            return;
+        }
+        if (!navigator.onLine) {
+            syncOfflineModeUi();
+            return;
+        }
+
+        void (async () => {
+            setCrewSyncIndicator(true, 'Синхронизация…', 'crew-calendar');
             try {
                 await DaCrewApi.flushOfflineQueue();
                 await syncCrewApiAdjacentMonths(calendarCurrentDate, options.syncOptions || {});
+                calendarRenderCalendar({
+                    keepSelectedDay: true,
+                    skipConstructor: !calendarSelectedDateKey,
+                });
+                applyNormativeForDateKey(getShiftContextDateKey());
+                updateProfileScreen();
             } catch (err) {
                 console.warn('[crew-api] startCalendar sync', err);
-                showDaErrorToast('Не удалось синхронизировать смены с сервером');
             } finally {
                 setCrewSyncIndicator(false, '', 'crew-calendar');
+                syncOfflineModeUi();
             }
-            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
-            applyNormativeForDateKey(getShiftContextDateKey());
-            updateProfileScreen();
-        };
-        // Не используем DaLoad.run — полноэкранная оболочка мешает; статус синхронизации — crew-sync-badge у часов (setCrewSyncIndicator).
-        await run();
+        })();
     }
 
     let routeComboboxDocHandler = null;
@@ -16175,11 +16718,11 @@
         if (!list || !input) return;
 
         const dateKey = calendarSelectedDateKey || getShiftContextDateKey();
-        const options = getConstructorRouteOptions(dateKey);
-        const filtered = filterConstructorRouteOptions(query || input.value, options);
+        const preparedRows = ensureRouteDropdownPrepared(dateKey);
         const selectedSignature = getConstructorSelectedRouteSignature();
+        const searchQuery = query || input.value;
 
-        if (!options.length) {
+        if (!preparedRows.length) {
             if (depotTemplatesLoadState === 'loading') {
                 list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
                 return;
@@ -16192,29 +16735,46 @@
             return;
         }
 
+        const filtered = filterPreparedRouteDropdownRows(preparedRows, searchQuery);
         if (!filtered.length) {
             list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены</li>';
             return;
         }
 
-        list.innerHTML = filtered.map(option => {
-            const isSelected = option.signature === selectedSignature ? ' is-selected' : '';
-            return `<li class="route-combobox-option${isSelected}" role="option" data-route="${escapeAttr(option.route)}" data-signature="${escapeAttr(option.signature)}">${escapeHtml(option.label)}</li>`;
-        }).join('');
+        paintRouteDropdownList(list, preparedRows, searchQuery, selectedSignature);
+    }
+
+    function scheduleRenderRouteComboboxList(query = '') {
+        clearTimeout(routeComboboxFilterTimer);
+        routeComboboxFilterTimer = window.setTimeout(() => {
+            renderRouteComboboxList(query);
+        }, ROUTE_COMBOBOX_FILTER_DEBOUNCE_MS);
     }
 
     function openRouteCombobox() {
         const list = document.getElementById('constructorRouteList');
         const input = document.getElementById('constructorRouteInput');
         if (!list || !input) return;
-        applyNormativeForDateKey(calendarSelectedDateKey || getShiftContextDateKey());
-        if (!isValidGlobalTemplateCache(depotShiftTemplates)) {
-            depotTemplatesLoadState = 'loading';
-        }
-        renderRouteComboboxList(input.value);
-        list.hidden = false;
-        input.setAttribute('aria-expanded', 'true');
-        void ensureDepotTemplatesLoaded();
+        if (list.dataset.routeOpenBusy === '1') return;
+        list.dataset.routeOpenBusy = '1';
+        void runWithClockLoader('Маршруты…', async () => {
+            try {
+                const dateKey = calendarSelectedDateKey || getShiftContextDateKey();
+                if (list.dataset.preparedDateKey !== dateKey) {
+                    applyNormativeForDateKey(dateKey);
+                    list.dataset.preparedDateKey = dateKey;
+                }
+                if (!isValidGlobalTemplateCache(depotShiftTemplates)) {
+                    depotTemplatesLoadState = 'loading';
+                    await ensureDepotTemplatesLoaded();
+                }
+                renderRouteComboboxList(input.value);
+                list.hidden = false;
+                input.setAttribute('aria-expanded', 'true');
+            } finally {
+                list.dataset.routeOpenBusy = '0';
+            }
+        });
     }
 
     function closeRouteCombobox() {
@@ -16256,7 +16816,11 @@
                 const matchingPreset = getLocalRoutePresetByRoute(input.value);
                 if (matchingPreset) syncLocalPresetUi(matchingPreset.id);
             }
-            openRouteCombobox();
+            if (list.hidden) {
+                openRouteCombobox();
+            } else {
+                scheduleRenderRouteComboboxList(input.value);
+            }
         });
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -16271,7 +16835,7 @@
                 void ensureDepotTemplatesLoaded({ force: true });
                 return;
             }
-            const option = e.target.closest('.route-combobox-option');
+            const option = closestRouteDropdownOption(e.target);
             if (!option) return;
             const route = option.getAttribute('data-route') || '';
             const signature = option.getAttribute('data-signature') || '';
@@ -16280,8 +16844,11 @@
             syncLocalPresetUi(matchingPreset ? matchingPreset.id : '');
             closeRouteCombobox();
             const dateKey = calendarSelectedDateKey;
-            if (dateKey && !getStoredDayShifts(dateKey).length) {
+            if (!dateKey) return;
+            if (!getStoredDayShifts(dateKey).length) {
                 calendarAddShift();
+            } else {
+                applyConstructorRoutePick(route, signature);
             }
         });
 
@@ -16453,6 +17020,113 @@
         if (cls.includes('has-tech-shift')) return { label: 'Тех. обучение', color: 'var(--tech-shift)' };
         if (cls.includes('has-route99-day') || cls.includes('has-day-shift')) return { label: 'День', color: 'var(--day-shift)' };
         return { label: 'День', color: 'var(--day-shift)' };
+    }
+
+    const ROUTE_SHIFT_TYPE_CLASSES = ['shift-type-day', 'shift-type-night', 'shift-type-morn', 'shift-type-to'];
+
+    function getShiftTypeAccentClass(shift) {
+        const routeKind = getShiftRouteKind(shift?.route || shift?.name || '');
+        if (routeKind === 'morning') return 'shift-type-morn';
+        const cls = getShiftColorClass(shift || {});
+        if (cls.includes('has-tech-shift')) return 'shift-type-to';
+        if (cls.includes('has-night-shift') || cls.includes('has-route99-night')) return 'shift-type-night';
+        if (cls.includes('has-study-shift') || cls.includes('has-route99-morning')) return 'shift-type-morn';
+        if (cls.includes('has-day-shift') || cls.includes('has-route99-day')) return 'shift-type-day';
+        return '';
+    }
+
+    function applyShiftTypeAccentClasses(el, shift) {
+        if (!el) return;
+        ROUTE_SHIFT_TYPE_CLASSES.forEach((c) => el.classList.remove(c));
+        const accent = getShiftTypeAccentClass(shift);
+        if (accent) el.classList.add(accent);
+    }
+
+    function sanitizeLunchFieldForDisplay(raw) {
+        const source = String(raw ?? '').trim();
+        if (!source || source === '—' || source === '-') return '';
+        const withoutStars = source.replace(/\*{1,3}/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!withoutStars) return '';
+        const { lunch } = parseShiftLunchField(withoutStars);
+        return String(lunch || withoutStars).trim();
+    }
+
+    function enrichShiftWithDisplayLunch(shift, dateKey) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const cleanLunch = sanitizeLunchFieldForDisplay(enriched?.lunch);
+        if (cleanLunch) {
+            return { ...enriched, lunch: cleanLunch };
+        }
+        return enriched;
+    }
+
+    function formatRouteShiftMenuLunchLine(shift, dateKey) {
+        const enriched = enrichShiftWithDisplayLunch(shift, dateKey);
+        if (isMorningRoute(enriched?.route)) return 'Без обеда';
+        if (isShiftLunchFieldEmpty(enriched?.lunch)) return 'Без обеда';
+        const timeLine = formatShiftLunchTimeDisplay(enriched, dateKey);
+        if (timeLine && timeLine !== '—') {
+            return `Обед ${timeLine.replace(/\s*–\s*/, '–')}`;
+        }
+        const mins = parseLunchDurationMinutes(enriched?.lunch);
+        if (mins > 0) return `Обед ${mins} мин`;
+        return 'Без обеда';
+    }
+
+    function formatLunchTimeTokenCompact(token) {
+        const norm = normalizeShiftTimeToken(token || '');
+        if (!norm) return '';
+        const [h, m] = norm.split(':');
+        const hour = parseInt(h, 10);
+        if (!Number.isFinite(hour)) return norm;
+        return `${hour}:${m}`;
+    }
+
+    function formatRouteHeaderLunchSub(shift, dateKey) {
+        const enriched = enrichShiftWithDisplayLunch(shift, dateKey);
+        if (isMorningRoute(enriched?.route)) return '';
+        if (isShiftLunchFieldEmpty(enriched?.lunch)) return '';
+        const timeLine = formatShiftLunchTimeDisplay(enriched, dateKey);
+        if (timeLine && timeLine !== '—') {
+            const parts = timeLine.split(/\s*–\s*/).map(formatLunchTimeTokenCompact).filter(Boolean);
+            if (parts.length >= 2) return `обед ${parts.join(' · ')}`;
+            if (parts.length === 1) return `обед ${parts[0]}`;
+        }
+        const mins = parseLunchDurationMinutes(enriched?.lunch);
+        if (mins > 0) return `обед ${mins}м`;
+        return '';
+    }
+
+    function closestRouteDropdownOption(target) {
+        return target?.closest?.('.route-dropdown-item, .route-combobox-option');
+    }
+
+    function applyConstructorRoutePick(route, signature = '') {
+        const dateKey = calendarSelectedDateKey || getShiftContextDateKey();
+        if (!dateKey || !route) return false;
+        applyNormativeForDateKey(dateKey);
+        loadGlobalShiftTemplates();
+        let template = signature ? constructorRouteOptions.get(signature) : null;
+        if (!template) template = findShiftTemplate(depotShiftTemplates, route, dateKey);
+        if (!template) {
+            const matched = findConstructorRouteOption(dateKey, route, null);
+            template = matched?.template || null;
+        }
+        if (!template) return false;
+        applyShiftTemplateToCalendar(dateKey, template);
+        calendarNotifyShiftsChanged(dateKey);
+        const shifts = getStoredDayShifts(dateKey);
+        const shiftIndex = pickRouteShiftIndex(dateKey, shifts);
+        if (shifts[shiftIndex]) {
+            syncRouteContextFromCalendar(dateKey, shifts[shiftIndex], shiftIndex, { remountEditor: true });
+        }
+        refreshCalendarConstructorForDate(dateKey);
+        return true;
+    }
+
+    function buildRouteShiftMenuOptionHtml(option, dateKey, isSelected) {
+        const row = prepareRouteDropdownRow(option, dateKey);
+        return buildRouteDropdownRowHtml(row, isSelected);
     }
 
     function isWorkShiftRoute(shift) {
@@ -17938,6 +18612,47 @@
         return getShiftNotesList(shift).join('\n');
     }
 
+    function getShiftNotePreviewLine(shift) {
+        const notes = getShiftNotesList(shift);
+        if (!notes.length) return '';
+        return String(notes[0] || '').split(/\r?\n/)[0].trim();
+    }
+
+    function buildCalendarCleanHeadNoteFieldHtml(dateKey, shiftIndex, shift) {
+        const noteText = getShiftNoteText(shift);
+        const hasNote = Boolean(String(noteText || '').trim());
+        return `<div class="cal-clean-head-note-row">
+            <textarea class="cal-clean-head-note-inp${hasNote ? ' has-note' : ''}"
+                rows="1" data-cal-clean-head-note
+                data-date-key="${escapeAttr(dateKey)}" data-shift-index="${shiftIndex}"
+                placeholder="Заметка" aria-label="Заметка к смене"
+                autocomplete="off" spellcheck="true">${escapeHtml(noteText)}</textarea>
+            <div class="cal-clean-head-note-tools" aria-hidden="false">
+                <button type="button" class="cal-clean-head-note-copy" data-cal-clean-head-note-copy
+                    title="Копировать" aria-label="Копировать заметку">${SHIFT_NOTE_COPY_ICON}</button>
+                <button type="button" class="cal-clean-head-note-clear" data-cal-clean-head-note-clear
+                    title="Очистить" aria-label="Очистить заметку">✕</button>
+            </div>
+        </div>`;
+    }
+
+    function buildCalendarCleanNotePreviewHtml(shift, dateKey = '', shiftIndex = 0) {
+        const previewLine = getShiftNotePreviewLine(shift);
+        const keyAttrs = dateKey
+            ? ` data-date-key="${escapeAttr(dateKey)}" data-shift-index="${shiftIndex}"`
+            : '';
+        if (!previewLine) {
+            return `<div class="cal-clean-note-preview" data-cal-clean-note-preview hidden${keyAttrs}></div>`;
+        }
+        return `<div class="cal-clean-note-preview" data-cal-clean-note-preview${keyAttrs}
+            role="button" tabindex="0" title="Открыть заметку"
+            aria-label="Заметка: ${escapeAttr(previewLine)}">
+            <span class="note-preview-text">${escapeHtml(previewLine)}</span>
+            <button type="button" class="cal-clean-note-preview-copy" data-note-preview-copy
+                aria-label="Скопировать заметку" title="Скопировать">${SHIFT_NOTE_COPY_ICON}</button>
+        </div>`;
+    }
+
     function applyShiftNotesToShift(shift, notes) {
         if (!shift) return shift;
         const list = (Array.isArray(notes) ? notes : [])
@@ -17967,6 +18682,7 @@
         <path d="M5 12.5 10 17.5 19 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
     </svg>`;
 
+
     let shiftNoteSheetContext = null;
 
     function buildShiftNoteTriggerAttrs(dateKey, shiftIndex) {
@@ -17993,8 +18709,8 @@
     }
 
     function formatShiftSummaryPayValue(amount) {
-        const formatted = Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return `~ ${formatted} р.`;
+        const formatted = Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        return `~ ${formatted} ₽`;
     }
 
     const SHIFT_NOTE_DELETE_ICON = `<svg class="shift-card__note-delete-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -18103,7 +18819,7 @@
 
         if (calendarSelectedDateKey !== dateKey) return;
 
-        const parts = parseCalendarDateKeyParts(dateKey);
+        const parts = calendarDateKeyHeaderParts(dateKey);
         if (!parts) return;
 
         renderShiftConstructor(dateKey, parts.day, parts.month, parts.year);
@@ -18150,6 +18866,11 @@
             if (!panel.querySelector('[data-notes-block]')) return;
             refreshShiftNotesListUi(panel, notes);
         });
+
+        const dayPanel = getCalendarShiftDayPanel();
+        if (dayPanel?.classList.contains('cal-clean-card') && calendarSelectedDateKey === dateKey) {
+            syncCalendarCleanHeadNote(dayPanel, { shift, dateKey, shiftIndex });
+        }
 
         if (shift && dateKey === getRouteTabDateKey()) {
             syncRouteContextFromCalendar(dateKey, shift, shiftIndex, { remountEditor: false });
@@ -18391,8 +19112,147 @@
         });
     }
 
+    function saveCalendarCleanHeadNoteFromField(field) {
+        if (!field) return;
+        const dateKey = field.dataset.dateKey;
+        const shiftIndex = Number(field.dataset.shiftIndex);
+        if (!dateKey || !Number.isFinite(shiftIndex) || shiftIndex < 0) return;
+
+        const text = String(field.value || '').trim();
+        const shifts = getStoredDayShifts(dateKey);
+        const shift = shifts[shiftIndex];
+        if (!shift) return;
+
+        const prevText = getShiftNoteText(shift);
+        if (prevText === text) {
+            field.classList.toggle('has-note', Boolean(text));
+            return;
+        }
+
+        applyShiftNotesToShift(
+            shift,
+            text ? text.split(/\n+/).map(line => line.trim()).filter(Boolean) : []
+        );
+        setStoredDayShifts(dateKey, shifts);
+        persistUserShifts();
+        field.classList.toggle('has-note', Boolean(text));
+
+        calendarRenderCalendar({ skipConstructor: true });
+        reapplyCalendarDaySelection();
+        syncCalendarChipSelection();
+
+        if (dateKey === getRouteTabDateKey()) {
+            syncRouteContextFromCalendar(dateKey, shift, shiftIndex, { remountEditor: false });
+        }
+    }
+
+    function bindCalendarCleanHeadNoteToolbar(container) {
+        if (!container || container.dataset.cleanHeadNoteToolsBound === '1') return;
+        container.dataset.cleanHeadNoteToolsBound = '1';
+
+        container.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('[data-cal-clean-head-note-copy]');
+            if (copyBtn && container.contains(copyBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const field = copyBtn.closest('.cal-clean-head-note-row')?.querySelector('[data-cal-clean-head-note]');
+                if (!field) return;
+                void copyShiftNoteText(field.value, copyBtn);
+                return;
+            }
+
+            const clearBtn = e.target.closest('[data-cal-clean-head-note-clear]');
+            if (clearBtn && container.contains(clearBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const field = clearBtn.closest('.cal-clean-head-note-row')?.querySelector('[data-cal-clean-head-note]');
+                if (!field) return;
+                field.value = '';
+                field.classList.remove('has-note');
+                saveCalendarCleanHeadNoteFromField(field);
+                field.focus();
+            }
+        });
+    }
+
+    function bindCalendarCleanHeadNoteFields(container) {
+        if (!container) return;
+        container.querySelectorAll('[data-cal-clean-head-note]').forEach(field => {
+            if (field.dataset.headNoteBound === '1') return;
+            field.dataset.headNoteBound = '1';
+
+            let saveTimer = null;
+            const flushSave = () => {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                saveCalendarCleanHeadNoteFromField(field);
+            };
+            const scheduleSave = () => {
+                clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(flushSave, 450);
+            };
+
+            field.addEventListener('input', scheduleSave);
+            field.addEventListener('blur', flushSave);
+            field.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    const shifts = getStoredDayShifts(field.dataset.dateKey);
+                    const shift = shifts[Number(field.dataset.shiftIndex)];
+                    field.value = getShiftNoteText(shift);
+                    field.blur();
+                }
+            });
+        });
+    }
+
+    function bindCalendarCleanNotePreviewActions(container) {
+        if (!container || container.dataset.cleanNotePreviewDeleg === '1') return;
+        container.dataset.cleanNotePreviewDeleg = '1';
+
+        container.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('[data-note-preview-copy]');
+            if (copyBtn && container.contains(copyBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const preview = copyBtn.closest('[data-cal-clean-note-preview]');
+                const dateKey = preview?.dataset.dateKey;
+                const shiftIndex = Number(preview?.dataset.shiftIndex);
+                if (!dateKey || !Number.isFinite(shiftIndex)) return;
+                const shift = getStoredDayShifts(dateKey)[shiftIndex];
+                const text = getShiftNoteText(shift);
+                void copyShiftNoteText(text, copyBtn);
+                return;
+            }
+
+            const preview = e.target.closest('[data-cal-clean-note-preview]');
+            if (!preview || preview.hidden || !container.contains(preview)) return;
+            const dateKey = preview.dataset.dateKey;
+            const shiftIndex = Number(preview.dataset.shiftIndex);
+            if (!dateKey || !Number.isFinite(shiftIndex)) return;
+            e.preventDefault();
+            openShiftNoteSheet(dateKey, shiftIndex);
+        });
+
+        container.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const preview = e.target.closest('[data-cal-clean-note-preview]');
+            if (!preview || preview.hidden || !container.contains(preview)) return;
+            if (e.target.closest('[data-note-preview-copy]')) return;
+            const dateKey = preview.dataset.dateKey;
+            const shiftIndex = Number(preview.dataset.shiftIndex);
+            if (!dateKey || !Number.isFinite(shiftIndex)) return;
+            e.preventDefault();
+            openShiftNoteSheet(dateKey, shiftIndex);
+        });
+    }
+
     function bindShiftSummaryNoteActions(container) {
         if (!container) return;
+
+        bindCalendarCleanHeadNoteToolbar(container);
+        bindCalendarCleanHeadNoteFields(container);
+        bindCalendarCleanNotePreviewActions(container);
 
         container.querySelectorAll('[data-shift-note-trigger]').forEach(el => {
             if (el.dataset.noteBound === '1') return;
@@ -18584,7 +19444,7 @@
         return `da-${dateKey}-${shiftIndex}-${route}@digital-assistant`;
     }
 
-    function parseCalendarDateKeyParts(dateKey) {
+    function parseIcsDateKeyParts(dateKey) {
         const parts = String(dateKey || '').split('.');
         if (parts.length !== 3) return null;
         const day = parseInt(parts[0], 10);
@@ -18595,7 +19455,7 @@
     }
 
     function formatIcsDateValue(dateKey) {
-        const parsed = parseCalendarDateKeyParts(dateKey);
+        const parsed = parseIcsDateKeyParts(dateKey);
         if (!parsed) return '';
         const pad = (value) => String(value).padStart(2, '0');
         return `${parsed.year}${pad(parsed.month)}${pad(parsed.day)}`;
@@ -18957,55 +19817,91 @@
         });
     }
 
-    function renderDayShiftChipHtml(shift, dateKey) {
-        if (isAveragePayShift(shift)) {
-            const colorClasses = getShiftColorClass(shift);
-            const hasNote = Boolean(getShiftNoteText(shift));
-            const noteTitle = hasNote ? ' title="Есть заметка к смене"' : '';
-            return `<div class="day-shift-chip ${colorClasses}${hasNote ? ' has-shift-note' : ''}"${noteTitle}
-                data-shift-chip data-shift-kind="average" data-shift-route="О"
-                role="button" tabindex="0" aria-label="Смена О, оплата по среднему">
-                <span class="day-shift-label">О</span>
-            </div>`;
+    function resolveCalendarShiftBadgeKind(shift) {
+        if (isAveragePayShift(shift)) return 'reserve';
+        const routeDisplay = String(shift.route || shift.name || '').trim();
+        const routeLower = routeDisplay.toLowerCase();
+        if (isRestDayRoute(routeDisplay) || routeLower === 'в' || routeLower === 'выходной') return 'day-off';
+        if (isNightRoute(routeDisplay) || routeLower.includes('н')) return 'reserve';
+        if (isRoute99Variant(routeDisplay)) return 'reserve';
+        if (routeLower === 'бл' || routeLower === 'больничный') return 'day-off';
+        return 'work-day';
+    }
+
+    function resolveCalendarShiftBadgeDotColor(shift) {
+        const routeDisplay = String(shift?.route || shift?.name || '').trim();
+        if (isRoute99Variant(routeDisplay)) {
+            const kind = getRoute99Kind(routeDisplay);
+            if (kind === 'night') return '#6b7c94';
+            if (kind === 'morning') return '#8a929c';
+            return '#8a9099';
         }
+        const badgeKind = resolveCalendarShiftBadgeKind(shift);
+        if (badgeKind === 'day-off') return '#DC2626';
+        if (badgeKind === 'reserve') return '#2563EB';
+        return '#0D9488';
+    }
+
+    function renderDayShiftChipHtml(shift, dateKey) {
+        const hasNote = Boolean(getShiftNoteText(shift));
+        const noteTitle = hasNote ? ' title="Есть заметка к смене"' : '';
+        const badgeKind = resolveCalendarShiftBadgeKind(shift);
+
+        if (isAveragePayShift(shift)) {
+            return `<span class="shift-badge shift-badge--reserve cal-cell__badge day-shift-chip has-average-pay-shift${hasNote ? ' has-shift-note' : ''}"${noteTitle}
+                data-shift-chip data-shift-kind="average" data-shift-route="О"
+                role="button" tabindex="0" aria-label="Смена О, оплата по среднему">О</span>`;
+        }
+
         const routeDisplay = String(shift.route || shift.name || '').trim();
         const routeLower = routeDisplay.toLowerCase();
         const skipRouteText = ['отпуск', 'о'];
         if (!routeDisplay) {
             if (shift.kind === 'night' || shift.kind === 'day' || shift.kind === 'to') {
-                const kindClass = shift.kind === 'night' ? 'has-night-shift'
-                    : (shift.kind === 'to' ? 'has-tech-shift' : 'has-day-shift');
-                return `<div class="day-shift-chip ${kindClass}" data-shift-chip data-shift-kind="${escapeAttr(shift.kind)}"
-                    role="button" tabindex="0" aria-label="Смена"><span class="day-shift-label">—</span></div>`;
+                const dotColor = shift.kind === 'night' ? '#2563EB' : '#0D9488';
+                return `<span class="shift-dot cal-cell__dot day-shift-chip" style="--shift-dot-color:${dotColor}"
+                    data-shift-chip data-shift-kind="${escapeAttr(shift.kind)}"
+                    role="button" tabindex="0" aria-label="Смена"></span>`;
             }
             return '';
         }
         if (skipRouteText.includes(routeLower)) return '';
 
-        const colorClasses = getShiftColorClass(shift).split(/\s+/).filter(Boolean).join(' ');
         const label = formatCalendarShiftLabel(routeDisplay);
-        const workTime = isRestDayRoute(routeDisplay)
-            ? ''
-            : getShiftWorkTimeDisplay(shift, dateKey);
-        const timeHtml = workTime && workTime !== '—'
-            ? `<span class="day-shift-time">${escapeHtml(workTime)}</span>`
-            : '';
-        const hasNote = Boolean(getShiftNoteText(shift));
-        const noteTitle = hasNote ? ' title="Есть заметка к смене"' : '';
         const shiftKind = getShiftRouteKind(routeDisplay);
+        const colorClasses = getShiftColorClass(shift);
+        const isSingleLetter = label.length <= 1 || badgeKind === 'day-off';
+        const useDot = !isSingleLetter && label.length > 4;
 
-        return `<div class="day-shift-chip ${colorClasses}${hasNote ? ' has-shift-note' : ''}"${noteTitle}
+        if (useDot) {
+            const dotColor = resolveCalendarShiftBadgeDotColor(shift);
+            return `<span class="shift-dot cal-cell__dot day-shift-chip ${colorClasses}${hasNote ? ' has-shift-note' : ''}"${noteTitle}
+                style="--shift-dot-color:${dotColor}"
+                data-shift-chip data-shift-kind="${escapeAttr(shiftKind)}" data-shift-route="${escapeAttr(routeDisplay)}"
+                role="button" tabindex="0" aria-label="Смена ${escapeAttr(label)}"></span>`;
+        }
+
+        const roundOnly = isSingleLetter;
+        const badgeClass = roundOnly
+            ? `shift-badge shift-badge--${badgeKind} shift-badge--round cal-cell__badge day-shift-chip ${colorClasses}`
+            : `shift-badge shift-badge--${badgeKind} cal-cell__badge day-shift-chip ${colorClasses}`;
+
+        return `<span class="${badgeClass}${hasNote ? ' has-shift-note' : ''}"${noteTitle}
             data-shift-chip data-shift-kind="${escapeAttr(shiftKind)}" data-shift-route="${escapeAttr(routeDisplay)}"
-            role="button" tabindex="0" aria-label="Смена ${escapeAttr(label)}">
-            <span class="day-shift-label">${escapeHtml(label)}</span>
-            ${timeHtml}
-        </div>`;
+            role="button" tabindex="0" aria-label="Смена ${escapeAttr(label)}">${escapeHtml(label)}</span>`;
     }
 
     function renderDayCellContent(dayNum, shifts, dateKey) {
         const sorted = sortDayShiftsForDisplay(shifts);
-        const chips = sorted.map(shift => renderDayShiftChipHtml(shift, dateKey)).join('');
-        return `<span class="day-number">${dayNum}</span><div class="day-shifts">${chips}</div>`;
+        const visible = sorted.slice(0, 2);
+        const chips = visible.map(shift => renderDayShiftChipHtml(shift, dateKey)).join('');
+        const overflowDot = sorted.length > 2
+            ? `<span class="shift-dot cal-cell__dot shift-dot--more" aria-hidden="true"></span>`
+            : '';
+        const capsules = (chips || overflowDot)
+            ? `<div class="cal-cell__capsules day-shifts">${chips}${overflowDot}</div>`
+            : '';
+        return `<span class="cal-cell__num day-number">${dayNum}</span>${capsules}`;
     }
 
     function resolveStoredShiftIndex(shift, storedShifts) {
@@ -19094,7 +19990,7 @@
         scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
 
         const lunchRange = panel.querySelector('[data-shift-lunch-range]');
-        if (lunchRange) openShiftTimeRangePicker(lunchRange, 'start');
+        lunchRange?.querySelector('[data-summary-lunch-start]')?.focus();
     }
 
     function buildShiftSummaryLunchRangeHtml(shift, dateKey, editable) {
@@ -19139,6 +20035,54 @@
             </div>`;
     }
 
+    function buildCalendarV2LunchSlotHtml(shift, dateKey, editable) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        if (isMorningRoute(enriched?.route)) {
+            return '<span class="cal-v2-lunch cal-v2-lunch--none">Без обеда</span>';
+        }
+        const lunch = extractLunchTimesForEditor(shift, dateKey);
+        const hasLunch = shiftSummaryLunchIsConfigured(lunch, false);
+        if (!hasLunch) {
+            if (!editable) {
+                return '<span class="cal-v2-lunch cal-v2-lunch--none">Без обеда</span>';
+            }
+            return `<button type="button" class="cal-v2-lunch cal-v2-lunch--none cal-v2-lunch--add" data-summary-lunch-add-btn
+                aria-label="Добавить обед">Без обеда</button>`;
+        }
+        const startVal = timeInputValueFromShift(lunch.start);
+        const endVal = timeInputValueFromShift(lunch.end);
+        const displayText = formatShiftTimeRangeDisplay(startVal, endVal);
+        if (!editable) {
+            return `<span class="cal-v2-lunch">Обед ${escapeHtml(displayText)}</span>`;
+        }
+        const slotInner = `
+            <span class="shift-card__time-display" data-shift-lunch-display>Обед ${escapeHtml(displayText)}</span>
+            <span class="shift-card__time-divider" aria-hidden="true"></span>
+            <span class="shift-card__time-icon" aria-hidden="true"></span>`;
+        return `<div class="shift-card__time-line shift-card__time-line--lunch cal-v2-lunch cal-v2-lunch--edit" data-shift-lunch-line>
+            <div class="shift-card__time-range" data-shift-lunch-range>
+                <button type="button" class="shift-card__time-slot shift-card__time-slot--lunch cal-v2-lunch-btn" data-shift-lunch-slot-trigger
+                    aria-label="Выбрать обеденное время" aria-expanded="false" aria-haspopup="dialog">
+                    ${slotInner}
+                </button>
+                <input type="hidden" data-summary-lunch-start value="${escapeAttr(startVal)}">
+                <input type="hidden" data-summary-lunch-end value="${escapeAttr(endVal)}">
+            </div>
+            <button type="button" class="shift-card__time-remove-btn" data-summary-lunch-remove-btn
+                aria-label="Удалить обед"></button>
+        </div>`;
+    }
+
+    function buildCalendarV2TimeLunchRowHtml(shift, dateKey, enriched, editable) {
+        const timeHtml = buildShiftSummaryTimeFieldHtml(
+            enriched, dateKey, enriched.startTime || enriched.reportTime, enriched.endTime, editable
+        );
+        return `<div class="cal-v2-row cal-v2-row--time-lunch" data-shift-time-row data-summary-lunch-wrap>
+            <div class="cal-v2-row__time">${timeHtml}</div>
+            <div class="cal-v2-row__lunch">${buildCalendarV2LunchSlotHtml(enriched, dateKey, editable)}</div>
+        </div>`;
+    }
+
     function removeLunchFromSummaryPanel(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey) {
         const panel = panelEl.querySelector('[data-shift-summary-panel]') || panelEl;
         const stored = getStoredDayShifts(tabDateKey)[shiftIndex];
@@ -19150,7 +20094,13 @@
         if (!draft) return;
 
         draft.lunch = composeLunchFieldFromEditor('', '', true, null, draft.route);
-        panel.querySelector('[data-summary-lunch-wrap]')?.remove();
+        if (calendarPanelIsCleanCard(panel)) {
+            const timeRow = panel.querySelector('[data-shift-time-row]');
+            timeRow?.querySelector('[data-summary-lunch-wrap]')?.remove();
+            timeRow?.insertAdjacentHTML('beforeend', buildCalendarCleanLunchGroupHtml(draft, tabDateKey, true));
+        } else {
+            panel.querySelector('[data-summary-lunch-wrap]')?.remove();
+        }
         syncLunchAddButtonUi(panel, draft, tabDateKey, true);
         updateShiftSummaryCalcDisplay(panelEl, draft, tabDateKey);
         scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
@@ -19180,7 +20130,20 @@
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         const route = String(enriched.route || '').trim();
         const lunch = extractLunchTimesForEditor(shift, dateKey);
-        const shouldShow = !isMorningRoute(route) && shiftSummaryLunchIsConfigured(lunch, false);
+        const isClean = calendarPanelIsCleanCard(panel);
+        const hasLunch = shiftSummaryLunchIsConfigured(lunch, false);
+
+        if (isClean) {
+            const timeRow = panel.querySelector('[data-shift-time-row]');
+            const oldWrap = timeRow?.querySelector('[data-summary-lunch-wrap]');
+            oldWrap?.remove();
+            const lunchHtml = buildCalendarCleanLunchGroupHtml(shift, dateKey, editable);
+            timeRow?.insertAdjacentHTML('beforeend', lunchHtml);
+            syncLunchAddButtonUi(panel, shift, dateKey, editable);
+            return;
+        }
+
+        const shouldShow = !isMorningRoute(route) && hasLunch;
 
         let wrap = panel.querySelector('[data-summary-lunch-wrap]');
         if (!shouldShow) {
@@ -19203,6 +20166,11 @@
         if (range) {
             const startInput = range.querySelector('[data-summary-lunch-start]');
             const endInput = range.querySelector('[data-summary-lunch-end]');
+            if (startInput && startInput.type === 'time') {
+                startInput.value = timeInputValueFromShift(lunch.start);
+                endInput.value = timeInputValueFromShift(lunch.end);
+                return;
+            }
             if (startInput) startInput.value = timeInputValueFromShift(lunch.start);
             if (endInput) endInput.value = timeInputValueFromShift(lunch.end);
             syncShiftLunchRangeDisplay(range);
@@ -19444,7 +20412,10 @@
     let shiftTimePickerDocBound = false;
 
     function ensureShiftTimePicker() {
-        if (shiftTimePickerEl) return shiftTimePickerEl;
+        if (shiftTimePickerEl) {
+            ensureShiftTimePickerSaveFooter();
+            return shiftTimePickerEl;
+        }
 
         const hoursHtml = Array.from({ length: 24 }, (_, hour) => {
             const label = String(hour).padStart(2, '0');
@@ -19479,6 +20450,9 @@
                         <ul class="shift-time-picker__list" data-shift-time-minutes role="listbox">${minutesHtml}</ul>
                     </div>
                 </div>
+                <div class="shift-time-picker__footer">
+                    <button type="button" class="shift-time-picker__save-btn" data-shift-time-save-btn>Сохранить</button>
+                </div>
             </div>`;
 
         document.body.appendChild(shiftTimePickerEl);
@@ -19492,7 +20466,14 @@
             });
         });
 
+        shiftTimePickerEl.querySelector('[data-shift-time-save-btn]')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            commitShiftTimePickerFromUI();
+        });
+
         shiftTimePickerEl.addEventListener('click', (e) => {
+            if (e.target.closest('[data-shift-time-save-btn]')) return;
             const hourOption = e.target.closest('[data-shift-time-hour]');
             const minuteOption = e.target.closest('[data-shift-time-minute]');
             if (!hourOption && !minuteOption) return;
@@ -19580,6 +20561,48 @@
         highlightShiftTimePickerSelection(hours, minutes);
     }
 
+    function commitShiftTimePickerFromUI() {
+        if (!shiftTimePickerContext) return;
+        const ctx = shiftTimePickerContext;
+        const inputs = ctx.startInput === ctx.endInput
+            ? [ctx.startInput]
+            : [ctx.startInput, ctx.endInput].filter(Boolean);
+        inputs.forEach(inp => {
+            const normalized = parseShiftTimeInputValue(inp.value);
+            if (normalized) inp.value = normalized;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        if (ctx.rangeEl) syncShiftTimeRangeDisplayFor(ctx.rangeEl);
+        const panel = ctx.rangeEl?.closest('[data-shift-tab-panel]')
+            || ctx.startInput?.closest('[data-shift-tab-panel]');
+        const dayPanel = getCalendarShiftDayPanel?.();
+        if (panel && dayPanel) {
+            const shiftIndex = Number(panel.dataset.shiftIndex);
+            const tabDateKey = panel.dataset.tabDateKey || calendarSelectedDateKey;
+            const dateKey = dayPanel.dataset.dateKey || calendarSelectedDateKey;
+            if (Number.isFinite(shiftIndex) && shiftIndex >= 0) {
+                scheduleShiftSummarySave(dayPanel, panel, dateKey, shiftIndex, tabDateKey);
+            }
+        }
+        closeShiftTimePicker();
+    }
+
+    function ensureShiftTimePickerSaveFooter() {
+        if (!shiftTimePickerEl) return;
+        const panel = shiftTimePickerEl.querySelector('.shift-time-picker__panel');
+        if (!panel || panel.querySelector('[data-shift-time-save-btn]')) return;
+        panel.insertAdjacentHTML('beforeend', `
+            <div class="shift-time-picker__footer">
+                <button type="button" class="shift-time-picker__save-btn" data-shift-time-save-btn>Сохранить</button>
+            </div>`);
+        panel.querySelector('[data-shift-time-save-btn]')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            commitShiftTimePickerFromUI();
+        });
+    }
+
     function highlightShiftTimePickerSelection(hours, minutes) {
         if (!shiftTimePickerEl) return;
         shiftTimePickerEl.querySelectorAll('[data-shift-time-hour]').forEach(option => {
@@ -19592,8 +20615,22 @@
         shiftTimePickerEl.querySelector(`[data-shift-time-minute="${minutes}"]`)?.scrollIntoView({ block: 'nearest' });
     }
 
+    function isCalendarScreenActive() {
+        const screen = document.getElementById('screen-calendar');
+        return Boolean(screen && !screen.classList.contains('hidden'));
+    }
+
     function positionShiftTimePicker(anchorEl) {
         if (!shiftTimePickerEl || !anchorEl) return;
+        if (isCalendarScreenActive()) {
+            shiftTimePickerEl.classList.add('shift-time-picker--calendar-center');
+            shiftTimePickerEl.style.removeProperty('left');
+            shiftTimePickerEl.style.removeProperty('top');
+            shiftTimePickerEl.style.removeProperty('right');
+            shiftTimePickerEl.style.removeProperty('bottom');
+            return;
+        }
+        shiftTimePickerEl.classList.remove('shift-time-picker--calendar-center');
         const rect = anchorEl.getBoundingClientRect();
         const panel = shiftTimePickerEl.querySelector('.shift-time-picker__panel');
         const panelWidth = panel?.offsetWidth || 240;
@@ -19650,6 +20687,9 @@
     function closeShiftTimePicker() {
         if (!shiftTimePickerEl) return;
         shiftTimePickerContext?.trigger?.setAttribute('aria-expanded', 'false');
+        shiftTimePickerEl.classList.remove('shift-time-picker--calendar-center');
+        shiftTimePickerEl.style.removeProperty('left');
+        shiftTimePickerEl.style.removeProperty('top');
         shiftTimePickerEl.hidden = true;
         shiftTimePickerContext = null;
         shiftTimePickerEl.querySelectorAll('[data-shift-time-field]').forEach(tabBtn => {
@@ -19680,6 +20720,25 @@
         });
     }
 
+    function bindCalendarCleanInlineTimeInput(input) {
+        if (!input || input.dataset.calCleanTimeBound === '1') return;
+        input.dataset.calCleanTimeBound = '1';
+        input.addEventListener('focus', () => {
+            closeAllSummaryRouteLists();
+            closeShiftTimePicker();
+        });
+        input.addEventListener('blur', () => {
+            const normalized = parseShiftTimeInputValue(input.value);
+            if (normalized) input.value = normalized;
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeShiftTimePicker();
+                input.blur();
+            }
+        });
+    }
+
     function bindShiftSummaryTimeInputs(root) {
         root?.querySelectorAll('[data-shift-time-input]').forEach(bindShiftSummaryTimeInput);
         root?.querySelectorAll('[data-shift-time-range], [data-shift-lunch-range]').forEach(rangeEl => {
@@ -19688,6 +20747,14 @@
                 : 'shiftTimeRangeBound';
             if (rangeEl.dataset[bindKey] === '1') return;
             rangeEl.dataset[bindKey] = '1';
+            const inlineConstructor = Boolean(rangeEl.closest('#constructorContent'))
+                && rangeEl.classList.contains('cal-clean-time-range--inline');
+            if (inlineConstructor) {
+                rangeEl.querySelectorAll(
+                    '[data-summary-start], [data-summary-end], [data-summary-lunch-start], [data-summary-lunch-end]'
+                ).forEach(bindCalendarCleanInlineTimeInput);
+                return;
+            }
             syncShiftTimeRangeDisplayFor(rangeEl);
             const { trigger } = getShiftTimeRangeInputs(rangeEl);
             trigger?.addEventListener('click', (e) => {
@@ -19726,21 +20793,28 @@
         const prefRoute = preference.shiftRoute || '';
         const prefKind = preference.shiftKind || '';
 
+        const tabMatchesCalendarDay = (tab, key) =>
+            tab && (tab.dateKey === key || tab.contextDateKey === key);
+
         if (prefRoute) {
             const byRoute = tabs.findIndex(tab =>
                 normalizeCalendarRouteKey(tab.shift?.route) === normalizeCalendarRouteKey(prefRoute)
-                && tab.dateKey === prefDateKey
+                && tabMatchesCalendarDay(tab, prefDateKey)
             );
             if (byRoute >= 0) return byRoute;
         }
 
         if (prefKind === 'morning') {
             const linkedMorning = tabs.findIndex(tab =>
-                tab.isLinkedMorning && tab.dateKey === prefDateKey
+                tab.isLinkedMorning && tabMatchesCalendarDay(tab, prefDateKey)
+                && (!prefRoute || normalizeCalendarRouteKey(tab.shift?.route) === normalizeCalendarRouteKey(prefRoute))
             );
             if (linkedMorning >= 0) return linkedMorning;
             const morningOnDay = tabs.findIndex(tab =>
-                isMorningRoute(tab.shift?.route) && tab.dateKey === prefDateKey && !tab.isPrevNight
+                isMorningRoute(tab.shift?.route)
+                && tabMatchesCalendarDay(tab, prefDateKey)
+                && !tab.isPrevNight
+                && (!prefRoute || normalizeCalendarRouteKey(tab.shift?.route) === normalizeCalendarRouteKey(prefRoute))
             );
             if (morningOnDay >= 0) return morningOnDay;
         }
@@ -19768,13 +20842,14 @@
         const highlightKey = getCalendarGridHighlightDateKey();
         if (!highlightKey) return;
 
-        const day = document.querySelector(`#calendarGrid .day[data-date-key="${highlightKey}"]`);
-        if (!day) return;
-
         const activeTab = Array.isArray(calendarConstructorTabsMeta)
             ? calendarConstructorTabsMeta[calendarConstructorActiveTab]
             : null;
         if (!activeTab?.shift?.route) return;
+
+        const chipDayKey = activeTab.contextDateKey || activeTab.dateKey || highlightKey;
+        const day = document.querySelector(`#calendarGrid .day[data-date-key="${chipDayKey}"]`);
+        if (!day) return;
 
         const route = activeTab.shift.route;
         const kind = getShiftRouteKind(route);
@@ -19804,7 +20879,8 @@
         if (tabIndex < 0) return -1;
 
         const tab = tabs[tabIndex];
-        if (!tab || tab.dateKey !== prefDateKey) return -1;
+        const tabOnDay = tab && (tab.dateKey === prefDateKey || tab.contextDateKey === prefDateKey);
+        if (!tab || !tabOnDay) return -1;
         if (
             prefRoute
             && normalizeCalendarRouteKey(tab.shift?.route) !== normalizeCalendarRouteKey(prefRoute)
@@ -19975,17 +21051,31 @@
         });
 
         if (willOpen) {
-            loadGlobalShiftTemplates();
-            if (combobox) {
-                renderSummaryRouteComboboxList(combobox, tabDateKey, routeInput.value);
-            } else {
-                renderRouteComboboxList(routeInput.value);
-            }
+            if (routeList.dataset.routeOpenBusy === '1') return;
+            routeList.dataset.routeOpenBusy = '1';
+            void runWithClockLoader('Маршруты…', async () => {
+                try {
+                    loadGlobalShiftTemplates();
+                    if (!isValidGlobalTemplateCache(depotShiftTemplates)) {
+                        await ensureDepotTemplatesLoaded();
+                    }
+                    if (combobox) {
+                        renderSummaryRouteComboboxList(combobox, tabDateKey, routeInput.value);
+                    } else {
+                        renderRouteComboboxList(routeInput.value);
+                    }
+                    routeList.hidden = false;
+                    routeInput.setAttribute('aria-expanded', 'true');
+                    routeInput.focus();
+                } finally {
+                    routeList.dataset.routeOpenBusy = '0';
+                }
+            });
+            return;
         }
 
-        routeList.hidden = !willOpen;
-        routeInput.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-        if (willOpen) routeInput.focus();
+        routeList.hidden = true;
+        routeInput.setAttribute('aria-expanded', 'false');
     }
 
     function bindSummaryRoutePicker(picker, tabDateKey) {
@@ -20012,9 +21102,15 @@
         routeInput?.addEventListener('input', () => {
             if (combobox) {
                 setSummaryRouteComboboxValue(combobox, routeInput.value, '');
-                renderSummaryRouteComboboxList(combobox, tabDateKey, routeInput.value);
+                if (routeList?.hidden) {
+                    toggleSummaryRouteList(picker, tabDateKey, true);
+                } else {
+                    scheduleRenderSummaryRouteComboboxList(combobox, tabDateKey, routeInput.value);
+                }
+            } else if (routeList?.hidden) {
+                openRouteCombobox();
             } else {
-                renderRouteComboboxList(routeInput.value);
+                scheduleRenderRouteComboboxList(routeInput.value);
             }
             if (routeList) routeList.hidden = false;
             routeInput.setAttribute('aria-expanded', 'true');
@@ -20023,7 +21119,7 @@
         if (routeList && routeList.dataset.summaryListBound !== '1') {
             routeList.dataset.summaryListBound = '1';
             routeList.addEventListener('click', (e) => {
-                const option = e.target.closest('.route-combobox-option');
+                const option = closestRouteDropdownOption(e.target);
                 if (!option) return;
                 e.preventDefault();
                 e.stopPropagation();
@@ -20040,7 +21136,8 @@
                 routeInput?.setAttribute('aria-expanded', 'false');
                 const dayPanel = picker.closest('[data-shift-day-panel]');
                 const dateKey = dayPanel?.dataset?.dateKey || tabDateKey;
-                const panelEl = picker.closest('[data-shift-tab-panel]');
+                const panelEl = picker.closest('[data-shift-tab-panel]')
+                    || (dayPanel?.classList.contains('cal-clean-card') ? getActiveShiftTabPanel(dayPanel) : null);
                 const stored = dateKey ? getStoredDayShifts(dateKey) : [];
                 if (panelEl && stored.length) {
                     const shiftIndex = Number(panelEl.dataset.shiftIndex);
@@ -20479,18 +21576,341 @@
         reapplyCalendarDaySelection();
         syncCalendarChipSelection();
     }
+
+    function calendarPanelIsCleanCard(panel) {
+        return Boolean(panel?.closest?.('.cal-clean-card'));
+    }
+
+    function buildCalendarCleanRoutePickerHtml(route, dateKey, shift, editable, options = {}) {
+        if (!editable) {
+            return `<span class="cal-clean-route-readonly">${escapeHtml(formatCalendarShiftLabel(route))}</span>`;
+        }
+        const matchedOption = findConstructorRouteOption(dateKey, route, shift);
+        const listId = options.listId ? ` id="${escapeAttr(options.listId)}"` : '';
+        return `<div class="shift-card__route-picker cal-clean-route-picker">
+            <div class="cal-clean-route-box route-combobox" data-summary-route-combobox>
+                <input type="text" class="cal-clean-route-input" data-summary-route-input
+                    value="${escapeAttr(route)}" placeholder="Маршрут" autocomplete="off"
+                    aria-label="Маршрут" aria-expanded="false" role="combobox">
+                <input type="hidden" data-summary-route-value value="${escapeAttr(route)}">
+                <input type="hidden" data-summary-route-signature value="${escapeAttr(matchedOption?.signature || '')}">
+                <button type="button" class="cal-clean-route-arrow" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+            </div>
+            <ul class="route-combobox-list cal-clean-route-dropdown" data-summary-route-list role="listbox"${listId} hidden></ul>
+        </div>`;
+    }
+
+    function formatCalendarCleanTimeRangeText(startVal, endVal) {
+        const raw = formatShiftTimeRangeDisplay(startVal, endVal);
+        return raw.replace(/\s*[·–-]\s*/g, ' – ');
+    }
+
+    function buildCalendarCleanTimeFieldHtml(attr, value, ariaLabel) {
+        const val = escapeAttr(parseShiftTimeInputValue(timeInputValueFromShift(value)) || '');
+        return `<input type="time" class="cal-clean-time-inp" ${attr}
+            value="${val}" aria-label="${escapeAttr(ariaLabel)}">`;
+    }
+
+    function buildCalendarCleanLunchGroupHtml(shift, dateKey, editable) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        if (isMorningRoute(enriched?.route)) {
+            return `<div class="cal-clean-lunch-group" data-summary-lunch-wrap>
+                <span class="cal-clean-label">Обед</span>
+                <span class="cal-clean-lunch-none">—</span>
+            </div>`;
+        }
+        const lunch = extractLunchTimesForEditor(shift, dateKey);
+        const hasLunch = shiftSummaryLunchIsConfigured(lunch, false);
+        if (!hasLunch) {
+            const addHidden = !editable || !canShowLunchAddPlus(shift, dateKey, editable) ? ' hidden' : '';
+            return `<div class="cal-clean-lunch-group" data-summary-lunch-wrap>
+                <span class="cal-clean-label">Обед</span>
+                <button type="button" class="cal-clean-add-lunch-btn cal-clean-lunch-chip" data-summary-lunch-add-btn${addHidden}>+ Обед</button>
+            </div>`;
+        }
+        const startVal = timeInputValueFromShift(lunch.start);
+        const endVal = timeInputValueFromShift(lunch.end);
+        const displayText = formatCalendarCleanTimeRangeText(startVal, endVal);
+        if (!editable) {
+            return `<div class="cal-clean-lunch-group" data-summary-lunch-wrap>
+                <span class="cal-clean-label">Обед</span>
+                <span class="cal-clean-time-value cal-clean-lunch-val">${escapeHtml(displayText)}</span>
+            </div>`;
+        }
+        return `<div class="cal-clean-lunch-group" data-summary-lunch-wrap>
+            <span class="cal-clean-label">Обед</span>
+            <div class="cal-clean-lunch-edit" data-shift-lunch-line>
+                <div class="cal-clean-time-range cal-clean-time-range--inline" data-shift-lunch-range>
+                    ${buildCalendarCleanTimeFieldHtml('data-summary-lunch-start', startVal, 'Начало обеда')}
+                    <span class="cal-clean-time-sep" aria-hidden="true">–</span>
+                    ${buildCalendarCleanTimeFieldHtml('data-summary-lunch-end', endVal, 'Конец обеда')}
+                    <button type="button" class="cal-clean-lunch-clear" data-summary-lunch-remove-btn
+                        title="Убрать обед" aria-label="Убрать обед">✕</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function buildCalendarCleanTimeRowHtml(shift, dateKey, enriched, editable) {
+        const startVal = timeInputValueFromShift(enriched.startTime || enriched.reportTime);
+        const endVal = timeInputValueFromShift(enriched.endTime);
+        const displayText = formatCalendarCleanTimeRangeText(startVal, endVal);
+        const workValue = editable
+            ? `<div class="cal-clean-time-range cal-clean-time-range--inline" data-shift-time-range>
+                ${buildCalendarCleanTimeFieldHtml('data-summary-start', startVal, 'Явка')}
+                <span class="cal-clean-time-sep" aria-hidden="true">–</span>
+                ${buildCalendarCleanTimeFieldHtml('data-summary-end', endVal, 'Сдача')}
+            </div>`
+            : `<span class="cal-clean-time-value cal-clean-time-readonly">${escapeHtml(displayText)}</span>`;
+        return `<div class="cal-clean-time-row" data-shift-time-row>
+            <div class="cal-clean-time-group">
+                <span class="cal-clean-label">Время работы</span>
+                ${workValue}
+            </div>
+            ${buildCalendarCleanLunchGroupHtml(shift, dateKey, editable)}
+        </div>`;
+    }
+
+    function formatCalendarCleanTrainGapMinutes(totalMinutes) {
+        if (totalMinutes === null || totalMinutes === undefined || Number.isNaN(totalMinutes) || totalMinutes < 0) {
+            return '';
+        }
+        const mins = Math.round(totalMinutes);
+        if (mins <= 0) return '';
+        if (mins >= 60) {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return m > 0 ? `${h}ч ${m}м` : `${h}ч`;
+        }
+        return `${mins}м`;
+    }
+
+    function resolveCalendarCleanTrainEntries(numbers, trainPlan, navDateKey) {
+        const baseIso = calendarKeyToIso(navDateKey);
+        const searchOptions = { trainPlan: trainPlan || [] };
+        const trains = numbers.map((trainNumber) => {
+            const scheduleDate = resolveTrainScheduleDateForNumber(trainNumber, trainPlan, baseIso);
+            let train = resolveTrainLocalSync(trainNumber, searchOptions);
+            if (!train && scheduleDate) {
+                const registryEntry = findLocalTrainRegistryEntry(trainNumber);
+                train = trainFromLocalBoard(trainNumber, scheduleDate, registryEntry);
+            }
+            if (!train) {
+                train = resolveTrainForRouteGrid(trainNumber, searchOptions);
+            }
+            const planEntry = planEntryForNumber(trainPlan, trainNumber);
+            if (train && planEntry) train = applyTrainPlanTimeOverrides(train, planEntry);
+            if (train && scheduleDate) train = stampTrainSelectedDate(train, scheduleDate);
+            return train;
+        });
+        return buildRouteTrainEntries(numbers, trains, trainPlan);
+    }
+
+    function buildCalendarCleanTrainsChipsHtml(trainEntries) {
+        const parts = [];
+        for (let i = 0; i < trainEntries.length; i++) {
+            const { trainNumber } = trainEntries[i];
+            parts.push(`<span class="train-pill cal-clean-train-pill shift-summary__train-chip cal-clean-train-chip"
+                aria-hidden="true">${escapeHtml(trainNumber)}</span>`);
+            if (i >= trainEntries.length - 1) continue;
+            const train = trainEntries[i].train;
+            const nextTrain = trainEntries[i + 1]?.train;
+            if (!train || !nextTrain) continue;
+            const arrCurrentMinutes = parseTimeToMinutes(train.arrival);
+            const depNextMinutes = parseTimeToMinutes(nextTrain.departure);
+            if (arrCurrentMinutes === null || depNextMinutes === null) continue;
+            let turnaroundMinutes = depNextMinutes - arrCurrentMinutes;
+            if (turnaroundMinutes < 0) turnaroundMinutes += 1440;
+            const gapLabel = formatCalendarCleanTrainGapMinutes(turnaroundMinutes);
+            if (gapLabel) {
+                parts.push(`<span class="train-gap cal-clean-train-gap" aria-hidden="true">${escapeHtml(gapLabel)}</span>`);
+            }
+        }
+        return parts.join('');
+    }
+
+    function buildCalendarCleanTrainsInlineHtml(shift, dateKey, context) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const payload = buildTrainsNavigationPayload(enriched, dateKey, context);
+        const trainsDisplay = payload.trainsText || getShiftTrainsText(enriched);
+        const numbers = payload.trainNumbers?.length
+            ? payload.trainNumbers
+            : extractTrainNumbers(trainsDisplay);
+
+        if (!numbers.length) return '';
+
+        const navDateKey = payload.dateKey || dateKey;
+        const trainEntries = resolveCalendarCleanTrainEntries(numbers, payload.trainPlan, navDateKey);
+        const chipsHtml = buildCalendarCleanTrainsChipsHtml(trainEntries);
+        const peekChipsHtml = numbers.map(num => renderTrainNumChip(num)).join('');
+
+        const dataAttrs = ` data-trains="${escapeAttr(payload.trainsText || trainsDisplay)}"
+            data-train-numbers="${escapeAttr(JSON.stringify(numbers))}"
+            data-train-plan="${escapeAttr(JSON.stringify(payload.trainPlan || []))}"
+            data-date-key="${escapeAttr(navDateKey)}"
+            data-is-night="${payload.isNight ? '1' : '0'}"`;
+
+        return `<div class="trains-chip-wrap shift-summary__trains-peek cal-clean-trains-wrap">
+            <div class="shift-card__trains-nav shift-summary__trains-row shift-summary__trains-row--nav trains-chip-panel--peek cal-clean-trains-panel"
+                data-summary-trains-row${dataAttrs} tabindex="0" role="button"
+                aria-label="Поезда ${escapeAttr(numbers.join(', '))}. Нажмите для маршрута, удержите для списка">
+                <div class="shift-summary__trains-chips cal-clean-trains-chips">${chipsHtml}</div>
+            </div>
+            <div class="trains-chip-popover shift-summary__trains-popover" role="region" aria-label="Все поезда смены">
+                <div class="trains-chip-popover__scroll">${peekChipsHtml}</div>
+            </div>
+        </div>`;
+    }
+
+    function buildCalendarCleanTrainsRowHtml(shift, dateKey, context, editable) {
+        const inner = buildCalendarCleanTrainsInlineHtml(shift, dateKey, context);
+        if (!inner) {
+            return `<div class="cal-clean-trains-row cal-clean-trains-row--empty routes-container" data-summary-trains-row>
+                <span class="cal-clean-trains-empty">Поездов по наряду нет</span>
+                <span class="cal-clean-trains-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 16h2.2a2 2 0 0 0 1.9-1.4l.8-2.4h5.2l.8 2.4A2 2 0 0 0 16.8 16H19a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-1.3a2 2 0 0 0-1.9 1.4l-.4 1.1H8.6l-.4-1.1A2 2 0 0 0 6.3 6H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1Z" stroke="currentColor" stroke-width="1.5"/><circle cx="7.5" cy="18" r="1.5" fill="currentColor"/><circle cx="16.5" cy="18" r="1.5" fill="currentColor"/></svg>
+                </span>
+            </div>`;
+        }
+        return `<div class="cal-clean-trains-row">${inner}</div>`;
+    }
+
+    function buildCalendarCleanShiftPanelContent(shift, dateKey, shiftIndex, context, editable) {
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const route = String(enriched.route || '').trim();
+
+        if (isRestDayRoute(route)) {
+            return `<div class="cal-clean-quick-row shift-card__quick-routes--replace">
+                ${buildShiftPanelQuickRoutesInline('', null, { mode: 'replace', dockSingleRow: true })}
+            </div>
+            <div class="cal-clean-rest-hint">
+                <span class="cal-clean-rest-badge">В</span>
+                <span>Выходной · смена в этот день — оплата ×2</span>
+            </div>
+            <div class="cal-clean-footer">
+                <div class="cal-clean-btns">
+                    <button type="button" class="cal-clean-btn is-danger shift-day-panel__delete-btn">Убрать выходной</button>
+                </div>
+            </div>`;
+        }
+
+        if (isAveragePayShift(enriched)) {
+            const avgInfo = getAveragePayCalculation(dateKey);
+            return `<div class="cal-clean-quick-row">
+                ${buildShiftPanelQuickRoutesInline('', shift, { dockSingleRow: true })}
+            </div>
+            <div class="cal-clean-average-wrap shift-card__average-pay-wrap" data-summary-calc aria-live="polite">
+                ${buildAveragePayCardHtml(avgInfo)}
+            </div>
+            <div class="cal-clean-note-slot">${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}</div>`;
+        }
+
+        const selectedPresetId = resolveLocalPresetIdForShift(shift);
+        const showQuickRoutes = editable && !isMorningRoute(route) && !shift?.isVirtualMorning;
+        const totalHours = getCalendarShiftHours(enriched, dateKey);
+        const shiftPayment = getCalendarShiftPayment(enriched, dateKey);
+        const doublePayBadge = enriched.restDayDoublePay
+            ? `<span class="shift-rest-double-badge" title="Оплата ×2 за рабочий выходной">×2</span>`
+            : '';
+
+        const quickHtml = showQuickRoutes
+            ? buildShiftPanelQuickRoutesInline(selectedPresetId, shift, { dockSingleRow: true })
+            : (canShowMorningAddNightPlus(shift, dateKey, editable)
+                ? `<div data-morning-add-night-wrap data-add-night-date-key="${escapeAttr(dateKey)}">
+                    ${buildShiftPanelQuickRoutesInline(selectedPresetId, shift, { dockSingleRow: true })}
+                    <button type="button" class="cal-clean-mini-btn" data-morning-add-night-toggle aria-label="Добавить ночную смену">+ Н</button>
+                    ${buildMorningAddNightRowHtml(dateKey)}
+                </div>`
+                : buildShiftPanelQuickRoutesInline(selectedPresetId, shift, { dockSingleRow: true }));
+
+        const suppressQuickGrid = Boolean(route) && !isRestDayRoute(route);
+        const quickRowHtml = suppressQuickGrid
+            ? ''
+            : `<div class="cal-clean-quick-row calendar-local-routes-row">${quickHtml}</div>`;
+
+        return `
+            ${quickRowHtml}
+            ${buildCalendarCleanTimeRowHtml(shift, dateKey, enriched, editable)}
+            ${buildCalendarCleanTrainsRowHtml(shift, dateKey, context, editable)}
+            <div class="cal-clean-footer">
+                <div class="cal-clean-totals cal-clean-totals--rows" data-summary-calc aria-live="polite">
+                    <div class="cal-clean-total-item">
+                        <span>Часов в смене</span>
+                        <strong data-summary-hours>${escapeHtml(formatShiftSummaryHoursValue(totalHours))}</strong>
+                    </div>
+                    <div class="cal-clean-total-item">
+                        <span>Оплата</span>
+                        <strong class="is-money" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}${doublePayBadge}</strong>
+                    </div>
+                </div>
+                <div class="cal-clean-btns">
+                    <button type="button" class="cal-clean-btn is-primary cal-clean-btn--goto shift-day-panel__goto-route" data-calendar-goto-route>Перейти в маршрут</button>
+                    <div class="cal-clean-btns-secondary shift-day-panel__actions">
+                        <button type="button" class="cal-clean-btn shift-day-panel__reset-btn" hidden title="Вернуть время, обед и поезда из шаблона">Сброс</button>
+                        <button type="button" class="cal-clean-btn is-danger shift-day-panel__delete-btn" hidden>Удалить</button>
+                    </div>
+                </div>
+            </div>
+            ${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}`;
+    }
+
     function buildShiftTabPanelHtml(tab, summaryContext) {
         const tabContext = resolveShiftTabContext(tab, summaryContext);
         const { shift, dateKey, shiftIndex, editable, readonly } = tab;
         const panelEditable = editable && !readonly;
-        return `<div class="shift-day-panel__tab-panel${panelEditable ? '' : ' shift-day-panel__tab-panel--readonly'}"
+        const restOnly = isRestDayRoute(shift?.route);
+        return `<div class="cal-clean-body${panelEditable ? '' : ' cal-clean-body--readonly'}"
             data-shift-tab-panel
+            data-shift-summary-panel
             data-shift-index="${shiftIndex}"
             data-tab-date-key="${escapeAttr(tab.dateKey)}"
             data-readonly="${readonly ? '1' : '0'}"
+            ${restOnly ? 'data-shift-rest-panel' : ''}
             hidden>
-            ${buildShiftSummaryPanelHtml(shift, dateKey, shiftIndex, tabContext, { editable: panelEditable })}
+            ${buildCalendarCleanShiftPanelContent(shift, dateKey, shiftIndex, tabContext, panelEditable)}
         </div>`;
+    }
+
+    function syncCalendarCleanHeadNote(dayPanel, tab) {
+        if (!dayPanel?.classList.contains('cal-clean-card') || !tab) return;
+        const noteText = getShiftNoteText(tab.shift);
+        const field = dayPanel.querySelector('[data-cal-clean-head-note]');
+        if (field) {
+            field.dataset.dateKey = tab.dateKey;
+            field.dataset.shiftIndex = String(tab.shiftIndex);
+            if (document.activeElement !== field) {
+                field.value = noteText;
+            }
+            field.classList.toggle('has-note', Boolean(noteText.trim()));
+            bindCalendarCleanHeadNoteFields(dayPanel);
+        }
+        dayPanel.querySelector('[data-cal-clean-note-preview]')?.remove();
+    }
+
+    function syncCalendarCleanHeadRoute(dayPanel, tab) {
+        if (!dayPanel?.classList.contains('cal-clean-card') || !tab) return;
+        const combobox = dayPanel.querySelector('.cal-clean-head [data-summary-route-combobox]');
+        if (combobox) {
+            const enriched = enrichShiftFromDepotTemplate(tab.shift, tab.dateKey);
+            const route = String(enriched.route || '').trim();
+            const matchedOption = findConstructorRouteOption(tab.dateKey, route, tab.shift);
+            setSummaryRouteComboboxValue(combobox, route, matchedOption?.signature || '');
+        }
+        syncCalendarCleanHeadNote(dayPanel, tab);
+    }
+
+    function mountCalendarDockHeadRoutePicker(dayPanel) {
+        if (!dayPanel || dayPanel.getAttribute('data-route-shift-editor') === '1') return;
+        if (dayPanel.classList.contains('cal-clean-card')) return;
+        if (!dayPanel.classList.contains('shift-day-panel--dock-compact')) return;
+        const slot = dayPanel.querySelector('[data-dock-head-route]');
+        const activePanel = getActiveShiftTabPanel(dayPanel);
+        const picker = activePanel?.querySelector('[data-dock-route-picker]')
+            || dayPanel.querySelector('[data-dock-route-picker]');
+        if (!slot || !picker) return;
+        if (picker.parentElement !== slot) {
+            slot.appendChild(picker);
+        }
     }
 
     function buildShiftPanelQuickRoutesFooter(selectedPresetId = '') {
@@ -20501,34 +21921,30 @@
     }
 
     function buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, hintClass = '') {
-        const dateLabel = `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
+        const dateLabel = formatCalendarCardDateLabel(dateKey)
+            || `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
         const metaHtml = normativeHint
-            ? `<p class="shift-day-panel__meta-line${hintClass}">${escapeHtml(normativeHint)}</p>`
+            ? `<p class="cal-clean-meta shift-day-panel__meta-line${hintClass}">${escapeHtml(normativeHint)}</p>`
             : '';
+        const headRoutePicker = buildCalendarCleanRoutePickerHtml('', dateKey, null, true, { listId: 'constructorRouteList' });
         return `
-            <div class="shift-day-panel shift-day-panel--design" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
-                <header class="shift-day-panel__head">
-                    <h3 class="shift-day-panel__date">${escapeHtml(dateLabel)}</h3>
-                    <div class="shift-day-panel__head-divider" aria-hidden="true"></div>
-                </header>
-                <div class="shift-day-panel__body">
-                    <div class="shift-card__row shift-card__row--route">
-                        <span class="shift-card__label">Маршрут</span>
-                        <div class="shift-card__field">
-                            <div class="shift-card__route-area">
-                                <div class="shift-card__route-picker">
-                                    <div class="shift-card__route-pill">
-                                        ${buildRouteComboboxBlock('', '', { withList: false })}
-                                        <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
-                                    </div>
-                                    <ul id="constructorRouteList" class="route-combobox-list shift-summary__route-list" role="listbox" hidden></ul>
-                                </div>
-                                ${buildShiftPanelQuickRoutesInline('')}
-                            </div>
+            <div class="cal-clean-card cal-clean-card--empty" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
+                <div class="cal-clean-head">
+                    <div class="cal-clean-head-row">
+                        <span class="cal-clean-date-main">${escapeHtml(dateLabel)}</span>
+                        <div class="cal-clean-head-actions">
+                            <div class="cal-clean-head-route" data-dock-head-route>${headRoutePicker}</div>
                         </div>
                     </div>
+                    ${buildCalendarCleanHeadNoteFieldHtml(dateKey, 0, null)}
                 </div>
-                <footer class="shift-day-panel__footer">${metaHtml}</footer>
+                <div class="cal-clean-body cal-clean-body--empty" data-shift-summary-panel>
+                    <div class="cal-clean-quick-row calendar-local-routes-row" id="constructorLocalRoutes">
+                        ${buildShiftPanelQuickRoutesInline('', null, { dockSingleRow: true })}
+                        <input type="hidden" id="constructorLocalPresetId" value="">
+                    </div>
+                </div>
+                ${metaHtml}
             </div>`;
     }
 
@@ -20543,15 +21959,16 @@
         if (!dayPanel || !tab) return;
         const hideActions = tab.isPrevNight || tab.readonly || tab.shiftIndex < 0;
         const isRestDay = isRestDayRoute(tab.shift?.route);
+        const scope = getActiveShiftTabPanel(dayPanel) || dayPanel;
 
-        const deleteBtn = dayPanel.querySelector('.shift-day-panel__delete-btn');
+        const deleteBtn = scope.querySelector('.shift-day-panel__delete-btn');
         if (deleteBtn) {
             deleteBtn.hidden = hideActions;
-            deleteBtn.textContent = isRestDay ? 'Убрать выходной' : 'Удалить смену';
+            deleteBtn.textContent = isRestDay ? 'Убрать выходной' : 'Удалить';
             deleteBtn.onclick = () => calendarDeleteShift(tab.shiftIndex, tab.dateKey);
         }
 
-        const resetBtn = dayPanel.querySelector('.shift-day-panel__reset-btn');
+        const resetBtn = scope.querySelector('.shift-day-panel__reset-btn');
         if (resetBtn) {
             const canReset = !hideActions && !isRestDay && canResetShiftToTemplate(tab.shift, tab.dateKey);
             resetBtn.hidden = !canReset;
@@ -20561,18 +21978,24 @@
 
     function buildUnifiedShiftDayPanelHtml(dateKey, day, month, year, tabs, storedShifts, summaryContext, options = {}) {
         const metaHints = options.metaHints || [];
-        const dateLabel = `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
+        const dateLabel = formatCalendarCardDateLabel(dateKey)
+            || `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
         const isRestOnlyDay = storedShifts.length === 1 && isRestDayRoute(storedShifts[0]?.route);
+
+        const activeTab = tabs[Math.min(calendarConstructorActiveTab, Math.max(0, tabs.length - 1))] || tabs[0];
+        const activeShift = activeTab?.shift || storedShifts[0];
+        const activeTabDateKey = activeTab?.dateKey || dateKey;
+        const activeShiftIndex = activeTab?.shiftIndex ?? 0;
+        const headRoute = activeShift ? String(enrichShiftFromDepotTemplate(activeShift, activeTabDateKey).route || '').trim() : '';
 
         const tabsHtml = isRestOnlyDay ? '' : tabs.map((tab, index) => {
             const routeLabel = getShiftPanelRouteLabel(tab.shift);
             const dateShort = formatTabDateShort(tab.dateKey);
-            return `<button type="button" class="shift-day-panel__tab-pill${index === calendarConstructorActiveTab ? ' is-active' : ''}"
+            const label = tabs.length > 1 ? `${routeLabel}·${dateShort}` : routeLabel;
+            return `<button type="button" class="${index === calendarConstructorActiveTab ? 'is-active' : ''}"
                 data-shift-tab data-tab-index="${index}" role="tab"
                 aria-selected="${index === calendarConstructorActiveTab ? 'true' : 'false'}">
-                <span class="shift-day-panel__tab-pill-route">${escapeHtml(routeLabel)}</span>
-                <span class="shift-day-panel__tab-pill-sep" aria-hidden="true">|</span>
-                <span class="shift-day-panel__tab-pill-date">${escapeHtml(dateShort)}</span>
+                ${escapeHtml(label)}
             </button>`;
         }).join('');
 
@@ -20586,30 +22009,29 @@
         const sourceHintClass = options.sourceHintClass || '';
         let metaHtml = '';
         if (sourceHint) {
-            metaHtml += `<p class="shift-day-panel__meta-line${sourceHintClass}">${escapeHtml(sourceHint)}</p>`;
+            metaHtml += `<p class="cal-clean-meta shift-day-panel__meta-line${sourceHintClass}">${escapeHtml(sourceHint)}</p>`;
         }
         if (metaHints.length) {
-            metaHtml += metaHints.map(h => `<p class="shift-day-panel__meta-line">${h}</p>`).join('');
+            metaHtml += metaHints.map(h => `<p class="cal-clean-meta shift-day-panel__meta-line">${h}</p>`).join('');
         }
 
-        const footerActionsHtml = `<div class="shift-day-panel__footer-actions">
-            <button type="button" class="shift-day-panel__reset-btn" hidden
-                title="Вернуть время, обед и поезда из шаблона смены">Сбросить</button>
-            <button type="button" class="shift-day-panel__delete-btn" hidden>Удалить смену</button>
-        </div>`;
+        const headRoutePicker = buildCalendarCleanRoutePickerHtml(headRoute, activeTabDateKey, activeShift, true);
+        const showShiftTabs = !isRestOnlyDay && storedShifts.length > 1 && tabs.length > 1;
 
         return `
-            <div class="shift-day-panel shift-day-panel--design${isRestOnlyDay ? ' shift-day-panel--rest-day' : ''}" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
-                <header class="shift-day-panel__head">
-                    <h3 class="shift-day-panel__date">${escapeHtml(dateLabel)}</h3>
-                    ${isRestOnlyDay ? '' : `<div class="shift-day-panel__tabs" role="tablist">${tabsHtml}</div>`}
-                    <div class="shift-day-panel__head-divider" aria-hidden="true"></div>
-                </header>
-                <div class="shift-day-panel__body">${panelsHtml}</div>
-                <footer class="shift-day-panel__footer">
-                    ${metaHtml}
-                    ${footerActionsHtml}
-                </footer>
+            <div class="cal-clean-card${isRestOnlyDay ? ' cal-clean-card--rest-day' : ''}" data-shift-day-panel data-date-key="${escapeAttr(dateKey)}">
+                <div class="cal-clean-head">
+                    <div class="cal-clean-head-row">
+                        <span class="cal-clean-date-main">${escapeHtml(dateLabel)}</span>
+                        <div class="cal-clean-head-actions">
+                            <div class="cal-clean-head-route" data-dock-head-route>${headRoutePicker}</div>
+                        </div>
+                    </div>
+                    ${buildCalendarCleanHeadNoteFieldHtml(activeTabDateKey, activeShiftIndex, activeShift)}
+                </div>
+                ${showShiftTabs ? `<div class="cal-clean-tabs" role="tablist">${tabsHtml}</div>` : ''}
+                ${panelsHtml}
+                ${metaHtml}
             </div>`;
     }
 
@@ -20643,6 +22065,7 @@
 
         if (Array.isArray(tabsMeta) && tabsMeta[tabIndex]) {
             syncShiftDayPanelFooterForTab(dayPanel, tabsMeta[tabIndex]);
+            syncCalendarCleanHeadRoute(dayPanel, tabsMeta[tabIndex]);
             if (dayPanel.getAttribute('data-route-shift-editor') !== '1') {
                 syncCalendarHighlightForShiftTab(tabsMeta[tabIndex]);
             }
@@ -20650,6 +22073,8 @@
             reapplyCalendarDaySelection();
             syncCalendarChipSelection();
         }
+
+        closeAllSummaryRouteLists();
     }
 
     function calendarAddSecondShift() {
@@ -20887,14 +22312,39 @@
         return primaryOnDay >= 0 ? primaryOnDay : 0;
     }
 
-    function buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable) {
+    function buildShiftSummaryRouteComboboxPickerHtml(route, dateKey, shift, editable) {
+        if (!editable) {
+            if (isAveragePayShift(shift)) {
+                return `<span class="shift-card__route-readonly shift-card__route-readonly--head">О — оплата по среднему</span>`;
+            }
+            return `<span class="shift-card__route-readonly shift-card__route-readonly--head">${escapeHtml(formatCalendarShiftLabel(route))}</span>`;
+        }
+        const matchedOption = findConstructorRouteOption(dateKey, route, shift);
+        return `<div class="shift-card__route-picker" data-dock-route-picker>
+            <div class="shift-card__route-pill shift-card__route-pill--compact">
+                <div class="route-combobox shift-summary__route" data-summary-route-combobox>
+                    <input type="text" class="route-combobox-input shift-summary__route-input shift-card__route-input" data-summary-route-input
+                        value="${escapeAttr(route)}" placeholder="Н59" autocomplete="off"
+                        aria-label="Маршрут" aria-expanded="false" role="combobox">
+                    <input type="hidden" data-summary-route-value value="${escapeAttr(route)}">
+                    <input type="hidden" data-summary-route-signature value="${escapeAttr(matchedOption?.signature || '')}">
+                </div>
+                <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+            </div>
+            <ul class="route-combobox-list shift-summary__route-list" data-summary-route-list role="listbox" hidden></ul>
+        </div>`;
+    }
+
+    function buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable, options = {}) {
         const matchedOption = findConstructorRouteOption(dateKey, route, shift);
         const selectedPresetId = resolveLocalPresetIdForShift(shift);
         const showQuickRoutes = editable && !isMorningRoute(route) && !shift?.isVirtualMorning;
         const showAddNightPlus = canShowMorningAddNightPlus(shift, dateKey, editable);
+        const dockCompact = options.calendarDockCompact === true;
 
         if (editable && isAveragePayShift(shift)) {
-            return `<div class="shift-card__route-area shift-card__route-area--average-pay">${buildShiftPanelQuickRoutesInline('', shift)}</div>`;
+            const quickOpts = dockCompact ? { dockSingleRow: true } : {};
+            return `<div class="shift-card__route-area shift-card__route-area--average-pay">${buildShiftPanelQuickRoutesInline('', shift, quickOpts)}</div>`;
         }
 
         if (!editable) {
@@ -20902,6 +22352,23 @@
                 return `<span class="shift-card__route-readonly">О — оплата по среднему</span>`;
             }
             return `<span class="shift-card__route-readonly">${escapeHtml(formatCalendarShiftLabel(route))}</span>`;
+        }
+
+        if (dockCompact) {
+            const quickHtml = showQuickRoutes
+                ? buildShiftPanelQuickRoutesInline(selectedPresetId, shift, { dockSingleRow: true })
+                : '';
+            if (!showAddNightPlus) {
+                return quickHtml;
+            }
+            return `<div class="shift-card__route-stack shift-card__route-stack--dock" data-morning-add-night-wrap data-add-night-date-key="${escapeAttr(dateKey)}">
+                ${quickHtml}
+                <div class="shift-card__route-line shift-card__route-line--dock-add">
+                    <button type="button" class="shift-card__route-add-btn shift-card__route-add-btn--dock" data-morning-add-night-toggle
+                        aria-label="Добавить ночную смену" aria-expanded="false"></button>
+                </div>
+                ${buildMorningAddNightRowHtml(dateKey)}
+            </div>`;
         }
 
         const routeAreaHtml = `<div class="shift-card__route-area${showQuickRoutes ? '' : ' shift-card__route-area--solo'}">
@@ -20935,22 +22402,28 @@
 
     function buildShiftSummaryPanelHtml(shift, dateKey, shiftIndex, context, options = {}) {
         const editable = options.editable === true;
+        const dockCompact = options.calendarDockCompact === true;
+        const routeOptions = dockCompact ? { calendarDockCompact: true } : {};
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         const route = String(enriched.route || '').trim();
+        const panelClass = dockCompact ? ' shift-summary__panel--dock-compact' : '';
 
         if (isRestDayRoute(route)) {
-            return buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable);
+            return buildShiftRestDayPanelHtml(dateKey, shiftIndex, editable, routeOptions);
         }
 
         if (isAveragePayShift(enriched)) {
             const avgInfo = getAveragePayCalculation(dateKey);
-            const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable);
-            return `
-            <div class="shift-card__panel shift-summary__panel shift-summary__panel--average-pay" data-shift-summary-panel>
-                <div class="shift-card__row shift-card__row--route shift-card__row--status-quick">
+            const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable, routeOptions);
+            const quickRow = dockCompact
+                ? `<div class="shift-card__row shift-card__row--dock-quick">${routeField}</div>`
+                : `<div class="shift-card__row shift-card__row--route shift-card__row--status-quick">
                     <span class="shift-card__label">Статус</span>
                     <div class="shift-card__field">${routeField}</div>
-                </div>
+                </div>`;
+            return `
+            <div class="shift-card__panel shift-summary__panel shift-summary__panel--average-pay${panelClass}" data-shift-summary-panel>
+                ${quickRow}
                 <div class="shift-card__average-pay-wrap" data-summary-calc aria-live="polite">
                     ${buildAveragePayCardHtml(avgInfo)}
                 </div>
@@ -20964,28 +22437,49 @@
             ? `<span class="shift-rest-double-badge" title="Оплата ×2 за рабочий выходной">×2</span>`
             : '';
 
-        const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable);
+        const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, shiftIndex, editable, routeOptions);
+        const routePickerHtml = dockCompact
+            ? buildShiftSummaryRouteComboboxPickerHtml(route, dateKey, shift, editable)
+            : '';
+        const quickDockInner = dockCompact && routeField ? routeField : '';
+        const routeRowHtml = !dockCompact
+            ? `<div class="shift-card__row shift-card__row--route">
+                <span class="shift-card__label">Маршрут</span>
+                <div class="shift-card__field">${routeField}</div>
+            </div>`
+            : '';
 
-        return `
-            <div class="shift-card__panel shift-summary__panel" data-shift-summary-panel>
-                <div class="shift-card__row shift-card__row--route">
-                    <span class="shift-card__label">Маршрут</span>
-                    <div class="shift-card__field">${routeField}</div>
-                </div>
-                <div class="shift-card__row shift-card__row--time" data-shift-time-row>
+        const dockActionsHtml = dockCompact ? `
+                <div class="cal-v2-row cal-v2-row--actions shift-day-panel__actions shift-day-panel__footer-actions">
+                    <button type="button" class="cal-v2-btn shift-day-panel__reset-btn" hidden
+                        title="Вернуть время, обед и поезда из шаблона смены">Сбросить</button>
+                    <button type="button" class="cal-v2-btn shift-day-panel__delete-btn" hidden>Удалить</button>
+                    <button type="button" class="cal-v2-btn cal-v2-btn--accent shift-day-panel__goto-route" data-calendar-goto-route>
+                        Маршрут
+                    </button>
+                </div>` : `
+                <button type="button" class="shift-constructor-btn shift-day-panel__goto-route" data-calendar-goto-route>
+                    Перейти в маршрут
+                </button>`;
+
+        const timeLunchHtml = dockCompact
+            ? buildCalendarV2TimeLunchRowHtml(shift, dateKey, enriched, editable)
+            : `<div class="shift-card__row shift-card__row--time" data-shift-time-row>
                     <span class="shift-card__label">Время</span>
                     <div class="shift-card__field">
                         ${buildShiftSummaryTimeFieldHtml(enriched, dateKey, enriched.startTime || enriched.reportTime, enriched.endTime, editable)}
                     </div>
                 </div>
-                ${buildShiftSummaryLunchRangeHtml(enriched, dateKey, editable)}
-                <div class="shift-card__row shift-card__row--trains">
-                    <span class="shift-card__label">Поезда</span>
-                    <div class="shift-card__field">
-                        ${buildShiftSummaryTrainsInlineHtml(shift, dateKey, context, editable)}
-                    </div>
-                </div>
-                <div class="shift-card__summary" data-summary-calc aria-live="polite">
+                ${buildShiftSummaryLunchRangeHtml(enriched, dateKey, editable)}`;
+
+        const summaryHtml = dockCompact
+            ? `<div class="cal-v2-row cal-v2-row--totals shift-card__summary shift-card__summary--dock cal-v2-summary" data-summary-calc aria-live="polite">
+                    <span class="cal-v2-summary__hours"><span class="cal-v2-summary__k">Часов:</span>
+                        <span data-summary-hours>${escapeHtml(formatShiftSummaryHoursValue(totalHours))}</span></span>
+                    <span class="cal-v2-summary__pay"><span class="cal-v2-summary__k">Оплата:</span>
+                        <span class="shift-card__summary-value--pay" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}${doublePayBadge}</span></span>
+                </div>`
+            : `<div class="shift-card__summary" data-summary-calc aria-live="polite">
                     <div class="shift-card__summary-row">
                         <span class="shift-card__summary-label">Часов в смене</span>
                         <span class="shift-card__summary-value" data-summary-hours>${escapeHtml(formatShiftSummaryHoursValue(totalHours))}</span>
@@ -20994,9 +22488,73 @@
                         <span class="shift-card__summary-label">Заработано</span>
                         <span class="shift-card__summary-value shift-card__summary-value--pay" data-summary-pay>${escapeHtml(formatShiftSummaryPayValue(shiftPayment))}${doublePayBadge}</span>
                     </div>
-                </div>
+                </div>`;
+
+        const trainsRowHtml = dockCompact
+            ? `<div class="cal-v2-row cal-v2-row--trains shift-card__row shift-card__row--trains">
+                    <div class="cal-v2-row__trains">${buildShiftSummaryTrainsInlineHtml(shift, dateKey, context, editable)}</div>
+                    <button type="button" class="cal-v2-trains-go" data-calendar-goto-route aria-label="Открыть в маршруте">→</button>
+                </div>`
+            : `<div class="shift-card__row shift-card__row--trains">
+                    <span class="shift-card__label">Поезда</span>
+                    <div class="shift-card__field">
+                        ${buildShiftSummaryTrainsInlineHtml(shift, dateKey, context, editable)}
+                    </div>
+                </div>`;
+
+        const dockQuickHtml = dockCompact && quickDockInner
+            ? `<div class="cal-v2-row cal-v2-row--quick shift-day-panel__quick-row shift-card__row shift-card__row--dock-quick">${quickDockInner}</div>`
+            : '';
+
+        return `
+            <div class="shift-card__panel shift-summary__panel cal-v2-panel${panelClass}" data-shift-summary-panel>
+                ${dockCompact ? routePickerHtml : routeRowHtml}
+                ${dockQuickHtml}
+                ${timeLunchHtml}
+                ${trainsRowHtml}
+                ${summaryHtml}
+                ${dockActionsHtml}
                 ${renderShiftSummaryNoteHtml(dateKey, shiftIndex, enriched, editable)}
             </div>`;
+    }
+
+  function navigateToRouteFromCalendarDayPanel() {
+        const dateKey = calendarSelectedDateKey;
+        if (!dateKey || isScheduleMaintenanceOn()) return;
+        const dayPanel = getCalendarShiftDayPanel();
+        const activePanel = getActiveShiftTabPanel(dayPanel);
+        const tabDateKey = activePanel?.dataset?.tabDateKey || dateKey;
+        const shiftIndex = Number(activePanel?.dataset?.shiftIndex);
+        const shifts = getStoredDayShifts(tabDateKey);
+        const shift = (Number.isFinite(shiftIndex) && shifts[shiftIndex])
+            ? shifts[shiftIndex]
+            : getPrimaryStoredShift(tabDateKey);
+        if (!shift || isRestDayRoute(shift.route) || isAveragePayShift(shift)) {
+            if (typeof showDaActionToast === 'function') {
+                showDaActionToast('Сначала выберите рабочий маршрут');
+            }
+            return;
+        }
+        const trainNumbers = extractTrainNumbers(shift.trainNum || shift.trains || '');
+        const trainPlan = resolveShiftTrainPlanForInputs(trainNumbers.length ? trainNumbers : getTrainNumbersFromDom());
+        navigateToRouteWithTrains(
+            shift.trainNum || shift.trains || '',
+            tabDateKey,
+            isNightRoute(shift.route),
+            trainNumbers.length ? trainNumbers : null,
+            trainPlan,
+        );
+    }
+
+    function bindCalendarGoToRouteButtons(root = document) {
+        root.querySelectorAll('[data-calendar-goto-route]').forEach((btn) => {
+            if (btn.dataset.gotoRouteBound === '1') return;
+            btn.dataset.gotoRouteBound = '1';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateToRouteFromCalendarDayPanel();
+            });
+        });
     }
 
     let shiftSummaryEditorDocBound = false;
@@ -21006,7 +22564,11 @@
         const panel = panelRoot?.querySelector('[data-shift-summary-panel]') || panelRoot;
         if (!panel || !storedShift) return null;
 
-        const combobox = panel.querySelector('[data-summary-route-combobox]');
+        const dayPanel = panelRoot?.closest?.('[data-shift-day-panel]')
+            || panel.closest?.('[data-shift-day-panel]');
+        const combobox = panel.querySelector('[data-summary-route-combobox]')
+            || dayPanel?.querySelector('.cal-clean-head [data-summary-route-combobox]')
+            || dayPanel?.querySelector('[data-dock-head-route] [data-summary-route-combobox]');
         const route = combobox
             ? getSummaryRouteComboboxValue(combobox)
             : String(panel.querySelector('.shift-summary__route-input')?.value || storedShift.route || '').trim();
@@ -21132,7 +22694,9 @@
         const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
         const route = String(enriched.route || '').trim();
         const matchedOption = findConstructorRouteOption(dateKey, route, shift);
-        const combobox = panel.querySelector('[data-summary-route-combobox]');
+        const dayPanel = panelRoot.closest('[data-shift-day-panel]');
+        const combobox = panel.querySelector('[data-summary-route-combobox]')
+            || dayPanel?.querySelector('.cal-clean-head [data-summary-route-combobox]');
         if (combobox) {
             setSummaryRouteComboboxValue(combobox, route, matchedOption?.signature || '');
         } else {
@@ -21247,29 +22811,44 @@
         });
     }
 
+    let summaryRouteFilterTimer = null;
+
+    function scheduleRenderSummaryRouteComboboxList(combobox, dateKey, query = '') {
+        clearTimeout(summaryRouteFilterTimer);
+        summaryRouteFilterTimer = window.setTimeout(() => {
+            renderSummaryRouteComboboxList(combobox, dateKey, query);
+        }, ROUTE_COMBOBOX_FILTER_DEBOUNCE_MS);
+    }
+
     function renderSummaryRouteComboboxList(combobox, dateKey, query = '') {
         const list = getSummaryRouteComboboxList(combobox);
         const input = combobox?.querySelector('[data-summary-route-input]');
         if (!list || !input) return;
 
-        const options = getConstructorRouteOptions(dateKey);
-        const filtered = filterConstructorRouteOptions(query || input.value, options);
+        const preparedRows = ensureRouteDropdownPrepared(dateKey);
+        const searchQuery = query || input.value;
         const signatureHidden = combobox.querySelector('[data-summary-route-signature]');
         const selectedSignature = signatureHidden?.value?.trim() || '';
 
-        if (!options.length) {
+        if (!preparedRows.length) {
+            if (depotTemplatesLoadState === 'loading') {
+                list.innerHTML = '<li class="route-combobox-empty" role="presentation">Загрузка маршрутов…</li>';
+                return;
+            }
+            if (depotTemplatesLoadState === 'error') {
+                list.innerHTML = '<li class="route-combobox-empty route-combobox-empty--retry" role="presentation">Не удалось загрузить базу. Нажмите, чтобы повторить.</li>';
+                return;
+            }
             list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены для выбранного дня</li>';
             return;
         }
+        const filtered = filterPreparedRouteDropdownRows(preparedRows, searchQuery);
         if (!filtered.length) {
             list.innerHTML = '<li class="route-combobox-empty" role="presentation">Маршруты не найдены</li>';
             return;
         }
 
-        list.innerHTML = filtered.map(option => {
-            const isSelected = option.signature === selectedSignature ? ' is-selected' : '';
-            return `<li class="route-combobox-option${isSelected}" role="option" data-route="${escapeAttr(option.route)}" data-signature="${escapeAttr(option.signature)}">${escapeHtml(option.label)}</li>`;
-        }).join('');
+        paintRouteDropdownList(list, preparedRows, searchQuery, selectedSignature);
     }
 
     function setSummaryRouteComboboxValue(combobox, route, signature = '') {
@@ -21296,10 +22875,18 @@
         const activeIndex = Math.min(calendarConstructorActiveTab, Math.max(0, tabs.length - 1));
         switchConstructorShiftTab(dayPanel, activeIndex, tabs);
 
+        const activeTab = tabs[activeIndex];
+        if (activeTab) {
+            const tabDateKey = activeTab.dateKey || dateKey;
+            const activeShift = getStoredDayShifts(tabDateKey)[activeTab.shiftIndex];
+            syncLocalPresetUi(resolveLocalPresetIdForShift(activeShift));
+        }
+
         dayPanel.querySelectorAll('[data-shift-tab]').forEach(tabBtn => {
             tabBtn.addEventListener('mousedown', () => cancelShiftSummarySaveTimers());
             tabBtn.addEventListener('click', () => {
                 switchConstructorShiftTab(dayPanel, Number(tabBtn.dataset.tabIndex), tabs);
+                mountCalendarDockHeadRoutePicker(dayPanel);
             });
         });
 
@@ -21316,28 +22903,7 @@
             const shift = getStoredDayShifts(tabDateKey)[shiftIndex];
             if (!shift) return;
 
-            if (panelEl.querySelector('[data-shift-rest-panel]')) {
-                panelEl.querySelectorAll('.shift-card__route-picker').forEach(picker => {
-                    bindSummaryRoutePicker(picker, tabDateKey);
-                });
-
-                const combobox = panelEl.querySelector('[data-summary-route-combobox]');
-                const routeInput = combobox?.querySelector('[data-summary-route-input]');
-                const routeList = panelEl.querySelector('[data-summary-route-list]');
-
-                routeInput?.addEventListener('change', () => {
-                    scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
-                });
-
-                routeList?.addEventListener('click', (e) => {
-                    const option = e.target.closest('.route-combobox-option');
-                    if (!option) return;
-                    setSummaryRouteComboboxValue(combobox, option.dataset.route || '', option.dataset.signature || '');
-                    renderSummaryRouteComboboxList(combobox, tabDateKey, routeInput?.value || '');
-                    routeList.hidden = true;
-                    routeInput?.setAttribute('aria-expanded', 'false');
-                    scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabDateKey);
-                });
+            if (panelEl.matches('[data-shift-rest-panel]')) {
                 return;
             }
 
@@ -21426,6 +22992,30 @@
             });
             initRouteCombobox('', '');
         }
+
+        const headRoutePicker = dayPanel.querySelector('.cal-clean-head .shift-card__route-picker');
+        if (headRoutePicker && headRoutePicker.dataset.routePickerBound !== '1') {
+            const activePanel = getActiveShiftTabPanel(dayPanel);
+            const tabDateKey = activePanel?.dataset.tabDateKey || dateKey;
+            bindSummaryRoutePicker(headRoutePicker, tabDateKey);
+            const combobox = headRoutePicker.querySelector('[data-summary-route-combobox]');
+            const routeInput = combobox?.querySelector('[data-summary-route-input]');
+            routeInput?.addEventListener('change', () => {
+                const panelEl = getActiveShiftTabPanel(dayPanel);
+                if (!panelEl) return;
+                const shiftIndex = Number(panelEl.dataset.shiftIndex);
+                const tabKey = panelEl.dataset.tabDateKey || dateKey;
+                const current = getStoredDayShifts(tabKey)[shiftIndex];
+                if (!current) return;
+                const draft = collectShiftDraftFromSummaryPanel(panelEl, current, tabKey);
+                if (draft) updateShiftSummaryCalcDisplay(panelEl, draft, tabKey);
+                scheduleShiftSummarySave(dayPanel, panelEl, dateKey, shiftIndex, tabKey);
+            });
+        }
+
+        bindCalendarGoToRouteButtons(dayPanel);
+
+        mountCalendarDockHeadRoutePicker(dayPanel);
     }
 
     function buildUnifiedShiftSummaryRows(shift, dateKey, context = {}) {
@@ -21790,9 +23380,7 @@
         const grid = document.getElementById('calendarGrid');
         if (!grid) return;
 
-        grid.innerHTML = CALENDAR_WEEKDAY_LABELS
-            .map(label => `<div class="weekday">${label}</div>`)
-            .join('');
+        grid.innerHTML = '';
 
         const realToday = new Date();
 
@@ -21811,7 +23399,7 @@
 
         for (let i = 0; i < startDay; i++) {
             const div = document.createElement('div');
-            div.className = 'day other-month';
+            div.className = 'cal-cell day other-month';
             grid.appendChild(div);
         }
 
@@ -21820,7 +23408,7 @@
 
         for (let d = 1; d <= totalDays; d++) {
             const div = document.createElement('div');
-            div.className = 'day';
+            div.className = 'cal-cell day';
 
             if (year === realToday.getFullYear() && month === realToday.getMonth() && d === realToday.getDate()) {
                 div.classList.add('today');
@@ -21839,7 +23427,7 @@
             };
 
             if (shifts.length === 0) {
-                div.innerHTML = `<span class="day-number">${d}</span>`;
+                div.innerHTML = `<span class="cal-cell__num day-number">${d}</span>`;
             } else {
                 div.classList.add('day--has-shift');
                 if (shifts.some(s => isRestDayRoute(s.route))) div.classList.add('day--has-rest');
@@ -21868,16 +23456,55 @@
         }
     }
 
+    function resolveCalendarDefaultDayForVisibleMonth() {
+        const year = calendarCurrentDate.getFullYear();
+        const month = calendarCurrentDate.getMonth();
+        const today = new Date();
+        const day = (year === today.getFullYear() && month === today.getMonth())
+            ? today.getDate()
+            : 1;
+        const dStr = String(day).padStart(2, '0');
+        const mStr = String(month + 1).padStart(2, '0');
+        return { year, month, day, dateKey: `${dStr}.${mStr}.${year}` };
+    }
+
     function calendarChangeMonth(direction) {
         calendarCurrentDate.setDate(1);
         calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + direction);
+
+        const picked = resolveCalendarDefaultDayForVisibleMonth();
+        calendarSelectedDateKey = picked.dateKey;
+        calendarGridHighlightDateKey = picked.dateKey;
+        calendarConstructorSelectPreference = null;
+        calendarConstructorOpenedDateKey = null;
+
+        applyNormativeForDateKey(picked.dateKey);
         calendarRenderCalendar();
-        void syncVisibleCalendarMonthFromCrewApi();
+
+        if (window.DaCrewApi?.isEnabled?.()) {
+            void syncVisibleCalendarMonthFromCrewApi();
+        }
     }
 
     function calendarFormatMonthGenitive(monthIndex) {
         const monthsGenitive = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
         return monthsGenitive[monthIndex];
+    }
+
+    function calendarDateKeyHeaderParts(dateKey) {
+        const parts = String(dateKey || '').split('.');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        if (!day || month < 0 || month > 11 || !year) return null;
+        return { day, month, year };
+    }
+
+    function formatCalendarCardDateLabel(dateKey) {
+        const p = calendarDateKeyHeaderParts(dateKey);
+        if (!p) return '';
+        return `${p.day} ${calendarFormatMonthGenitive(p.month)} ${p.year}`;
     }
 
     function calendarSelectDay(dateKey, day, month, year, target, preference = null) {
@@ -22078,7 +23705,15 @@
         const constructor = document.getElementById('shiftConstructor');
         if (!title || !content) return;
 
-        title.textContent = `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
+        const headerParts = calendarDateKeyHeaderParts(dateKey);
+        if (headerParts) {
+            day = headerParts.day;
+            month = headerParts.month;
+            year = headerParts.year;
+        }
+        const headerLabel = formatCalendarCardDateLabel(dateKey)
+            || `${day} ${calendarFormatMonthGenitive(month)} ${year}`;
+        title.textContent = headerLabel;
 
         const partsCheck = dateKey.split('.');
         const currentValidDate = new Date(parseInt(partsCheck[2], 10), parseInt(partsCheck[1], 10) - 1, parseInt(partsCheck[0], 10));
@@ -22123,6 +23758,7 @@
         if (!effectiveShifts.length) {
             content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, sourceHintClass);
             initCalendarRoutePicker(storedShifts, dateKey);
+            bindCalendarGoToRouteButtons(content);
             return;
         }
 
@@ -22131,6 +23767,7 @@
         if (!tabs.length) {
             content.innerHTML = buildEmptyShiftDayPanelHtml(dateKey, day, month, year, normativeHint, sourceHintClass);
             initCalendarRoutePicker(storedShifts, dateKey);
+            bindCalendarGoToRouteButtons(content);
             calendarConstructorOpenedDateKey = dateKey;
             return;
         }
@@ -22186,6 +23823,7 @@
         calendarConstructorTabsMeta = tabs;
 
         initShiftDayPanel(content, dateKey, storedShifts, tabs);
+        bindCalendarGoToRouteButtons(content);
         syncCalendarChipSelection();
     }
 

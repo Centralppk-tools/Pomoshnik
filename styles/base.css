@@ -1248,6 +1248,12 @@ body {
     overflow: hidden !important;
 }
 
+#screen-calendar.screen:not(.hidden) {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+}
+
 .app-header-bar {
     display: flex !important;
     align-items: center !important;

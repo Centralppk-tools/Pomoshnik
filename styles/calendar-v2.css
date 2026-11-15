@@ -1,0 +1,3327 @@
+/* =========================================================
+   Чистый layout экрана календаря (100dvh без скролла)
+   ========================================================= */
+
+/* 1. Непрозрачная подложка под нижней панелью навигации */
+.bottom-tabbar {
+  background: #0b1015 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* 2. Корневой контейнер вкладки календаря */
+#screen-calendar.screen:not(.hidden) {
+  display: flex !important;
+  flex-direction: column;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  padding-bottom: calc(var(--bottom-tabbar-height, 64px) + env(safe-area-inset-bottom) + 6px) !important;
+  box-sizing: border-box;
+  background: #0b1015;
+}
+
+#screen-calendar .cal-screen__shell {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-width: 430px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 8px 12px 0 !important;
+  gap: 8px;
+  overflow: hidden;
+}
+
+#screen-calendar .cal-screen__top {
+  flex-shrink: 0;
+  margin-bottom: 0 !important;
+}
+
+#screen-calendar .cal-screen__body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* 3. Верхняя половина: компактный блок месяца */
+#screen-calendar .cal-month {
+  flex-shrink: 0;
+  background: #131a22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 8px 10px 9px;
+}
+
+#screen-calendar .cal-month__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  height: 28px;
+}
+
+#screen-calendar .cal-month__title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #f1f5f9;
+  text-transform: capitalize;
+}
+
+#screen-calendar .cal-month__nav,
+#screen-calendar .cal-month__ics {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #18202a;
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+#screen-calendar .cal-month__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+#screen-calendar .cal-month__grid.calendar-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+}
+
+/* Ячейка дня: строгая геометрия без вылезания плашек */
+#screen-calendar .calendar-grid .day {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 3px 3px 3px !important;
+  border-radius: 9px !important;
+  background: #18202a;
+  border: 1.5px solid transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  position: relative;
+}
+
+@media (max-height: 760px) {
+  #screen-calendar .calendar-grid .day {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+  }
+}
+
+#screen-calendar .calendar-grid .day.other-month {
+  opacity: 0.35;
+}
+
+#screen-calendar .calendar-grid .day.today {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+#screen-calendar .calendar-grid .day.selected {
+  border-color: #f1f5f9 !important;
+  background: #1e2835 !important;
+  box-shadow: none !important;
+}
+
+#screen-calendar .calendar-grid .day.today::before,
+#screen-calendar .calendar-grid .day.selected::before {
+  display: none !important;
+}
+
+#screen-calendar .calendar-grid .day-number,
+#screen-calendar .calendar-grid .cal-cell__num {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  color: #cbd5e1;
+  text-align: left;
+  padding-left: 2px;
+}
+
+#screen-calendar .calendar-grid .day-shifts,
+#screen-calendar .calendar-grid .cal-cell__capsules {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Плашка смены внутри ячейки: крупный код смены без обрезки */
+#screen-calendar .calendar-grid .day-shift-chip,
+#screen-calendar .calendar-grid .cal-cell__capsule {
+  width: 100% !important;
+  height: 17px !important;
+  padding: 0 2px !important;
+  border-radius: 5px !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  line-height: 17px !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip .day-shift-label {
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+}
+
+/* Скрываем дублирующее мелкое время в тесной ячейке месяца */
+#screen-calendar .calendar-grid .day-shift-time {
+  display: none !important;
+}
+
+/* 4. Нижняя половина: карточка выбранного дня */
+#screen-calendar .cal-day-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  background: #131a22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#screen-calendar .cal-day-card__inner,
+#screen-calendar .cal-day-card__content {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+#screen-calendar .cal-day-card__sr-title {
+  display: none !important;
+}
+
+#screen-calendar [data-shift-day-panel] {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: space-between;
+  gap: 6px !important;
+  overflow: hidden;
+}
+
+#screen-calendar .cal-day-panel__body,
+#screen-calendar .shift-day-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#screen-calendar .cal-v2-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 5px !important;
+  overflow: hidden;
+}
+
+#screen-calendar .shift-day-panel__hero-badge,
+#screen-calendar .cal-v2-hero-pill {
+  display: none !important;
+}
+
+#screen-calendar .shift-day-panel__head-divider {
+  display: none !important;
+}
+
+/* Быстрые маршруты в одну прокручиваемую строку */
+#screen-calendar .shift-day-panel__quick-row,
+#screen-calendar .calendar-local-routes-row,
+#screen-calendar .shift-card__quick-routes--dock {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  gap: 5px !important;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  align-items: center;
+}
+
+#screen-calendar .shift-day-panel__quick-row::-webkit-scrollbar,
+#screen-calendar .calendar-local-routes-row::-webkit-scrollbar,
+#screen-calendar .shift-card__quick-routes--dock::-webkit-scrollbar {
+  display: none;
+}
+
+#screen-calendar .shift-card__quick-groups--single-row {
+  flex-wrap: nowrap !important;
+  display: flex !important;
+  gap: 5px !important;
+}
+
+#screen-calendar .shift-card__quick-groups--single-row .shift-card__quick-btns {
+  display: contents;
+}
+
+#screen-calendar .shift-day-panel__quick-btn,
+#screen-calendar .calendar-local-route-btn,
+#screen-calendar .shift-card__quick-btn {
+  flex-shrink: 0 !important;
+  height: 26px !important;
+  padding: 0 9px !important;
+  font-size: 11.5px !important;
+  border-radius: 7px !important;
+}
+
+#screen-calendar .shift-card__quick-label--dock {
+  display: none !important;
+}
+
+#screen-calendar [data-summary-calc] {
+  padding: 7px 12px !important;
+  border-radius: 11px !important;
+  min-height: 36px !important;
+}
+
+#screen-calendar .cal-v2-summary {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(90deg, #024c4e 0%, #038b6f 48%, #10b981 100%);
+}
+
+#screen-calendar .shift-day-panel__actions,
+#screen-calendar .shift-day-panel__footer-actions {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+  flex-shrink: 0;
+}
+
+#screen-calendar .shift-day-panel__footer.cal-day-panel__meta {
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+}
+
+#screen-calendar .shift-day-panel__reset-btn,
+#screen-calendar .shift-day-panel__delete-btn,
+#screen-calendar .shift-day-panel__goto-route,
+#screen-calendar .cal-v2-btn {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  font-size: 12.5px !important;
+  border-radius: 10px !important;
+  flex: 1 1 0;
+}
+
+#screen-calendar .shift-constructor {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* 1. Фикс ширины бренда в верхней шапке на узких экранах */
+#screen-calendar .route-header-brand {
+  min-width: 0;
+  flex-shrink: 1;
+}
+#screen-calendar .route-header-brand-text {
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap;
+}
+
+/* 2. Уплотнение вкладок смен и внутренних панелей в карточке дня */
+#screen-calendar .cal-day-card {
+  padding: 8px 10px !important;
+}
+
+/* Шапка карточки дня (дата + селектор справа) */
+#screen-calendar .shift-day-panel__head,
+#screen-calendar .cal-v2-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 4px !important;
+  min-height: 32px !important;
+}
+
+#screen-calendar [data-dock-head-route] .shift-card__route-picker,
+#screen-calendar [data-dock-head-route] [data-summary-route-combobox] {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 10px !important;
+  font-size: 13px !important;
+}
+
+/* Компактные табы переключения смен (когда в сутках 2 смены: ночная + утренняя) */
+#screen-calendar .shift-day-panel__tabs,
+#screen-calendar [role="tablist"] {
+  display: flex !important;
+  gap: 6px !important;
+  margin: 0 0 4px !important;
+}
+
+#screen-calendar [data-shift-tab] {
+  height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+  border-radius: 8px !important;
+}
+
+/* Скрываем дублирующий большой селектор маршрута внутри тела панели, если он уже вынесен в шапку [data-dock-head-route] */
+#screen-calendar [data-shift-summary-panel] [data-summary-route-combobox] {
+  display: none !important;
+}
+
+/* Компактные внутренние отступы всех строк внутри карточки дня */
+#screen-calendar [data-shift-summary-panel],
+#screen-calendar .cal-v2-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  justify-content: space-between !important;
+  gap: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Скрываем второстепенные мелкие подписи про нормативы, чтобы не воровали высоту */
+#screen-calendar .shift-summary__norm-hint,
+#screen-calendar .shift-summary__subnote {
+  display: none !important;
+}
+
+/* Компактные строки времени, обеда и поездов */
+#screen-calendar [data-shift-time-row],
+#screen-calendar [data-summary-trains-row],
+#screen-calendar .cal-v2-row--time-lunch,
+#screen-calendar .cal-v2-row--trains {
+  min-height: 28px !important;
+  padding: 3px 8px !important;
+  margin: 0 !important;
+}
+
+/* =========================================================
+   Карточка дня cal-clean (5 строк, без legacy shift-day-panel)
+   ========================================================= */
+
+#constructorContent .cal-clean-card,
+#screen-calendar .cal-clean-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 6px;
+  color: #f1f5f9;
+  overflow: hidden;
+}
+
+#screen-calendar .cal-clean-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#screen-calendar .cal-clean-date-main {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+#screen-calendar .cal-clean-tabs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-tabs [data-shift-tab] {
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #18202a;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#screen-calendar .cal-clean-tabs [data-shift-tab].is-active {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+#screen-calendar .cal-clean-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-note-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #18202a;
+  color: #cbd5e1;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-route-picker {
+  position: relative;
+}
+
+#screen-calendar .cal-clean-route-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 112px;
+  height: 30px;
+  background: #18202a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
+
+#screen-calendar .cal-clean-route-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 24px 0 9px;
+  outline: none;
+}
+
+#screen-calendar .cal-clean-route-arrow {
+  position: absolute;
+  right: 2px;
+  width: 22px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#screen-calendar .cal-clean-route-dropdown {
+  position: absolute;
+  right: 0;
+  top: 34px;
+  width: 250px;
+  max-height: 210px;
+  overflow-y: auto;
+  background: #131a22;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 11px;
+  z-index: 60;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65);
+}
+
+#screen-calendar .cal-clean-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#screen-calendar .cal-clean-body[hidden] {
+  display: none !important;
+}
+
+#screen-calendar .cal-clean-quick-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+#screen-calendar .cal-clean-quick-row::-webkit-scrollbar {
+  display: none;
+}
+
+#screen-calendar .cal-clean-quick-row .shift-card__quick-label {
+  display: none !important;
+}
+
+#screen-calendar .cal-clean-quick-row .shift-card__quick-routes,
+#screen-calendar .cal-clean-quick-row .shift-card__quick-groups {
+  display: contents;
+}
+
+#screen-calendar .cal-clean-quick-row [data-local-preset],
+#screen-calendar .cal-clean-quick-row .shift-card__quick-btn {
+  flex-shrink: 0;
+  height: 25px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #18202a;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#screen-calendar .cal-clean-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: #18202a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 5px 8px;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-time-group,
+#screen-calendar .cal-clean-lunch-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#screen-calendar .cal-clean-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+#screen-calendar .cal-clean-inputs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+#screen-calendar .cal-clean-time-inp {
+  background: #0b1015;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 4px;
+  width: 58px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-calendar .cal-clean-time-inp::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+#screen-calendar .cal-clean-mini-btn,
+#screen-calendar .cal-clean-add-lunch-btn {
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b1015;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#screen-calendar .cal-clean-trains-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 10px;
+  padding: 5px 8px;
+  min-height: 30px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-trains-row::-webkit-scrollbar {
+  display: none;
+}
+
+#screen-calendar .cal-clean-trains-row .shift-card__trains-go {
+  display: none;
+}
+
+#screen-calendar .cal-clean-trains-empty {
+  color: #64748b;
+  font-weight: 600;
+}
+
+#screen-calendar .cal-clean-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#screen-calendar .cal-clean-totals {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  border-radius: 10px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+}
+
+#screen-calendar .cal-clean-total-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #cbd5e1;
+}
+
+#screen-calendar .cal-clean-total-item strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f1f5f9;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-calendar .cal-clean-total-item strong.is-money {
+  color: #34d399;
+}
+
+#screen-calendar .cal-clean-btns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 6px;
+}
+
+#screen-calendar .cal-clean-btn {
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #18202a;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#screen-calendar .cal-clean-btn.is-primary {
+  background: #10b981;
+  border-color: #10b981;
+  color: #042f1e;
+  font-weight: 800;
+}
+
+#screen-calendar .cal-clean-btn.is-danger {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+#screen-calendar .cal-clean-note-slot,
+#screen-calendar .cal-clean-card .shift-card__notes-block {
+  display: none !important;
+}
+
+#screen-calendar .cal-clean-meta {
+  display: none !important;
+}
+
+#screen-calendar .cal-clean-rest-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+#screen-calendar .cal-clean-rest-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================
+   Полировка: шапка бренда, вкладки смен, поезда
+   ========================================================= */
+
+/* 1. Полный текст бренда в верхней шапке без многоточия */
+#screen-calendar .app-header-bar {
+  gap: 6px !important;
+}
+#screen-calendar .route-header-brand {
+  flex-shrink: 0 !important;
+  gap: 6px !important;
+}
+#screen-calendar .route-header-brand-text {
+  font-size: 11px !important;
+  line-height: 1.12 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+#screen-calendar .app-donate-trigger--header {
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+  flex-shrink: 0 !important;
+}
+
+/* 2. Разводка шапки карточки дня и вкладок смен без наложения */
+#constructorContent .cal-clean-head {
+  flex-wrap: wrap !important;
+  row-gap: 5px !important;
+}
+
+#constructorContent .cal-clean-date {
+  display: contents !important;
+}
+
+#constructorContent .cal-clean-date-main {
+  order: 1;
+  margin-right: auto;
+}
+
+#constructorContent .cal-clean-head-actions {
+  order: 2;
+}
+
+/* Вкладки смен (когда в дне 2 смены) — отдельная строка на всю ширину */
+#constructorContent .cal-clean-tabs {
+  order: 3;
+  width: 100%;
+  display: flex;
+  gap: 6px;
+}
+
+#constructorContent .cal-clean-tabs:empty {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-tabs [data-shift-tab] {
+  flex: 1 1 0;
+  height: 24px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. Выравнивание поездов по левому краю без пустого места слева */
+#constructorContent .cal-clean-trains-row {
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-trains-row > :empty,
+#constructorContent .cal-clean-trains-row .shift-summary__label {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-trains-row .trains-chip-wrap {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+#constructorContent .cal-clean-trains-row .shift-summary__trains-row {
+  justify-content: flex-start !important;
+}
+
+/* =========================================================
+   Фикс: одна смена без таба, время, поезда, без скролла
+   ========================================================= */
+
+#constructorContent .cal-clean-tabs:empty,
+#constructorContent .cal-clean-tabs:has([data-shift-tab]:only-child) {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  padding: 4px 6px !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+}
+
+#constructorContent .cal-clean-time-group,
+#constructorContent .cal-clean-lunch-group {
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-label {
+  font-size: 10.5px !important;
+}
+
+#constructorContent .cal-clean-time-inp {
+  width: 46px !important;
+  padding: 2px 1px !important;
+  font-size: 11.5px !important;
+}
+
+#constructorContent .cal-clean-mini-btn {
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-trains-row,
+#constructorContent .cal-clean-trains-row .trains-chip-wrap,
+#constructorContent .cal-clean-trains-row .shift-summary__trains-row,
+#constructorContent .cal-clean-trains-row .trains-chip-panel {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  gap: 5px !important;
+}
+
+#constructorContent .cal-clean-trains-row .shift-summary__trains-chips {
+  justify-content: flex-start !important;
+}
+
+body:has(#screen-calendar:not(.hidden)),
+#screen-calendar,
+#screen-calendar .cal-screen__shell,
+#screen-calendar .cal-screen__body,
+#screen-calendar .cal-day-card,
+#constructorContent .cal-clean-card,
+#constructorContent .cal-clean-body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+#constructorContent .cal-clean-quick-row {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+  flex-wrap: unset !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-routes,
+#constructorContent .cal-clean-quick-row .shift-card__quick-groups {
+  display: contents !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 2px !important;
+  font-size: 10.5px !important;
+  text-align: center !important;
+}
+
+/* =========================================================
+   Чистая модульная карточка дня (разделители, без коробок)
+   ========================================================= */
+
+#screen-calendar.screen:not(.hidden) {
+  padding-bottom: calc(var(--bottom-tabbar-height, 62px) + env(safe-area-inset-bottom) + 8px) !important;
+}
+
+#screen-calendar .cal-screen__shell {
+  padding: 8px 12px 0 !important;
+  gap: 8px !important;
+}
+
+#screen-calendar .cal-screen__body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+}
+
+#screen-calendar .cal-day-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  background: #131a22 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 18px !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#constructorContent .cal-clean-card {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#constructorContent .cal-clean-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-date {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  order: 1 !important;
+  margin-right: auto !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-date-main {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  letter-spacing: -0.2px;
+}
+
+#constructorContent .cal-clean-head-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  order: 2 !important;
+}
+
+#constructorContent .cal-clean-note-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 9px !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#constructorContent .cal-clean-route-box {
+  width: 108px !important;
+  height: 30px !important;
+  border-radius: 9px !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+}
+
+#constructorContent .cal-clean-route-input {
+  color: #6ee7b7 !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+}
+
+#constructorContent .cal-clean-tabs {
+  order: 3 !important;
+  width: 100% !important;
+  flex-basis: 100% !important;
+}
+
+#constructorContent .cal-clean-quick-row {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 5px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset] {
+  height: 26px !important;
+  border-radius: 7px !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  transition: background 0.15s ease;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset]:active {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 2px 0 !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+}
+
+#constructorContent .cal-clean-label {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+}
+
+#constructorContent .cal-clean-time-inp {
+  width: 48px !important;
+  height: 26px !important;
+  background: #1a222d !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 7px !important;
+  color: #f1f5f9 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 0 2px !important;
+}
+
+#constructorContent .cal-clean-trains-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 11px !important;
+  padding: 6px 10px !important;
+  min-height: 34px !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-trains-row .trains-chip-wrap,
+#constructorContent .cal-clean-trains-row .cal-clean-trains-panel {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+
+#constructorContent .cal-clean-trains-chips {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+  overflow-x: auto !important;
+  scrollbar-width: none;
+}
+
+#constructorContent .cal-clean-trains-chips::-webkit-scrollbar {
+  display: none;
+}
+
+#constructorContent .cal-clean-trains-row .shift-card__trains-go {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-trains-row--empty {
+  justify-content: flex-start !important;
+}
+
+#constructorContent .cal-clean-trains-empty {
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.cal-clean-train-gap {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#constructorContent .cal-clean-train-chip {
+  flex-shrink: 0;
+}
+
+#constructorContent .cal-clean-body {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#constructorContent .cal-clean-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding-top: 6px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-totals {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 2px !important;
+}
+
+#constructorContent .cal-clean-total-item {
+  font-size: 12.5px !important;
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-total-item strong {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+}
+
+#constructorContent .cal-clean-total-item strong.is-money {
+  color: #34d399 !important;
+}
+
+#constructorContent .cal-clean-btns {
+  display: grid !important;
+  grid-template-columns: 1.5fr 1fr 1fr !important;
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-btn {
+  height: 35px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+}
+
+/* =========================================================
+   Фикс: обрезка кнопок, отступы, контраст, выравнивание
+   ========================================================= */
+
+#screen-calendar .cal-day-card {
+  padding: 12px 14px 14px !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-card {
+  padding-bottom: 4px !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-body {
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-footer {
+  flex-shrink: 0 !important;
+  margin-top: auto !important;
+  padding-bottom: 2px !important;
+}
+
+#constructorContent .cal-clean-btns {
+  padding-bottom: 4px !important;
+}
+
+#constructorContent .cal-clean-btn {
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  padding: 4px 8px !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-trains-row {
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  color: #94a3b8 !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-totals {
+  padding: 0 8px !important;
+}
+
+#constructorContent .cal-clean-label {
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-trains-empty {
+  color: #64748b !important;
+}
+
+/* =========================================================
+   Редизайн: сетка календаря + карточка дня (v2 UI)
+   ========================================================= */
+
+/* --- Calendar grid --- */
+#screen-calendar .calendar-grid .day {
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  padding: 4px 2px !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 1.5px solid transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#screen-calendar .calendar-grid .day.other-month {
+  opacity: 0.32;
+}
+
+#screen-calendar .calendar-grid .day.today {
+  border-color: #2dd4bf !important;
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.25) !important;
+  background: transparent !important;
+}
+
+#screen-calendar .calendar-grid .day.selected {
+  border-color: transparent !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+#screen-calendar .calendar-grid .day-number,
+#screen-calendar .calendar-grid .cal-cell__num {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #e2e8f0 !important;
+  text-align: center !important;
+  width: 100%;
+  line-height: 1.1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#screen-calendar .calendar-grid .day-shifts,
+#screen-calendar .calendar-grid .cal-cell__capsules {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+#screen-calendar .calendar-grid .shift-badge,
+#screen-calendar .calendar-grid .cal-cell__badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 20px !important;
+  max-width: 100% !important;
+  height: 18px !important;
+  padding: 2px 6px !important;
+  border-radius: 9999px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
+  width: auto !important;
+}
+
+#screen-calendar .calendar-grid .shift-badge--round {
+  width: 20px !important;
+  padding: 0 !important;
+}
+
+#screen-calendar .calendar-grid .shift-badge--day-off {
+  background-color: #dc2626 !important;
+}
+
+#screen-calendar .calendar-grid .shift-badge--work-day {
+  background-color: #0d9488 !important;
+}
+
+#screen-calendar .calendar-grid .shift-badge--reserve {
+  background-color: #2563eb !important;
+}
+
+#screen-calendar .calendar-grid .shift-dot,
+#screen-calendar .calendar-grid .cal-cell__dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  margin-top: 2px !important;
+  background: var(--shift-dot-color, #0d9488) !important;
+  flex-shrink: 0 !important;
+}
+
+#screen-calendar .calendar-grid .shift-dot--more {
+  background: #64748b !important;
+}
+
+/* --- Day card header --- */
+#constructorContent .cal-clean-date {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-date-main {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+}
+
+#constructorContent .cal-clean-note-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: none !important;
+}
+
+#constructorContent .cal-clean-route-box {
+  width: auto !important;
+  min-width: 88px !important;
+  height: 34px !important;
+  padding: 0 8px !important;
+  border: none !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-radius: 9999px !important;
+}
+
+#constructorContent .cal-clean-route-input {
+  color: #34d399 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+#constructorContent .cal-clean-route-arrow {
+  color: #6ee7b7 !important;
+}
+
+/* --- Quick shift chips --- */
+#constructorContent .cal-clean-quick-row {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  padding: 4px 0 !important;
+  scrollbar-width: none;
+}
+
+#constructorContent .cal-clean-quick-row::-webkit-scrollbar {
+  display: none;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-routes,
+#constructorContent .cal-clean-quick-row .shift-card__quick-groups {
+  display: contents !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 6px 10px !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset][aria-pressed="true"],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn.is-active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+/* --- Work / lunch time --- */
+#constructorContent .cal-clean-time-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 4px 2px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+#constructorContent .cal-clean-label {
+  font-size: 14px !important;
+  color: #94a3b8 !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-time-value {
+  border: none !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+#constructorContent .cal-clean-time-value:focus-visible {
+  outline: 2px solid rgba(45, 212, 191, 0.45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+#constructorContent .cal-clean-lunch-chip,
+#constructorContent .cal-clean-add-lunch-btn {
+  border-radius: 9999px !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
+}
+
+#constructorContent .cal-clean-lunch-edit {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-lunch-clear {
+  width: 28px !important;
+  height: 28px !important;
+  margin-left: 10px !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  flex-shrink: 0 !important;
+}
+
+/* --- Trains row --- */
+#constructorContent .cal-clean-trains-row,
+#constructorContent .routes-container {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+}
+
+#constructorContent .cal-clean-trains-row--empty {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+#constructorContent .cal-clean-trains-icon {
+  color: rgba(148, 163, 184, 0.35);
+  flex-shrink: 0;
+}
+
+#constructorContent .cal-clean-trains-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+}
+
+#constructorContent .cal-clean-train-pill,
+#constructorContent .train-pill {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  padding: 4px 10px !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  border: none !important;
+}
+
+#constructorContent .train-gap,
+#constructorContent .cal-clean-train-gap {
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  margin: 0 2px !important;
+}
+
+/* --- Footer --- */
+#constructorContent .cal-clean-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+#constructorContent .cal-clean-total-item {
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-total-item strong.is-money {
+  color: #10b981 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+}
+
+/* =========================================================
+   Фикс: обрезка, шапка, время, чипы, пустой день
+   ========================================================= */
+
+#screen-calendar.screen:not(.hidden) {
+  padding-bottom: calc(var(--bottom-tabbar-height, 62px) + env(safe-area-inset-bottom) + 12px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#screen-calendar .cal-day-card {
+  flex: 0 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+#constructorContent .cal-clean-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+}
+
+#constructorContent .cal-clean-card--empty {
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-body {
+  flex: 0 1 auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  justify-content: flex-start !important;
+}
+
+#constructorContent .cal-clean-body--empty {
+  flex: 0 0 auto !important;
+}
+
+#constructorContent .cal-clean-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+#constructorContent .cal-clean-date-main {
+  font-size: 17px !important;
+  white-space: nowrap !important;
+  margin-right: auto !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-head-actions {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-head-route,
+#constructorContent .cal-clean-route-picker {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: 140px !important;
+}
+
+#constructorContent .cal-clean-route-box {
+  width: auto !important;
+  min-width: 90px !important;
+  max-width: 140px !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+}
+
+#constructorContent .cal-clean-route-input {
+  max-width: 100% !important;
+}
+
+#constructorContent .cal-clean-tabs {
+  order: unset !important;
+  width: 100% !important;
+  flex-basis: auto !important;
+  margin-top: 2px !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  padding: 4px 6px !important;
+  overflow: visible !important;
+}
+
+#constructorContent .cal-clean-time-group,
+#constructorContent .cal-clean-lunch-group,
+#constructorContent .cal-clean-lunch-edit {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  flex-shrink: 1 !important;
+}
+
+#constructorContent .cal-clean-time-value {
+  white-space: nowrap !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+#constructorContent .cal-clean-lunch-clear,
+#constructorContent .cal-clean-mini-btn[data-summary-lunch-remove-btn] {
+  width: 24px !important;
+  height: 24px !important;
+  margin-left: 10px !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-quick-row {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn {
+  font-size: 12px !important;
+  padding: 6px 4px !important;
+  white-space: nowrap !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+#constructorContent .cal-clean-footer {
+  flex-shrink: 0 !important;
+  margin-top: 4px !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) #constructorContent .cal-clean-card,
+body:has(#screen-calendar:not(.hidden)) #constructorContent .cal-clean-body {
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+}
+
+/* =========================================================
+   УМЕНЬШАЕМ ШРИФТЫ И ВЫСОТУ В ПОДВАЛЕ КАРТОЧКИ
+   ========================================================= */
+
+#constructorContent .cal-clean-totals {
+  padding: 4px 6px !important;
+  min-height: 26px !important;
+}
+
+#constructorContent .cal-clean-total-item {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-total-item strong {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+#constructorContent .cal-clean-total-item strong.is-money {
+  font-size: 13px !important;
+}
+
+#constructorContent .cal-clean-btns {
+  gap: 5px !important;
+}
+
+#constructorContent .cal-clean-btn {
+  height: 28px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  padding: 0 4px !important;
+}
+
+#constructorContent .cal-clean-footer {
+  gap: 5px !important;
+  padding-top: 4px !important;
+}
+
+/* =========================================================
+   Компактная типографика: дата как monthTitle, время, поезда
+   ========================================================= */
+
+#constructorContent .cal-clean-date-main {
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  color: #f1f5f9 !important;
+  letter-spacing: normal !important;
+  text-transform: capitalize;
+}
+
+#constructorContent .cal-clean-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-time-value,
+#constructorContent .cal-clean-time-value span {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+}
+
+#constructorContent .cal-clean-add-lunch-btn,
+#constructorContent .cal-clean-lunch-chip {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  line-height: 1 !important;
+}
+
+#constructorContent .cal-clean-lunch-clear {
+  width: 20px !important;
+  height: 20px !important;
+  margin-left: 6px !important;
+  font-size: 11px !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  gap: 5px !important;
+  padding: 0 2px !important;
+  min-height: 0 !important;
+}
+
+#constructorContent .cal-clean-time-group,
+#constructorContent .cal-clean-lunch-group {
+  gap: 4px !important;
+}
+
+#constructorContent .cal-clean-trains-row {
+  padding: 4px 8px !important;
+  min-height: 26px !important;
+  max-height: 30px !important;
+  border-radius: 8px !important;
+}
+
+#constructorContent .cal-clean-train-pill,
+#constructorContent .train-pill {
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+  line-height: 1.1 !important;
+}
+
+#constructorContent .cal-clean-train-gap,
+#constructorContent .train-gap {
+  font-size: 9px !important;
+}
+
+#constructorContent .cal-clean-trains-chips {
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn {
+  height: 24px !important;
+  min-height: 24px !important;
+  font-size: 11px !important;
+  padding: 0 3px !important;
+}
+
+#constructorContent .cal-clean-card {
+  gap: 4px !important;
+}
+
+#constructorContent .cal-clean-body {
+  gap: 4px !important;
+}
+
+#constructorContent .cal-clean-head {
+  padding-bottom: 4px !important;
+  min-height: 0 !important;
+}
+
+/* =========================================================
+   Макет карточки дня (ориентир: время / поезда / оплата / CTA)
+   ========================================================= */
+
+#constructorContent .cal-clean-route-box {
+  background: #0c1016 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 8px !important;
+  min-width: 72px !important;
+  height: 28px !important;
+  box-shadow: none !important;
+}
+
+#constructorContent .cal-clean-route-input {
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+#constructorContent .cal-clean-route-arrow {
+  color: #cbd5e1 !important;
+}
+
+#constructorContent .cal-clean-time-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 10px !important;
+  padding: 0 2px 6px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+#constructorContent .cal-clean-time-group,
+#constructorContent .cal-clean-lunch-group,
+#constructorContent .cal-clean-lunch-edit {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-lunch-group,
+#constructorContent .cal-clean-lunch-group .cal-clean-lunch-edit {
+  align-items: flex-end !important;
+  text-align: right !important;
+  margin-left: auto !important;
+}
+
+#constructorContent .cal-clean-time-group .cal-clean-label,
+#constructorContent .cal-clean-lunch-group .cal-clean-label {
+  width: 100% !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #cbd5e1 !important;
+}
+
+#constructorContent .cal-clean-time-value,
+#constructorContent .cal-clean-time-value span,
+#constructorContent .cal-clean-lunch-val {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+#constructorContent .cal-clean-trains-row,
+#constructorContent .cal-clean-trains-row.routes-container {
+  background: linear-gradient(
+    135deg,
+    rgba(6, 199, 133, 0.22) 0%,
+    rgba(2, 76, 78, 0.72) 100%
+  ) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 6px 8px !important;
+  min-height: 30px !important;
+  max-height: none !important;
+}
+
+#constructorContent .cal-clean-trains-chips {
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+
+#constructorContent .cal-clean-train-pill,
+#constructorContent .cal-clean-trains-row .train-pill {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 3px 8px !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15) !important;
+}
+
+#constructorContent .cal-clean-train-gap,
+#constructorContent .cal-clean-trains-row .train-gap {
+  color: #6ee7b7 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+#constructorContent .cal-clean-footer {
+  border-top: none !important;
+  gap: 6px !important;
+  padding-top: 2px !important;
+}
+
+#constructorContent .cal-clean-totals.cal-clean-totals--rows {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  padding: 0 2px !important;
+}
+
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+}
+
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong.is-money {
+  font-size: 14px !important;
+  color: #34d399 !important;
+}
+
+#constructorContent .cal-clean-btns {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  grid-template-columns: none !important;
+}
+
+#constructorContent .cal-clean-btns-secondary {
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: stretch !important;
+  width: 100% !important;
+}
+
+#constructorContent .cal-clean-btns-secondary .cal-clean-btn:not([hidden]) {
+  flex: 1 1 0 !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 11.5px !important;
+}
+
+/* =========================================================
+   Скролл сетки месяца + карточка дня без сжатия + CTA
+   ========================================================= */
+
+#screen-calendar .cal-screen__body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#screen-calendar .cal-month {
+  flex: 0 1 auto !important;
+  min-height: 190px !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#screen-calendar .cal-month__bar,
+#screen-calendar .cal-month__weekdays {
+  flex: 0 0 auto !important;
+}
+
+#screen-calendar .cal-month__grid.calendar-grid {
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  align-content: flex-start !important;
+  padding-right: 4px !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+#screen-calendar .cal-month__grid.calendar-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+#screen-calendar .cal-month__grid.calendar-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+#screen-calendar .cal-day-card {
+  flex: 0 0 auto !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+#screen-calendar .cal-day-card__inner,
+#screen-calendar .cal-day-card__content {
+  flex: 0 1 auto !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+#screen-calendar .shift-day-panel__goto-route,
+#constructorContent .cal-clean-btn--goto.is-primary[data-calendar-goto-route] {
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  background: #10b981 !important;
+  color: #042f1e !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  margin: 6px 0 4px !important;
+  padding: 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: transform 0.1s ease !important;
+  box-sizing: border-box !important;
+  letter-spacing: 0 !important;
+}
+
+#screen-calendar .shift-day-panel__goto-route:active,
+#constructorContent .cal-clean-btn--goto.is-primary[data-calendar-goto-route]:active {
+  transform: scale(0.98);
+}
+
+#constructorContent .cal-clean-btns {
+  gap: 4px !important;
+}
+
+#screen-calendar .shift-day-panel__actions,
+#constructorContent .cal-clean-btns-secondary {
+  display: flex !important;
+  gap: 6px !important;
+  width: 100% !important;
+}
+
+#screen-calendar .shift-day-panel__actions button:not([hidden]),
+#constructorContent .cal-clean-btns-secondary .cal-clean-btn:not([hidden]) {
+  flex: 1 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 0 6px !important;
+}
+
+#screen-calendar.screen:not(.hidden) {
+  overflow: hidden !important;
+}
+
+/* =========================================================
+   Заметки: активный карандаш, превью, шторка ввода
+   ========================================================= */
+
+#constructorContent .cal-clean-note-btn.has-note {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.32) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.12) !important;
+}
+
+#constructorContent .cal-clean-note-preview {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11.5px !important;
+  color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  margin-top: -2px !important;
+  margin-bottom: 4px !important;
+  font-style: italic !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+  transition: background 0.15s ease, border-color 0.15s ease !important;
+}
+
+#constructorContent .cal-clean-note-preview:active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+#constructorContent .cal-clean-note-preview[hidden],
+#constructorContent .cal-clean-note-preview:empty {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-note-preview::before {
+  content: "✎";
+  font-style: normal !important;
+  color: #64748b !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .note-preview-text {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-note-preview-copy {
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  margin: 0 -2px 0 2px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+}
+
+#constructorContent .cal-clean-note-preview-copy:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+#constructorContent .cal-clean-note-preview-copy.is-copied {
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+}
+
+#shiftNoteSheet .shift-note-sheet,
+.shift-note-sheet-overlay .shift-note-sheet {
+  background: #131a22 !important;
+  border: none !important;
+  border-radius: 16px 16px 0 0 !important;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.55) !important;
+}
+
+#shiftNoteSheet .shift-note-input,
+.shift-note-sheet-overlay .shift-note-input {
+  border: none !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f1f5f9 !important;
+  font-size: 14px !important;
+}
+
+#shiftNoteSheet .shift-note-sheet-title,
+.shift-note-sheet-overlay .shift-note-sheet-title {
+  color: #f1f5f9 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+
+#shiftNoteSheet .shift-note-sheet-close,
+.shift-note-sheet-overlay .shift-note-sheet-close {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  color: #94a3b8 !important;
+}
+
+#shiftNoteSheet .shift-note-save-btn,
+.shift-note-sheet-overlay .shift-note-save-btn {
+  background: #10b981 !important;
+  color: #042f1e !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+
+/* =========================================================
+   Быстрые маршруты: серые 99, явное выделение (У/Н/И/Д/…)
+   ========================================================= */
+
+#constructorContent .cal-clean-quick-row [data-local-preset],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--day,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--night,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--morning {
+  border-color: rgba(168, 173, 184, 0.42) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(168, 173, 184, 0.14) 0%,
+    rgba(120, 127, 140, 0.1) 100%
+  ) !important;
+  color: #b8bcc6 !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--tech {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #a8b4c8 !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--rest {
+  border-color: rgba(220, 120, 120, 0.35) !important;
+  color: #e8a8a8 !important;
+  background: rgba(180, 50, 50, 0.08) !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset][aria-pressed="true"],
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn.is-active {
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(2, 76, 78, 0.62) 0%,
+    rgba(6, 199, 133, 0.32) 100%
+  ) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--day.is-active,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--day[aria-pressed="true"] {
+  border-color: rgba(168, 173, 184, 0.62) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(168, 173, 184, 0.32) 0%,
+    rgba(120, 127, 140, 0.2) 100%
+  ) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--night.is-active,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--night[aria-pressed="true"] {
+  border-color: rgba(143, 155, 176, 0.65) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(143, 155, 176, 0.34) 0%,
+    rgba(95, 109, 130, 0.22) 100%
+  ) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--morning.is-active,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--morning[aria-pressed="true"] {
+  border-color: rgba(154, 163, 168, 0.58) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(154, 163, 168, 0.3) 0%,
+    rgba(109, 119, 125, 0.18) 100%
+  ) !important;
+  color: #fff !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--tech.is-active,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--tech[aria-pressed="true"] {
+  border-color: rgba(155, 89, 182, 0.55) !important;
+  background: linear-gradient(
+    160deg,
+    rgba(155, 89, 182, 0.3) 0%,
+    rgba(142, 68, 173, 0.16) 100%
+  ) !important;
+  color: #fff !important;
+}
+
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--rest.is-active,
+#constructorContent .cal-clean-quick-row .shift-card__quick-btn--rest[aria-pressed="true"] {
+  border-color: rgba(240, 120, 120, 0.62) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(140, 35, 35, 0.65) 0%,
+    rgba(200, 60, 60, 0.38) 100%
+  ) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.2) !important;
+}
+
+#constructorContent .cal-clean-quick-row [data-local-preset]:active {
+  transform: scale(0.96) !important;
+}
+
+/* =========================================================
+   Сетка: серые 99, клик/выделение чипов (в т.ч. У)
+   ========================================================= */
+
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-day,
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip.has-route99-day {
+  background: rgba(130, 138, 150, 0.72) !important;
+  color: #f4f6f8 !important;
+  border: 1px solid rgba(180, 188, 200, 0.35) !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-night,
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip.has-route99-night {
+  background: rgba(95, 115, 145, 0.75) !important;
+  color: #eef3fa !important;
+  border: 1px solid rgba(150, 170, 200, 0.38) !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-morning,
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip.has-route99-morning {
+  background: rgba(115, 125, 135, 0.72) !important;
+  color: #f2f5f7 !important;
+  border: 1px solid rgba(165, 175, 185, 0.35) !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip.is-chip-selected,
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip.is-chip-selected {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    0 0 0 2px rgba(16, 185, 129, 0.88),
+    0 0 12px rgba(16, 185, 129, 0.35) !important;
+  transform: scale(1.04);
+  z-index: 2;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip:active:not(.is-chip-selected),
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip:active:not(.is-chip-selected) {
+  transform: scale(0.96) !important;
+  opacity: 0.92 !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-morning.is-chip-selected,
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-night.is-chip-selected,
+#screen-calendar .calendar-grid .day-shift-chip.has-route99-day.is-chip-selected {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.55),
+    0 0 10px rgba(180, 188, 200, 0.45) !important;
+}
+
+/* =========================================================
+   Премиальная полировка: день, карточка, поезда, кнопки
+   ========================================================= */
+
+#screen-calendar .calendar-grid .day.selected {
+  background: linear-gradient(145deg, #1a2432 0%, #131a22 100%) !important;
+  border: 1px solid #10b981 !important;
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+#screen-calendar .calendar-grid .day.selected.today {
+  border-color: #10b981 !important;
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+#screen-calendar .calendar-grid .day-shift-chip.is-chip-selected,
+#screen-calendar .calendar-grid .shift-badge.day-shift-chip.is-chip-selected {
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.65),
+    0 2px 6px rgba(0, 0, 0, 0.35) !important;
+  transform: scale(1.02) !important;
+}
+
+#screen-calendar .cal-day-card {
+  background: linear-gradient(180deg, #18212b 0%, #131a22 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+#constructorContent .cal-clean-route-box {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+#constructorContent .cal-clean-route-input {
+  color: #6ee7b7 !important;
+}
+
+#constructorContent .cal-clean-label {
+  color: #64748b !important;
+  letter-spacing: 0.2px !important;
+}
+
+#constructorContent .cal-clean-time-inp,
+#constructorContent .cal-clean-time-value,
+#constructorContent .cal-clean-time-value span {
+  color: #f8fafc !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+#constructorContent .cal-clean-trains-row,
+#constructorContent .cal-clean-trains-row.routes-container {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.1) 0%,
+    rgba(16, 185, 129, 0.03) 100%
+  ) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
+
+#constructorContent .cal-clean-trains-row .train-chip,
+#constructorContent .cal-clean-trains-row .trains-chip,
+#constructorContent .cal-clean-trains-row .cal-clean-train-pill,
+#constructorContent .cal-clean-trains-row .train-pill,
+#constructorContent .cal-clean-trains-row .cal-clean-train-chip,
+#constructorContent .cal-clean-trains-row .shift-summary__train-chip {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  font-weight: 700 !important;
+}
+
+#constructorContent .cal-clean-train-gap,
+#constructorContent .cal-clean-trains-row .train-gap {
+  color: #5eead4 !important;
+  text-shadow: none !important;
+}
+
+#screen-calendar .shift-day-panel__goto-route,
+#constructorContent .cal-clean-btn--goto.is-primary[data-calendar-goto-route] {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%) !important;
+  border: 1px solid #059669 !important;
+  box-shadow:
+    0 4px 12px rgba(16, 185, 129, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  color: #022c22 !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+}
+
+#screen-calendar .shift-day-panel__goto-route:active,
+#constructorContent .cal-clean-btn--goto.is-primary[data-calendar-goto-route]:active {
+  background: #059669 !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  transform: scale(0.98) !important;
+}
+
+#screen-calendar .shift-day-panel__actions button:not(.shift-day-panel__goto-route):not([hidden]),
+#constructorContent .cal-clean-btns-secondary .cal-clean-btn:not([hidden]) {
+  background: linear-gradient(180deg, #1e293b 0%, #151e2b 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  color: #94a3b8 !important;
+}
+
+#screen-calendar .shift-day-panel__delete-btn,
+#constructorContent .cal-clean-btns-secondary .cal-clean-btn.is-danger:not([hidden]) {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 68, 68, 0.15) 0%,
+    rgba(220, 38, 38, 0.05) 100%
+  ) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+}
+
+#screen-calendar .shift-day-panel__actions button:not(.shift-day-panel__goto-route):not([hidden]):active,
+#constructorContent .cal-clean-btns-secondary .cal-clean-btn:not([hidden]):active {
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28) !important;
+  transform: scale(0.98) !important;
+}
+
+/* =========================================================
+   Dropdown маршрута + компактный shift-time-picker
+   ========================================================= */
+
+#constructorContent .cal-clean-head,
+#constructorContent .cal-clean-head-actions,
+#constructorContent .cal-clean-head-route {
+  overflow: visible !important;
+}
+
+#constructorContent .cal-clean-route-picker,
+#constructorContent .shift-card__route-picker.cal-clean-route-picker {
+  position: relative !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  vertical-align: top !important;
+  max-width: 100% !important;
+}
+
+#constructorContent .cal-clean-route-box,
+#constructorContent .cal-clean-route-box.route-combobox,
+#constructorContent [data-summary-route-combobox].cal-clean-route-box {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+#constructorContent .route-combobox-list,
+#constructorContent .cal-clean-route-dropdown,
+#constructorContent .cal-clean-route-picker > .route-combobox-list,
+#constructorContent [data-summary-route-list].cal-clean-route-dropdown {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  right: 0 !important;
+  left: auto !important;
+  width: 180px !important;
+  min-width: 0 !important;
+  max-width: min(220px, calc(100vw - 48px)) !important;
+  max-height: 190px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  background: #131a22 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+  z-index: 250 !important;
+  padding: 4px !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .route-combobox-list .route-dropdown-item,
+#constructorContent .cal-clean-route-dropdown .route-dropdown-item {
+  padding: 7px 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #cbd5e1 !important;
+  border-radius: 8px !important;
+  border-bottom: none !important;
+  margin: 0 0 2px !important;
+  cursor: pointer !important;
+}
+
+#constructorContent .route-combobox-list .route-dropdown-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+#constructorContent .route-combobox-list .route-dropdown-item:hover,
+#constructorContent .route-combobox-list .route-dropdown-item.is-selected,
+#constructorContent .route-combobox-list .route-dropdown-item.active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+
+#constructorContent .route-dropdown-item .route-item-code {
+  font-size: 12.5px !important;
+  max-width: 100% !important;
+}
+
+#constructorContent .route-dropdown-item .route-item-time {
+  font-size: 11px !important;
+}
+
+/* =========================================================
+   shift-time-picker — премиальный редизайн (календарь)
+   ========================================================= */
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker.shift-time-picker--calendar-center:not([hidden]),
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker:not([hidden]) {
+  position: fixed !important;
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(5, 8, 12, 0.8) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__panel {
+  position: relative !important;
+  width: 300px !important;
+  max-width: 90vw !important;
+  margin: 0 auto !important;
+  flex-shrink: 0 !important;
+  padding: 16px !important;
+  border-radius: 20px !important;
+  background: #131a22 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(16, 185, 129, 0.4) !important;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(16, 185, 129, 0.2) !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+  color: #f8fafc !important;
+  font-family: inherit !important;
+  backdrop-filter: none !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__head {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin: 0 0 10px !important;
+  padding: 0 2px !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  letter-spacing: 0.01em !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__hint {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__tabs {
+  display: flex !important;
+  gap: 6px !important;
+  margin: 0 0 12px !important;
+  padding: 4px !important;
+  background: #0b1015 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__tab {
+  flex: 1 1 0 !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+  border-radius: 9px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__tab:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #cbd5e1 !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__tab.is-active {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%) !important;
+  color: #042f1e !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4) !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__cols {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin: 0 0 14px !important;
+  padding: 8px !important;
+  background: #0b1015 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 14px !important;
+  box-sizing: border-box !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__col {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  gap: 6px !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__col-label {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: #64748b !important;
+  text-align: center !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 4px !important;
+  max-height: 140px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: #131a22 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  scrollbar-width: none !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__list::-webkit-scrollbar {
+  display: none !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  margin: 2px 0 !important;
+  padding: 0 6px !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #64748b !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease !important;
+  box-sizing: border-box !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__option:hover:not(.is-selected) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #94a3b8 !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__option.is-selected {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.15) !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__footer {
+  display: flex !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__save-btn,
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__save-btn[data-shift-time-save-btn] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 40px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%) !important;
+  color: #042f1e !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  border: 1px solid #059669 !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  box-sizing: border-box !important;
+}
+
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker__save-btn:active {
+  background: #059669 !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transform: scale(0.98) !important;
+}
+
+/* =========================================================
+   Вариант 1: прямой ввод времени в карточке дня (без модалок)
+   ========================================================= */
+
+.time-picker-overlay,
+.time-picker-backdrop,
+.time-picker-modal-wrap,
+.time-picker-content,
+.time-picker-modal,
+.time-picker-sheet,
+body:has(#screen-calendar:not(.hidden)) .shift-time-picker {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-time-range--inline:not([data-shift-time-range]):not([data-shift-lunch-range]) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+#constructorContent .cal-clean-lunch-group .cal-clean-time-range--inline {
+  justify-content: flex-end !important;
+}
+
+#constructorContent .cal-clean-time-sep {
+  flex: 0 0 auto !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+}
+
+#constructorContent .cal-clean-time-inp {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: #0b1015 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  color: #34d399 !important;
+  font-family: monospace, inherit !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  padding: 3px 6px !important;
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+  text-align: center !important;
+  outline: none !important;
+  transition: all 0.2s ease;
+  box-sizing: border-box !important;
+  text-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+#constructorContent .cal-clean-time-inp:focus {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+}
+
+#constructorContent .cal-clean-time-inp::-webkit-calendar-picker-indicator,
+#constructorContent .cal-clean-time-inp::-webkit-clear-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+}
+
+#constructorContent .cal-clean-time-inp::-webkit-datetime-edit-fields-wrapper {
+  padding: 0 !important;
+}
+
+#constructorContent .cal-clean-time-inp::-webkit-datetime-edit-hour-field:focus,
+#constructorContent .cal-clean-time-inp::-webkit-datetime-edit-minute-field:focus,
+#constructorContent .cal-clean-time-inp::-webkit-datetime-edit-second-field:focus,
+#constructorContent .cal-clean-time-inp::-webkit-datetime-edit-ampm-field:focus {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #ecfdf5 !important;
+}
+
+/* Заметка: отдельная строка под датой и маршрутом */
+#constructorContent .cal-clean-note-btn {
+  display: none !important;
+}
+
+#constructorContent .cal-clean-head {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-head-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  column-gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-head-row .cal-clean-date-main {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+  justify-self: start !important;
+  margin-right: 0 !important;
+  text-align: left !important;
+}
+
+#constructorContent .cal-clean-head-row .cal-clean-head-actions {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+  justify-self: end !important;
+  margin-left: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+#constructorContent .cal-clean-head-note-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#constructorContent .cal-clean-head-note-tools {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex: 0 0 auto !important;
+}
+
+#constructorContent .cal-clean-head-note-copy,
+#constructorContent .cal-clean-head-note-clear {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-head-note-copy:hover,
+#constructorContent .cal-clean-head-note-clear:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+#constructorContent .cal-clean-head-note-copy.is-copied {
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+#constructorContent .cal-clean-head-note-clear {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  color: #94a3b8 !important;
+}
+
+#constructorContent .cal-clean-head-note-clear:hover {
+  color: #fca5a5 !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+#constructorContent .cal-clean-head-note-inp,
+#constructorContent textarea.cal-clean-head-note-inp {
+  display: block !important;
+  flex: 1 1 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 54px !important;
+  margin: 0 !important;
+  padding: 5px 8px !important;
+  resize: none !important;
+  overflow: hidden !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1.25 !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease !important;
+}
+
+#constructorContent .cal-clean-head-note-inp::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+#constructorContent .cal-clean-head-note-inp:focus {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18) !important;
+}
+
+#constructorContent .cal-clean-head-note-inp.has-note {
+  color: #e2e8f0 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+/* Компактная типографика: время и итоги (вне капсул) */
+#constructorContent .cal-clean-time-inp:not([data-summary-start]):not([data-summary-end]):not([data-summary-lunch-start]):not([data-summary-lunch-end]),
+#constructorContent .cal-clean-time-row .cal-clean-time-inp:not([data-summary-start]):not([data-summary-end]):not([data-summary-lunch-start]):not([data-summary-lunch-end]) {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  line-height: 1.1 !important;
+  padding: 2px 5px !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+}
+
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item,
+#constructorContent .cal-clean-totals.cal-clean-totals--rows .cal-clean-total-item {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong,
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong.is-money,
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong[data-summary-hours],
+#constructorContent .cal-clean-totals--rows .cal-clean-total-item strong[data-summary-pay] {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+}
+
+/* Единый стиль капсул времени (смена + обед) */
+#constructorContent .cal-clean-time-group {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+#constructorContent .cal-clean-time-group .cal-clean-label,
+#constructorContent .cal-clean-lunch-group .cal-clean-label {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+#constructorContent .cal-clean-lunch-group {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+}
+
+#constructorContent [data-shift-time-range].cal-clean-time-range--inline,
+#constructorContent [data-shift-lunch-range].cal-clean-time-range--inline,
+#constructorContent .cal-clean-lunch-group .cal-clean-inputs {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: #0b1015 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 2px 6px 2px 8px !important;
+  margin: 0 !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  min-height: 28px !important;
+  box-sizing: border-box !important;
+}
+
+#constructorContent .cal-clean-lunch-group .cal-clean-time-range--inline {
+  justify-content: flex-start !important;
+}
+
+#constructorContent [data-shift-time-range] .cal-clean-time-inp,
+#constructorContent [data-shift-lunch-range] .cal-clean-time-inp {
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #34d399 !important;
+  text-align: center !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+#constructorContent [data-shift-time-range] .cal-clean-time-inp:focus,
+#constructorContent [data-shift-lunch-range] .cal-clean-time-inp:focus {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+#constructorContent [data-shift-time-range] .cal-clean-time-sep,
+#constructorContent [data-shift-lunch-range] .cal-clean-time-sep {
+  margin: 0 !important;
+  padding: 0 2px !important;
+  font-size: 11px !important;
+  color: #64748b !important;
+}
+
+#constructorContent [data-summary-lunch-remove-btn],
+#constructorContent .cal-clean-lunch-group .cal-clean-mini-btn,
+#constructorContent .cal-clean-lunch-clear[data-summary-lunch-remove-btn] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  border-radius: 50% !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border: none !important;
+  font-size: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  margin-left: 4px !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  line-height: 1 !important;
+}
+
+#constructorContent [data-summary-lunch-remove-btn]:hover,
+#constructorContent .cal-clean-lunch-clear[data-summary-lunch-remove-btn]:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #fff !important;
+}
+
+#constructorContent .cal-clean-lunch-edit {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  min-width: 0 !important;
+  gap: 0 !important;
+}

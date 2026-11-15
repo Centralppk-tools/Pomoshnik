@@ -1,4 +1,11 @@
 /* === Global user auth === */
+/* Ранний unlock до initUserAuth — не показывать форму входа до lock/unlock */
+html.da-auth-early-unlock #screen-auth {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 body.auth-locked {
     overflow: hidden;
 }
