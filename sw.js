@@ -1,5 +1,5 @@
-// Service Worker — Цифровой помощник v5.1.6 — da_v5_1_6 (instant shell + network timeouts)
-const CACHE_NAME = 'da_v5_1_6';
+// Service Worker — Цифровой помощник v5.1.7 — da_v5_1_7 (instant shell + network timeouts)
+const CACHE_NAME = 'da_v5_1_7';
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const NOTIFICATION_ICON = './assets/app-icon.png';
@@ -13,7 +13,6 @@ const PRECACHE_ASSETS = [
     './styles/routes.css',
     './styles/schedule.css',
     './styles/calendar.css',
-    './styles/calendar-v2.css',
     './styles/profile.css',
     './styles/responsive.css',
     './styles/auth.css',
