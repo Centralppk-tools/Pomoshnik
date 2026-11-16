@@ -109,6 +109,34 @@
     <link rel="stylesheet" href="styles/community.css?v=20261113c">
     <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
     <link rel="stylesheet" href="styles/da-loading.css?v=20261112a">
+    <script>
+        (function () {
+            var KEY = 'da_password_reset_token';
+            var TOKEN_RE = /^[a-f0-9]{64}$/i;
+            var PATH_TOKEN_RE = /^\/(?:r|t)\/([a-f0-9]{64})\/?$/i;
+            try {
+                var path = String(location.pathname || '');
+                var token = null;
+                var pathMatch = path.match(PATH_TOKEN_RE);
+                if (pathMatch) token = String(pathMatch[1]).toLowerCase();
+                var q = new URLSearchParams(location.search || '');
+                var fromQuery = q.get('reset_token');
+                if (fromQuery) {
+                    var trimmed = String(fromQuery).trim();
+                    if (TOKEN_RE.test(trimmed)) token = trimmed.toLowerCase();
+                }
+                if (!token) return;
+                try { sessionStorage.setItem(KEY, token); } catch (_) { /* */ }
+                q.delete('reset_token');
+                var cleanPath = PATH_TOKEN_RE.test(path) ? '/' : path;
+                var qs = q.toString();
+                var next = cleanPath + (qs ? '?' + qs : '') + (location.hash || '');
+                if (location.pathname + location.search + location.hash !== next) {
+                    history.replaceState(null, '', next);
+                }
+            } catch (_) { /* */ }
+        })();
+    </script>
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
         (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -1266,8 +1294,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.2.2';
-    const CLIENT_CACHE_VERSION = 'da_v5_2_2';
+    const APP_RELEASE_VERSION = '5.2.4';
+    const CLIENT_CACHE_VERSION = 'da_v5_2_3';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -10261,13 +10289,34 @@
         applyYandexMetrikaUserId(window.DaAuthSession?.getStoredUser?.());
     }
 
+    const YM_SENSITIVE_QUERY_KEYS = ['reset_token'];
+
+    function sanitizePathnameForMetrika(pathname) {
+        const path = String(pathname || '/');
+        if (/\/(?:r|t)\/[a-f0-9]{64}\/?$/i.test(path)) return '/';
+        return path || '/';
+    }
+
+    function sanitizeUrlForMetrika(href) {
+        try {
+            const u = new URL(String(href || '/'), window.location.origin);
+            YM_SENSITIVE_QUERY_KEYS.forEach((key) => u.searchParams.delete(key));
+            u.pathname = sanitizePathnameForMetrika(u.pathname);
+            return u.pathname + u.search + u.hash;
+        } catch (_) {
+            return '/';
+        }
+    }
+
     function trackYandexMetrikaScreen(screen) {
         if (typeof ym !== 'function' || !screen) return;
-        const base = window.location.pathname || '/';
+        const base = sanitizePathnameForMetrika(window.location.pathname);
         const hash = `#screen=${encodeURIComponent(screen)}`;
         const title = YM_SCREEN_TITLES[screen] || screen;
         try {
-            ym(YM_COUNTER_ID, 'hit', base + hash, { title: `Цифровой помощник — ${title}` });
+            ym(YM_COUNTER_ID, 'hit', sanitizeUrlForMetrika(base + hash), {
+                title: `Цифровой помощник — ${title}`,
+            });
         } catch (_) { /* offline / blocked */ }
     }
 
@@ -10520,10 +10569,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Доработки безопасности'
+            'Безопасность'
         ],
         highlights: [
-            'Доработки безопасности'
+            'Ссылки сброса пароля больше не попадают в аналитику: токен убирается из адреса до загрузки счётчика'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -11584,7 +11633,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.2.2')
+        navigator.serviceWorker.register('./sw.js?v=5.2.4')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -14713,6 +14762,10 @@
         refreshAuthSubmitStates();
         setAuthError('authErrorReset', '');
         const token = String(resetToken || '').trim();
+        if (token && /^[a-f0-9]{64}$/i.test(token)) {
+            rememberPasswordResetToken(token);
+            clearPasswordResetTokenFromUrl();
+        }
         if (token && !/^[a-f0-9]{64}$/i.test(token)) {
             authResetLinkValid = false;
             setAuthError(
@@ -14853,6 +14906,10 @@
         const sessionTab = getAuthSessionTab();
         const resetToken = getPasswordResetTokenForAuth();
         if (resetToken) {
+            if (/^[a-f0-9]{64}$/i.test(String(resetToken))) {
+                rememberPasswordResetToken(resetToken);
+                clearPasswordResetTokenFromUrl();
+            }
             lockAppAuth();
             setAuthPanel('authPanelReset');
             void validateAuthResetTokenOnLoad(resetToken);
