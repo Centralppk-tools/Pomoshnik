@@ -1,7 +1,7 @@
-window.APP_BUILD_ID = '5.1.7';
+window.APP_BUILD_ID = '5.1.8';
 
 window.APP_CONFIG = {
-    APP_BUILD_ID: '5.1.7',
+    APP_BUILD_ID: '5.1.8',
     yandexProxy: '',
     yandexClientToken: '',
     webPushVapidPublicKey: 'BPKYfiRk4SLmag3Q4xclEcQB8TkYY-3r-jfzo00lXFjW6JSIDi8-F7MDH72MEIhsLeFSSY62fYlrR-h5-hMVA1A',

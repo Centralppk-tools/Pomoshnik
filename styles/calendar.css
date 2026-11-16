@@ -31,6 +31,15 @@
     line-height: 1.45;
 }
 
+/* Не обрезаем экран во viewport: иначе футер наезжает на сетку поверх overflow */
+#screen-calendar.screen:not(.hidden) {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100dvh;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+}
+
 #screen-calendar .info-row,
 #screen-profile .info-row {
     display: flex;
@@ -112,12 +121,18 @@
 }
 
 #screen-calendar .calendar-app-wrap {
-    padding-bottom: var(--bottom-tabbar-clearance);
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 #screen-calendar .app-community-footer {
+    position: relative;
+    z-index: auto;
+    margin-top: 12px;
     margin-bottom: 0;
+    flex-shrink: 0;
 }
 
 #screen-calendar .phone-screen,
@@ -134,6 +149,14 @@
     flex-direction: column;
     gap: 16px;
     margin-bottom: 0;
+}
+
+#screen-calendar .screen-card--calendar {
+    position: relative;
+    z-index: auto;
+    overflow: visible;
+    flex: 0 0 auto;
+    flex-shrink: 0;
 }
 
 #screen-calendar .calendar-top-block {
@@ -590,6 +613,93 @@
     z-index: 2;
 }
 
+#screen-calendar .day.day--red-day {
+    background: linear-gradient(180deg, rgba(190, 48, 48, 0.28) 0%, rgba(145, 32, 32, 0.18) 100%);
+    border: 1px solid rgba(225, 75, 75, 0.42);
+}
+
+#screen-calendar .day.day--red-day:hover {
+    background: linear-gradient(180deg, rgba(205, 55, 55, 0.36) 0%, rgba(160, 38, 38, 0.24) 100%);
+    border-color: rgba(240, 90, 90, 0.65);
+}
+
+#screen-calendar .day .day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 2px;
+}
+
+#screen-calendar .day.day--red-day .day-number {
+    color: #ffd6d6;
+    font-weight: 600;
+}
+
+#screen-calendar .day-rest-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    background: rgba(210, 55, 55, 0.65);
+    color: #fff0f0;
+    border: 1px solid rgba(255, 130, 130, 0.35);
+    flex-shrink: 0;
+}
+
+#screen-calendar .day-rest-badge--holiday {
+    background: rgba(220, 65, 65, 0.45);
+    color: #ffe2e2;
+}
+
+.shift-day-panel__head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.shift-day-rest-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 30px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.15s ease;
+}
+
+.shift-day-rest-toggle:hover {
+    border-color: rgba(225, 75, 75, 0.5);
+    background: rgba(190, 48, 48, 0.18);
+    color: #ffe5e5;
+}
+
+.shift-day-rest-toggle.is-active,
+.shift-day-rest-toggle.is-holiday {
+    border-color: rgba(235, 85, 85, 0.7);
+    background: linear-gradient(90deg, rgba(185, 42, 42, 0.55) 0%, rgba(215, 60, 60, 0.45) 100%);
+    color: #ffffff;
+}
+
+.shift-day-rest-toggle.is-holiday {
+    cursor: default;
+}
+
 #screen-calendar .shift-constructor {
     background: var(--surface-card-inner);
     border: var(--card-border);
@@ -597,7 +707,8 @@
     padding: 16px 16px 20px;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 4px;
+    margin-top: 0;
+    margin-bottom: 8px;
 }
 
 #screen-calendar .shift-constructor:not(.shift-constructor--has-summary) .shift-constructor-title {
@@ -718,6 +829,7 @@
 
 #screen-calendar .shift-constructor--has-summary {
     overflow: visible;
+    margin-bottom: 8px;
 }
 
 /* ===== Сводка смены (макет) ===== */
@@ -3015,5 +3127,322 @@ button.shift-card__time-slot {
     align-self: flex-start !important;
     margin-top: 4px !important;
     padding-top: 0 !important;
+}
+
+/* Контекстный поповер клетки календаря */
+.cal-cell-popover {
+    position: fixed;
+    z-index: 9999;
+    width: 288px;
+    max-width: calc(100vw - 24px);
+    padding: 12px;
+    border-radius: 14px;
+    background: #1b1d22;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.72);
+    color: #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: calPopFadeIn 0.12s ease-out;
+}
+
+.cal-cell-popover[hidden] {
+    display: none !important;
+}
+
+@keyframes calPopFadeIn {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cal-cell-popover.is-bottom-sheet {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 18px 18px 0 0;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-bottom: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    background: #1b1d22;
+    box-shadow:
+        0 -1px 0 rgba(255, 255, 255, 0.08),
+        0 -16px 48px rgba(0, 0, 0, 0.78);
+    isolation: isolate;
+    animation: calPopSheetUp 0.18s ease-out;
+}
+
+.cal-cell-popover.is-bottom-sheet::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(4, 8, 14, 0.58);
+    pointer-events: none;
+}
+
+@keyframes calPopSheetUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}
+
+.cal-pop__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cal-pop__date {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.cal-pop__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cal-pop__rest-btn {
+    min-width: 28px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e5e7eb;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.14s ease;
+}
+
+.cal-pop__rest-btn:hover {
+    border-color: rgba(225, 75, 75, 0.55);
+    background: rgba(190, 48, 48, 0.22);
+}
+
+.cal-pop__rest-btn.is-active,
+.cal-pop__rest-btn.is-holiday {
+    border-color: rgba(235, 85, 85, 0.75);
+    background: rgba(195, 45, 45, 0.65);
+    color: #ffffff;
+}
+
+.cal-pop__rest-btn.is-holiday {
+    cursor: default;
+}
+
+.cal-pop__close {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: #9ca3af;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cal-pop__close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.cal-pop__existing-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cal-pop__existing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px 6px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cal-pop__existing-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    flex-wrap: wrap;
+}
+
+.cal-pop__existing-name small {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.cal-pop__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6b7280;
+    flex-shrink: 0;
+}
+
+.cal-pop__dot.has-day-shift { background: #10b981; }
+.cal-pop__dot.has-night-shift { background: #60a5fa; }
+.cal-pop__dot.has-vacation-shift { background: #f59e0b; }
+
+.cal-pop__del-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.14s ease;
+    padding: 0;
+}
+
+.cal-pop__del-btn:hover {
+    background: rgba(239, 68, 68, 0.32);
+    border-color: rgba(248, 113, 113, 0.5);
+    color: #ffffff;
+}
+
+.cal-pop__del-btn svg {
+    display: block;
+}
+
+.cal-pop__group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.cal-pop__row-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cal-pop__input {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.28);
+    color: #ffffff;
+    font-size: 13px;
+    outline: none;
+}
+
+.cal-pop__input:focus {
+    border-color: #06ca86;
+}
+
+.cal-pop__submit {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cal-pop__submit--note {
+    background: #059669;
+    font-size: 13px;
+}
+
+.cal-pop__submit:hover {
+    filter: brightness(1.15);
+}
+
+.cal-pop__presets {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cal-pop__chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cal-pop__chip {
+    min-width: 38px;
+    height: 32px;
+    padding: 0 11px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d1d5db;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.14s ease;
+}
+
+.cal-pop__chip:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.09);
+    color: #ffffff;
+}
+
+.cal-pop__chip--rest,
+.cal-pop__chip--sick {
+    border-color: rgba(220, 85, 85, 0.45);
+    color: #fca5a5;
+}
+
+.cal-pop__chip--rest:hover,
+.cal-pop__chip--sick:hover {
+    border-color: rgba(235, 95, 95, 0.75);
+    background: rgba(200, 50, 50, 0.22);
+    color: #ffffff;
+}
+
+.cal-pop__chip--rest.is-active {
+    border-color: rgba(235, 85, 85, 0.85);
+    background: rgba(195, 45, 45, 0.65);
+    color: #ffffff;
+}
+
+.cal-pop__chip--vac {
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fcd34d;
+}
+
+.cal-pop__chip--vac:hover {
+    border-color: rgba(245, 158, 11, 0.8);
+    background: rgba(245, 158, 11, 0.2);
+    color: #ffffff;
 }
 

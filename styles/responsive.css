@@ -98,7 +98,7 @@
     }
 
     #screen-calendar .calendar-app-wrap {
-        padding-bottom: var(--bottom-tabbar-clearance);
+        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     }
 
     #screen-schedule .screen-card--schedule .app-community-footer {
@@ -127,7 +127,7 @@
         box-sizing: border-box;
         background: transparent;
         border: none;
-        flex: 0 1 auto;
+        flex: 0 0 auto;
         min-height: 0;
         overflow: visible;
     }
