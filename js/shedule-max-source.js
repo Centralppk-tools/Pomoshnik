@@ -1,4 +1,4 @@
-/** Источник расписания Цифрового помощника: публичный бакет S3 (Shedule_Max). */
+/** Источник расписания: crew-api /api/v1/data (JWT) или опционально прямой S3 из конфига. */
 (function (global) {
     const DIRS = ['from_moscow', 'to_moscow'];
 
@@ -7,11 +7,12 @@
     }
 
     function s3Base() {
-        return String(cfg().s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
+        const raw = String(cfg().s3BaseUrl || '').trim();
+        return raw ? raw.replace(/\/$/, '') : '';
     }
 
     function useDirectS3() {
-        return Boolean(s3Base()) && cfg().useDirectS3 !== false;
+        return Boolean(s3Base()) && cfg().useDirectS3 === true;
     }
 
     function remoteStorageEnabled() {
@@ -939,7 +940,7 @@
                 const cache = await global.caches.open(name);
                 const requests = await cache.keys();
                 await Promise.all(requests
-                    .filter((req) => /cache_stops|cache_schedule|shedulemax-public/i.test(req.url))
+                    .filter((req) => /cache_stops|cache_schedule|\/api\/v1\/data\//i.test(req.url))
                     .map((req) => cache.delete(req)));
             }
         } catch (err) {

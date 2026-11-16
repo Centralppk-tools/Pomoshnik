@@ -1,5 +1,5 @@
-// Service Worker — Цифровой помощник v5.1.9 — da_v5_1_9 (instant shell + network timeouts)
-const CACHE_NAME = 'da_v5_1_9';
+// Service Worker — Цифровой помощник v5.2.1 — da_v5_2_1 (instant shell + network timeouts)
+const CACHE_NAME = 'da_v5_2_1';
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const NOTIFICATION_ICON = './assets/app-icon.png';
@@ -394,11 +394,21 @@ function isSameOriginApiRequest(url) {
     return url.pathname.startsWith('/api/');
 }
 
+function isPrivateCrewApiRequest(url) {
+    const host = String(url.hostname || '').toLowerCase();
+    if (host !== 'api.digipom.ru' && host !== '127.0.0.1' && host !== 'localhost') return false;
+    return /\/api\/(v1\/(data|sync|profile|shifts|wall)|auth\/)/i.test(String(url.pathname || ''));
+}
+
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
+    if (isPrivateCrewApiRequest(url)) {
+        event.respondWith(fetch(request));
+        return;
+    }
     if (url.origin === self.location.origin && isSameOriginApiRequest(url)) {
         event.respondWith(fetch(request));
         return;

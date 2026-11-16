@@ -89,7 +89,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mc.yandex.ru https://shedulemax-public.s3.cloud.ru https://*.s3.cloud.ru; connect-src 'self' https://api.digipom.ru https://shedulemax-public.s3.cloud.ru https://*.s3.cloud.ru https://mc.yandex.ru https://mdd.yandex.net wss://mc.yandex.ru https://api.cloudtips.ru http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mc.yandex.ru https://mdd.yandex.net https://pay.cloudtips.ru; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mc.yandex.ru; connect-src 'self' https://api.digipom.ru https://mc.yandex.ru https://mdd.yandex.net wss://mc.yandex.ru https://api.cloudtips.ru http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mc.yandex.ru https://mdd.yandex.net https://pay.cloudtips.ru; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'">
     <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
     <link rel="stylesheet" href="styles/base.css?v=20261018i">
     <link rel="stylesheet" href="styles/routes.css?v=20261030t">
@@ -102,7 +102,7 @@
     .route-pending-mark__icon{color:#f59e0b}
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
-    <link rel="stylesheet" href="styles/calendar.css?v=5.1.9">
+    <link rel="stylesheet" href="styles/calendar.css?v=5.2.1">
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
@@ -1266,8 +1266,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.9';
-    const CLIENT_CACHE_VERSION = 'da_v5_1_2';
+    const APP_RELEASE_VERSION = '5.2.1';
+    const CLIENT_CACHE_VERSION = 'da_v5_2_1';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -3131,11 +3131,16 @@
         initFeedbackUi();
         initRouteRefreshButton();
         void loadCalendarLocalRoutes();
-        void loadLocalShiftTemplatesBundle().then(() => {
+        if (window.DaCrewApi?.hasValidJwt?.()) {
+            void loadLocalShiftTemplatesBundle().then(() => {
+                applyNormativeForDateKey(getShiftContextDateKey());
+                renderRouteShiftCompact();
+                scheduleShiftBundleSessionRefresh();
+            });
+        } else if (hasLocalShiftTemplates()) {
             applyNormativeForDateKey(getShiftContextDateKey());
             renderRouteShiftCompact();
-            scheduleShiftBundleSessionRefresh();
-        });
+        }
 
         const savedTrains = userStorageGetJson('trainNumbers', []);
         renderTrainInputs(Array.isArray(savedTrains) ? savedTrains : []);
@@ -3200,9 +3205,10 @@
         }
         requestAnimationFrame(syncScheduleGlassStack);
 
-        // Справочник тормозов и локальная база поездов
+        // Справочник тормозов и локальная база поездов (сеть — только после входа)
         loadReferenceData()
-            .catch(err => {
+            .catch((err) => {
+                if (err?.code === 'auth_required' || err?.code === 'no_data_source') return;
                 console.error('Связь со справочником утеряна:', err);
             })
             .finally(() => {
@@ -5328,7 +5334,7 @@
         for (const path of candidates) {
             try {
                 const fetchFn = window.AppDataSource?.fetchResource || fetch;
-                const res = await fetchFn(path, { cache: 'no-store' });
+                const res = await fetchFn(path, {});
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${path}`);
                     continue;
@@ -5356,7 +5362,20 @@
         throw lastError || new Error('Не удалось загрузить JSON');
     }
 
+    function loadReferenceDataFromLocalCacheOnly() {
+        sprDataCache = loadReferenceJsonCache(REFERENCE_SPR_STORAGE_KEY) || {};
+        rebuildSprLookups();
+        localTrainsCache = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY) || { trains: [] };
+    }
+
     async function loadReferenceData() {
+        const canNetwork = window.DaCrewApi?.hasValidJwt?.() === true
+            && (window.AppDataSource?.canFetchProtectedCatalogs?.() === true
+                || window.AppDataSource?.useDirectS3?.() === true);
+        if (!canNetwork) {
+            loadReferenceDataFromLocalCacheOnly();
+            return;
+        }
         sprDataCache = await fetchJsonAsset(
             ['./spr.json', 'spr.json'],
             REFERENCE_SPR_STORAGE_KEY,
@@ -5365,6 +5384,22 @@
         rebuildSprLookups();
 
         localTrainsCache = await loadTrainsLocalRegistry();
+    }
+    window.daLoadReferenceDataAfterAuth = loadReferenceData;
+
+    function refreshUiAfterReferenceDataLoad() {
+        const activeTab = userStorageGet('activeTab') || 'tab-route';
+        if (isScheduleMaintenanceOn()) return;
+        if (activeTab === 'tab-route') {
+            getRouteData();
+            if (lastSingle) {
+                getScheduleData(lastSingle);
+            }
+        } else if (activeTab === 'tab-schedule' && lastSingle) {
+            getScheduleData(lastSingle);
+        }
+        applyNormativeForDateKey(getShiftContextDateKey());
+        calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: !calendarSelectedDateKey });
     }
 
     async function loadTrainsLocalRegistry() {
@@ -11525,7 +11560,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.1.9')
+        navigator.serviceWorker.register('./sw.js?v=5.2.1')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -14033,13 +14068,13 @@
         stopAuthLoginFieldPoll();
         const overlay = document.getElementById('screen-auth');
         if (overlay) overlay.classList.add('hidden');
-        void loadLocalShiftTemplatesBundle().then(() => {
+        if (hasLocalShiftTemplates()) {
             applyNormativeForDateKey(getShiftContextDateKey());
             if (isValidGlobalTemplateCache(depotShiftTemplates)) {
                 depotTemplatesLoadState = 'ready';
             }
             renderRouteComboboxListIfOpen();
-        });
+        }
         updateProfileScreen();
         switchMainScreen(getLastMainScreen('calendar'), {
             forceSideEffects: true,
@@ -14207,6 +14242,13 @@
                     }),
                     'claimAndSync',
                 );
+                if (window.DaCrewApi?.hasValidJwt?.()) {
+                    await withBgStepTimeout(
+                        window.DaCrewApi.prefetchAuthorizedCatalogs?.() || loadReferenceData(),
+                        'referenceCatalogs',
+                    );
+                    refreshUiAfterReferenceDataLoad();
+                }
             } else if (typeof getOrCreateSyncUserId === 'function') {
                 getOrCreateSyncUserId();
             }
@@ -15382,7 +15424,15 @@
         if (!forceRefresh && hasLocalShiftTemplates()) return localShiftNormatives;
         if (!forceRefresh && localShiftTemplatesPromise) return localShiftTemplatesPromise;
 
+        const canNetworkCatalogs = window.AppDataSource?.canFetchProtectedCatalogs?.() === true
+            || window.AppDataSource?.useDirectS3?.() === true
+            || window.AppDataSource?.isLocalDevHost?.() === true;
+
         localShiftTemplatesPromise = (async () => {
+            if (!canNetworkCatalogs && !forceRefresh) {
+                ensureShiftTemplatesMemoryFromPersisted();
+                return localShiftNormatives;
+            }
             setCrewSyncIndicator(true, 'База маршрутов…', 'shift-templates');
             try {
                 const candidates = [];

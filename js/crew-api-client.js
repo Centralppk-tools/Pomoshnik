@@ -930,6 +930,31 @@
         return data;
     }
 
+    async function prefetchAuthorizedCatalogs() {
+        if (!hasValidJwt()) {
+            return { skipped: true, reason: 'no_jwt' };
+        }
+        if (typeof global.daLoadReferenceDataAfterAuth === 'function') {
+            await global.daLoadReferenceDataAfterAuth();
+        } else {
+            const ads = global.AppDataSource;
+            if (useCrewDataMirror() && ads?.fetchJson) {
+                const lightOpts = { requireAuth: true };
+                await Promise.allSettled([
+                    ads.fetchJson('spr.json', lightOpts),
+                    ads.fetchJson('trains-local.json', lightOpts),
+                ]);
+            }
+        }
+        const ads = global.AppDataSource;
+        if (useCrewDataMirror() && ads?.fetchJson) {
+            try {
+                await ads.fetchJson('data/meta_version.json', { requireAuth: true });
+            } catch (_) { /* optional */ }
+        }
+        return { ok: true };
+    }
+
     async function postToWall(card) {
         if (!card || typeof card !== 'object') {
             throw new Error('invalid_wall_card');
@@ -1166,6 +1191,7 @@
         sync,
         syncCurrentMonth,
         claimAndSync,
+        prefetchAuthorizedCatalogs,
         saveShift,
         previewShift,
         profileAnalytics,

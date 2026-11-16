@@ -7,11 +7,11 @@ window.APP_CONFIG = {
     cloudtipsFeeApiUrl: 'https://api.cloudtips.ru/api/payment/fee',
     sheduleMax: {
         // Табло, нитки и справочники app (data/spr.json, shift-templates, instructions/…)
-        s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
+        s3BaseUrl: '',
         apiBaseUrl: '',
         functionUrl: '',
         useCrewDataMirror: true,
-        useDirectS3: true,
+        useDirectS3: false,
         preferStopsApi: false,
         preferBoardApi: false,
         threadRev: 14,

@@ -5,11 +5,16 @@
     }
 
     function s3Base() {
-        return String(cfg().s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
+        const raw = String(cfg().s3BaseUrl || '').trim();
+        return raw ? raw.replace(/\/$/, '') : '';
     }
 
     function useDirectS3() {
-        return Boolean(s3Base()) && cfg().useDirectS3 !== false;
+        return Boolean(s3Base()) && cfg().useDirectS3 === true;
+    }
+
+    function canFetchProtectedCatalogs() {
+        return global.DaCrewApi?.hasValidJwt?.() === true && useCrewDataMirror();
     }
 
     function useCrewDataMirror() {
@@ -52,7 +57,7 @@
         if (useDirectS3() && !useCrewDataMirror()) {
             urls.push(s3UrlForRel(rel));
         }
-        if (!urls.length) {
+        if (!urls.length && isLocalDevHost()) {
             const local = rel.startsWith('./') || rel.startsWith('/') ? rel : `./${rel}`;
             urls.push(local);
         }
@@ -69,9 +74,20 @@
         return raw.startsWith('./') ? raw : `./${rel}`;
     }
 
+    function resolveFetchCacheMode(url, options = {}) {
+        if (options.cacheBust === true) return 'no-store';
+        if (options.cache != null) return options.cache;
+        const u = String(url || '');
+        if (/\/meta_version\.json(?:\?|$)/i.test(u)) return 'no-cache';
+        if (global.DaCrewApi?.isCrewDataUrl?.(u)) return 'default';
+        return 'default';
+    }
+
     async function fetchResource(url, init = {}) {
         const target = String(url || '');
-        const merged = { cache: 'no-store', ...init };
+        const cacheMode = resolveFetchCacheMode(target, init);
+        const { cacheBust, ...restInit } = init;
+        const merged = { ...restInit, cache: cacheMode };
         if (global.DaCrewApi?.isCrewDataUrl?.(target)) {
             if (!global.DaCrewApi.hasValidJwt()) {
                 const err = new Error('missing_token');
@@ -89,13 +105,26 @@
     }
 
     async function fetchJson(localPath, options = {}) {
+        if (options.requireAuth !== false && !isLocalDevHost() && !canFetchProtectedCatalogs() && !useDirectS3()) {
+            const err = new Error('auth_required');
+            err.code = 'auth_required';
+            throw err;
+        }
         const bust = options.cacheBust === true;
         const candidates = urlsFor(localPath);
+        if (!candidates.length) {
+            const err = new Error('no_data_source');
+            err.code = 'no_data_source';
+            throw err;
+        }
         let lastError = null;
         for (const url of candidates) {
             const fetchUrl = bust ? `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}` : url;
             try {
-                const res = await fetchResource(fetchUrl, { cache: 'no-store', timeoutMs: options.timeoutMs });
+                const res = await fetchResource(fetchUrl, {
+                    cacheBust: bust,
+                    timeoutMs: options.timeoutMs,
+                });
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${fetchUrl}`);
                     continue;
@@ -117,6 +146,7 @@
         s3Base,
         useDirectS3,
         useCrewDataMirror,
+        canFetchProtectedCatalogs,
         isLocalDevHost,
         urlsFor,
         resolveAssetUrl,
