@@ -1001,7 +1001,7 @@
         clockHms,
         clockToIso,
         enabled() {
-            return Boolean(s3Base());
+            return remoteStorageEnabled();
         },
     };
 })(window);

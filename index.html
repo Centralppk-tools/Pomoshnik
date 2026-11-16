@@ -102,7 +102,7 @@
     .route-pending-mark__icon{color:#f59e0b}
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
-    <link rel="stylesheet" href="styles/calendar.css?v=5.2.2">
+    <link rel="stylesheet" href="styles/calendar.css?v=5.2.3">
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
@@ -5780,7 +5780,11 @@
                 throw err;
             }
         }
-        throw createBoardNotReadyError(null, 'Прокси табло не настроен');
+        const needAuth = window.DaCrewApi?.useCrewDataMirror?.() && !window.DaCrewApi?.hasValidJwt?.();
+        const msg = needAuth
+            ? 'Войдите в аккаунт, чтобы загрузить табло расписания'
+            : 'Источник табло недоступен. Проверьте сеть или обновите приложение.';
+        throw createBoardNotReadyError(null, msg);
     }
 
     async function fetchStationScheduleForDate(date, stationCode = ANCHOR_STATION, options = {}) {
