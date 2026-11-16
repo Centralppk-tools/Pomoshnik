@@ -14,6 +14,11 @@
         return Boolean(s3Base()) && cfg().useDirectS3 !== false;
     }
 
+    function remoteStorageEnabled() {
+        if (useDirectS3()) return true;
+        return Boolean(global.DaCrewApi?.useCrewDataMirror?.() && global.DaCrewApi?.hasValidJwt?.());
+    }
+
     const dayStopsCache = Object.create(null);
     const dayStopsInflight = Object.create(null);
     const trainStopsMem = Object.create(null);
@@ -204,7 +209,7 @@
 
     async function loadDayStopsBundle(day, fresh) {
         const key = String(day || '').trim().slice(0, 10);
-        if (!key || !useDirectS3()) return null;
+        if (!key || !remoteStorageEnabled()) return null;
         if (!fresh && dayStopsBundleUnavailable[key]) return null;
         if (!fresh && dayBundleMem[key]) return dayBundleMem[key];
         if (dayBundleInflight[key]) return dayBundleInflight[key];
@@ -248,7 +253,7 @@
     function datedStopFetchUrl(date, trainNumber, fresh) {
         const path = datedStopObjectPath(date, trainNumber);
         if (!path) return '';
-        if (!useDirectS3()) return '';
+        if (!remoteStorageEnabled()) return '';
         const bust = fresh ? `?t=${Date.now()}` : '';
         return s3Url(`${path}${bust}`);
     }
@@ -259,12 +264,25 @@
     }
 
     function s3Url(path) {
-        return `${s3Base()}/${String(path || '').replace(/^\//, '')}`;
+        const raw = String(path || '').replace(/^\//, '');
+        const qIdx = raw.indexOf('?');
+        const pathOnly = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+        const query = qIdx >= 0 ? raw.slice(qIdx) : '';
+        const mirrorActive = Boolean(
+            global.DaCrewApi?.useCrewDataMirror?.() && global.DaCrewApi?.hasValidJwt?.(),
+        );
+        if (mirrorActive) {
+            const crew = global.DaCrewApi.dataMirrorUrlForRel(pathOnly, query);
+            if (crew) return crew;
+            return '';
+        }
+        if (!useDirectS3()) return '';
+        return `${s3Base()}/${raw}`;
     }
 
     function stopResourceUrl(objectPath) {
         const path = String(objectPath || '').replace(/^\//, '');
-        if (!path || !useDirectS3()) return '';
+        if (!path || !remoteStorageEnabled()) return '';
         const withRev = path.includes('?') ? path : `${path}?${revQuery()}`;
         return s3Url(withRev);
     }
@@ -503,10 +521,12 @@
         const controller = new AbortController();
         const timer = global.setTimeout(() => controller.abort(), timeoutMs);
         let res;
+        const fetchFn = global.AppDataSource?.fetchResource || fetch;
         try {
-            res = await fetch(withCacheBust(url, fresh), {
+            res = await fetchFn(withCacheBust(url, fresh), {
                 signal: controller.signal,
                 cache: fresh ? 'no-store' : 'default',
+                timeoutMs,
             });
         } catch (err) {
             const fail = new Error(
@@ -571,7 +591,7 @@
     }
 
     async function fetchBoardFromS3(date, direction, errors, options = {}) {
-        if (!useDirectS3()) return null;
+        if (!remoteStorageEnabled()) return null;
         const path = scheduleObjectPath(date);
         try {
             const url = s3Url(path);
@@ -822,7 +842,7 @@
             return rememberStopsPayload(key, '', payload);
         };
 
-        if (!useDirectS3()) {
+        if (!remoteStorageEnabled()) {
             const err = new Error('S3 не настроен для ниток');
             err.code = 'NO_S3';
             if (bypassCache) throw err;

@@ -10,6 +10,7 @@ window.APP_CONFIG = {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
         apiBaseUrl: '',
         functionUrl: '',
+        useCrewDataMirror: true,
         useDirectS3: true,
         preferStopsApi: false,
         preferBoardApi: false,

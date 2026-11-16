@@ -234,7 +234,8 @@
             const rel = String(doc.pdfPath || '').replace(/^\.\//, '');
             if (!rel) return null;
             const pdfUrl = window.AppDataSource?.resolveAssetUrl?.(rel) || `./${rel}`;
-            const res = await fetch(pdfUrl, { cache: 'no-store' });
+            const fetchFn = window.AppDataSource?.fetchResource || fetch;
+            const res = await fetchFn(pdfUrl, { cache: 'no-store' });
             if (!res.ok) return null;
             return res.blob();
         }
@@ -278,7 +279,8 @@
             let catalog = null;
             for (const url of catalogUrls) {
                 try {
-                    const res = await fetch(url, { cache: 'no-store' });
+                    const fetchFn = window.AppDataSource?.fetchResource || fetch;
+                    const res = await fetchFn(url, { cache: 'no-store' });
                     if (!res.ok) continue;
                     catalog = await res.json();
                     break;
@@ -330,7 +332,8 @@
                     let pack = null;
                     for (const curl of chunkUrls) {
                         try {
-                            const chunkRes = await fetch(curl, { cache: 'no-store' });
+                            const fetchFn = window.AppDataSource?.fetchResource || fetch;
+                            const chunkRes = await fetchFn(curl, { cache: 'no-store' });
                             if (!chunkRes.ok) continue;
                             pack = await chunkRes.json();
                             break;

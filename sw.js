@@ -1,5 +1,5 @@
-// Service Worker — Цифровой помощник v5.1.8 — da_v5_1_8 (instant shell + network timeouts)
-const CACHE_NAME = 'da_v5_1_8';
+// Service Worker — Цифровой помощник v5.1.9 — da_v5_1_9 (instant shell + network timeouts)
+const CACHE_NAME = 'da_v5_1_9';
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const NOTIFICATION_ICON = './assets/app-icon.png';

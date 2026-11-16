@@ -1,4 +1,4 @@
-/** Справочники PWA: S3 shedulemax-public (data/*), локальные файлы — только на 127.0.0.1. */
+/** Справочники PWA: crew-api /api/v1/data/* (JWT) или S3, локальные файлы — только на 127.0.0.1. */
 (function (global) {
     function cfg() {
         return global.APP_CONFIG?.sheduleMax || {};
@@ -12,6 +12,11 @@
         return Boolean(s3Base()) && cfg().useDirectS3 !== false;
     }
 
+    function useCrewDataMirror() {
+        return global.DaCrewApi?.useCrewDataMirror?.() === true
+            && global.DaCrewApi?.hasValidJwt?.() === true;
+    }
+
     function isLocalDevHost() {
         const host = String(global.location?.hostname || '');
         return host === '127.0.0.1' || host === 'localhost';
@@ -20,6 +25,7 @@
     function normalizeRelPath(path) {
         let rel = String(path || '').trim().replace(/^\.\//, '');
         if (rel === 'spr.json') return 'data/spr.json';
+        if (rel === 'trains-local.json') return 'data/trains-local.json';
         if (!rel.startsWith('data/')) return `data/${rel}`;
         return rel;
     }
@@ -29,6 +35,11 @@
         return `${s3Base()}/${key}`;
     }
 
+    function crewDataUrlForRel(relPath) {
+        if (!useCrewDataMirror()) return '';
+        return global.DaCrewApi?.dataMirrorUrlForRel?.(relPath) || '';
+    }
+
     function urlsFor(localPath) {
         const rel = String(localPath || '').trim();
         const urls = [];
@@ -36,7 +47,9 @@
             const local = rel.startsWith('./') || rel.startsWith('/') ? rel : `./${rel}`;
             urls.push(local);
         }
-        if (useDirectS3()) {
+        const crewUrl = crewDataUrlForRel(rel);
+        if (crewUrl) urls.push(crewUrl);
+        if (useDirectS3() && !useCrewDataMirror()) {
             urls.push(s3UrlForRel(rel));
         }
         if (!urls.length) {
@@ -50,8 +63,29 @@
         const raw = String(relOrAbs || '').trim();
         if (!raw || /^https?:\/\//i.test(raw)) return raw;
         const rel = raw.replace(/^\.\//, '');
-        if (useDirectS3()) return s3UrlForRel(rel);
+        const crewUrl = crewDataUrlForRel(rel);
+        if (crewUrl) return crewUrl;
+        if (useDirectS3() && !useCrewDataMirror()) return s3UrlForRel(rel);
         return raw.startsWith('./') ? raw : `./${rel}`;
+    }
+
+    async function fetchResource(url, init = {}) {
+        const target = String(url || '');
+        const merged = { cache: 'no-store', ...init };
+        if (global.DaCrewApi?.isCrewDataUrl?.(target)) {
+            if (!global.DaCrewApi.hasValidJwt()) {
+                const err = new Error('missing_token');
+                err.code = 'missing_token';
+                throw err;
+            }
+            const headers = { ...merged.headers, ...global.DaCrewApi.dataAuthHeaders() };
+            return global.DaCrewApi.crewFetch(
+                target,
+                { ...merged, headers },
+                merged.timeoutMs || undefined,
+            );
+        }
+        return fetch(target, merged);
     }
 
     async function fetchJson(localPath, options = {}) {
@@ -61,7 +95,7 @@
         for (const url of candidates) {
             const fetchUrl = bust ? `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}` : url;
             try {
-                const res = await fetch(fetchUrl, { cache: 'no-store' });
+                const res = await fetchResource(fetchUrl, { cache: 'no-store', timeoutMs: options.timeoutMs });
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${fetchUrl}`);
                     continue;
@@ -82,10 +116,13 @@
     global.AppDataSource = {
         s3Base,
         useDirectS3,
+        useCrewDataMirror,
         isLocalDevHost,
         urlsFor,
         resolveAssetUrl,
+        fetchResource,
         fetchJson,
         s3UrlForRel,
+        crewDataUrlForRel,
     };
 })(window);

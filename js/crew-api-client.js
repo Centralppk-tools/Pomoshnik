@@ -16,9 +16,12 @@
     const hooks = {
         getSyncUserId: () => '',
         getTabNumber: () => '',
+        getPersonalRestKeys: () => [],
+        getUserRole: () => '',
         buildShiftPayload: null,
         buildProfilePayload: null,
         applySyncPayload: null,
+        applyServerSavedShifts: null,
         onAccountSwitched: null
     };
 
@@ -432,6 +435,54 @@
         return h;
     }
 
+    function dataAuthHeaders() {
+        const tab = hooks.getTabNumber?.() || '';
+        const h = {};
+        if (tab) h['x-tab-number'] = tab;
+        const authH = global.DaAuthSession?.authHeaders?.() || {};
+        Object.assign(h, authH);
+        return h;
+    }
+
+    function useCrewDataMirror() {
+        const sm = global.APP_CONFIG?.sheduleMax || {};
+        if (sm.useCrewDataMirror === false) return false;
+        return cfg().enabled;
+    }
+
+    function normalizeDataMirrorRel(pathPart) {
+        let rel = String(pathPart || '').trim().replace(/^\.\//, '').replace(/^\//, '');
+        if (rel === 'spr.json') rel = 'data/spr.json';
+        if (rel === 'trains-local.json') rel = 'data/trains-local.json';
+        if (!rel.startsWith('data/')) rel = `data/${rel}`;
+        return rel;
+    }
+
+    function splitPathQuery(raw) {
+        const s = String(raw || '').trim();
+        const i = s.indexOf('?');
+        if (i < 0) return { path: s, query: '' };
+        return { path: s.slice(0, i), query: s.slice(i) };
+    }
+
+    function dataMirrorUrlForKey(key, querySuffix) {
+        const { baseUrl, enabled } = cfg();
+        if (!enabled) return '';
+        const rel = normalizeDataMirrorRel(key);
+        const q = String(querySuffix || '');
+        return `${baseUrl}/api/v1/data/${rel}${q}`;
+    }
+
+    function dataMirrorUrlForRel(relPath, querySuffix) {
+        const { path: pathPart, query: embedded } = splitPathQuery(relPath);
+        const q = String(querySuffix || embedded || '');
+        return dataMirrorUrlForKey(pathPart, q);
+    }
+
+    function isCrewDataUrl(url) {
+        return /\/api\/v1\/data\//i.test(String(url || ''));
+    }
+
     async function markCrewSessionFresh() {
         sessionAnchorAt = Date.now();
         try {
@@ -644,6 +695,70 @@
         }
     }
 
+    function buildShiftSaveEnvelope(clean) {
+        const list = Array.isArray(clean) ? clean.filter(Boolean) : [];
+        const extra = {};
+        const restKeys = typeof hooks.getPersonalRestKeys === 'function' ? hooks.getPersonalRestKeys() : [];
+        if (Array.isArray(restKeys) && restKeys.length) {
+            extra.personal_rest_keys = restKeys;
+        }
+        const role = typeof hooks.getUserRole === 'function' ? String(hooks.getUserRole() || '').trim() : '';
+        if (role) extra.role = role;
+        if (list.length === 1) {
+            return { ...list[0], ...extra };
+        }
+        return { shifts: list, ...extra };
+    }
+
+    function handleShiftSaveSuccess(data, clean) {
+        const syncUserId = hooks.getSyncUserId?.() || '';
+        clean.forEach((p) => {
+            lastPushedHash[shiftPushHashKey(syncUserId, p)] = JSON.stringify(p);
+        });
+        const saved = Array.isArray(data?.saved)
+            ? data.saved
+            : (Array.isArray(data?.shifts) ? data.shifts : []);
+        if (saved.length && typeof hooks.applyServerSavedShifts === 'function') {
+            try {
+                hooks.applyServerSavedShifts(saved);
+            } catch (err) {
+                console.warn('[crew-api] applyServerSavedShifts', err);
+            }
+        }
+    }
+
+    async function profileAnalytics(month, options) {
+        const m = String(month || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(m)) {
+            throw new Error('invalid_month');
+        }
+        const qs = new URLSearchParams({ month: m });
+        const restKeys = options?.restKeys
+            || (typeof hooks.getPersonalRestKeys === 'function' ? hooks.getPersonalRestKeys() : []);
+        if (Array.isArray(restKeys) && restKeys.length) {
+            qs.set('rest_keys', restKeys.join(','));
+        }
+        const role = options?.role
+            || (typeof hooks.getUserRole === 'function' ? hooks.getUserRole() : '');
+        if (role) qs.set('role', role);
+        return apiFetch(`/api/v1/profile/analytics?${qs.toString()}`);
+    }
+
+    async function previewShift(body) {
+        const { enabled } = cfg();
+        if (!enabled) {
+            return { ok: false, skipped: true, reason: 'crew_api_disabled' };
+        }
+        if (!hasValidJwt()) {
+            return { ok: false, skipped: true, reason: 'missing_token' };
+        }
+        return apiFetch('/api/v1/shifts/preview', {
+            method: 'POST',
+            body: body || {},
+            timeoutMs: 45000
+        });
+    }
+
     async function saveShift(shiftOrList) {
         const syncUserId = hooks.getSyncUserId?.() || '';
         if (!syncUserId) {
@@ -671,11 +786,9 @@
         try {
             const data = await apiFetch('/api/v1/shifts/save', {
                 method: 'POST',
-                body: clean.length === 1 ? clean[0] : { shifts: clean }
+                body: buildShiftSaveEnvelope(clean)
             });
-            clean.forEach((p) => {
-                lastPushedHash[shiftPushHashKey(syncUserId, p)] = JSON.stringify(p);
-            });
+            handleShiftSaveSuccess(data, clean);
             return data;
         } catch (err) {
             for (const p of clean) await enqueueShiftPayload(p);
@@ -918,13 +1031,11 @@
                 }
             }
             if (savePayloads.length) {
-                await apiFetch('/api/v1/shifts/save', {
+                const data = await apiFetch('/api/v1/shifts/save', {
                     method: 'POST',
-                    body: { shifts: savePayloads },
+                    body: buildShiftSaveEnvelope(savePayloads),
                 });
-                savePayloads.forEach((p) => {
-                    lastPushedHash[shiftPushHashKey(syncUserId, p)] = JSON.stringify(p);
-                });
+                handleShiftSaveSuccess(data, savePayloads);
             }
             await deleteQueueIds(mine.map((r) => r.id));
         } catch (e) {
@@ -1056,6 +1167,8 @@
         syncCurrentMonth,
         claimAndSync,
         saveShift,
+        previewShift,
+        profileAnalytics,
         deleteShift,
         updateProfile,
         postToWall,
@@ -1073,6 +1186,13 @@
         maybeRunCloudMigration,
         submitFeedback,
         isEnabled: () => cfg().enabled,
+        useCrewDataMirror,
+        hasValidJwt,
+        dataAuthHeaders,
+        dataMirrorUrlForRel,
+        dataMirrorUrlForKey,
+        isCrewDataUrl,
+        crewFetch,
         getSyncUserId: () => hooks.getSyncUserId?.() || '',
         getTabNumber: () => hooks.getTabNumber?.() || ''
     };

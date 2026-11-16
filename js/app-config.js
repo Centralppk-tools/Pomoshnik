@@ -1,7 +1,7 @@
-window.APP_BUILD_ID = '5.1.8';
+window.APP_BUILD_ID = '5.1.9';
 
 window.APP_CONFIG = {
-    APP_BUILD_ID: '5.1.8',
+    APP_BUILD_ID: '5.1.9',
     yandexProxy: '',
     yandexClientToken: '',
     webPushVapidPublicKey: 'BPKYfiRk4SLmag3Q4xclEcQB8TkYY-3r-jfzo00lXFjW6JSIDi8-F7MDH72MEIhsLeFSSY62fYlrR-h5-hMVA1A',
@@ -17,6 +17,7 @@ window.APP_CONFIG = {
     sheduleMax: {
         s3BaseUrl: 'https://shedulemax-public.s3.cloud.ru',
         functionUrl: '',
+        useCrewDataMirror: true,
         useDirectS3: true,
         preferStopsApi: false,
         preferBoardApi: false,

@@ -102,7 +102,7 @@
     .route-pending-mark__icon{color:#f59e0b}
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
-    <link rel="stylesheet" href="styles/calendar.css?v=5.1.8">
+    <link rel="stylesheet" href="styles/calendar.css?v=5.1.9">
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
@@ -1266,8 +1266,14 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.1.8';
+    const APP_RELEASE_VERSION = '5.1.9';
     const CLIENT_CACHE_VERSION = 'da_v5_1_2';
+    /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
+    const ENABLE_SERVER_PREVIEW_SHADOW = false;
+    let shiftPreviewShadowInflight = new Set();
+    let shiftPreviewShadowDayTimer = null;
+    let shiftPreviewShadowQueue = [];
+    let shiftPreviewShadowQueueBusy = false;
     const FEEDBACK_TELEGRAM_BOT_URL = 'https://t.me/Dreammm_hunter';
     const APP_TELEGRAM_URL = 'https://t.me/pomoshnikcppk';
     let calendarIcsExportInProgress = false;
@@ -5321,7 +5327,8 @@
 
         for (const path of candidates) {
             try {
-                const res = await fetch(path, { cache: 'no-store' });
+                const fetchFn = window.AppDataSource?.fetchResource || fetch;
+                const res = await fetchFn(path, { cache: 'no-store' });
                 if (!res.ok) {
                     lastError = new Error(`HTTP ${res.status} для ${path}`);
                     continue;
@@ -5362,29 +5369,20 @@
 
     async function loadTrainsLocalRegistry() {
         const empty = { trains: [] };
-        const sm = window.APP_CONFIG?.sheduleMax || {};
-        const base = String(sm.s3BaseUrl || 'https://shedulemax-public.s3.cloud.ru').replace(/\/$/, '');
         const buildId = String(window.APP_BUILD_ID || window.APP_CONFIG?.APP_BUILD_ID || 'dev').trim();
-        const remoteUrl = `${base}/data/trains-local.json?build=${encodeURIComponent(buildId)}&_t=${Date.now()}`;
+        const rel = `./data/trains-local.json?build=${encodeURIComponent(buildId)}`;
         try {
-            const res = await fetch(remoteUrl, { cache: 'no-store' });
-            if (res.ok) {
-                const parsed = await res.json();
-                if (Array.isArray(parsed?.trains) && parsed.trains.length) {
-                    persistReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY, parsed);
-                    console.log('[trains-local] S3', parsed.trains.length, 'build', buildId);
-                    return parsed;
-                }
+            const parsed = await fetchJsonAsset(
+                [rel, './trains-local.json', 'trains-local.json'],
+                REFERENCE_TRAINS_STORAGE_KEY,
+                null
+            );
+            if (parsed && Array.isArray(parsed.trains) && parsed.trains.length) {
+                console.log('[trains-local]', parsed.trains.length, 'build', buildId);
+                return parsed;
             }
         } catch (err) {
-            console.warn('[trains-local] S3 fetch failed:', err);
-        }
-        if (window.AppDataSource?.isLocalDevHost?.()) {
-            return fetchJsonAsset(
-                ['./trains-local.json', 'trains-local.json'],
-                REFERENCE_TRAINS_STORAGE_KEY,
-                empty
-            );
+            console.warn('[trains-local] remote fetch failed:', err);
         }
         const cached = loadReferenceJsonCache(REFERENCE_TRAINS_STORAGE_KEY);
         return cached || empty;
@@ -10463,14 +10461,10 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Поповер ячейки календаря и выходные ×2',
-            'Клик по чипам смены — вкладка У/Н/Д',
-            'Верстка календаря на узком экране'
+            'Доработки безопасности'
         ],
         highlights: [
-            'Поповер ячейки календаря и выходные ×2',
-            'Клик по чипам смены — вкладка У/Н/Д',
-            'Верстка календаря на узком экране'
+            'Доработки безопасности'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -11531,7 +11525,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.1.8')
+        navigator.serviceWorker.register('./sw.js?v=5.1.9')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -12355,6 +12349,9 @@
         if (window.DaCrewApi?.isEnabled?.() && syncId) {
             DaCrewApi.schedulePushShifts(calendarUserShifts);
         }
+        if (calendarSelectedDateKey) {
+            runShiftPreviewShadowForDay(calendarSelectedDateKey, 'persist');
+        }
     }
 
     function schedulePersistUserShifts() {
@@ -12515,8 +12512,31 @@
             hours: row.hours_text != null && String(row.hours_text).trim() !== ''
                 ? row.hours_text
                 : (base.hours || ''),
+            serverSalaryAmount: row.salary_amount != null ? Number(row.salary_amount) : base.serverSalaryAmount,
+            normativeStamp: row.normative_stamp != null ? String(row.normative_stamp) : base.normativeStamp,
             note: userNote || (isAveragePay ? '' : (base.note || ''))
         });
+    }
+
+    function applyServerSavedShiftsFromCrewApi(savedRows) {
+        if (!Array.isArray(savedRows) || !savedRows.length) return;
+        loadUserShifts();
+        applyCrewApiShiftRowsToCalendar(savedRows, { replaceShifts: false });
+        persistUserShiftsLocalOnly();
+        if (calendarSelectedDateKey && typeof calendarRenderCalendar === 'function') {
+            calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: false });
+        }
+        if (typeof updateProfileScreen === 'function') {
+            updateProfileScreen();
+        }
+    }
+
+    function getPersonalRestDayKeysForServer() {
+        return Object.keys(calendarRestDays || {}).filter((k) => calendarRestDays[k]);
+    }
+
+    function getCrewApiRoleLabelForServer() {
+        return calendarIsAssistantPosition() ? 'помощник' : 'машинист';
     }
 
     function applyCrewApiShiftRowsToCalendar(serverRows, opts) {
@@ -13076,9 +13096,12 @@
         DaCrewApi.configure({
             getSyncUserId: () => (typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : ''),
             getTabNumber: () => getAuthSessionTab() || localStorage.getItem(DEPOT_TAB_KEY) || '',
+            getPersonalRestKeys: getPersonalRestDayKeysForServer,
+            getUserRole: getCrewApiRoleLabelForServer,
             buildShiftPayload: buildCrewApiShiftPayload,
             buildProfilePayload: buildCrewApiProfilePayload,
             applySyncPayload: applyCrewApiSyncPayload,
+            applyServerSavedShifts: applyServerSavedShiftsFromCrewApi,
             countLocalShiftDates: () => {
                 try {
                     return Object.keys(collectLocalShiftsMapForSyncGuard()).length;
@@ -15273,7 +15296,8 @@
     }
 
     async function fetchShiftTemplatesJson(url) {
-        const res = await fetch(url, { cache: 'no-store' });
+        const fetchFn = window.AppDataSource?.fetchResource || fetch;
+        const res = await fetchFn(url, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return normalizeShiftBundleData(await res.json());
     }
@@ -15361,11 +15385,31 @@
         localShiftTemplatesPromise = (async () => {
             setCrewSyncIndicator(true, 'База маршрутов…', 'shift-templates');
             try {
-                const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
-                    || [LOCAL_SHIFT_TEMPLATES_URL];
-                const fetchers = shiftUrls.map((url) => fetchShiftTemplatesJson(url).catch(() => null));
-
-                const candidates = (await Promise.all(fetchers)).filter(Boolean);
+                const candidates = [];
+                if (window.AppDataSource?.fetchJson) {
+                    try {
+                        const raw = await window.AppDataSource.fetchJson(LOCAL_SHIFT_TEMPLATES_URL, {
+                            cacheBust: forceRefresh,
+                            timeoutMs: 60000,
+                        });
+                        const bundle = normalizeShiftBundleData(raw);
+                        if (bundle?.normatives?.length) candidates.push(bundle);
+                    } catch (fetchErr) {
+                        console.warn('[shift-templates] fetchJson', fetchErr);
+                    }
+                } else {
+                    const shiftUrls = window.AppDataSource?.urlsFor?.(LOCAL_SHIFT_TEMPLATES_URL)
+                        || [LOCAL_SHIFT_TEMPLATES_URL];
+                    for (const url of shiftUrls) {
+                        try {
+                            const bundle = await fetchShiftTemplatesJson(url);
+                            if (bundle) {
+                                candidates.push(bundle);
+                                break;
+                            }
+                        } catch (_) { /* next */ }
+                    }
+                }
                 const cachedBundle = loadReferenceJsonCache(LOCAL_SHIFT_TEMPLATES_STORAGE_KEY);
                 if (cachedBundle?.normatives?.length) {
                     candidates.push({
@@ -15599,9 +15643,10 @@
                         || ['./data/calendar-local-routes.json'];
                     let data = null;
                     let lastErr = null;
+                    const fetchFn = window.AppDataSource?.fetchResource || fetch;
                     for (const url of urls) {
                         try {
-                            const res = await fetch(url, { cache: 'no-store' });
+                            const res = await fetchFn(url, { cache: 'no-store' });
                             if (!res.ok) throw new Error(`HTTP ${res.status}`);
                             data = await res.json();
                             break;
@@ -17440,6 +17485,129 @@
             return getAveragePayCalculation(dateKey).amount;
         }
         return getCalendarShiftPaymentFromHours(shift, dateKey);
+    }
+
+    function buildShiftPreviewShadowBody(dateKey, shift) {
+        const iso = calendarDateKeyToIsoDate(dateKey);
+        if (!iso || !shift) return null;
+        const enriched = enrichShiftFromDepotTemplate(shift, dateKey);
+        const personalRestKeys = Object.keys(calendarRestDays || {}).filter((k) => calendarRestDays[k]);
+        const body = {
+            shift_date: iso,
+            shift: {
+                route: enriched.route || enriched.name || '',
+                startTime: enriched.startTime,
+                endTime: enriched.endTime,
+                reportTime: enriched.reportTime,
+                lunch: enriched.lunch,
+                hours: enriched.hours,
+                workHours: enriched.workHours,
+                nightHours: enriched.nightHours,
+                morningRoute: enriched.morningRoute,
+                localPresetId: enriched.localPresetId,
+                isVirtualMorning: enriched.isVirtualMorning,
+                shiftStatus: enriched.shiftStatus
+            },
+            personal_rest_keys: personalRestKeys,
+            role: calendarIsAssistantPosition() ? 'помощник' : 'машинист'
+        };
+        if (isAveragePayShift(enriched)) {
+            body.average_pay_amount = getAveragePayCalculation(dateKey).amount;
+        }
+        return body;
+    }
+
+    function shiftPreviewShadowMayRun() {
+        if (!ENABLE_SERVER_PREVIEW_SHADOW) return false;
+        if (!window.DaCrewApi?.previewShift || !window.DaCrewApi?.isEnabled?.()) return false;
+        if (!window.DaAuthSession?.getJwt?.()) return false;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false;
+        return true;
+    }
+
+    function runShiftPreviewShadowCompare(dateKey, shift, label) {
+        if (!shiftPreviewShadowMayRun()) return Promise.resolve();
+        const body = buildShiftPreviewShadowBody(dateKey, shift);
+        if (!body || !body.shift?.route) return Promise.resolve();
+        const inflightKey = `${body.shift_date}|${body.shift.route}|${label || 'shift'}`;
+        if (shiftPreviewShadowInflight.has(inflightKey)) return Promise.resolve();
+        shiftPreviewShadowInflight.add(inflightKey);
+
+        const localWork = getCalendarShiftHours(shift, dateKey);
+        const localPayHours = getCalendarShiftPayHours(shift, dateKey);
+        const localPay = Math.round(getCalendarShiftPayment(shift, dateKey));
+
+        return window.DaCrewApi.previewShift(body).then((res) => {
+            const srvWork = Number(res?.work_hours);
+            const srvPayH = Number(res?.pay_hours);
+            const srvPay = Number(res?.pay_amount);
+            const workOk = Math.abs(localWork - srvWork) < 0.02;
+            const payHOk = Math.abs(localPayHours - srvPayH) < 0.02;
+            const payOk = Math.abs(localPay - srvPay) < 1;
+            const match = workOk && payHOk && payOk;
+            console.log('[shift-preview-shadow]', label, body.shift_date, body.shift.route, {
+                match,
+                local: { work_hours: localWork, pay_hours: localPayHours, pay_amount: localPay },
+                server: {
+                    work_hours: srvWork,
+                    pay_hours: srvPayH,
+                    pay_amount: srvPay,
+                    red_day_mult: res?.red_day_mult,
+                    normative_stamp: res?.normative_stamp
+                }
+            });
+        }).catch((err) => {
+            const code = err?.code || err?.message || err;
+            console.warn('[shift-preview-shadow]', label, body.shift_date, code);
+        }).finally(() => {
+            shiftPreviewShadowInflight.delete(inflightKey);
+        });
+    }
+
+    async function drainShiftPreviewShadowQueue() {
+        if (shiftPreviewShadowQueueBusy) return;
+        shiftPreviewShadowQueueBusy = true;
+        try {
+            while (shiftPreviewShadowQueue.length) {
+                if (crewSyncActiveReasonCount() > 0) {
+                    await new Promise((resolve) => window.setTimeout(resolve, 400));
+                    continue;
+                }
+                if (!shiftPreviewShadowMayRun()) break;
+                const job = shiftPreviewShadowQueue.shift();
+                if (!job) break;
+                await runShiftPreviewShadowCompare(job.dateKey, job.shift, job.label);
+            }
+        } finally {
+            shiftPreviewShadowQueueBusy = false;
+            if (shiftPreviewShadowQueue.length && shiftPreviewShadowMayRun()) {
+                window.setTimeout(() => { void drainShiftPreviewShadowQueue(); }, 0);
+            }
+        }
+    }
+
+    function runShiftPreviewShadowForDay(dateKey, reason) {
+        if (!dateKey) return;
+        const waitForIdle = reason === 'constructor-open' || reason === 'persist';
+        const runBatch = () => {
+            if (!shiftPreviewShadowMayRun()) return;
+            resolveShiftsForCalendarDay(dateKey).forEach((shift, index) => {
+                if (!shift) return;
+                shiftPreviewShadowQueue.push({
+                    dateKey,
+                    shift,
+                    label: `${reason || 'day'}:${index}`
+                });
+            });
+            void drainShiftPreviewShadowQueue();
+        };
+        if (waitForIdle) {
+            if (shiftPreviewShadowDayTimer) clearTimeout(shiftPreviewShadowDayTimer);
+            shiftPreviewShadowDayTimer = setTimeout(runBatch, 900);
+            return;
+        }
+        runBatch();
     }
 
     function calendarKeyAddDays(dateKey, days) {
@@ -22665,6 +22833,7 @@
 
         initShiftDayPanel(content, dateKey, storedShifts, tabs);
         syncCalendarChipSelection();
+        runShiftPreviewShadowForDay(dateKey, 'constructor-open');
     }
 
     function applyShiftTemplateToCalendar(dateKey, template) {
@@ -22997,6 +23166,128 @@
         });
 
         updateProfileMonthSelectorUi();
+    }
+
+    const PROFILE_ANALYTICS_CACHE_KEY = 'da_profile_analytics_v1';
+
+    function profileAnalyticsCacheStorageKey(monthKey) {
+        const syncId = typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : 'default';
+        return `${PROFILE_ANALYTICS_CACHE_KEY}:${syncId}:${monthKey}`;
+    }
+
+    function readProfileAnalyticsCache(monthKey) {
+        if (!monthKey) return null;
+        try {
+            const raw = localStorage.getItem(profileAnalyticsCacheStorageKey(monthKey));
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function writeProfileAnalyticsCache(monthKey, analytics) {
+        if (!monthKey || !analytics) return;
+        try {
+            localStorage.setItem(profileAnalyticsCacheStorageKey(monthKey), JSON.stringify({
+                savedAt: Date.now(),
+                analytics
+            }));
+        } catch (_) { /* quota */ }
+    }
+
+    function mapServerAnalyticsToBreakdown(analytics, year, month) {
+        if (!analytics || typeof analytics !== 'object') return null;
+        const factHours = Number(analytics.fact_hours) || 0;
+        const planHours = Number(analytics.plan_hours) || 0;
+        const factPay = Number(analytics.earned_fact) || 0;
+        const planPay = Number(analytics.earned_plan) || 0;
+        const normHours = Number(analytics.norm_hours) || calendarGetWorkHoursNorm(year, month);
+        return {
+            isPastMonth: false,
+            isFutureMonth: false,
+            isCurrentMonth: true,
+            factHours,
+            planHours,
+            totalHours: Number(analytics.schedule_hours) || (factHours + planHours),
+            factPay,
+            planPay,
+            totalPay: Number(analytics.earned_total) || (factPay + planPay),
+            normHours,
+            payHours: Number(analytics.pay_hours) || 0,
+            shiftCount: Number(analytics.shift_count) || 0,
+            restDayCount: Number(analytics.rest_day_count) || 0,
+            averagePayAmount: Number(analytics.average_pay_amount) || 0,
+            averagePayCount: Number(analytics.average_pay_count) || 0,
+            source: 'server'
+        };
+    }
+
+    function applyProfileBreakdownToUi(breakdown) {
+        if (!breakdown) return;
+        const {
+            factHours,
+            totalHours,
+            factPay,
+            totalPay,
+            normHours
+        } = breakdown;
+
+        const earnedFactEl = document.getElementById('profileEarnedFact');
+        const schedulePayEl = document.getElementById('profileSchedulePay');
+        if (earnedFactEl) earnedFactEl.textContent = formatApproxMoney(factPay);
+        if (schedulePayEl) schedulePayEl.textContent = formatApproxMoney(totalPay);
+
+        const hoursValue = document.getElementById('profileHoursValue');
+        const hoursNorm = document.getElementById('profileHoursNorm');
+        const ring = document.getElementById('profileHoursRing');
+        const hoursLabel = formatShiftHoursCompact(factHours);
+        const scheduleLabel = formatProfileRingScheduleLabel(totalHours);
+        if (hoursValue) hoursValue.textContent = hoursLabel;
+        if (hoursNorm) hoursNorm.textContent = scheduleLabel;
+        syncProfileHoursValueFit(hoursLabel);
+        if (ring) {
+            const circumference = 2 * Math.PI * 50;
+            const pct = totalHours > 0 ? Math.min(factHours / totalHours, 1) : 0;
+            ring.setAttribute('stroke-dasharray', String(circumference));
+            ring.setAttribute('stroke-dashoffset', String(circumference * (1 - pct)));
+        }
+
+        const normHoursLabelEl = document.getElementById('profileNormHoursLabel');
+        if (normHoursLabelEl) normHoursLabelEl.textContent = formatProfileNormHoursLabel(normHours);
+    }
+
+    async function refreshProfileAnalyticsFromServer(year, month, localFallback) {
+        const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const cached = readProfileAnalyticsCache(monthKey);
+        if (cached?.analytics) {
+            const mapped = mapServerAnalyticsToBreakdown(cached.analytics, year, month);
+            if (mapped) applyProfileBreakdownToUi(mapped);
+        } else if (localFallback) {
+            applyProfileBreakdownToUi(localFallback);
+        }
+
+        if (!window.DaCrewApi?.profileAnalytics || !window.DaCrewApi?.isEnabled?.()) return;
+        if (!window.DaAuthSession?.getJwt?.()) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+        try {
+            const data = await DaCrewApi.profileAnalytics(monthKey, {
+                restKeys: getPersonalRestDayKeysForServer(),
+                role: getCrewApiRoleLabelForServer()
+            });
+            const analytics = data?.analytics;
+            if (!analytics) return;
+            writeProfileAnalyticsCache(monthKey, analytics);
+            const mapped = mapServerAnalyticsToBreakdown(analytics, year, month);
+            if (mapped) applyProfileBreakdownToUi(mapped);
+        } catch (err) {
+            console.warn('[profile] analytics', err);
+            if (!cached && localFallback) {
+                applyProfileBreakdownToUi(localFallback);
+            }
+        }
     }
 
     function getProfileMonthBreakdown(year, month) {
@@ -23399,14 +23690,9 @@
 
         const year = profileSelectedMonth.getFullYear();
         const month = profileSelectedMonth.getMonth();
-        const breakdown = getProfileMonthBreakdown(year, month);
-        const {
-            factHours,
-            totalHours,
-            factPay,
-            totalPay,
-            normHours
-        } = breakdown;
+        const localBreakdown = getProfileMonthBreakdown(year, month);
+        applyProfileBreakdownToUi(localBreakdown);
+        void refreshProfileAnalyticsFromServer(year, month, localBreakdown);
         updateProfileMonthSelectorUi();
 
         const nameInput = document.getElementById('profileUserNameInput');
@@ -23420,29 +23706,6 @@
         if (tabEl) tabEl.textContent = `Таб. № ${tab}`;
         void refreshProfileEmailFromServer();
         syncProfileEmailBindBanner();
-
-        const earnedFactEl = document.getElementById('profileEarnedFact');
-        const schedulePayEl = document.getElementById('profileSchedulePay');
-        if (earnedFactEl) earnedFactEl.textContent = formatApproxMoney(factPay);
-        if (schedulePayEl) schedulePayEl.textContent = formatApproxMoney(totalPay);
-
-        const hoursValue = document.getElementById('profileHoursValue');
-        const hoursNorm = document.getElementById('profileHoursNorm');
-        const ring = document.getElementById('profileHoursRing');
-        const hoursLabel = formatShiftHoursCompact(factHours);
-        const scheduleLabel = formatProfileRingScheduleLabel(totalHours);
-        if (hoursValue) hoursValue.textContent = hoursLabel;
-        if (hoursNorm) hoursNorm.textContent = scheduleLabel;
-        syncProfileHoursValueFit(hoursLabel);
-        if (ring) {
-            const circumference = 2 * Math.PI * 50;
-            const pct = totalHours > 0 ? Math.min(factHours / totalHours, 1) : 0;
-            ring.setAttribute('stroke-dasharray', String(circumference));
-            ring.setAttribute('stroke-dashoffset', String(circumference * (1 - pct)));
-        }
-
-        const normHoursLabelEl = document.getElementById('profileNormHoursLabel');
-        if (normHoursLabelEl) normHoursLabelEl.textContent = formatProfileNormHoursLabel(normHours);
 
         renderNearestShift();
         renderProfileCompliance(tab);
