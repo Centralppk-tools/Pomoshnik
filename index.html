@@ -102,7 +102,7 @@
     .route-pending-mark__icon{color:#f59e0b}
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
-    <link rel="stylesheet" href="styles/calendar.css?v=5.2.1">
+    <link rel="stylesheet" href="styles/calendar.css?v=5.2.2">
     <link rel="stylesheet" href="styles/profile.css?v=20261031b">
     <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
     <link rel="stylesheet" href="styles/auth.css?v=20261102b">
@@ -1266,8 +1266,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.2.1';
-    const CLIENT_CACHE_VERSION = 'da_v5_2_1';
+    const APP_RELEASE_VERSION = '5.2.2';
+    const CLIENT_CACHE_VERSION = 'da_v5_2_2';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -5311,6 +5311,17 @@
         return s.startsWith('./') || s.startsWith('/') || !s.includes('://');
     }
 
+    function crewDataUrlKey(url) {
+        const s = String(url || '').trim();
+        if (!/\/api\/v1\/data\//i.test(s)) return s;
+        try {
+            const u = new URL(s, window.location.origin);
+            return `${u.origin}${u.pathname}`;
+        } catch (_) {
+            return s.replace(/\?.*$/, '');
+        }
+    }
+
     function expandJsonAssetUrls(paths) {
         const localPaths = (Array.isArray(paths) ? paths : [paths]).filter(isLocalAssetPath);
         const urls = [];
@@ -5318,8 +5329,9 @@
         for (const path of localPaths) {
             const list = window.AppDataSource?.urlsFor?.(path) || [path];
             for (const url of list) {
-                if (!seen.has(url)) {
-                    seen.add(url);
+                const dedupeKey = crewDataUrlKey(url) || url;
+                if (!seen.has(dedupeKey)) {
+                    seen.add(dedupeKey);
                     urls.push(url);
                 }
             }
@@ -5405,10 +5417,18 @@
     async function loadTrainsLocalRegistry() {
         const empty = { trains: [] };
         const buildId = String(window.APP_BUILD_ID || window.APP_CONFIG?.APP_BUILD_ID || 'dev').trim();
-        const rel = `./data/trains-local.json?build=${encodeURIComponent(buildId)}`;
+        const useMirror = window.DaCrewApi?.useCrewDataMirror?.() === true
+            && window.DaCrewApi?.hasValidJwt?.() === true;
+        const trainPaths = useMirror
+            ? ['./data/trains-local.json', 'trains-local.json']
+            : [
+                `./data/trains-local.json?build=${encodeURIComponent(buildId)}`,
+                './data/trains-local.json',
+                'trains-local.json',
+            ];
         try {
             const parsed = await fetchJsonAsset(
-                [rel, './trains-local.json', 'trains-local.json'],
+                trainPaths,
                 REFERENCE_TRAINS_STORAGE_KEY,
                 null
             );
@@ -11560,7 +11580,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.2.1')
+        navigator.serviceWorker.register('./sw.js?v=5.2.2')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
