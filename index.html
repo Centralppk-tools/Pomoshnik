@@ -161,7 +161,7 @@
 <script src="js/vendor/modern-screenshot.js?v=4.6.8"></script>
 <script src="js/da-feedback-capture.js?v=20261113a"></script>
 <script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=20261112a"></script>
+<script src="js/da-auth-session.js?v=20261117a"></script>
 <script src="js/da-loading.js?v=20261112a"></script>
 <script src="js/crew-api-client.js?v=20261112a"></script>
 <script src="js/schedule-maintenance.js?v=20261024a"></script>
@@ -1294,8 +1294,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.2.4';
-    const CLIENT_CACHE_VERSION = 'da_v5_2_3';
+    const APP_RELEASE_VERSION = '5.3.0';
+    const CLIENT_CACHE_VERSION = 'da_v5_3_0';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -1323,6 +1323,8 @@
     let shiftBundleSessionTimer = null;
     let shiftBundleBackgroundBusy = false;
     const POST_AUTH_BG_STEP_TIMEOUT_MS = 7000;
+    /** shift-templates.json ~1.6 MB — 7 с на фоне не хватает на мобильной сети */
+    const SHIFT_TEMPLATES_FETCH_TIMEOUT_MS = 120000;
     let crewSyncHideTimer = null;
 
     function isBackgroundSyncAllowed() {
@@ -11633,7 +11635,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.2.4')
+        navigator.serviceWorker.register('./sw.js?v=5.3.0')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -14339,6 +14341,14 @@
                     'syncMonths',
                 );
                 await withBgStepTimeout(loadUserShifts({ force: true }), 'loadShiftsFinal');
+                try {
+                    await loadLocalShiftTemplatesBundle({
+                        forceRefresh: true,
+                        silent: true,
+                    });
+                } catch (tplErr) {
+                    console.warn('[auth] shift-templates after login', tplErr);
+                }
                 calendarUserShiftsLoadedOnce = true;
                 refreshDepotUiAfterSync({ calendarChanged: true, skipReloadShifts: true });
                 calendarRenderCalendar({ keepSelectedDay: true, skipConstructor: true });
@@ -15069,10 +15079,7 @@
         const prevMeta = localShiftTemplatesMeta;
         try {
             localShiftTemplatesPromise = null;
-            await withBgStepTimeout(
-                loadLocalShiftTemplatesBundle({ forceRefresh: true, silent: true }),
-                'shiftTemplates',
-            );
+            await loadLocalShiftTemplatesBundle({ forceRefresh: true, silent: true });
         } catch (err) {
             console.warn('[shift-templates] background refresh', err);
             localShiftNormatives = prevNormatives;
@@ -15521,7 +15528,7 @@
                     try {
                         const raw = await window.AppDataSource.fetchJson(LOCAL_SHIFT_TEMPLATES_URL, {
                             cacheBust: forceRefresh,
-                            timeoutMs: 60000,
+                            timeoutMs: SHIFT_TEMPLATES_FETCH_TIMEOUT_MS,
                         });
                         const bundle = normalizeShiftBundleData(raw);
                         if (bundle?.normatives?.length) candidates.push(bundle);
@@ -15609,8 +15616,10 @@
                         lastUploadLabel: cached.lastUploadLabel || null,
                     };
                 }
-                if (!hasLocalShiftTemplates()) {
-                    showDaErrorToast('Не удалось загрузить базу маршрутов');
+                if (!hasLocalShiftTemplates() && !options.silent) {
+                    showDaErrorToast(
+                        'Не удалось загрузить базу маршрутов. Проверьте интернет и откройте календарь снова.',
+                    );
                 }
             } finally {
                 setCrewSyncIndicator(false, '', 'shift-templates');

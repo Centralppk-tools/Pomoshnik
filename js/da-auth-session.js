@@ -6,7 +6,8 @@
 
     const JWT_KEY = 'da_auth_jwt';
     const USER_KEY = 'da_auth_user';
-    const AUTH_FETCH_TIMEOUT_MS = 10000;
+    /** Мобильный LTE + merge на login иногда > 10 с */
+    const AUTH_FETCH_TIMEOUT_MS = 30000;
     const FETCH_ME_MIN_INTERVAL_MS = 15000;
 
     let fetchMeInflight = null;
