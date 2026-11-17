@@ -1,39 +1,42 @@
-// Service Worker v5.3.0 da_v5_3_0 (instant shell + network timeouts)
-const CACHE_NAME = 'da_v5_3_0';
+// Service Worker v5.3.1 da_v5_3_1 (network-first shell + query-aware cache)
+const CACHE_NAME = 'da_v5_3_1';
+const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
+const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
+const ASSET_CACHE_BUST = '5.3.1';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
     './',
     './index.html',
     './manifest.json',
-    './styles/tokens.css',
-    './styles/base.css',
-    './styles/routes.css',
-    './styles/schedule.css',
-    './styles/calendar.css',
-    './styles/profile.css',
-    './styles/responsive.css',
-    './styles/auth.css',
-    './styles/community.css',
-    './styles/instructions.css',
-    './styles/da-loading.css',
+    `./styles/tokens.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/base.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/routes.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/schedule.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/calendar.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/profile.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/responsive.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/auth.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/community.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/instructions.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/da-loading.css?v=${ASSET_CACHE_BUST}`,
     './data/trains-uids.json',
     './data/release-notes.json',
-    './js/app-config.js',
-    './js/sync-user-id.js',
-    './js/da-auth-session.js',
-    './js/da-loading.js',
-    './js/crew-api-client.js',
-    './js/schedule-maintenance.js',
-    './js/hard-reset-app.js',
-    './js/app-data-source.js',
-    './js/train-motion-timer.js',
-    './js/shedule-max-source.js',
-    './js/info-chip.js',
-    './js/instructions.js',
-    './js/profile-compliance.js',
+    `./js/app-config.js?v=${ASSET_CACHE_BUST}`,
+    `./js/sync-user-id.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-auth-session.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-loading.js?v=${ASSET_CACHE_BUST}`,
+    `./js/crew-api-client.js?v=${ASSET_CACHE_BUST}`,
+    `./js/schedule-maintenance.js?v=${ASSET_CACHE_BUST}`,
+    ''?v=5.3.1',
+    ''?v=5.3.1',
+    ''?v=5.3.1',
+    ''?v=5.3.1',
+    ''?v=5.3.1',
+    ''?v=5.3.1',
+    ''?v=5.3.1',
     './vendor/pdfjs/pdf.min.mjs',
     './vendor/pdfjs/pdf.worker.min.mjs',
     './vendor/pdfjs/pdf.worker.mjs',
@@ -45,9 +48,15 @@ const PRECACHE_ASSETS = [
     './.nojekyll'
 ];
 
+function assetPathnameKey(assetUrl) {
+    const raw = String(assetUrl || '').replace(/^\.\//, '');
+    const q = raw.indexOf('?');
+    return q >= 0 ? raw.slice(0, q) : raw;
+}
+
 function isPrecachePath(pathname) {
     return PRECACHE_ASSETS.some((asset) => {
-        const cleanAsset = asset.replace(/^\.\//, '');
+        const cleanAsset = assetPathnameKey(asset);
         return pathname.endsWith(cleanAsset) || (cleanAsset === 'index.html' && pathname.endsWith('/'));
     });
 }
@@ -69,21 +78,16 @@ async function matchNavigationFallback(cache) {
         || cache.match('/');
 }
 
-async function matchCachedRequest(cache, request) {
+async function matchCachedRequest(cache, request, { allowNavigateFallback = false } = {}) {
     const direct = await cache.match(request);
     if (direct) return direct;
 
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const fileName = path.split('/').pop() || '';
-
-    if (fileName) {
-        const byName = await cache.match(`./${fileName}`) || await cache.match(fileName);
-        if (byName) return byName;
-    }
-
-    if (request.mode === 'navigate' || path.endsWith('/')) {
-        return matchNavigationFallback(cache);
+    if (allowNavigateFallback) {
+        const url = new URL(request.url);
+        const path = url.pathname;
+        if (request.mode === 'navigate' || path.endsWith('/') || path.endsWith('/index.html')) {
+            return matchNavigationFallback(cache);
+        }
     }
 
     return null;
@@ -183,9 +187,10 @@ async function networkFirst(request) {
     }
 }
 
-async function networkFirstWithTimeout(request, timeoutMs) {
+async function networkFirstWithTimeout(request, timeoutMs, options = {}) {
     const cache = await caches.open(CACHE_NAME);
     const ms = Number(timeoutMs) > 0 ? Number(timeoutMs) : APP_SHELL_NETWORK_TIMEOUT_MS;
+    const allowNavigateFallback = options.allowNavigateFallback === true;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
 
@@ -198,10 +203,8 @@ async function networkFirstWithTimeout(request, timeoutMs) {
         return response;
     } catch (err) {
         clearTimeout(timer);
-        const cached = await matchCachedRequest(cache, request);
+        const cached = await matchCachedRequest(cache, request, { allowNavigateFallback });
         if (cached) return cached;
-        const fallback = await matchNavigationFallback(cache);
-        if (fallback) return fallback;
         throw err;
     }
 }
@@ -229,7 +232,7 @@ async function staleWhileRevalidate(request) {
     const response = await networkUpdate;
     if (response) return response;
 
-    const fallback = await matchNavigationFallback(cache);
+    const fallback = await matchCachedRequest(cache, request, { allowNavigateFallback: true });
     if (fallback) return fallback;
     return networkFirstWithTimeout(request, APP_SHELL_NETWORK_TIMEOUT_MS);
 }
@@ -245,7 +248,7 @@ function isAppShellModuleRequest(pathname) {
 
 async function cacheFirst(request) {
     const cache = await caches.open(CACHE_NAME);
-    const cached = await matchCachedRequest(cache, request);
+    const cached = await cache.match(request);
 
     if (cached) {
         revalidateInBackground(cache, request);
@@ -259,7 +262,7 @@ async function cacheFirst(request) {
         }
         return response;
     } catch (err) {
-        const fallback = await matchCachedRequest(cache, request);
+        const fallback = await cache.match(request);
         if (fallback) return fallback;
         throw err;
     }
@@ -420,7 +423,7 @@ self.addEventListener('fetch', (event) => {
     if (url.origin !== self.location.origin) return;
 
     if (isAppShellModuleRequest(url.pathname)) {
-        event.respondWith(staleWhileRevalidate(request));
+        event.respondWith(networkFirstWithTimeout(request, CRITICAL_MODULE_NETWORK_TIMEOUT_MS));
         return;
     }
 
@@ -445,7 +448,7 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isAppShellRequest(url.pathname, request.mode)) {
-        event.respondWith(staleWhileRevalidate(request));
+        event.respondWith(networkFirstWithTimeout(request, NAVIGATE_NETWORK_TIMEOUT_MS, { allowNavigateFallback: true }));
         return;
     }
 

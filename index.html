@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="preload" href="styles/tokens.css?v=5.3.1" as="style">
+    <link rel="preload" href="styles/base.css?v=5.3.1" as="style">
+    <link rel="preload" href="styles/auth.css?v=5.3.1" as="style">
+    <link rel="preload" href="styles/da-loading.css?v=5.3.1" as="style">
+    <link rel="preload" href="js/app-config.js?v=5.3.1" as="script">
+    <link rel="preload" href="js/da-auth-session.js?v=5.3.1" as="script">
+    <link rel="preload" href="js/crew-api-client.js?v=5.3.1" as="script">
     <style id="da-shell-critical">
     html, body { margin: 0; background: #0b0e14; color: #e2e8f0; }
     .screen.hidden { display: none !important; }
@@ -90,9 +97,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://mc.yandex.ru; connect-src 'self' https://api.digipom.ru https://mc.yandex.ru https://mdd.yandex.net wss://mc.yandex.ru https://api.cloudtips.ru http://127.0.0.1:* http://localhost:*; frame-src 'self' https://mc.yandex.ru https://mdd.yandex.net https://pay.cloudtips.ru; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'">
-    <link rel="stylesheet" href="styles/tokens.css?v=20260416j">
-    <link rel="stylesheet" href="styles/base.css?v=20261018i">
-    <link rel="stylesheet" href="styles/routes.css?v=20261030t">
+    <link rel="stylesheet" href="styles/tokens.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/base.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/routes.css?v=5.3.1">
     <style id="da-route-pending-critical">
     .route-card.is-pending-stops{border:1px solid rgba(245,158,11,.45);background:linear-gradient(180deg,rgba(245,158,11,.03) 0%,rgba(20,24,33,.6) 100%)}
     .route-card.is-pending-stops .route-card-bottom[hidden],.route-card.is-pending-stops .route-pending-expand[hidden]{display:none!important}
@@ -101,14 +108,14 @@
     .route-pending-icon,.route-pending-mark__icon{color:#38bdf8;flex-shrink:0;width:14px;height:14px}
     .route-pending-mark__icon{color:#f59e0b}
     </style>
-    <link rel="stylesheet" href="styles/schedule.css?v=20261023b">
-    <link rel="stylesheet" href="styles/calendar.css?v=5.2.3">
-    <link rel="stylesheet" href="styles/profile.css?v=20261031b">
-    <link rel="stylesheet" href="styles/responsive.css?v=20261018i">
-    <link rel="stylesheet" href="styles/auth.css?v=20261102b">
-    <link rel="stylesheet" href="styles/community.css?v=20261113c">
-    <link rel="stylesheet" href="styles/instructions.css?v=20261030g">
-    <link rel="stylesheet" href="styles/da-loading.css?v=20261112a">
+    <link rel="stylesheet" href="styles/schedule.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/calendar.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/profile.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/responsive.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/auth.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/community.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/instructions.css?v=5.3.1">
+    <link rel="stylesheet" href="styles/da-loading.css?v=5.3.1">
     <script>
         (function () {
             var KEY = 'da_password_reset_token';
@@ -156,15 +163,15 @@
     <!-- /Yandex.Metrika counter -->
 </head>
 <body class="auth-locked">
-<script src="js/app-config.js?v=5.0"></script>
-<script src="js/da-client-diag.js?v=20261113b"></script>
-<script src="js/vendor/modern-screenshot.js?v=4.6.8"></script>
-<script src="js/da-feedback-capture.js?v=20261113a"></script>
-<script src="js/sync-user-id.js?v=20261030a"></script>
-<script src="js/da-auth-session.js?v=20261117a"></script>
-<script src="js/da-loading.js?v=20261112a"></script>
-<script src="js/crew-api-client.js?v=20261112a"></script>
-<script src="js/schedule-maintenance.js?v=20261024a"></script>
+<script src="js/app-config.js?v=5.3.1"></script>
+<script src="js/da-client-diag.js?v=5.3.1"></script>
+<script src="js/vendor/modern-screenshot.js?v=5.3.1"></script>
+<script src="js/da-feedback-capture.js?v=5.3.1"></script>
+<script src="js/sync-user-id.js?v=5.3.1"></script>
+<script src="js/da-auth-session.js?v=5.3.1"></script>
+<script src="js/da-loading.js?v=5.3.1"></script>
+<script src="js/crew-api-client.js?v=5.3.1"></script>
+<script src="js/schedule-maintenance.js?v=5.3.1"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
     <div class="da-load-shell__card">
@@ -1189,13 +1196,13 @@
     </div>
 </div>
 
-<script src="js/hard-reset-app.js"></script>
-<script src="js/app-data-source.js"></script>
-<script src="js/shedule-max-source.js?v=20261028k"></script>
-<script src="js/info-chip.js"></script>
-<script src="js/train-motion-timer.js"></script>
-<script src="js/instructions.js?v=20261030h"></script>
-<script src="js/profile-compliance.js?v=20261104b"></script>
+<script src="js/hard-reset-app.js?v=5.3.1"></script>
+<script src="js/app-data-source.js?v=5.3.1"></script>
+<script src="js/shedule-max-source.js?v=5.3.1"></script>
+<script src="js/info-chip.js?v=5.3.1"></script>
+<script src="js/train-motion-timer.js?v=5.3.1"></script>
+<script src="js/instructions.js?v=5.3.1"></script>
+<script src="js/profile-compliance.js?v=5.3.1"></script>
 <script>
     const APP_CFG = window.APP_CONFIG || {};
 
@@ -1294,8 +1301,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.3.0';
-    const CLIENT_CACHE_VERSION = 'da_v5_3_0';
+    const APP_RELEASE_VERSION = '5.3.1';
+    const CLIENT_CACHE_VERSION = 'da_v5_3_1';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -11635,7 +11642,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.3.0')
+        navigator.serviceWorker.register('./sw.js?v=5.3.1')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
