@@ -25,6 +25,7 @@
         onAccountSwitched: null
     };
 
+    const CREW_SERVER_PUSH_DEBOUNCE_MS = 800;
     let pushTimer = null;
     const lastPushedHash = {};
 
@@ -636,15 +637,21 @@
         return data;
     }
 
+    async function fetchWallFeed() {
+        return apiFetch('/api/v1/wall/feed');
+    }
+
     async function sync(month, options) {
         const m = String(month || '').trim();
         if (!/^\d{4}-\d{2}$/.test(m)) {
             throw new Error('invalid_month');
         }
-        const data = await apiFetch(`/api/v1/sync?month=${encodeURIComponent(m)}`);
+        const opts = options && typeof options === 'object' ? { ...options } : {};
+        const qs = new URLSearchParams({ month: m });
+        qs.set('include_wall', opts.includeWall === true ? '1' : '0');
+        const data = await apiFetch(`/api/v1/sync?${qs.toString()}`);
         await idbPutMetaScoped('last_sync_month', m);
         await idbPutMetaScoped('last_sync_at', Date.now());
-        const opts = options && typeof options === 'object' ? { ...options } : {};
         const serverShifts = Array.isArray(data?.shifts) ? data.shifts : [];
         if (opts.replaceShifts && !serverShifts.length && typeof hooks.countLocalShiftDates === 'function') {
             const localCount = hooks.countLocalShiftDates();
@@ -1107,7 +1114,7 @@
             saveShift(payloads).catch((err) => {
                 console.warn('[crew-api] saveShift', err);
             });
-        }, 700);
+        }, CREW_SERVER_PUSH_DEBOUNCE_MS);
     }
 
     async function flushScheduledPushShifts(calendarShifts) {
@@ -1158,7 +1165,7 @@
         profileTimer = setTimeout(() => {
             profileTimer = null;
             void pushProfileUpdateNow().catch(() => {});
-        }, 500);
+        }, CREW_SERVER_PUSH_DEBOUNCE_MS);
     }
 
     async function flushProfileUpdate() {
@@ -1227,6 +1234,7 @@
     global.DaCrewApi = {
         configure,
         sync,
+        fetchWallFeed,
         syncCurrentMonth,
         claimAndSync,
         prefetchAuthorizedCatalogs,

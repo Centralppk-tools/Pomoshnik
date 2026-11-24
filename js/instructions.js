@@ -3677,6 +3677,13 @@
         bindUi();
         try {
             if (instrMainMode === 'pdf') await refreshUi();
+            else if (instrMainMode === 'wall' && window.DaCrewApi?.fetchWallFeed) {
+                void window.DaCrewApi.fetchWallFeed()
+                    .then((data) => {
+                        if (data?.wall) daCrewWallApplySync(data.wall);
+                    })
+                    .catch((err) => console.warn('[wall] feed', err));
+            }
         } catch (err) {
             console.warn('[instructions] init', err);
             setStatus('Не удалось открыть локальную базу инструкций');
