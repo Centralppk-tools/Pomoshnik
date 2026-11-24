@@ -281,6 +281,14 @@
         return data;
     }
 
+    function isTransientAuthFetchError(err) {
+        if (!err) return false;
+        if (err.code === 'TIMEOUT' || err.message === 'request_timeout') return true;
+        if (err.name === 'AbortError') return true;
+        if (err instanceof TypeError) return true;
+        return false;
+    }
+
     async function fetchMe(options) {
         const force = options && options.force === true;
         const now = Date.now();
@@ -297,6 +305,13 @@
                 if (data?.user) persistSession(getJwt(), data.user);
                 fetchMeLastAt = Date.now();
                 return data;
+            } catch (err) {
+                const cached = getStoredUser();
+                if (cached && isTransientAuthFetchError(err)) {
+                    fetchMeLastAt = Date.now();
+                    return { ok: true, user: cached, stale: true };
+                }
+                throw err;
             } finally {
                 fetchMeInflight = null;
             }

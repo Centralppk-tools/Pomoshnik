@@ -1118,15 +1118,53 @@
         return saveShift(payloads);
     }
 
+    async function pushProfileUpdateNow() {
+        const { enabled } = cfg();
+        if (!enabled || typeof hooks.buildProfilePayload !== 'function') {
+            return { ok: false, skipped: true, reason: 'disabled' };
+        }
+        const body = hooks.buildProfilePayload();
+        if (!body) {
+            return { ok: false, skipped: true, reason: 'empty' };
+        }
+        try {
+            await updateProfile(body);
+            return { ok: true };
+        } catch (err) {
+            if (body.payroll_settings && typeof hooks.buildProfilePayload === 'function') {
+                if (typeof global.markCrewPayrollSettingsUnsupported === 'function') {
+                    global.markCrewPayrollSettingsUnsupported(err);
+                }
+                const fallback = hooks.buildProfilePayload({ includePayroll: false });
+                if (fallback) {
+                    try {
+                        await updateProfile(fallback);
+                        return { ok: true, payroll_settings: false };
+                    } catch (err2) {
+                        console.warn('[crew-api] updateProfile', err2);
+                        throw err2;
+                    }
+                }
+            }
+            console.warn('[crew-api] updateProfile', err);
+            throw err;
+        }
+    }
+
     function scheduleProfileUpdate() {
         const { enabled } = cfg();
         if (!enabled || typeof hooks.buildProfilePayload !== 'function') return;
         clearTimeout(profileTimer);
         profileTimer = setTimeout(() => {
-            const body = hooks.buildProfilePayload();
-            if (!body) return;
-            updateProfile(body).catch((err) => console.warn('[crew-api] updateProfile', err));
+            profileTimer = null;
+            void pushProfileUpdateNow().catch(() => {});
         }, 500);
+    }
+
+    async function flushProfileUpdate() {
+        clearTimeout(profileTimer);
+        profileTimer = null;
+        return pushProfileUpdateNow();
     }
 
     async function onTabNumberChanged(_prevTab, _nextTab) {
@@ -1206,6 +1244,7 @@
         flushScheduledPushShifts,
         schedulePushShifts,
         scheduleProfileUpdate,
+        flushProfileUpdate,
         onTabNumberChanged,
         clearIndexedDbCaches,
         migrateAllDataToCloud,

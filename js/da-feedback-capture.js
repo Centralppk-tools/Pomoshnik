@@ -1,29 +1,61 @@
 /**
- * Полностраничный снимок для обратной связи (modern-screenshot, офлайн).
+ * Снимок видимой области экрана для обратной связи (modern-screenshot, офлайн).
  */
 (function daFeedbackCapture(global) {
     const MAX_SIDE = 8192;
     const DEFAULT_TIMEOUT_MS = 14000;
 
-    function captureRoot() {
+    function getVisibleScreen() {
         const doc = global.document;
         if (!doc) return null;
-        const candidates = [
-            doc.documentElement,
-            doc.body,
-            doc.querySelector(".phone-screen"),
-            ...Array.from(doc.querySelectorAll(".screen:not(.hidden)")),
-        ].filter(Boolean);
-        let best = doc.documentElement;
-        let bestH = 0;
-        candidates.forEach((el) => {
-            const h = Math.max(el.scrollHeight || 0, el.offsetHeight || 0);
-            if (h > bestH) {
-                bestH = h;
-                best = el;
+        const screens = Array.from(doc.querySelectorAll(".screen")).filter(
+            (el) => el && !el.classList.contains("hidden")
+        );
+        return screens[0] || null;
+    }
+
+  /**
+   * Корень съёмки: телефонная рамка или прокручиваемая карточка вкладки (не document/body).
+   */
+    function captureRoot() {
+        const screen = getVisibleScreen();
+        if (!screen) {
+            return global.document?.body || null;
+        }
+        const phone = screen.querySelector(".phone-screen");
+        const card = phone?.querySelector(".screen-card");
+        if (card) {
+            const sh = card.scrollHeight || 0;
+            const ch = card.clientHeight || 0;
+            if (ch > 0 && sh > ch + 4) {
+                return card;
             }
-        });
-        return best;
+        }
+        if (phone) return phone;
+        return screen;
+    }
+
+    function captureViewportSize(root) {
+        if (!root) {
+            return {
+                width: Math.max(global.innerWidth || 1, 1),
+                height: Math.max(global.innerHeight || 1, 1),
+            };
+        }
+        const rect = root.getBoundingClientRect();
+        const width = Math.max(
+            Math.round(rect.width || 0),
+            root.clientWidth || 0,
+            root.offsetWidth || 0,
+            1
+        );
+        const viewportH = Math.max(root.clientHeight || 0, root.offsetHeight || 0);
+        const visibleH = Math.min(
+            viewportH || 0,
+            Math.max(global.innerHeight || 0, 1)
+        );
+        const height = Math.max(visibleH || Math.round(rect.height || 0) || 1, 1);
+        return { width, height };
     }
 
     function pickScale(width, height) {
@@ -40,9 +72,8 @@
         }
         const root = captureRoot();
         if (!root) return Promise.reject(new Error("capture_root_missing"));
-        const rectW = Math.max(root.scrollWidth || 0, root.offsetWidth || 0, 1);
-        const rectH = Math.max(root.scrollHeight || 0, root.offsetHeight || 0, 1);
-        const scale = pickScale(rectW, rectH);
+        const { width, height } = captureViewportSize(root);
+        const scale = pickScale(width, height);
         const timeout = Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS;
         const filter = (node) => {
             if (!node || node.nodeType !== 1) return true;
@@ -52,11 +83,16 @@
             if (node.classList && node.classList.contains("donate-sheet-overlay") && node.classList.contains("is-open")) {
                 return false;
             }
+            if (node.classList && node.classList.contains("screen") && node.classList.contains("hidden")) {
+                return false;
+            }
             return true;
         };
         return Promise.race([
             lib.domToPng(root, {
                 scale,
+                width,
+                height,
                 backgroundColor: "#0b0e14",
                 maximumCanvasSize: MAX_SIDE,
                 timeout,

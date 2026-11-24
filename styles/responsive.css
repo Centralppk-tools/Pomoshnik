@@ -114,7 +114,8 @@
 
     #screen-calendar .screen-card--calendar,
     #screen-profile .screen-card--profile,
-    #screen-instructions .screen-card--instructions {
+    #screen-instructions .screen-card--instructions,
+    #screen-payroll .screen-card--payroll {
         width: calc(100% - (var(--mobile-edge) * 2));
         max-width: none;
         margin-left: var(--mobile-edge);
@@ -130,6 +131,11 @@
         flex: 0 0 auto;
         min-height: 0;
         overflow: visible;
+    }
+
+    #screen-payroll .screen-card--payroll {
+        padding: 16px;
+        margin-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     }
 
     #screen-schedule .screen-card--schedule {
@@ -340,7 +346,8 @@
     }
 
     #screen-calendar .phone-screen,
-    #screen-profile .phone-screen {
+    #screen-profile .phone-screen,
+    #screen-payroll .phone-screen {
         padding: 0;
     }
 

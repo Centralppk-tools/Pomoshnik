@@ -59,6 +59,11 @@ body.auth-locked .screen:not(#screen-auth) {
     display: none;
 }
 
+#screen-auth .hidden,
+#screen-auth [hidden] {
+    display: none !important;
+}
+
 .user-auth-card {
     position: relative;
     width: 100%;
@@ -318,6 +323,19 @@ body.auth-locked .screen:not(#screen-auth) {
     text-align: left;
 }
 
+.user-auth-tab-field {
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.user-auth-tab-field .user-auth-input {
+    margin-bottom: 4px;
+}
+
+.user-auth-tab-field .user-auth-field-note {
+    margin-bottom: 10px;
+}
+
 .user-auth-section {
     width: 100%;
     margin-top: 4px;
@@ -492,6 +510,16 @@ body.auth-locked .screen:not(#screen-auth) {
 
 .user-auth-btn:not(.is-ready):not(:disabled) {
     cursor: pointer;
+}
+
+#authLoginBtn:not(:disabled):not(.is-ready) {
+    background: #10b981;
+    color: #0d1117;
+    opacity: 0.55;
+}
+
+#authLoginBtn.is-ready:not(:disabled) {
+    opacity: 1;
 }
 
 .user-auth-btn {

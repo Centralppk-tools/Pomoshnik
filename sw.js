@@ -1,10 +1,10 @@
-// Service Worker v5.3.1 da_v5_3_1 (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_1';
+// Service Worker v5.3.2 da_v5_3_2 (network-first shell + query-aware cache)
+const CACHE_NAME = 'da_v5_3_2';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
-const ASSET_CACHE_BUST = '5.3.1';
+const ASSET_CACHE_BUST = '5.3.2';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -30,13 +30,18 @@ const PRECACHE_ASSETS = [
     `./js/da-loading.js?v=${ASSET_CACHE_BUST}`,
     `./js/crew-api-client.js?v=${ASSET_CACHE_BUST}`,
     `./js/schedule-maintenance.js?v=${ASSET_CACHE_BUST}`,
-    ''?v=5.3.1',
-    ''?v=5.3.1',
-    ''?v=5.3.1',
-    ''?v=5.3.1',
-    ''?v=5.3.1',
-    ''?v=5.3.1',
-    ''?v=5.3.1',
+    `./js/hard-reset-app.js?v=${ASSET_CACHE_BUST}`,
+    `./js/app-data-source.js?v=${ASSET_CACHE_BUST}`,
+    `./js/shedule-max-source.js?v=${ASSET_CACHE_BUST}`,
+    `./js/info-chip.js?v=${ASSET_CACHE_BUST}`,
+    `./js/train-motion-timer.js?v=${ASSET_CACHE_BUST}`,
+    `./js/instructions.js?v=${ASSET_CACHE_BUST}`,
+    `./js/profile-compliance.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-payroll-rules.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-payroll-profile.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-payroll-profile-ui.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-payroll-engine.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-payroll-screen.js?v=${ASSET_CACHE_BUST}`,
     './vendor/pdfjs/pdf.min.mjs',
     './vendor/pdfjs/pdf.worker.min.mjs',
     './vendor/pdfjs/pdf.worker.mjs',
