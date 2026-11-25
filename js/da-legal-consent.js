@@ -150,6 +150,13 @@
         const r = getRoot(root);
         if (!r) return;
         r.hidden = !visible;
+        if (!visible) {
+            r.style.display = 'none';
+            r.setAttribute('aria-hidden', 'true');
+        } else {
+            r.style.removeProperty('display');
+            r.removeAttribute('aria-hidden');
+        }
         syncButtonForRoot(r);
     }
 

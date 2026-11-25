@@ -1,4 +1,11 @@
 /* Двухчекбоксное согласие — оферта + политика */
+#subPlanConsent[hidden],
+#subPlanConsent.da-consent[hidden],
+.da-consent-slot[hidden],
+.da-consent[hidden] {
+    display: none !important;
+}
+
 #subPlanConsent[hidden] .da-consent,
 .da-consent-slot[hidden] .da-consent {
     display: none !important;

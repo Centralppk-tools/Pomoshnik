@@ -122,11 +122,12 @@
     <link rel="stylesheet" href="styles/profile.css?v=5.3.11">
     <link rel="stylesheet" href="styles/responsive.css?v=5.3.4">
     <link rel="stylesheet" href="styles/auth.css?v=5.3.6k">
-    <link rel="stylesheet" href="styles/legal-consent.css?v=5.3.6j">
+    <link rel="stylesheet" href="styles/legal-consent.css?v=5.3.23">
     <link rel="stylesheet" href="styles/community.css?v=5.3.7">
     <link rel="stylesheet" href="styles/instructions.css?v=5.3.4">
     <link rel="stylesheet" href="styles/da-loading.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/subscription.css?v=5.3.22">
+    <link rel="stylesheet" href="styles/subscription.css?v=5.4.0">
+    <link rel="stylesheet" href="styles/flight-map.css?v=5.4.0">
     <script>
         (function () {
             var KEY = 'da_password_reset_token';
@@ -183,9 +184,9 @@
 <script src="js/da-loading.js?v=5.3.4"></script>
 <script src="js/da-reference-cache.js?v=5.3.4"></script>
 <script src="js/crew-api-client.js?v=5.3.6k"></script>
-<script src="js/da-legal-consent.js?v=5.3.20"></script>
+<script src="js/da-legal-consent.js?v=5.3.23"></script>
 <script src="js/da-auth-terms-gate.js?v=5.3.6j"></script>
-<script src="js/da-subscription.js?v=5.3.22"></script>
+<script src="js/da-subscription.js?v=5.3.24"></script>
 <script src="js/schedule-maintenance.js?v=5.3.4"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
@@ -289,7 +290,10 @@
             <p class="sub-status-card__text" id="subPlanStatus">—</p>
         </div>
         <div class="sub-autorenew-row" id="subPlanAutorenewRow" hidden>
-            <span class="sub-autorenew-row__hint" id="subPlanAutorenewHint">Автопродление включено: следующее списание 300 ₽ на 3 месяца</span>
+            <div class="sub-autorenew-row__copy">
+                <p class="sub-autorenew-row__title" id="subPlanAutorenewTitle">Автопродление · 300 ₽ раз в 3 мес.</p>
+                <p class="sub-autorenew-row__hint" id="subPlanAutorenewHint">Спишется после пробного периода</p>
+            </div>
             <label class="da-switch da-switch--sub" title="Автопродление">
                 <input type="checkbox" class="da-switch__input" id="subPlanAutorenewSwitch" aria-label="Автопродление">
                 <span class="da-switch__track" aria-hidden="true"></span>
@@ -302,21 +306,20 @@
                 <span class="sub-tariff-card__desc">Привязка карты</span>
             </button>
             <button type="button" class="sub-tariff-card is-selected" data-sub-plan="month">
-                <span class="sub-tariff-card__badge sub-tariff-card__badge--dark">БАЗОВЫЙ</span>
                 <span class="sub-tariff-card__period">1 месяц</span>
                 <span class="sub-tariff-card__price">150 ₽</span>
-                <span class="sub-tariff-card__desc">Разовая оплата на 30 дней, без автопродления</span>
+                <span class="sub-tariff-card__desc">Оплата за 30 дней, без автопродления</span>
             </button>
             <button type="button" class="sub-tariff-card sub-tariff-card--best" data-sub-plan="quarter">
-                <span class="sub-tariff-card__badge sub-tariff-card__badge--neon">ЭКОНОМИЯ 33%</span>
+                <span class="sub-tariff-card__badge sub-tariff-card__badge--neon">ВЫГОДА 33%</span>
                 <span class="sub-tariff-card__period">3 месяца</span>
                 <span class="sub-tariff-card__price">300 ₽</span>
-                <span class="sub-tariff-card__desc">100 ₽ в месяц. Оплата раз в квартал</span>
+                <span class="sub-tariff-card__desc">По 100 ₽ в месяц · списание раз в 3 месяца</span>
             </button>
         </div>
         <div id="subPlanConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-combined="1" data-consent-button="subPayGoBtn" hidden></div>
         <button type="button" class="sub-modal__btn sub-modal__btn--neon sub-modal__btn--block is-consent-pending" id="subPayGoBtn">Оплатить 150 ₽</button>
-        <p class="sub-legal-links" id="subPlanLegalLinks"><a href="offer.html" target="_blank" rel="noopener">Оферта</a> · <a href="privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a></p>
+        <p class="sub-legal-links" id="subPlanLegalLinks"><a href="offer.html" target="_blank" rel="noopener">Оферта</a> · <a href="privacy.html" target="_blank" rel="noopener">Политика ПДн</a></p>
     </div>
 </div>
 
@@ -614,6 +617,7 @@
             <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
                 <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
                 <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
+                <button type="button" class="tab-btn" data-tab="tab-flight-map" onclick="switchScheduleTabAnimated('tab-flight-map', this)">Полётная</button>
             </div>
             <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
                 <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
@@ -728,6 +732,16 @@
             <div class="timeline-line"></div>
             <div id="scheduleInterpolationBanner" class="schedule-interpolation-banner-wrap" hidden></div>
             <div id="stationsList"></div>
+        </div>
+    </div>
+
+    <div id="tab-flight-map" class="tab-content schedule-data-pane">
+        <div class="flight-map-pane">
+            <h2 class="flight-map__section" id="flightMapSectionTitle">Полётная карта</h2>
+            <p class="flight-map__meta" id="flightMapMeta">Откройте расписание поезда</p>
+            <div id="flightMapLoader" class="loader data-pane-loader" role="status" aria-live="polite" hidden>Загрузка…</div>
+            <p id="flightMapEmpty" class="flight-map__empty">Выберите поезд на вкладке «Расписание»</p>
+            <div id="flightMapList" hidden></div>
         </div>
     </div>
 
@@ -1581,6 +1595,9 @@
 <script src="js/shedule-max-source.js?v=5.3.4"></script>
 <script src="js/info-chip.js?v=5.3.4"></script>
 <script src="js/train-motion-timer.js?v=5.3.5w"></script>
+<script src="js/flight-speed/speed-limits-by-branch.js?v=5.4.0"></script>
+<script src="js/flight-speed/speed-route.js?v=5.4.0"></script>
+<script src="js/da-flight-map.js?v=5.4.0"></script>
 <script src="js/instructions.js?v=5.3.4"></script>
 <script src="js/profile-compliance.js?v=5.3.4"></script>
 <script src="js/da-payroll-rules.js?v=5.3.4"></script>
@@ -1687,8 +1704,8 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.3.5';
-    const CLIENT_CACHE_VERSION = 'da_v5_3_5';
+    const APP_RELEASE_VERSION = '5.4.0';
+    const CLIENT_CACHE_VERSION = 'da_v5_4_0';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
     let shiftPreviewShadowInflight = new Set();
@@ -9422,8 +9439,8 @@
 
     const SCREEN_ORDER = { calendar: 0, schedule: 1, instructions: 2, profile: 3, payroll: 4 };
     const MAIN_SCREENS = ['calendar', 'schedule', 'instructions', 'profile', 'payroll'];
-    const TAB_ORDER = { 'tab-route': 0, 'tab-schedule': 1 };
-    const SCHEDULE_SUB_TABS = new Set(['tab-route', 'tab-schedule']);
+    const TAB_ORDER = { 'tab-route': 0, 'tab-schedule': 1, 'tab-flight-map': 2 };
+    const SCHEDULE_SUB_TABS = new Set(['tab-route', 'tab-schedule', 'tab-flight-map']);
     const SCREEN_TRANSITION_MS = 260;
     let screenTransitionLock = false;
 
@@ -11189,14 +11206,13 @@
         version: APP_RELEASE_VERSION,
         title: 'Что нового',
         tags: [
-            'Зарплата',
-            'Профиль'
+            'Подписка',
+            'Маршрут'
         ],
         highlights: [
-            'Единый расчёт зарплаты в календаре, профиле и расчётном листе',
-            'Настройки зарплаты: премия %, МЦД в профиле, кнопка «Сохранить» на сервер',
-            'Расчётный лист и живой просмотр ₽/ч; по тапу на «Заработано» — детализация месяца',
-            'В сводке смены — начисление по тем же правилам, что и в профиле'
+            'Платная подписка',
+            'Полётная карта',
+            'Фикс обеда'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -12257,7 +12273,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.3.6s')
+        navigator.serviceWorker.register('./sw.js?v=5.4.0')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -18002,13 +18018,14 @@
         if (!shift) return false;
         const marker = getLunchExclusionMarker(shift.lunch);
         if (marker === '**') return false;
-        if (lunchBreakOverlapsShift(startTime, endTime, shift.lunch)) return true;
         const lunchMin = parseLunchDurationMinutes(shift.lunch);
         if (lunchMin <= 0) return false;
         const spanMin = calculateShiftSpanMinutes(startTime, endTime);
         if (spanMin == null) return false;
-        if (spanMin > 12 * 60) return true;
-        return false;
+        if (spanMin <= 0) return false;
+        if (lunchBreakOverlapsShift(startTime, endTime, shift.lunch)) return true;
+        // Обед задан (интервал или длительность) — вычитаем даже если интервал не попал в проверку пересечения.
+        return true;
     }
 
     function calculateShiftWorkHoursFromTimes(shift) {

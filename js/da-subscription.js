@@ -18,8 +18,8 @@
     const TRUST_GATE_TEXT =
         'После пробного периода спишется 300 ₽ за 3 месяца. '
         + 'Отключить автопродление можно в профиле в один клик.';
-    const AUTORENEW_ACTIVE_HINT =
-        'Автопродление включено: следующее списание 300 ₽ на 3 месяца';
+    const AUTORENEW_ON_TITLE = 'Автопродление · 300 ₽ раз в 3 мес.';
+    const AUTORENEW_OFF_TITLE = 'Автопродление выключено';
 
     let referralsCache = { invited: 0, paid: 0, bonus_days: 0 };
     let boundCardsCache = { cards: [], demo: false, can_unbind: false, has_bound_card: false };
@@ -37,6 +37,34 @@
         const dd = String(d.getDate()).padStart(2, '0');
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         return `${dd}.${mm}`;
+    }
+
+    function formatRuDateFull(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '—';
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}.${mm}.${yyyy}`;
+    }
+
+    /** «ещё N день / дня / дней» */
+    function ruDaysPhrase(n) {
+        const num = Math.max(0, Math.floor(Number(n)) || 0);
+        const abs = num % 100;
+        const n1 = num % 10;
+        let word = 'дней';
+        if (abs < 11 || abs > 14) {
+            if (n1 === 1) word = 'день';
+            else if (n1 >= 2 && n1 <= 4) word = 'дня';
+        }
+        return `ещё ${num} ${word}`;
+    }
+
+    function freeTrialStatusLabel(user) {
+        const days = trialDaysLeft(user) || 14;
+        return `Бесплатный доступ · ${ruDaysPhrase(days)}`;
     }
 
     function getUser() {
@@ -287,17 +315,19 @@
     /** Активный/использованный триал, оплата или привязка карты (в т.ч. по subscription_ui с /me). */
     function userHasPaidBindOrActiveTrial(user) {
         if (!user) return false;
-        const uiKindRaw = String(user.subscription_ui?.kind || '').toLowerCase();
-        if (uiKindRaw === 'trial' || uiKindRaw === 'paid' || uiKindRaw === 'expired') return true;
         const kind = uiKind(user);
         if (kind === 'trial' || kind === 'paid' || kind === 'expired') return true;
+        const uiKindRaw = String(user.subscription_ui?.kind || '').toLowerCase();
+        if (uiKindRaw === 'trial' || uiKindRaw === 'paid' || uiKindRaw === 'expired') return true;
         if (user.trial_card_bound_at || user.card_bound || user.has_bound_card) return true;
         if (user.robokassa_mother_inv_id != null && Number(user.robokassa_mother_inv_id) > 0) return true;
         if (user.first_paid_at) return true;
-        if (user.trial_ends_at) return true;
-        if (user.access_allowed === true) return true;
+        if (user.terms_accepted === true || user.terms_accepted_at) return true;
+        const trialEnd = user.trial_ends_at;
+        if (trialEnd && new Date(trialEnd).getTime() > Date.now()) return true;
+        if (user.access_allowed === true && (user.trial_card_bound_at || user.has_bound_card || user.card_bound)) return true;
         const end = user.subscription_ends_at || user.subscription_expires_at;
-        if (end) return true;
+        if (end && new Date(end).getTime() > Date.now()) return true;
         return false;
     }
 
@@ -354,8 +384,28 @@
         return uiKind(user) === 'bind';
     }
 
+    function autorenewRowCopy(user, autorenewOn) {
+        const kind = uiKind(user);
+        const paidAccess = kind === 'paid';
+        if (autorenewOn) {
+            let subtitle = 'Спишется после пробного периода';
+            if (paidAccess) {
+                const end = user?.subscription_ends_at || user?.subscription_expires_at;
+                subtitle = end
+                    ? `Следующее списание — ${formatRuDateFull(end)}`
+                    : 'Спишется после пробного периода';
+            }
+            return { title: AUTORENEW_ON_TITLE, hint: subtitle };
+        }
+        const hint = paidAccess
+            ? 'Доступ действует до конца оплаченного периода'
+            : 'Доступ закроется после пробного периода';
+        return { title: AUTORENEW_OFF_TITLE, hint };
+    }
+
     function syncPlanAutorenewRow(user) {
         const arRow = document.getElementById('subPlanAutorenewRow');
+        const arTitle = document.getElementById('subPlanAutorenewTitle');
         const arHint = document.getElementById('subPlanAutorenewHint');
         const sw = document.getElementById('subPlanAutorenewSwitch');
         if (!arRow) return;
@@ -364,16 +414,16 @@
         arRow.classList.toggle('is-loading', autorenewSwitchBusy);
         if (!visible) return;
         const on = Boolean(user?.autorenew_enabled);
-        if (arHint) {
-            arHint.textContent = on
-                ? AUTORENEW_ACTIVE_HINT
-                : 'Автопродление выключено — новые списания только при ручной оплате';
-        }
+        const copy = autorenewRowCopy(user, on);
+        if (arTitle) arTitle.textContent = copy.title;
+        if (arHint) arHint.textContent = copy.hint;
+        const swWrap = sw?.closest?.('.da-switch');
         if (sw) {
             sw.checked = on;
             sw.disabled = autorenewSwitchBusy;
             sw.setAttribute('aria-checked', on ? 'true' : 'false');
         }
+        if (swWrap) swWrap.classList.toggle('is-on', on);
     }
 
     function planPayButtonLabel(plan) {
@@ -392,7 +442,7 @@
             } else if (kind === 'bind') {
                 statusEl.textContent = 'Привяжите карту за 1 ₽ — старт триала 14 дней';
             } else if (kind === 'trial') {
-                statusEl.textContent = `Триал · осталось ${trialDaysLeft(user) || 14} дн.`;
+                statusEl.textContent = freeTrialStatusLabel(user);
             } else if (kind === 'paid') {
                 const end = user.subscription_ends_at || user.subscription_expires_at;
                 statusEl.textContent = `Подписка активна до ${formatShortDate(end)}`;
@@ -588,6 +638,15 @@
         }
     }
 
+    function forcePlanModalVisibility(user) {
+        const showTrial = shouldShowTrialPlanCard(user);
+        applyElHidden(document.getElementById('subPlanTrialBind'), !showTrial);
+        const showConsent = Boolean(needsPlanModalConsent(user) && !needsActivationGate());
+        applyElHidden(document.getElementById('subPlanConsent'), !showConsent);
+        syncPaymentConsentUi();
+        syncPlanAutorenewRow(user);
+    }
+
     async function openPaywall() {
         if (global.DaAuthSession?.getJwt?.()) {
             await refreshMe();
@@ -595,7 +654,9 @@
         const user = getUser();
         syncPlanModal();
         selectPayPlan(pickDefaultPlan(user), { skipTrialToggle: true });
+        forcePlanModalVisibility(user);
         openModal('subPlanModal');
+        global.requestAnimationFrame(() => forcePlanModalVisibility(getUser()));
     }
 
     function activeConsentRoot() {

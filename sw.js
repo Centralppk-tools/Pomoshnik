@@ -1,11 +1,11 @@
-// Service Worker v5.3.6 da_v5_3_6k (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_6s';
+// Service Worker v5.4.0 da_v5_4_0 (network-first shell + query-aware cache)
+const CACHE_NAME = 'da_v5_4_0';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const PRECACHE_BUDGET_MS = 4500;
-const ASSET_CACHE_BUST = '5.3.6s';
+const ASSET_CACHE_BUST = '5.4.0';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -24,6 +24,8 @@ const PRECACHE_ASSETS = [
     `./styles/instructions.css?v=${ASSET_CACHE_BUST}`,
     `./styles/da-loading.css?v=${ASSET_CACHE_BUST}`,
     `./styles/subscription.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/flight-map.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/legal-consent.css?v=${ASSET_CACHE_BUST}`,
     './data/trains-uids.json',
     './data/release-notes.json',
     `./js/app-config.js?v=${ASSET_CACHE_BUST}`,
@@ -35,6 +37,11 @@ const PRECACHE_ASSETS = [
     `./js/da-legal-consent.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-auth-terms-gate.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-subscription.js?v=${ASSET_CACHE_BUST}`,
+    `./js/flight-speed/speed-limits-by-branch.js?v=${ASSET_CACHE_BUST}`,
+    `./js/flight-speed/speed-route.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-flight-map.js?v=${ASSET_CACHE_BUST}`,
+    './offer.html',
+    './privacy.html',
     `./js/schedule-maintenance.js?v=${ASSET_CACHE_BUST}`,
     `./js/hard-reset-app.js?v=${ASSET_CACHE_BUST}`,
     `./js/app-data-source.js?v=${ASSET_CACHE_BUST}`,
@@ -183,6 +190,18 @@ function isCrewApiClientRequest(pathname) {
 function isDaAuthSessionRequest(pathname) {
     return pathname.endsWith('/js/da-auth-session.js')
         || pathname.endsWith('da-auth-session.js');
+}
+
+/** Подписка и согласия — network-first, иначе залипают скрытие триала и чекбокса */
+function isSubscriptionModuleRequest(pathname) {
+    return pathname.endsWith('/js/da-subscription.js')
+        || pathname.endsWith('da-subscription.js')
+        || pathname.endsWith('/js/da-legal-consent.js')
+        || pathname.endsWith('da-legal-consent.js')
+        || pathname.endsWith('/styles/subscription.css')
+        || pathname.endsWith('subscription.css')
+        || pathname.endsWith('/styles/legal-consent.css')
+        || pathname.endsWith('legal-consent.css');
 }
 
 function isSyncUserIdModuleRequest(pathname) {
@@ -460,6 +479,11 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isProfileModuleRequest(url.pathname)) {
+        event.respondWith(networkFirstWithTimeout(request, CRITICAL_MODULE_NETWORK_TIMEOUT_MS));
+        return;
+    }
+
+    if (isSubscriptionModuleRequest(url.pathname)) {
         event.respondWith(networkFirstWithTimeout(request, CRITICAL_MODULE_NETWORK_TIMEOUT_MS));
         return;
     }
