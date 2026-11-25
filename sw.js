@@ -1,10 +1,11 @@
-// Service Worker v5.3.6 da_v5_3_6i (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_6i';
+// Service Worker v5.3.6 da_v5_3_6k (network-first shell + query-aware cache)
+const CACHE_NAME = 'da_v5_3_6p';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
-const ASSET_CACHE_BUST = '5.3.6i';
+const PRECACHE_BUDGET_MS = 4500;
+const ASSET_CACHE_BUST = '5.3.6p';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -15,7 +16,6 @@ const PRECACHE_ASSETS = [
     `./styles/base.css?v=${ASSET_CACHE_BUST}`,
     `./styles/routes.css?v=${ASSET_CACHE_BUST}`,
     `./styles/schedule.css?v=${ASSET_CACHE_BUST}`,
-    `./styles/flight-map.css?v=${ASSET_CACHE_BUST}`,
     `./styles/calendar.css?v=${ASSET_CACHE_BUST}`,
     `./styles/profile.css?v=${ASSET_CACHE_BUST}`,
     `./styles/responsive.css?v=${ASSET_CACHE_BUST}`,
@@ -31,10 +31,9 @@ const PRECACHE_ASSETS = [
     `./js/da-auth-session.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-loading.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-reference-cache.js?v=${ASSET_CACHE_BUST}`,
-    `./js/flight-speed/speed-limits-by-branch.js?v=${ASSET_CACHE_BUST}`,
-    `./js/flight-speed/speed-route.js?v=${ASSET_CACHE_BUST}`,
-    `./js/da-flight-map.js?v=${ASSET_CACHE_BUST}`,
     `./js/crew-api-client.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-legal-consent.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-auth-terms-gate.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-subscription.js?v=${ASSET_CACHE_BUST}`,
     `./js/schedule-maintenance.js?v=${ASSET_CACHE_BUST}`,
     `./js/hard-reset-app.js?v=${ASSET_CACHE_BUST}`,
@@ -73,13 +72,27 @@ function isPrecachePath(pathname) {
     });
 }
 
+function precacheOne(cache, url, timeoutMs = 2500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { signal: controller.signal })
+        .then((response) => {
+            clearTimeout(timer);
+            if (response && response.ok) {
+                return cache.put(url, response);
+            }
+            return null;
+        })
+        .catch((err) => {
+            clearTimeout(timer);
+            console.warn(`[sw] пропуск прекэша ${url}:`, err);
+            return null;
+        });
+}
+
 async function precacheAssets(cache) {
     await Promise.allSettled(
-        PRECACHE_ASSETS.map((url) =>
-            cache.add(url).catch((err) => {
-                console.warn(`[sw] пропуск прекэша ${url}:`, err);
-            })
-        )
+        PRECACHE_ASSETS.map((url) => precacheOne(cache, url))
     );
 }
 
@@ -283,9 +296,10 @@ async function cacheFirst(request) {
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => precacheAssets(cache))
-            .catch((err) => console.warn('[sw] прекэш отклонён из-за отсутствия файлов:', err))
+        Promise.race([
+            caches.open(CACHE_NAME).then((cache) => precacheAssets(cache)),
+            new Promise((resolve) => setTimeout(resolve, PRECACHE_BUDGET_MS)),
+        ]).catch((err) => console.warn('[sw] прекэш отклонён:', err))
     );
 });
 
@@ -406,7 +420,8 @@ function isSheduleMaxDataRequest(url) {
 
 /** API на том же origin — только сеть, без CacheStorage */
 function isSameOriginApiRequest(url) {
-    return url.pathname.startsWith('/api/');
+    const path = String(url.pathname || '');
+    return path.startsWith('/api/') || path.includes('/dev-local-pay/api/');
 }
 
 function isPrivateCrewApiRequest(url) {
@@ -440,12 +455,12 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (isInstructionsModuleRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(networkFirstWithTimeout(request, CRITICAL_MODULE_NETWORK_TIMEOUT_MS));
         return;
     }
 
     if (isProfileModuleRequest(url.pathname)) {
-        event.respondWith(networkFirst(request));
+        event.respondWith(networkFirstWithTimeout(request, CRITICAL_MODULE_NETWORK_TIMEOUT_MS));
         return;
     }
 

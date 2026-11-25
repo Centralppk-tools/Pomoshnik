@@ -1,17 +1,29 @@
-/* Подписка — пилюля, плашка, модалки */
+/* Подписка — пилюля, плашка, модалки (палитра лендинга «Тарифы») */
+
+:root {
+    --sub-graphite: #0d1113;
+    --sub-graphite-2: #111619;
+    --sub-neon: #00e59b;
+    --sub-neon-glow: 0 0 28px rgba(0, 229, 155, 0.14);
+    --sub-neon-btn-text: #05130e;
+    --sub-border: 1px solid rgba(255, 255, 255, 0.08);
+    --sub-radius: 18px;
+}
 
 .sub-header-pill {
     flex-shrink: 0;
     max-width: none;
-    padding: 0 10px;
+    padding: 0 11px 0 9px;
+    gap: 7px;
     min-height: 40px;
-    border-radius: 12px;
-    border: 1px solid rgba(6, 199, 133, 0.35);
-    background: rgba(18, 25, 38, 0.88);
-    color: #a7f3d0;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 229, 155, 0.35);
+    background: var(--sub-graphite-2);
+    color: #d8fde8;
     font-size: 11px;
-    font-weight: 700;
-    line-height: 1.1;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
     white-space: nowrap;
     overflow: visible;
     text-overflow: clip;
@@ -21,6 +33,27 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.sub-header-pill::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sub-neon);
+    box-shadow: 0 0 0 2px rgba(0, 229, 155, 0.22);
+}
+
+.sub-header-pill:hover {
+    border-color: rgba(0, 229, 155, 0.55);
+    background: #141a1d;
+}
+
+.sub-header-pill:active {
+    transform: scale(0.97);
+    background: var(--sub-graphite);
 }
 
 @media (max-width: 380px) {
@@ -39,9 +72,14 @@
 }
 
 .sub-header-pill--pay {
-    border-color: rgba(56, 189, 248, 0.45);
-    background: rgba(56, 189, 248, 0.14);
-    color: #bae6fd;
+    border-color: rgba(248, 113, 113, 0.4);
+    background: #181d21;
+    color: #fecaca;
+}
+
+.sub-header-pill--pay::before {
+    background: #f87171;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2);
 }
 
 .sub-soft-banner {
@@ -114,16 +152,51 @@
     display: none !important;
 }
 
+.sub-modal,
+.sub-activate-gate__card {
+    font-family: inherit;
+}
+
 .sub-modal {
     position: relative;
     width: min(100%, 420px);
     max-height: min(88vh, 640px);
     overflow: auto;
-    border-radius: 16px 16px 12px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: #141a22;
+    border-radius: 20px 20px 14px 14px;
+    border: var(--sub-border);
+    background: var(--sub-graphite);
     padding: 16px 16px 18px;
     box-sizing: border-box;
+}
+
+.sub-modal--plan {
+    padding-top: 14px;
+}
+
+.sub-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.sub-modal__title--inline {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #f4f7fa;
+}
+
+.sub-modal__close--head {
+    position: static;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 16px;
 }
 
 .sub-modal__close {
@@ -185,8 +258,29 @@
 }
 
 .sub-modal__btn--primary {
-    background: var(--brand-grad, linear-gradient(135deg, #06c785, #024c4e));
-    color: #ecfdf5;
+    background: var(--sub-neon);
+    color: var(--sub-neon-btn-text);
+    box-shadow: var(--sub-neon-glow);
+}
+
+.sub-modal__btn--neon {
+    background: var(--sub-neon);
+    color: var(--sub-neon-btn-text);
+    min-height: 46px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: var(--sub-neon-glow);
+}
+
+.sub-modal__btn--block {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.sub-modal__btn--primary:active,
+.sub-modal__btn--neon:active {
+    filter: brightness(0.96);
+    transform: scale(0.99);
 }
 
 .sub-modal__btn--ghost {
@@ -194,165 +288,591 @@
     color: #e8edf5;
 }
 
-.sub-plan-status {
-    margin: 0 0 12px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    font-size: 13px;
-    color: #d1fae5;
-}
-
-.sub-plan-cards {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 14px;
-}
-
-.sub-plan-card {
+.sub-status-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: var(--sub-radius);
+    border: var(--sub-border);
+    background: var(--sub-graphite-2);
+}
+
+.sub-status-card__dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--sub-neon);
+    box-shadow: 0 0 10px rgba(0, 229, 155, 0.5);
+}
+
+.sub-status-card__text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 500;
+    color: #cfe8df;
+}
+
+.sub-autorenew-row {
+    display: flex;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-    padding: 12px 14px;
+    margin: 0 0 12px;
+    padding: 8px 10px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
-    cursor: pointer;
-    text-align: left;
-    font-family: inherit;
-    color: #fff;
-}
-
-.sub-plan-card.is-selected {
-    border-color: rgba(6, 199, 133, 0.55);
-    background: rgba(6, 199, 133, 0.1);
-}
-
-.sub-plan-card__price {
-    font-size: 18px;
-    font-weight: 800;
-}
-
-.sub-plan-card__meta {
+    border: var(--sub-border);
+    background: var(--sub-graphite-2);
     font-size: 12px;
-    color: rgba(232, 237, 245, 0.65);
+    line-height: 1.35;
 }
 
-.sub-ref-block {
-    margin-bottom: 12px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(56, 189, 248, 0.08);
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    font-size: 12px;
-    line-height: 1.4;
-    color: rgba(232, 237, 245, 0.88);
+.sub-autorenew-row__hint {
+    flex: 1;
+    min-width: 0;
+    color: rgba(232, 237, 245, 0.72);
 }
 
-.sub-ref-link {
-    display: block;
-    margin: 6px 0;
-    word-break: break-all;
-    font-size: 11px;
-    color: #7dd3fc;
-}
-
-.sub-pay-email {
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: #0f141b;
-    color: #fff;
-    font-size: 14px;
-    font-family: inherit;
-}
-
-.profile-sub-card,
-.profile-account-card {
-    margin: 12px 14px 0;
-    padding: 12px 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.profile-sub-card__title,
-.profile-account-card__title {
-    margin: 0 0 8px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #fff;
-}
-
-.profile-sub-card__status {
-    margin: 0 0 10px;
-    font-size: 13px;
-    color: rgba(232, 237, 245, 0.85);
-}
-
-.profile-sub-card__ref {
-    margin: 8px 0;
-    font-size: 11px;
-    color: #7dd3fc;
-    word-break: break-all;
-}
-
-.profile-sub-card__stat {
-    margin: 0 0 10px;
-    font-size: 12px;
-    color: rgba(232, 237, 245, 0.65);
-}
-
-.profile-sub-card__row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.profile-sub-card__btn,
-.profile-account-card__btn {
-    padding: 8px 12px;
-    border-radius: 10px;
+.sub-link-btn {
+    padding: 0;
     border: none;
-    font-size: 13px;
+    background: none;
+    color: var(--sub-neon);
+    font-size: 12px;
     font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.08);
-    color: #e8edf5;
-}
-
-.profile-sub-card__btn--accent {
-    background: var(--brand-grad, linear-gradient(135deg, #06c785, #024c4e));
-    color: #ecfdf5;
-}
-
-.profile-account-card__hint {
-    margin: 6px 0 0;
-    font-size: 11px;
-    color: rgba(232, 237, 245, 0.55);
-}
-
-.profile-delete-btn {
-    display: block;
-    width: calc(100% - 28px);
-    margin: 16px 14px 24px;
-    padding: 10px;
-    border: none;
-    border-radius: 10px;
-    background: transparent;
-    color: rgba(248, 113, 113, 0.75);
-    font-size: 12px;
     font-family: inherit;
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 3px;
 }
 
+.sub-plan-cards,
+.sub-activate-gate__plans {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.sub-plan-cards--landing,
+.sub-activate-gate__plans {
+    grid-template-columns: 1fr 1fr;
+    padding-top: 10px;
+}
+
+.sub-plan-cards--with-trial {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 360px) {
+    .sub-plan-cards--with-trial {
+        grid-template-columns: 1fr 1fr;
+    }
+    .sub-plan-cards--with-trial [data-sub-plan="trial_bind"] {
+        grid-column: 1 / -1;
+    }
+}
+
+.sub-tariff-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    padding: 18px 14px 16px;
+    border-radius: var(--sub-radius);
+    border: var(--sub-border);
+    background: var(--sub-graphite-2);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: #f4f7fa;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.sub-tariff-card:active {
+    transform: scale(0.98);
+}
+
+.sub-tariff-card.is-selected {
+    border-color: rgba(0, 229, 155, 0.45);
+    background: rgba(0, 229, 155, 0.06);
+}
+
+.sub-tariff-card--best {
+    border-color: rgba(0, 229, 155, 0.35);
+    box-shadow: var(--sub-neon-glow);
+}
+
+.sub-tariff-card--best.is-selected {
+    border-color: var(--sub-neon);
+}
+
+.sub-tariff-card--hero {
+    margin-bottom: 4px;
+    padding: 22px 16px 16px;
+    cursor: default;
+    box-shadow: var(--sub-neon-glow);
+    border-color: rgba(0, 229, 155, 0.32);
+}
+
+.sub-tariff-card__badge {
+    position: absolute;
+    top: -11px;
+    right: 16px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.sub-tariff-card__badge--dark {
+    background: #1a2024;
+    border: var(--sub-border);
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.sub-tariff-card__badge--neon {
+    background: var(--sub-neon);
+    color: var(--sub-neon-btn-text);
+    box-shadow: var(--sub-neon-glow);
+}
+
+.sub-tariff-card__period {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.sub-tariff-card__price {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #fff;
+}
+
+.sub-tariff-card__desc {
+    font-size: 12px;
+    line-height: 1.35;
+    color: rgba(232, 237, 245, 0.5);
+}
+
+.sub-trial-hero__title {
+    margin: 4px 0 8px;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: #fff;
+}
+
+.sub-trial-hero__lead {
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: rgba(232, 237, 245, 0.68);
+}
+
+.sub-receipt-compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(232, 237, 245, 0.5);
+    text-align: center;
+}
+
+.sub-receipt-compact__text strong {
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 600;
+}
+
+.sub-receipt-compact__edit {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--sub-neon);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.sub-receipt-compact__field {
+    margin-top: 8px;
+}
+
+.sub-trust-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 14px 12px;
+    border-radius: var(--sub-radius);
+    border: var(--sub-border);
+    background: var(--sub-graphite-2);
+}
+
+.sub-trust-banner--inset {
+    margin-top: 16px;
+    margin-bottom: 2px;
+}
+
+.sub-trust-banner__icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 229, 155, 0.35);
+    background: rgba(0, 229, 155, 0.08);
+    color: var(--sub-neon);
+}
+
+.sub-trust-banner__icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.sub-trust-banner__title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f4f7fa;
+}
+
+.sub-trust-banner__text {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: rgba(232, 237, 245, 0.52);
+}
+
+.sub-ref-card {
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: var(--sub-radius);
+    border: var(--sub-border);
+    background: var(--sub-graphite-2);
+}
+
+.sub-ref-card__title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8edf5;
+}
+
+.sub-ref-card__accent {
+    color: var(--sub-neon);
+    font-weight: 600;
+}
+
+.sub-ref-card__stat {
+    margin: 0 0 10px;
+    font-size: 11px;
+    color: rgba(232, 237, 245, 0.5);
+}
+
+.sub-ref-card__row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.sub-ref-card__input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--sub-graphite);
+    color: rgba(232, 237, 245, 0.75);
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.sub-ref-card__copy {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 229, 155, 0.35);
+    background: rgba(0, 229, 155, 0.1);
+    color: var(--sub-neon);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.sub-ref-card__copy:active {
+    background: rgba(0, 196, 140, 0.2);
+}
+
+.sub-field-label {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(232, 237, 245, 0.55);
+}
+
+.sub-pay-email {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--sub-graphite-2);
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.sub-pay-email:focus {
+    outline: none;
+    border-color: rgba(0, 229, 155, 0.45);
+}
+
 body.sub-modal-open {
     overflow: hidden;
+}
+
+.sub-activate-gate__logout {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: none;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sub-activate-gate__logout:active {
+    opacity: 0.92;
+}
+
+body.subscription-blocking #mainScreensStage,
+body.subscription-blocking .bottom-tabbar-wrap {
+    pointer-events: none;
+    user-select: none;
+    filter: blur(4px) saturate(0.7);
+}
+
+.sub-activate-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    background: rgba(4, 8, 12, 0.92);
+    backdrop-filter: blur(8px);
+}
+
+.sub-activate-gate[hidden] {
+    display: none !important;
+}
+
+.sub-activate-gate__card {
+    width: min(100%, 440px);
+    max-height: 92vh;
+    overflow: auto;
+    overflow-x: hidden;
+    padding: 24px 16px 18px;
+    border-radius: 20px;
+    border: var(--sub-border);
+    background: var(--sub-graphite);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* Мобильная вёрстка подписки (≤480px) */
+@media (max-width: 480px) {
+    .sub-modal-overlay {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        padding: 16px;
+        box-sizing: border-box;
+        background: rgba(4, 8, 12, 0.88);
+    }
+
+    .sub-modal {
+        width: 100%;
+        max-width: none;
+        max-height: min(86vh, 720px);
+        border: var(--sub-border);
+        border-radius: var(--sub-radius);
+        padding: 16px;
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    .sub-modal--plan {
+        padding-top: 16px;
+    }
+
+    .sub-activate-gate {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .sub-activate-gate__card {
+        width: 100%;
+        max-width: none;
+        max-height: min(86vh, 720px);
+        padding: 16px;
+        border: none;
+        border-radius: var(--sub-radius);
+        background: var(--sub-graphite);
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    .sub-tariff-card--hero {
+        margin-bottom: 8px;
+        padding: 18px 14px 14px;
+    }
+
+    .sub-plan-cards--landing,
+    .sub-activate-gate__plans,
+    .sub-plan-cards--with-trial {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding-top: 8px;
+        margin-bottom: 12px;
+    }
+
+    .sub-plan-cards--with-trial [data-sub-plan="trial_bind"] {
+        grid-column: auto;
+    }
+
+    .sub-tariff-card:not(.sub-tariff-card--hero) {
+        display: grid;
+        grid-template-columns: 1fr minmax(72px, auto);
+        grid-template-rows: auto auto;
+        column-gap: 10px;
+        row-gap: 4px;
+        align-items: center;
+        padding: 16px 12px 14px;
+        min-height: 0;
+    }
+
+    .sub-tariff-card__badge {
+        top: -10px;
+        right: 12px;
+        max-width: calc(100% - 24px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 8px;
+        padding: 3px 8px;
+    }
+
+    .sub-tariff-card__period {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .sub-tariff-card__desc {
+        grid-column: 1;
+        grid-row: 2;
+        padding-right: 4px;
+    }
+
+    .sub-tariff-card__price {
+        grid-column: 2;
+        grid-row: 1 / 3;
+        justify-self: end;
+        align-self: center;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .sub-trust-banner {
+        gap: 10px;
+        margin-top: 12px;
+        padding: 12px;
+    }
+
+    .sub-modal__title--inline {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .sub-ref-card {
+        padding: 10px 12px;
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-width: 520px) and (min-width: 481px) {
+    .sub-modal-overlay {
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .sub-activate-gate {
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .sub-modal,
+    .sub-activate-gate__card {
+        padding: 16px;
+    }
+
+    .sub-plan-cards--landing,
+    .sub-activate-gate__plans {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+}
+
+.sub-legal-links {
+    margin: 10px 0 0;
+    text-align: center;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.sub-legal-links a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sub-legal-links a:hover {
+    color: #00e59b;
 }

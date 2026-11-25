@@ -5,11 +5,24 @@
     'use strict';
 
     const REF_KEY = 'da_referral_code';
+    const PENDING_PAY_LS_KEY = 'da_pending_payment_inv_id';
     const ONBOARD_KEY = 'da_sub_onboard_v1';
     const BANNER_HIDE_KEY = 'da_sub_banner_hide_until';
     const BANNER_HIDE_MS = 12 * 60 * 60 * 1000;
+    const PLAN_AMOUNTS = { trial_bind: 1, month: 150, quarter: 300 };
+    const REF_REWARDS_MAX = 3;
+    const ACTIVATE_LEAD =
+        'Для запуска пробного периода привяжите карту за 1 ₽. '
+        + 'По окончании пробного периода подписка продлится автоматически — 300 ₽ раз в 3 месяца; '
+        + 'отключить можно в любой момент в профиле.';
+    const TRUST_GATE_TEXT =
+        'После пробного периода спишется 300 ₽ за 3 месяца. '
+        + 'Отключить автопродление можно в профиле в один клик.';
+    const AUTORENEW_ACTIVE_HINT =
+        'Автопродление включено: следующее списание 300 ₽ на 3 месяца';
 
     let referralsCache = { invited: 0, paid: 0, bonus_days: 0 };
+    let boundCardsCache = { cards: [], demo: false, can_unbind: false, has_bound_card: false };
     /** @type {'idle'|'loading'|'ok'|'error'} */
     let meFetchState = 'idle';
 
@@ -37,7 +50,7 @@
         if (ui?.kind === 'paid') return 'paid';
         if (ui?.kind === 'expired') return 'expired';
         if (!user?.trial_card_bound_at && !user?.subscription_ends_at) return 'bind';
-        if (user?.subscription_status === 'lifetime' || user?.is_manual_grant) return 'paid';
+        if (user?.subscription_status === 'lifetime') return 'paid';
         const end = user?.subscription_ends_at || user?.subscription_expires_at;
         if (end && new Date(end).getTime() > Date.now()) return 'paid';
         const trial = user?.trial_ends_at;
@@ -97,6 +110,32 @@
         }
     }
 
+    function receiptEmailDisplay(user, inputEl) {
+        const typed = String(inputEl?.value || '').trim();
+        if (typed) return typed;
+        return String(user?.email || '').trim() || 'указать e-mail';
+    }
+
+    function syncReceiptEmailUi(prefix) {
+        const user = getUser();
+        const input = document.getElementById(`${prefix}Email`);
+        const label = document.getElementById(`${prefix}ReceiptEmail`);
+        if (label) label.textContent = receiptEmailDisplay(user, input);
+    }
+
+    function showReceiptEmailField(prefix, show) {
+        const compact = document.getElementById(`${prefix}ReceiptCompact`);
+        const field = document.getElementById(`${prefix}ReceiptField`);
+        if (field) field.hidden = !show;
+        if (compact) compact.hidden = show;
+        if (show) {
+            const input = document.getElementById(`${prefix}Email`);
+            global.requestAnimationFrame(() => input?.focus());
+        }
+    }
+
+    const PAYMENT_CREATE_TIMEOUT_MS = 12000;
+
     async function apiFetch(path, options) {
         if (typeof global.DaCrewApi?.apiFetch === 'function') {
             return global.DaCrewApi.apiFetch(path, options);
@@ -106,19 +145,45 @@
             'Content-Type': 'application/json',
             ...(global.DaAuthSession?.authHeaders?.() || {}),
         };
-        const res = await fetch(`${base}${path}`, {
-            method: options?.method || 'GET',
-            headers,
-            body: options?.body != null ? JSON.stringify(options.body) : undefined,
-            cache: 'no-store',
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            const err = new Error(data.error || `http_${res.status}`);
-            err.payload = data;
-            throw err;
+        const timeoutMs = Number(options?.timeoutMs) > 0 ? Number(options.timeoutMs) : 0;
+        const ac = new AbortController();
+        let timer = null;
+        if (timeoutMs > 0) {
+            timer = global.setTimeout(() => ac.abort(), timeoutMs);
         }
-        return data;
+        try {
+            const res = await fetch(`${base}${path}`, {
+                method: options?.method || 'GET',
+                headers,
+                body: options?.body != null ? JSON.stringify(options.body) : undefined,
+                cache: 'no-store',
+                signal: ac.signal,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.error || `http_${res.status}`);
+                err.payload = data;
+                throw err;
+            }
+            return data;
+        } catch (err) {
+            if (err?.name === 'AbortError') {
+                const timeoutErr = new Error('payment_create_timeout');
+                timeoutErr.code = 'TIMEOUT';
+                timeoutErr.payload = {
+                    message: 'Сервер не ответил за 12 с. Проверьте crew-api и туннель dev-local-pay.',
+                };
+                throw timeoutErr;
+            }
+            throw err;
+        } finally {
+            if (timer) global.clearTimeout(timer);
+        }
+    }
+
+    async function paymentCreateFetch(body) {
+        const opts = { method: 'POST', body, timeoutMs: PAYMENT_CREATE_TIMEOUT_MS };
+        return apiFetch('/api/v1/payments/create', opts);
     }
 
     async function refreshMe() {
@@ -129,7 +194,14 @@
         meFetchState = 'loading';
         try {
             const data = await apiFetch('/api/v1/me');
-            if (data.user) global.DaAuthSession.persistSession(null, data.user);
+            if (data.user) {
+                global.isHydratingFromServer = true;
+                try {
+                    global.DaAuthSession.persistSession(null, data.user);
+                } finally {
+                    global.isHydratingFromServer = false;
+                }
+            }
             if (data.referrals) referralsCache = data.referrals;
             meFetchState = 'ok';
             return data;
@@ -146,9 +218,88 @@
             el.textContent = label;
             el.classList.toggle('sub-header-pill--pay', uiKind(user) === 'expired');
         });
+        syncPlanModal();
+        syncProfileSubscriptionBlock();
+        syncSoftBanner();
+        syncAccessGate();
+    }
+
+    function needsActivationGate() {
+        if (!global.DaAuthSession?.getJwt?.()) return false;
+        const user = getUser();
+        if (user?.needs_card_bind === true) return true;
+        if (user && user.access_allowed === true) return false;
+        if (user && user.access_allowed === false) return true;
+        const kind = uiKind(user);
+        return kind === 'bind' || kind === 'expired' || kind === 'unknown';
+    }
+
+    function syncAccessGate() {
+        const need = needsActivationGate();
+        document.body.classList.toggle('subscription-blocking', need);
+        const gate = document.getElementById('subActivateGate');
+        if (gate) {
+            gate.hidden = !need;
+            gate.setAttribute('aria-hidden', need ? 'false' : 'true');
+        }
+        if (need) {
+            const user = getUser();
+            const emailInput = document.getElementById('subActivateEmail');
+            if (emailInput && user?.email && !emailInput.value) emailInput.value = user.email;
+            const ref = getStoredReferralCode();
+            const titleEl = document.getElementById('subActivateTitle');
+            const leadEl = document.getElementById('subActivateLead');
+            if (titleEl) {
+                titleEl.textContent = ref
+                    ? 'Активируйте 21 день бесплатно'
+                    : 'Активируйте 14 дней бесплатно';
+            }
+            if (leadEl) leadEl.textContent = ACTIVATE_LEAD;
+            const trustGate = document.getElementById('subActivateTrustText');
+            if (trustGate) trustGate.textContent = TRUST_GATE_TEXT;
+            syncReceiptEmailUi('subActivate');
+            showReceiptEmailField('subActivate', false);
+            syncPaymentConsentUi();
+        }
+    }
+
+    function syncPaymentConsentUi() {
+        const user = getUser();
+        const gateOpen = needsActivationGate();
+        const needTerms = global.DaLegalConsent?.needsConsentForUser(user);
+        const activateConsent = document.getElementById('subActivateConsent');
+        const planConsent = document.getElementById('subPlanConsent');
+        const planLinks = document.getElementById('subPlanLegalLinks');
+        const showActivate = gateOpen || Boolean(needTerms);
+        const showPlanConsent = Boolean(needTerms && !user?.card_bound && !gateOpen);
+        global.DaLegalConsent?.setVisible(activateConsent, showActivate);
+        global.DaLegalConsent?.setVisible(planConsent, showPlanConsent);
+        if (planLinks) planLinks.hidden = showPlanConsent;
+        if (showActivate && activateConsent) {
+            global.DaLegalConsent?.bindRoot?.(activateConsent);
+            global.DaLegalConsent?.syncButtonForRoot?.(activateConsent);
+        }
+        if (showPlanConsent) global.DaLegalConsent?.bindRoot?.(planConsent);
+    }
+
+    function shouldShowTrialPlanCard(user) {
+        const kind = uiKind(user);
+        if (kind === 'paid' || kind === 'trial') return false;
+        if (user?.trial_card_bound_at) return false;
+        return kind === 'bind';
+    }
+
+    function planPayButtonLabel(plan) {
+        if (plan === 'trial_bind') return 'Привязать карту за 1 ₽';
+        const sum = PLAN_AMOUNTS[plan] || PLAN_AMOUNTS.month;
+        return `Оплатить ${sum} ₽`;
+    }
+
+    function syncPlanModal() {
+        const user = getUser();
+        const kind = uiKind(user);
         const statusEl = document.getElementById('subPlanStatus');
         if (statusEl) {
-            const kind = uiKind(user);
             if (kind === 'loading' || kind === 'unknown') {
                 statusEl.textContent = 'Загрузка статуса подписки…';
             } else if (kind === 'bind') {
@@ -162,11 +313,48 @@
                 statusEl.textContent = 'Пробный период завершён — оформите подписку';
             }
         }
-        syncProfileSubscriptionBlock();
-        syncSoftBanner();
+        const arRow = document.getElementById('subPlanAutorenewRow');
+        const arHint = document.getElementById('subPlanAutorenewHint');
+        if (arRow) arRow.hidden = !user?.autorenew_enabled;
+        if (arHint) arHint.textContent = user?.autorenew_enabled ? AUTORENEW_ACTIVE_HINT : '';
+        const showTrial = shouldShowTrialPlanCard(user);
+        const trialCard = document.getElementById('subPlanTrialBind');
+        if (trialCard) trialCard.hidden = !showTrial;
+        const cardsWrap = document.querySelector('#subPlanModal .sub-plan-cards--landing');
+        if (cardsWrap) cardsWrap.classList.toggle('sub-plan-cards--with-trial', showTrial);
+        const invited = referralsCache.rewards_count != null
+            ? referralsCache.rewards_count
+            : (referralsCache.paid || referralsCache.invited || 0);
+        const max = referralsCache.rewards_max || REF_REWARDS_MAX;
+        const refCount = document.getElementById('subReferralCount');
+        if (refCount) refCount.textContent = `Приглашено: ${invited} из ${max}`;
+        const refInput = document.getElementById('subReferralUrlInput');
+        if (refInput) refInput.value = referralLink(user) || '';
+        const selected = document.querySelector('[data-sub-plan].is-selected');
+        let plan = selected?.getAttribute('data-sub-plan') || pickDefaultPlan(user);
+        if (!showTrial && plan === 'trial_bind') plan = 'month';
+        selectPayPlan(plan, { skipTrialToggle: true });
+        syncPaymentConsentUi();
+    }
+
+    function showActivationGate() {
+        syncAccessGate();
+    }
+
+    function blocksMainScreen() {
+        return needsActivationGate();
+    }
+
+    function paymentEmail() {
+        const gateVis = !document.getElementById('subActivateGate')?.hidden;
+        if (gateVis) {
+            return String(document.getElementById('subActivateEmail')?.value || '').trim();
+        }
+        return String(document.getElementById('subPayEmail')?.value || '').trim();
     }
 
     function shouldShowSoftBanner() {
+        if (needsActivationGate()) return false;
         const user = getUser();
         if (!user || !global.DaAuthSession?.getJwt?.()) return false;
         if (uiKind(user) !== 'expired') return false;
@@ -208,35 +396,81 @@
         if (open && open.id) closeModal(open.id);
     }
 
-    /** Никогда не уводим основное окно на Robokassa (иначе застревают на ошибке 26). */
-    function openPaymentInSeparateTab(paymentUrl) {
-        const url = String(paymentUrl || '').trim();
-        if (!url) return false;
-        let opened = null;
+    function savePendingPayment(meta) {
         try {
-            opened = global.open('about:blank', '_blank', 'noopener,noreferrer');
+            global.localStorage.setItem(PENDING_PAY_LS_KEY, JSON.stringify(meta));
         } catch (_) { /* */ }
-        if (opened) {
-            try {
-                opened.opener = null;
-                opened.location.href = url;
-            } catch (_) {
-                try { opened.close(); } catch (_e) { /* */ }
-                opened = null;
-            }
+    }
+
+    function readPendingPayment() {
+        try {
+            const raw = global.localStorage.getItem(PENDING_PAY_LS_KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            const invId = data?.inv_id ?? data?.invId;
+            if (!invId) return null;
+            return { ...data, inv_id: String(invId) };
+        } catch (_) {
+            return null;
         }
-        if (!opened) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            return true;
+    }
+
+    function clearPendingPayment() {
+        try {
+            global.localStorage.removeItem(PENDING_PAY_LS_KEY);
+        } catch (_) { /* */ }
+    }
+
+    function isActivateGateOpen() {
+        const gate = document.getElementById('subActivateGate');
+        return Boolean(gate && !gate.hidden);
+    }
+
+    let pendingPayResumeActive = false;
+
+    async function syncPendingPaymentFromStorage() {
+        if (!global.DaAuthSession?.getJwt?.()) return;
+        if (!isActivateGateOpen()) return;
+        const pending = readPendingPayment();
+        if (!pending?.inv_id) return;
+
+        const rb = {
+            inv: pending.inv_id,
+            outSum: pending.out_sum || pending.OutSum || '1.00',
+            sig: pending.signature_value || pending.SignatureValue || '',
+        };
+        const emptyParams = new URLSearchParams();
+        let detail = null;
+        try {
+            detail = await syncInvoiceAfterReturn(emptyParams, rb);
+            await refreshMe();
+        } catch (err) {
+            global.showDaErrorToast?.(err?.payload?.message || 'Не удалось синхронизировать оплату');
+            return;
         }
-        return true;
+
+        const paid = Boolean(detail?.confirmed)
+            || detail?.transaction?.status === 'paid'
+            || detail?.user?.access_allowed
+            || userHasBoundCard(detail?.user);
+        if (paid) {
+            clearPendingPayment();
+            showPaymentSuccessModal(detail);
+            updateHeaderPills();
+            syncAccessGate();
+        }
+    }
+
+    async function handlePendingPaymentOnResume() {
+        if (pendingPayResumeActive) return;
+        if (!readPendingPayment()) return;
+        if (!isActivateGateOpen()) return;
+        pendingPayResumeActive = true;
+        try {
+            await syncPendingPaymentFromStorage();
+        } finally {
+            pendingPayResumeActive = false;
+        }
     }
 
     function showPaymentOpenedUi() {
@@ -257,163 +491,561 @@
         return 'month';
     }
 
-    function selectPayPlan(plan) {
+    function selectPayPlan(plan, opts) {
+        const user = getUser();
+        const showTrial = shouldShowTrialPlanCard(user);
+        if (!showTrial && plan === 'trial_bind') plan = 'month';
         document.querySelectorAll('[data-sub-plan]').forEach((c) => {
+            if (c.hidden) {
+                c.classList.remove('is-selected');
+                return;
+            }
             c.classList.toggle('is-selected', c.getAttribute('data-sub-plan') === plan);
         });
         const btn = document.getElementById('subPayGoBtn');
-        if (btn) {
-            btn.textContent = plan === 'trial_bind' ? 'Привязать карту (1 ₽)' : 'Перейти к оплате';
+        if (btn) btn.textContent = planPayButtonLabel(plan);
+        if (!opts?.skipTrialToggle) {
+            const trialCard = document.getElementById('subPlanTrialBind');
+            if (trialCard) trialCard.hidden = !showTrial;
         }
-        const trialCard = document.getElementById('subPlanTrialBind');
-        if (trialCard) trialCard.hidden = Boolean(getUser()?.trial_card_bound_at);
     }
 
     function openPaywall() {
         const emailInput = document.getElementById('subPayEmail');
         const user = getUser();
-        if (emailInput && user?.email) emailInput.value = user.email;
-        const refLink = document.getElementById('subReferralLink');
-        if (refLink) refLink.textContent = referralLink(user) || '—';
-        selectPayPlan(pickDefaultPlan(user));
-        updateHeaderPills();
+        if (emailInput && user?.email && !emailInput.value) emailInput.value = user.email;
+        syncReceiptEmailUi('subPay');
+        showReceiptEmailField('subPay', false);
+        syncPlanModal();
+        selectPayPlan(pickDefaultPlan(user), { skipTrialToggle: true });
         openModal('subPlanModal');
     }
 
+    function activeConsentRoot() {
+        const gateVis = !document.getElementById('subActivateGate')?.hidden;
+        return document.getElementById(gateVis ? 'subActivateConsent' : 'subPlanConsent');
+    }
+
     async function startPayment(plan) {
-        const emailEl = document.getElementById('subPayEmail');
-        const email = emailEl ? String(emailEl.value || '').trim() : '';
-        const btn = document.getElementById('subPayGoBtn');
-        if (btn) btn.disabled = true;
-        try {
-            const data = await apiFetch('/api/v1/payments/create', {
-                method: 'POST',
-                body: { plan, email: email || undefined },
-            });
-            if (data.payment_url) {
-                const ok = openPaymentInSeparateTab(data.payment_url);
-                if (ok) {
-                    showPaymentOpenedUi();
-                } else {
-                    showPaymentBlockedUi(data.payment_url);
-                }
+        const user = getUser();
+        const email = paymentEmail();
+        const consentRoot = activeConsentRoot();
+        const gateVis = !document.getElementById('subActivateGate')?.hidden;
+        const consentRequired = gateVis
+            || (global.DaLegalConsent?.needsConsentForUser(user) && consentRoot && !consentRoot.hidden);
+        if (consentRequired && consentRoot && !consentRoot.hidden) {
+            if (!global.DaLegalConsent.bothChecked(consentRoot)) {
+                global.DaLegalConsent.flashMissing(consentRoot);
+                global.showDaErrorToast?.('Отметьте оба согласия: оферту и политику конфиденциальности.');
+                return;
             }
+        }
+        const gateBtn = document.getElementById('subActivateBindBtn');
+        const btn = document.getElementById('subPayGoBtn');
+        const payBtn = gateBtn && !document.getElementById('subActivateGate')?.hidden ? gateBtn : btn;
+        if (payBtn?.dataset.paymentLoading === '1') return;
+        if (payBtn) {
+            payBtn.dataset.paymentLoading = '1';
+            payBtn.disabled = true;
+        }
+        try {
+            const body = {
+                plan,
+                email: email || undefined,
+                return_origin: (() => {
+                    const loc = global.location;
+                    if (!loc?.origin) return '';
+                    const p = String(loc.pathname || '/').replace(/\/$/, '') || '';
+                    return p && p !== '/' ? `${loc.origin}${p}` : loc.origin;
+                })(),
+            };
+            if (global.DaLegalConsent?.needsConsentForUser(user)) {
+                Object.assign(body, global.DaLegalConsent.consentPayload());
+            }
+            const data = await paymentCreateFetch(body);
+            if (data.payment_url) {
+                savePendingPayment({
+                    inv_id: data.inv_id,
+                    out_sum: data.amount || PLAN_AMOUNTS[plan],
+                    signature_value: data.signature_value || data.SignatureValue || null,
+                    plan,
+                    saved_at: Date.now(),
+                });
+                global.location.assign(data.payment_url);
+                return;
+            }
+            global.showDaErrorToast?.('Не удалось создать платёж: нет ссылки на оплату.');
         } catch (err) {
-            const code = err?.payload?.error;
+            const code = err?.payload?.error || err?.code;
             const msg = err?.payload?.message
-                || (code === 'payments_not_configured'
-                    ? 'Оплата на сервере не настроена (Robokassa).'
-                    : 'Не удалось создать платёж. Попробуйте позже.');
+                || (code === 'TIMEOUT' || err?.message === 'payment_create_timeout'
+                    ? 'Таймаут оплаты (12 с). Проверьте crew-api и туннель.'
+                    : code === 'payments_not_configured'
+                        ? 'Оплата на сервере не настроена (Robokassa).'
+                        : 'Не удалось создать платёж. Попробуйте позже.');
             global.showDaErrorToast?.(msg);
         } finally {
-            if (btn) btn.disabled = false;
+            if (payBtn) {
+                delete payBtn.dataset.paymentLoading;
+                payBtn.disabled = false;
+            }
+            syncPaymentConsentUi();
         }
+    }
+
+    function clearPaymentReturnUrl() {
+        const clean = new URL(global.location.href);
+        [
+            'payment', 'inv_id', 'InvId', 'OutSum', 'out_summ', 'SignatureValue', 'crc',
+            'Culture', 'Fee', 'EMail', 'Email', 'PaymentMethod', 'IncCurrLabel', 'IsTest',
+        ].forEach((key) => clean.searchParams.delete(key));
+        global.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    }
+
+    function robokassaReturnParams(p) {
+        const outSum = p.get('OutSum') || p.get('out_summ');
+        const inv = p.get('InvId') || p.get('inv_id');
+        const sig = p.get('SignatureValue') || p.get('crc');
+        const paymentFlag = String(p.get('payment') || '').trim().toLowerCase();
+        if (!inv) return null;
+        if (paymentFlag === 'success' || (outSum && sig)) {
+            return { outSum, inv, sig, payment: paymentFlag };
+        }
+        return null;
+    }
+
+    function buildSyncInvoiceBody(p, rb) {
+        const body = { inv_id: rb.inv };
+        if (rb.outSum) body.out_sum = rb.outSum;
+        if (rb.sig) body.signature = rb.sig;
+        [
+            'PaymentMethod', 'IncCurrLabel', 'IsTest', 'CardPan', 'MaskedPan', 'Email', 'OutSum',
+        ].forEach((key) => {
+            const v = p.get(key);
+            if (v) body[key] = v;
+        });
+        return body;
+    }
+
+    async function syncInvoiceAfterReturn(p, rb, opts = {}) {
+        const attempts = opts.attempts || 8;
+        const delayMs = opts.delayMs || 2000;
+        const body = buildSyncInvoiceBody(p, rb);
+        let last = null;
+        for (let i = 0; i < attempts; i += 1) {
+            // eslint-disable-next-line no-await-in-loop
+            const detail = await apiFetch('/api/v1/payments/sync-invoice', {
+                method: 'POST',
+                body,
+            });
+            last = detail;
+            if (detail?.user) global.DaAuthSession.persistSession(null, detail.user);
+            if (detail?.confirmed) return detail;
+            if (!detail?.pending) break;
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => global.setTimeout(r, delayMs));
+        }
+        return last;
+    }
+
+    function showPaymentSuccessModal(detail) {
+        const user = detail?.user || getUser();
+        const txPlan = detail?.transaction?.plan;
+        const end = user?.subscription_ends_at || user?.subscription_expires_at;
+        const trial = user?.trial_ends_at;
+        const title = document.getElementById('subResultTitle');
+        const text = document.getElementById('subResultText');
+        const retryBtn = document.getElementById('subResultRetryBtn');
+        if (title) {
+            title.textContent = txPlan === 'trial_bind' || (!end && trial)
+                ? 'Карта привязана'
+                : 'Оплата прошла';
+        }
+        if (text) {
+            if (txPlan === 'trial_bind' || (!end && trial)) {
+                const days = trialDaysLeft(user) || (user?.referred_by ? 21 : 14);
+                text.textContent = `Карта привязана — открыты ${days} дней бесплатно. Чек на ${user?.email || 'указанную почту'}.`;
+            } else if (end) {
+                text.textContent = `Подписка до ${formatShortDate(end)}. Чек на ${user?.email || 'указанную почту'}.`;
+            } else {
+                text.textContent = 'Платёж принят. Обновляю статус…';
+            }
+        }
+        if (retryBtn) retryBtn.hidden = true;
+        closeModal('subPayOpenedModal');
+        closeModal('subPayBlockedModal');
+        openModal('subResultModal');
+        updateHeaderPills();
+        syncAccessGate();
     }
 
     async function handlePaymentReturn() {
         const p = new URLSearchParams(global.location.search);
+        const rb = robokassaReturnParams(p);
         const payment = String(p.get('payment') || '').trim().toLowerCase();
-        if (payment !== 'success' && payment !== 'fail') return;
-        const inv = p.get('InvId') || p.get('inv_id');
-        let detail = null;
-        if (payment === 'success' && inv) {
-            try {
-                detail = await apiFetch(`/api/v1/payments/status?inv_id=${encodeURIComponent(inv)}`);
-                if (detail?.user) global.DaAuthSession.persistSession(null, detail.user);
-            } catch (_) { /* */ }
-        }
-        const title = document.getElementById('subResultTitle');
-        const text = document.getElementById('subResultText');
-        const retryBtn = document.getElementById('subResultRetryBtn');
-        if (payment === 'success') {
-            const user = detail?.user || getUser();
-            const txPlan = detail?.transaction?.plan;
-            const end = user?.subscription_ends_at || user?.subscription_expires_at;
-            const trial = user?.trial_ends_at;
-            if (title) title.textContent = 'Оплата прошла';
-            if (text) {
-                if (txPlan === 'trial_bind' || (!end && trial)) {
-                    text.textContent = `Карта привязана. Триал до ${formatShortDate(trial)}. Чек на ${user?.email || 'указанную почту'}.`;
-                } else if (end) {
-                    text.textContent = `Подписка до ${formatShortDate(end)}. Чек на ${user?.email || 'указанную почту'}.`;
-                } else {
-                    text.textContent = 'Платёж принят. Обновляю статус…';
-                }
-            }
-            if (retryBtn) retryBtn.hidden = true;
-        } else {
+
+        if (payment === 'fail') {
+            const title = document.getElementById('subResultTitle');
+            const text = document.getElementById('subResultText');
+            const retryBtn = document.getElementById('subResultRetryBtn');
             if (title) title.textContent = 'Оплата не завершена';
             if (text) text.textContent = 'Платёж отменён или прерван. Можно попробовать снова.';
             if (retryBtn) retryBtn.hidden = false;
+            closeModal('subPayOpenedModal');
+            openModal('subResultModal');
+            clearPaymentReturnUrl();
+            updateHeaderPills();
+            syncAccessGate();
+            return;
         }
-        openModal('subResultModal');
-        const clean = new URL(global.location.href);
-        clean.searchParams.delete('payment');
-        clean.searchParams.delete('InvId');
-        clean.searchParams.delete('inv_id');
-        global.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
-        updateHeaderPills();
+
+        if (!rb || !global.DaAuthSession?.getJwt?.()) {
+            if (rb) clearPaymentReturnUrl();
+            return;
+        }
+
+        const dedupeKey = `da_pay_ok_${rb.inv}`;
+        try {
+            if (global.sessionStorage?.getItem(dedupeKey) === '1') {
+                clearPaymentReturnUrl();
+                return;
+            }
+        } catch (_) { /* */ }
+
+        let detail = null;
+        try {
+            detail = await syncInvoiceAfterReturn(p, rb);
+        } catch (err) {
+            clearPaymentReturnUrl();
+            global.showDaErrorToast?.(err?.payload?.message || 'Не удалось синхронизировать оплату с Robokassa');
+            return;
+        }
+
+        const paid = Boolean(detail?.confirmed)
+            || detail?.transaction?.status === 'paid'
+            || detail?.user?.access_allowed;
+        if (!paid) {
+            clearPaymentReturnUrl();
+            global.showDaErrorToast?.('Оплата ещё не подтверждена Robokassa. Обновите страницу через минуту.');
+            return;
+        }
+        try {
+            global.sessionStorage?.setItem(dedupeKey, '1');
+        } catch (_) { /* */ }
+        clearPaymentReturnUrl();
+        clearPendingPayment();
+        showPaymentSuccessModal(detail);
+    }
+
+    function profileSubStatusBadgeText(user, kind) {
+        if (kind === 'loading' || kind === 'unknown') return 'Загрузка…';
+        if (kind === 'bind') return 'Триал · привязка 1 ₽';
+        if (kind === 'trial') {
+            const trialIso = user?.trial_ends_at;
+            const days = trialDaysLeft(user) || 14;
+            return trialIso
+                ? `Триал до ${formatShortDate(trialIso)} · ${days} дн.`
+                : `Триал · ${days} дн.`;
+        }
+        if (kind === 'paid') {
+            const end = user.subscription_ends_at || user.subscription_expires_at;
+            return `Активна до ${formatShortDate(end)}`;
+        }
+        if (kind === 'expired') return 'Не оплачена';
+        return '—';
+    }
+
+    function syncProfileReceiptEmailUi() {
+        const user = getUser();
+        const email = String(user?.email || '').trim();
+        const valueEl = document.getElementById('profileReceiptEmailValue');
+        const input = document.getElementById('profileReceiptEmailInput');
+        if (valueEl) valueEl.textContent = email || '—';
+        if (input && document.activeElement !== input && !input.value && email) {
+            input.value = email;
+        }
+    }
+
+    function userHasBoundCard(user) {
+        if (!user) return false;
+        if (user.has_bound_card === true || user.card_bound === true) return true;
+        const mother = Number(user.robokassa_mother_inv_id);
+        return Boolean(user.trial_card_bound_at && Number.isFinite(mother) && mother > 0);
+    }
+
+    function cardBrandDisplayTitle(brand) {
+        const b = String(brand || '').trim();
+        if (!b || b === 'Карта') return 'Банковская карта';
+        return b;
+    }
+
+    function formatCardListLabel(card, user) {
+        const brand = String(card?.brand || user?.card_brand || '').trim();
+        const last4 = String(card?.last4 || user?.card_last4 || '').trim();
+        if (brand === 'Тестовая карта Robokassa' || card?.is_test) {
+            return 'Тестовая карта Robokassa';
+        }
+        if (last4) {
+            return `${cardBrandDisplayTitle(brand)} •••• ${last4}`;
+        }
+        return cardBrandDisplayTitle(brand);
+    }
+
+    function sessionFallbackCards(user) {
+        if (!userHasBoundCard(user)) return [];
+        return [{
+            inv_id: Number(user.robokassa_mother_inv_id) || 0,
+            active: true,
+            bound_at: user.trial_card_bound_at || null,
+            autorenew_enabled: Boolean(user.autorenew_enabled),
+            brand: user.card_brand || null,
+            last4: user.card_last4 || null,
+            is_test: user.card_brand === 'Тестовая карта Robokassa',
+            label: formatCardListLabel(null, user),
+        }];
+    }
+
+    function mergeBoundCards(apiCards, user, hasBound) {
+        const list = Array.isArray(apiCards) ? [...apiCards] : [];
+        if (list.some((c) => c.active)) return list;
+        if (hasBound === true || userHasBoundCard(user)) {
+            const fb = sessionFallbackCards(user);
+            if (fb.length) return fb;
+        }
+        return list;
+    }
+
+    function profileBoundCardsSummary() {
+        if (boundCardsCache.has_bound_card === true) {
+            const cards = boundCardsCache.cards || [];
+            const n = cards.length || 1;
+            return n === 1 ? '1 карта' : `${n} карты`;
+        }
+        const cards = boundCardsCache.cards || [];
+        if (cards.length) return cards.length === 1 ? '1 карта' : `${cards.length} карты`;
+        return userHasBoundCard(getUser()) ? '1 карта' : 'Нет';
+    }
+
+    function syncProfileBoundCardsValue() {
+        const valueEl = document.getElementById('profileBoundCardsValue');
+        if (valueEl) valueEl.textContent = profileBoundCardsSummary();
+    }
+
+    function renderProfileBoundCards() {
+        const list = document.getElementById('profileBoundCardsList');
+        const emptyEl = document.getElementById('profileBoundCardsEmpty');
+        const demoEl = document.getElementById('profileBoundCardsDemo');
+        if (!list) return;
+        const user = getUser();
+        const demo = Boolean(boundCardsCache.demo);
+        list.innerHTML = '';
+        if (demoEl) demoEl.hidden = !demo;
+        const bindBtn = document.getElementById('profileBoundCardsBindBtn');
+        const hasBound = boundCardsCache.has_bound_card === true || userHasBoundCard(user);
+        let cards = boundCardsCache.cards || [];
+        if (!cards.length && hasBound) {
+            cards = sessionFallbackCards(user);
+        }
+        const showEmpty = !demo && cards.length === 0 && !hasBound;
+        if (emptyEl) {
+            emptyEl.hidden = !showEmpty;
+            emptyEl.style.display = showEmpty ? '' : 'none';
+        }
+        if (bindBtn) {
+            bindBtn.hidden = !showEmpty;
+            bindBtn.style.display = showEmpty ? '' : 'none';
+        }
+        if (demo) {
+            syncProfileBoundCardsValue();
+            return;
+        }
+        cards.forEach((card) => {
+            const li = document.createElement('li');
+            li.className = 'profile-bound-cards__item';
+            const main = document.createElement('div');
+            main.className = 'profile-bound-cards__main';
+            const title = document.createElement('div');
+            title.className = 'profile-bound-cards__title';
+            title.textContent = formatCardListLabel(card, user);
+            const meta = document.createElement('div');
+            meta.className = 'profile-bound-cards__meta';
+            const parts = [];
+            if (card.bound_at) parts.push(`с ${formatShortDate(card.bound_at)}`);
+            if (card.autorenew_enabled) parts.push('автопродление');
+            else if (card.active) parts.push('автопродление выкл.');
+            meta.textContent = parts.join(' · ') || '—';
+            main.appendChild(title);
+            main.appendChild(meta);
+            li.appendChild(main);
+            if (card.active && (boundCardsCache.can_unbind || userHasBoundCard(user))) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'profile-bound-cards__unbind';
+                btn.textContent = 'Отвязать';
+                btn.dataset.invId = String(card.inv_id);
+                btn.addEventListener('click', () => {
+                    const msg = 'Отвязать карту? Автопродление отключится; без карты пробный период недоступен.';
+                    if (global.confirm(msg)) void unbindProfileCard(card.inv_id);
+                });
+                li.appendChild(btn);
+            }
+            list.appendChild(li);
+        });
+        syncProfileBoundCardsValue();
+    }
+
+    async function fetchProfileBoundCards() {
+        if (!global.DaAuthSession?.getJwt?.()) return;
+        const user = getUser();
+        try {
+            const data = await apiFetch('/api/v1/me/cards');
+            const hasBound = data.has_bound_card === true || userHasBoundCard(user);
+            boundCardsCache = {
+                cards: mergeBoundCards(data.cards, user, hasBound),
+                demo: Boolean(data.demo),
+                can_unbind: Boolean(data.can_unbind),
+                has_bound_card: hasBound,
+            };
+        } catch (_) {
+            const hasBound = userHasBoundCard(user);
+            const fallback = sessionFallbackCards(user);
+            boundCardsCache = {
+                cards: hasBound ? fallback : [],
+                demo: false,
+                can_unbind: hasBound,
+                has_bound_card: hasBound,
+            };
+        }
+        renderProfileBoundCards();
+    }
+
+    async function unbindProfileCard(invId) {
+        try {
+            const data = await apiFetch('/api/v1/me/cards/unbind', {
+                method: 'POST',
+                body: { inv_id: invId },
+            });
+            if (data.user) global.DaAuthSession.persistSession(null, data.user);
+            global.showDaActionToast?.('Карта отвязана');
+            boundCardsCache = { cards: [], demo: false, can_unbind: false, has_bound_card: false };
+            await fetchProfileBoundCards();
+            updateHeaderPills();
+            showActivationGate();
+        } catch (err) {
+            global.showDaErrorToast?.(err?.payload?.message || 'Не удалось отвязать карту');
+        }
+    }
+
+    function setProfileBoundCardsEditorOpen(open) {
+        const editor = document.getElementById('profileBoundCardsEditor');
+        const toggle = document.getElementById('profileBoundCardsToggle');
+        if (!editor || !toggle) return;
+        editor.classList.toggle('is-open', open);
+        editor.setAttribute('aria-hidden', open ? 'false' : 'true');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) void fetchProfileBoundCards();
+    }
+
+    function bindCardFromProfile() {
+        const user = getUser();
+        if (userHasBoundCard(user)) {
+            global.showDaActionToast?.('Карта уже привязана');
+            void fetchProfileBoundCards();
+            return;
+        }
+        void startPayment('trial_bind');
+    }
+
+    function toggleProfileBoundCardsEditor(forceOpen) {
+        const editor = document.getElementById('profileBoundCardsEditor');
+        if (!editor) return;
+        const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !editor.classList.contains('is-open');
+        if (nextOpen) {
+            const emailEditor = document.getElementById('profileReceiptEmailEditor');
+            if (emailEditor?.classList.contains('is-open')) {
+                setProfileReceiptEmailEditorOpen(false);
+            }
+        }
+        setProfileBoundCardsEditorOpen(nextOpen);
     }
 
     function syncProfileSubscriptionBlock() {
         const user = getUser();
-        const statusEl = document.getElementById('profileSubStatus');
         const renewBtn = document.getElementById('profileSubRenewBtn');
         const refStat = document.getElementById('profileSubRefStat');
-        const autorenewBtn = document.getElementById('profileSubAutorenewBtn');
-        const autorenewHint = document.getElementById('profileSubAutorenewHint');
-        if (!statusEl) return;
+        const refInput = document.getElementById('profileSubRefUrlInput');
+        const autorenewRow = document.getElementById('profileSubAutorenewRow');
         const kind = uiKind(user);
-        if (kind === 'loading' || kind === 'unknown') {
-            statusEl.textContent = 'Триал — загрузка данных…';
-        } else if (kind === 'bind') {
-            statusEl.textContent = 'Триал не активирован — привязка карты 1 ₽';
-        } else if (kind === 'trial') {
-            const trialIso = user.trial_ends_at;
-            statusEl.textContent = trialIso
-                ? `Триал до ${formatShortDate(trialIso)} (${trialDaysLeft(user) || 14} дн.)`
-                : `Триал · ${trialDaysLeft(user) || 14} дн.`;
-        } else if (kind === 'paid') {
-            const end = user.subscription_ends_at || user.subscription_expires_at;
-            statusEl.textContent = `Активна до ${formatShortDate(end)}`;
-        } else if (kind === 'expired') {
-            statusEl.textContent = 'Не оплачена — доступ без блокировок, напоминание в шапке';
-        } else {
-            statusEl.textContent = 'Триал — загрузка данных…';
-        }
+        const badgeText = profileSubStatusBadgeText(user, kind);
+        const badgeEl = document.getElementById('profileSubStatusBadge');
+        if (badgeEl) badgeEl.textContent = badgeText;
         if (renewBtn) {
             renewBtn.textContent = kind === 'paid' ? 'Продлить' : 'Оплатить';
         }
-        if (refStat) {
-            const max = referralsCache.bonus_days_max || 21;
-            const activated = referralsCache.rewards_count != null
-                ? referralsCache.rewards_count
-                : (referralsCache.paid || 0);
-            refStat.textContent = `Приглашено: ${referralsCache.invited || 0}, активировали: ${activated}, бонус: +${referralsCache.bonus_days || 0} / ${max} дн.`;
+        const invited = referralsCache.rewards_count != null
+            ? referralsCache.rewards_count
+            : (referralsCache.paid || referralsCache.invited || 0);
+        const max = referralsCache.rewards_max || REF_REWARDS_MAX;
+        if (refStat) refStat.textContent = `Приглашено: ${invited} из ${max}`;
+        if (refInput) refInput.value = referralLink(user) || '';
+        if (autorenewRow) autorenewRow.hidden = !user?.autorenew_enabled;
+        syncProfileReceiptEmailUi();
+        if (userHasBoundCard(user)) {
+            boundCardsCache.has_bound_card = true;
+            if (!(boundCardsCache.cards || []).length) {
+                boundCardsCache.cards = sessionFallbackCards(user);
+            }
+        } else {
+            boundCardsCache.has_bound_card = false;
         }
-        const profileRef = document.getElementById('profileSubRefLink');
-        if (profileRef) profileRef.textContent = referralLink(user) || '—';
-        if (autorenewBtn) {
-            autorenewBtn.hidden = !user?.autorenew_enabled;
-        }
-        if (autorenewHint) {
-            autorenewHint.hidden = Boolean(user?.autorenew_enabled);
-            autorenewHint.textContent = 'Автопродление отключено, списаний без вашего подтверждения не будет.';
-        }
+        syncProfileBoundCardsValue();
+        renderProfileBoundCards();
     }
 
-  async function patchReceiptEmail() {
-        const input = document.getElementById('profileAccountEmail');
+    async function patchReceiptEmail() {
+        const input = document.getElementById('profileReceiptEmailInput');
         if (!input) return;
         const email = String(input.value || '').trim();
         try {
             const data = await apiFetch('/api/v1/me', { method: 'PATCH', body: { email } });
             if (data.user) global.DaAuthSession.persistSession(null, data.user);
             global.showDaActionToast?.('Email для чеков сохранён');
+            syncProfileReceiptEmailUi();
+            const headerEmail = document.getElementById('profileAccountEmail');
+            if (headerEmail) headerEmail.textContent = email || '—';
+            setProfileReceiptEmailEditorOpen(false);
             updateHeaderPills();
         } catch (err) {
             global.showDaErrorToast?.(err?.payload?.message || 'Не удалось сохранить email');
         }
+    }
+
+    function setProfileReceiptEmailEditorOpen(open) {
+        const editor = document.getElementById('profileReceiptEmailEditor');
+        const toggle = document.getElementById('profileReceiptEmailToggle');
+        const input = document.getElementById('profileReceiptEmailInput');
+        if (!editor || !toggle) return;
+        editor.classList.toggle('is-open', open);
+        editor.setAttribute('aria-hidden', open ? 'false' : 'true');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            const cardsEditor = document.getElementById('profileBoundCardsEditor');
+            if (cardsEditor?.classList.contains('is-open')) {
+                setProfileBoundCardsEditorOpen(false);
+            }
+            const user = getUser();
+            if (input && user?.email && !String(input.value || '').trim()) {
+                input.value = user.email;
+            }
+            global.requestAnimationFrame(() => input?.focus());
+        }
+    }
+
+    function toggleProfileReceiptEmailEditor(forceOpen) {
+        const editor = document.getElementById('profileReceiptEmailEditor');
+        if (!editor) return;
+        const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !editor.classList.contains('is-open');
+        setProfileReceiptEmailEditorOpen(nextOpen);
     }
 
     async function setAutorenew(enabled) {
@@ -461,33 +1093,52 @@
         }
     }
 
-    function maybeShowOnboarding() {
-        try {
-            if (global.localStorage.getItem(ONBOARD_KEY) === '1') return;
-        } catch (_) { return; }
-        if (!global.DaAuthSession?.getJwt?.()) return;
-        openModal('subOnboardModal');
-    }
-
     function bindUi() {
         document.querySelectorAll('[data-subscription-pill]').forEach((btn) => {
-            btn.addEventListener('click', () => openPaywall());
+            btn.addEventListener('click', () => {
+                if (needsActivationGate()) showActivationGate();
+                else openPaywall();
+            });
         });
-        document.getElementById('subSoftPayBtn')?.addEventListener('click', () => openPaywall());
+        document.getElementById('subSoftPayBtn')?.addEventListener('click', () => {
+            if (needsActivationGate()) showActivationGate();
+            else openPaywall();
+        });
         document.getElementById('subSoftLaterBtn')?.addEventListener('click', () => {
             try {
                 global.localStorage.setItem(BANNER_HIDE_KEY, String(Date.now() + BANNER_HIDE_MS));
             } catch (_) { /* */ }
             syncSoftBanner();
         });
-        document.getElementById('subOnboardOkBtn')?.addEventListener('click', () => {
-            try { global.localStorage.setItem(ONBOARD_KEY, '1'); } catch (_) { /* */ }
-            closeModal('subOnboardModal');
+        document.getElementById('subActivateBindBtn')?.addEventListener('click', () => startPayment('trial_bind'));
+        document.getElementById('subActivateLogoutBtn')?.addEventListener('click', () => {
+            if (typeof global.handleLogout === 'function') global.handleLogout();
         });
-        document.getElementById('subOnboardPlansBtn')?.addEventListener('click', () => {
-            try { global.localStorage.setItem(ONBOARD_KEY, '1'); } catch (_) { /* */ }
-            closeModal('subOnboardModal');
-            openPaywall();
+        document.getElementById('subActivateReceiptEditBtn')?.addEventListener('click', () => {
+            showReceiptEmailField('subActivate', true);
+        });
+        document.getElementById('subPayReceiptEditBtn')?.addEventListener('click', () => {
+            showReceiptEmailField('subPay', true);
+        });
+        document.getElementById('subActivateEmail')?.addEventListener('input', () => syncReceiptEmailUi('subActivate'));
+        document.getElementById('subPayEmail')?.addEventListener('input', () => syncReceiptEmailUi('subPay'));
+        document.getElementById('subActivateEmail')?.addEventListener('blur', () => {
+            syncReceiptEmailUi('subActivate');
+            if (String(document.getElementById('subActivateEmail')?.value || '').trim()) {
+                showReceiptEmailField('subActivate', false);
+            }
+        });
+        document.getElementById('subPayEmail')?.addEventListener('blur', () => {
+            syncReceiptEmailUi('subPay');
+            if (String(document.getElementById('subPayEmail')?.value || '').trim()) {
+                showReceiptEmailField('subPay', false);
+            }
+        });
+        document.querySelectorAll('[data-sub-activate-plan]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const plan = btn.getAttribute('data-sub-activate-plan') || 'month';
+                void startPayment(plan);
+            });
         });
         document.querySelectorAll('[data-sub-modal-close]').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -497,11 +1148,13 @@
         });
         document.querySelectorAll('.sub-modal-overlay[data-sub-overlay]').forEach((overlay) => {
             overlay.addEventListener('click', (ev) => {
+                if (overlay.hasAttribute('data-sub-nodismiss')) return;
                 if (ev.target === overlay && overlay.id) closeModal(overlay.id);
             });
         });
         document.addEventListener('keydown', (ev) => {
             if (ev.key !== 'Escape') return;
+            if (needsActivationGate()) return;
             closeTopSubModal();
         });
         document.getElementById('subPayBlockedCopyBtn')?.addEventListener('click', async () => {
@@ -524,37 +1177,59 @@
                 selectPayPlan(card.getAttribute('data-sub-plan') || 'month');
             });
         });
-        document.getElementById('subCopyRefBtn')?.addEventListener('click', async () => {
-            const link = referralLink(getUser());
+        document.getElementById('subCopyRefBtn')?.addEventListener('click', async (ev) => {
+            const btn = ev.currentTarget;
+            const link = referralLink(getUser()) || document.getElementById('subReferralUrlInput')?.value;
             if (!link) return;
+            const prev = btn.textContent;
             try {
                 await global.navigator.clipboard.writeText(link);
-                global.showDaActionToast?.('Ссылка скопирована');
             } catch (_) {
                 global.showDaActionToast?.(link);
+                return;
+            }
+            btn.textContent = 'Скопировано ✓';
+            global.setTimeout(() => {
+                btn.textContent = prev || 'Копировать';
+            }, 2000);
+        });
+        document.getElementById('subPlanAutorenewOffBtn')?.addEventListener('click', () => {
+            if (global.confirm('Отключить автопродление? Следующее списание не произойдёт без вашего подтверждения.')) {
+                void setAutorenew(false);
             }
         });
         document.getElementById('profileSubRenewBtn')?.addEventListener('click', () => openPaywall());
-        document.getElementById('profileSubCopyRefBtn')?.addEventListener('click', async () => {
-            const link = referralLink(getUser());
+        document.getElementById('profileSubCopyRefBtn')?.addEventListener('click', async (ev) => {
+            const btn = ev.currentTarget;
+            const link = referralLink(getUser())
+                || document.getElementById('profileSubRefUrlInput')?.value;
             if (!link) return;
             try {
                 await global.navigator.clipboard.writeText(link);
                 global.showDaActionToast?.('Ссылка скопирована');
             } catch (_) {
                 global.showDaActionToast?.(link);
+                return;
             }
+            btn.classList.add('is-copied');
+            global.setTimeout(() => btn.classList.remove('is-copied'), 2000);
         });
         document.getElementById('profileSubAutorenewBtn')?.addEventListener('click', () => {
             if (global.confirm('Отключить автопродление? Следующее списание не произойдёт без вашего подтверждения.')) {
                 void setAutorenew(false);
             }
         });
+        document.getElementById('profileReceiptEmailToggle')?.addEventListener('click', () => {
+            toggleProfileReceiptEmailEditor();
+        });
+        document.getElementById('profileBoundCardsToggle')?.addEventListener('click', () => {
+            toggleProfileBoundCardsEditor();
+        });
+        document.getElementById('profileBoundCardsBindBtn')?.addEventListener('click', () => {
+            bindCardFromProfile();
+        });
         document.getElementById('profileAccountEmailSave')?.addEventListener('click', () => patchReceiptEmail());
         document.getElementById('profileCacheRefreshBtn')?.addEventListener('click', () => clearAppCache());
-        document.getElementById('profileAccountLogoutBtn')?.addEventListener('click', () => {
-            if (typeof global.handleLogout === 'function') global.handleLogout();
-        });
         document.getElementById('profileDeleteOpenBtn')?.addEventListener('click', () => openModal('subDeleteModal'));
         document.getElementById('subDeleteConfirmBtn')?.addEventListener('click', () => {
             const v = document.getElementById('subDeleteConfirmInput')?.value;
@@ -573,10 +1248,18 @@
         updateHeaderPills();
         void refreshMe().then(() => {
             updateHeaderPills();
-            maybeShowOnboarding();
             void handlePaymentReturn();
+            void handlePendingPaymentOnResume();
         });
         global.addEventListener('storage', () => updateHeaderPills());
+        global.document?.addEventListener('visibilitychange', () => {
+            if (global.document.visibilityState === 'visible') {
+                void handlePendingPaymentOnResume();
+            }
+        });
+        global.addEventListener('pageshow', () => {
+            void handlePendingPaymentOnResume();
+        });
     }
 
     global.DaSubscription = {
@@ -586,6 +1269,10 @@
         openPaywall,
         getStoredReferralCode,
         pillLabel,
+        needsActivationGate,
+        showActivationGate,
+        blocksMainScreen,
+        syncAccessGate,
     };
 
     if (document.readyState === 'loading') {

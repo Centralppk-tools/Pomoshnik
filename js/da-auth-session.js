@@ -6,6 +6,7 @@
 
     const JWT_KEY = 'da_auth_jwt';
     const USER_KEY = 'da_auth_user';
+    const DA_TERMS_ACCEPTED_KEY = 'da_terms_accepted';
     /** Мобильный LTE + merge на login иногда > 10 с */
     const AUTH_FETCH_TIMEOUT_MS = 30000;
     const FETCH_ME_MIN_INTERVAL_MS = 15000;
@@ -110,6 +111,10 @@
         const host = String(loc.hostname || '').toLowerCase();
         if (loc.protocol === 'http:' && (host === '127.0.0.1' || host === 'localhost')) {
             return String(loc.origin || '').replace(/\/$/, '');
+        }
+        const payTunnel = String(loc.pathname || '').match(/^(\/dev-local-pay)(?:\/|$)/i);
+        if (payTunnel) {
+            return `${loc.origin}${payTunnel[1]}`.replace(/\/$/, '');
         }
         return configured;
     }
@@ -217,6 +222,45 @@
         }
         const data = await authFetch('/api/auth/login', { body });
         if (data.token) persistSession(data.token, data.user);
+        return data;
+    }
+
+    function hasLocalTermsAcceptance() {
+        try {
+            return global.localStorage.getItem(DA_TERMS_ACCEPTED_KEY) === '1';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function markLocalTermsAccepted(userPatch) {
+        try {
+            global.localStorage.setItem(DA_TERMS_ACCEPTED_KEY, '1');
+        } catch (_) { /* */ }
+        const stamped = new Date().toISOString();
+        const prev = getStoredUser();
+        const base = userPatch && typeof userPatch === 'object' ? userPatch : (prev || {});
+        persistSession(null, {
+            ...base,
+            terms_accepted_at: base.terms_accepted_at || stamped,
+            terms_accepted: true,
+        });
+        return getStoredUser();
+    }
+
+    async function acceptTerms() {
+        const jwt = getJwt();
+        if (!jwt) {
+            const user = markLocalTermsAccepted(getStoredUser());
+            return { ok: true, terms_accepted: true, user };
+        }
+        const data = await authFetch('/api/v1/me/accept-terms', {
+            body: { accepted_offer: true, accepted_privacy: true },
+        });
+        try {
+            global.localStorage.setItem(DA_TERMS_ACCEPTED_KEY, '1');
+        } catch (_) { /* */ }
+        if (data.user) persistSession(null, data.user);
         return data;
     }
 
@@ -350,6 +394,9 @@
         requestMigrationEmail,
         verifyMigrationEmail,
         fetchMe,
+        acceptTerms,
+        hasLocalTermsAcceptance,
+        DA_TERMS_ACCEPTED_KEY,
         hasEmailOnAccount,
         hasVerifiedEmailOnAccount
     };

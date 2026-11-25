@@ -59,6 +59,11 @@ body.auth-locked .screen:not(#screen-auth) {
     display: none;
 }
 
+.user-auth-overlay[hidden],
+#authTermsGate[hidden] {
+    display: none !important;
+}
+
 #screen-auth .hidden,
 #screen-auth [hidden] {
     display: none !important;
@@ -812,4 +817,46 @@ body.email-upgrade-blocking.email-upgrade-use-login #screen-auth {
     z-index: 6600;
     visibility: visible;
     pointer-events: auto;
+}
+
+.auth-terms-gate {
+    z-index: 6800;
+    background: rgba(5, 8, 10, 0.92);
+    pointer-events: auto;
+}
+
+.auth-terms-gate:not([hidden]) {
+    display: flex;
+}
+
+.auth-terms-gate .user-auth-card {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+#authTermsGateSubmit {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+}
+
+.user-auth-card--terms {
+    width: min(100%, 420px);
+}
+
+#authTermsGateError:empty {
+    display: none;
+    margin: 0;
+    min-height: 0;
+}
+
+#authTermsGateError:not(:empty) {
+    display: block;
+    margin: 0 0 10px;
+}
+
+body.auth-terms-blocking #mainScreensStage,
+body.auth-terms-blocking .bottom-tabbar {
+    pointer-events: none;
 }

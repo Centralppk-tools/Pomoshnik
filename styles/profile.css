@@ -4311,8 +4311,9 @@ body.plan-sheet-open {
 
 /* === Profile premium layout (header, events, QR, menu) === */
 #screen-profile .profile-header-card {
+    position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0;
     padding: 16px;
     margin: -16px -16px 0;
@@ -4400,28 +4401,31 @@ body.plan-sheet-open {
 
 #screen-profile .profile-header-card__info {
     margin-left: 16px;
+    padding-right: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: flex-start;
     gap: 6px;
     min-width: 0;
     flex: 1;
+    width: 0;
 }
 
 #screen-profile .profile-header-card__name-row {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
+    width: 100%;
     max-width: 100%;
-    width: auto;
+    min-width: 0;
 }
 
 #screen-profile .profile-header-card__name-input {
-    flex: 0 1 auto;
-    width: auto;
+    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
-    max-width: min(100%, 16em);
+    max-width: 100%;
     field-sizing: content;
     background: transparent;
     border: none;
@@ -4469,7 +4473,10 @@ body.plan-sheet-open {
 }
 
 #screen-profile .role-switcher {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    align-items: center;
     background: var(--profile-inner-bg);
     padding: 3px;
     border-radius: 10px;
@@ -4481,6 +4488,8 @@ body.plan-sheet-open {
 }
 
 #screen-profile .role-switcher .role-btn {
+    position: relative;
+    flex: 0 0 auto;
     border: none;
     background: transparent;
     color: var(--profile-text-secondary);
@@ -4735,15 +4744,206 @@ body.plan-sheet-open {
     display: none;
 }
 
-#screen-profile .profile-menu-list.menu-list {
-    background: var(--profile-card-bg);
+#screen-profile .profile-subscription-card {
+    background: #12171a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--profile-radius);
-    border: 1px solid var(--profile-border);
-    overflow: hidden;
-    margin-top: 16px;
+    padding: 14px;
     margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+#screen-profile .profile-subscription-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+#screen-profile .profile-subscription-card__title-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+#screen-profile .profile-subscription-card__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+#screen-profile .profile-subscription-card__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 229, 155, 0.35);
+    background: rgba(0, 229, 155, 0.1);
+    color: #00e59b;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.25;
+    max-width: 100%;
+}
+
+#screen-profile .profile-subscription-card__renew {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    border: none;
+    border-radius: 10px;
+    background: #00e59b;
+    color: #05130e;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(0, 229, 155, 0.18);
+}
+
+#screen-profile .profile-subscription-card__renew:active {
+    transform: scale(0.98);
+}
+
+#screen-profile .profile-subscription-card__ref {
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0d1113;
+    margin-bottom: 0;
+}
+
+#screen-profile .profile-subscription-card__ref-title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8edf5;
+}
+
+#screen-profile .profile-subscription-card__accent {
+    color: #00e59b;
+    font-weight: 600;
+}
+
+#screen-profile .profile-subscription-card__ref-stat {
+    margin: 0 0 8px;
+    font-size: 11px;
+    color: rgba(232, 237, 245, 0.5);
+}
+
+#screen-profile .profile-subscription-card__ref-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+#screen-profile .profile-subscription-card__ref-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0d1113;
+    color: rgba(232, 237, 245, 0.78);
+    font-size: 11px;
+    font-family: inherit;
+}
+
+#screen-profile .profile-subscription-card__ref-copy {
+    flex-shrink: 0;
+    width: 38px;
+    padding: 0;
+    border: 1px solid rgba(0, 229, 155, 0.35);
+    border-radius: 10px;
+    background: rgba(0, 229, 155, 0.1);
+    color: #00e59b;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#screen-profile .profile-subscription-card__ref-copy.is-copied {
+    background: rgba(0, 229, 155, 0.22);
+}
+
+#screen-profile .profile-subscription-card__autorenew {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+#screen-profile .profile-subscription-card__autorenew-text {
+    color: rgba(232, 237, 245, 0.68);
+}
+
+#screen-profile .profile-subscription-card__autorenew-off {
+    padding: 4px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.08);
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+#screen-profile .profile-subscription-card__autorenew-off:hover,
+#screen-profile .profile-subscription-card__autorenew-off:active {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+#screen-profile a.menu-list__item.menu-list__item--doc {
+    text-decoration: none;
+    color: #f1f5f9;
+}
+
+#screen-profile .profile-menu-block {
+    margin: 12px 0 0;
     width: 100%;
     box-sizing: border-box;
+}
+
+#screen-profile .profile-menu-block:last-of-type {
+    margin-bottom: 10px;
+}
+
+#screen-profile .profile-menu-block__title {
+    margin: 0 0 8px 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: -0.01em;
+}
+
+#screen-profile .profile-menu-list.menu-list {
+    background: #12171a;
+    border-radius: var(--profile-radius);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    margin-top: 0;
+    margin-bottom: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#screen-profile .profile-menu-block .profile-menu-list.menu-list {
+    margin-bottom: 0;
 }
 
 #screen-profile .menu-list__item {
@@ -4754,15 +4954,213 @@ body.plan-sheet-open {
     gap: 12px;
     padding: 14px 16px;
     border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     background: transparent;
     font: inherit;
     font-size: 14px;
     font-weight: 500;
+    color: #f1f5f9;
     cursor: pointer;
     text-align: left;
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     transition: background 0.15s ease;
+}
+
+#screen-profile .menu-list__label {
+    color: #f1f5f9;
+}
+
+#screen-profile .menu-list__item:last-child {
+    border-bottom: none;
+}
+
+#screen-profile .menu-list__item--value .menu-list__label {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+#screen-profile .menu-list__value {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 52%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--profile-text-muted);
+}
+
+#screen-profile .profile-menu-list__editor {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0 16px;
+    border-bottom: 0 solid rgba(255, 255, 255, 0.08);
+    background: #0d1113;
+    transition:
+        max-height 0.28s ease,
+        opacity 0.22s ease,
+        padding 0.28s ease,
+        border-bottom-width 0.28s ease;
+}
+
+#screen-profile .profile-menu-list__editor.is-open {
+    max-height: 72px;
+    opacity: 1;
+    padding: 0 16px 12px;
+    border-bottom-width: 1px;
+}
+
+#screen-profile .profile-menu-list__editor--cards.is-open {
+    max-height: 280px;
+}
+
+#screen-profile .profile-bound-cards {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#screen-profile .profile-bound-cards__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0a0e10;
+}
+
+#screen-profile .profile-bound-cards__main {
+    flex: 1;
+    min-width: 0;
+}
+
+#screen-profile .profile-bound-cards__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+#screen-profile .profile-bound-cards__meta {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--profile-text-muted);
+}
+
+#screen-profile .profile-bound-cards__unbind {
+    flex-shrink: 0;
+    height: 36px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(248, 113, 113, 0.14);
+    color: #fca5a5;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+#screen-profile .profile-bound-cards__unbind:hover,
+#screen-profile .profile-bound-cards__unbind:active {
+    background: rgba(248, 113, 113, 0.22);
+}
+
+#screen-profile .profile-bound-cards__unbind:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+#screen-profile .profile-bound-cards__demo {
+    margin: 8px 0 4px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--profile-text-muted);
+}
+
+#screen-profile .profile-bound-cards__empty-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 0 4px;
+}
+
+#screen-profile .profile-bound-cards__empty-row[hidden] {
+    display: none !important;
+}
+
+#screen-profile .profile-bound-cards__empty-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--profile-text-muted);
+}
+
+#screen-profile .profile-bound-cards__bind {
+    flex-shrink: 0;
+    min-width: 108px;
+}
+
+#screen-profile .profile-menu-list__editor-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+#screen-profile .profile-menu-list__email-input {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0a0e10;
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+#screen-profile .profile-menu-list__email-input:focus {
+    outline: none;
+    border-color: #00e59b;
+    box-shadow: none;
+}
+
+#screen-profile .profile-menu-list__save {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 10px;
+    background: #00e59b;
+    color: #05130e;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 0 18px rgba(0, 229, 155, 0.16);
+}
+
+#screen-profile .profile-menu-list__save:active {
+    transform: scale(0.98);
+}
+
+#screen-profile .menu-list__item--value[aria-expanded="true"] .menu-list__chevron {
+    transform: rotate(90deg);
 }
 
 #screen-profile .menu-list__item:hover {
@@ -4774,14 +5172,29 @@ body.plan-sheet-open {
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-#screen-profile .menu-list__item--danger {
-    color: var(--profile-danger);
+#screen-profile .profile-menu-list .profile-logout-btn,
+#screen-profile .profile-account-menu .profile-logout-btn,
+#screen-profile .profile-menu-list .profile-logout-btn .menu-list__label,
+#screen-profile .profile-account-menu .profile-logout-btn .menu-list__label {
+    color: #f1f5f9;
+}
+
+#screen-profile .menu-list__item--delete {
+    color: #ef4444;
+}
+
+#screen-profile .menu-list__item--delete .menu-list__label {
+    color: #ef4444;
+    text-decoration: none;
 }
 
 #screen-profile .menu-list__chevron {
+    display: inline-block;
     color: rgba(255, 255, 255, 0.25);
     font-size: 18px;
     line-height: 1;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
 }
 
 #screen-profile .app-community-block {

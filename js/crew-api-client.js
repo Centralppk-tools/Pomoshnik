@@ -77,6 +77,10 @@
         if (loc.protocol === 'http:' && (host === '127.0.0.1' || host === 'localhost')) {
             return String(loc.origin || '').replace(/\/$/, '');
         }
+        const payTunnel = String(loc.pathname || '').match(/^(\/dev-local-pay)(?:\/|$)/i);
+        if (payTunnel) {
+            return `${loc.origin}${payTunnel[1]}`.replace(/\/$/, '');
+        }
         return configured;
     }
 
@@ -1103,6 +1107,7 @@
     }
 
     function schedulePushShifts(calendarShifts) {
+        if (global.isHydratingFromServer) return;
         const { enabled } = cfg();
         if (!enabled || typeof hooks.buildShiftPayload !== 'function') return;
         if (!hooks.getSyncUserId?.()) return;
@@ -1126,6 +1131,9 @@
     }
 
     async function pushProfileUpdateNow() {
+        if (global.isHydratingFromServer) {
+            return { ok: true, skipped: true, reason: 'hydrating' };
+        }
         const { enabled } = cfg();
         if (!enabled || typeof hooks.buildProfilePayload !== 'function') {
             return { ok: false, skipped: true, reason: 'disabled' };

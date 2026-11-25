@@ -60,69 +60,19 @@
         return 'muted';
     }
 
-    function escapeBadgeHtml(text) {
-        return String(text ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
     function setBadge(el, text, accent) {
         if (!el) return;
         SUB_ACCENT_CLASSES.forEach((name) => {
             el.classList.remove(`clock-wrap__sub--${name}`);
         });
-        el.classList.remove('clock-wrap__sub--stack');
         if (!text) {
             el.hidden = true;
             el.textContent = '';
-            el.innerHTML = '';
             return;
         }
         el.hidden = false;
-        el.innerHTML = '';
         el.textContent = text;
         el.classList.add(`clock-wrap__sub--${accent || 'muted'}`);
-    }
-
-    function getScheduleHeaderClockWrap() {
-        return document.querySelector('#screen-schedule .route-sticky-header-wrap .clock-wrap.time-box');
-    }
-
-    function resetFlightHeaderClockExtras() {
-        const pill = document.getElementById('scheduleFlightSpeed');
-        const wrap = getScheduleHeaderClockWrap();
-        if (pill) {
-            pill.hidden = true;
-            pill.textContent = '';
-        }
-        wrap?.classList.remove('is-flight-header');
-    }
-
-    function setFlightSpeedPill(limit) {
-        const pill = document.getElementById('scheduleFlightSpeed');
-        const wrap = getScheduleHeaderClockWrap();
-        if (!pill) return;
-        if (limit == null || !Number.isFinite(Number(limit))) {
-            pill.hidden = true;
-            pill.textContent = '';
-            wrap?.classList.remove('is-flight-header');
-            return;
-        }
-        pill.hidden = false;
-        pill.textContent = String(Math.round(Number(limit)));
-        wrap?.classList.add('is-flight-header');
-    }
-
-    function formatMotionEventLine(text) {
-        const raw = String(text || '').trim();
-        if (!raw) return '';
-        const parts = raw.split(/\s+/);
-        if (parts.length < 2) return raw;
-        const time = parts[parts.length - 1];
-        if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) return raw;
-        const label = parts.slice(0, -1).join(' ');
-        return `${label} · ${time}`;
     }
 
     function resolveActiveTurnaround(nowDate, trains) {
@@ -297,7 +247,7 @@
                     passedBefore: nextIndex,
                     progress,
                     badge: {
-                        text: `${shortStationLabel(title, 12)} ${formatMmSs(Math.abs(rem))}`,
+                        text: `${shortStationLabel(title, 9)} ${formatMmSs(Math.abs(rem))}`,
                         accent: accentFromRemainingMs(rem, overdue),
                     },
                 };
@@ -524,7 +474,11 @@
         }
 
         const motion = analyzeScheduleMotion(context.displayStops, context.selectedDate, nowDate);
-        applyCompactSpeedHeader(context, motion);
+        if (motion?.badge) {
+            setBadge(badgeEl, motion.badge.text, motion.badge.accent);
+        } else {
+            setBadge(badgeEl, '', 'muted');
+        }
 
         const nodes = document.querySelectorAll('#stationsList .station-node');
         nodes.forEach((node, index) => {
@@ -554,14 +508,12 @@
         if (!deps || !context?.nowDate) {
             clearTimelineMotion();
             resetRouteCardLiveFooters();
-            resetFlightHeaderClockExtras();
             setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
             return;
         }
 
         const screenSchedule = document.getElementById('screen-schedule');
         if (!screenSchedule || screenSchedule.classList.contains('hidden')) {
-            resetFlightHeaderClockExtras();
             setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
             clearTimelineMotion();
             resetRouteCardLiveFooters();
@@ -569,77 +521,21 @@
         }
 
         if (context.tab === 'tab-route') {
-            resetFlightHeaderClockExtras();
             updateRouteMotion(context.nowDate, context);
             clearTimelineMotion();
         } else if (context.tab === 'tab-schedule') {
             updateScheduleMotion(context.nowDate, context);
             resetRouteCardLiveFooters();
-        } else if (context.tab === 'tab-flight-map') {
-            updateFlightMotion(context.nowDate, context);
-            clearTimelineMotion();
-            resetRouteCardLiveFooters();
         } else {
-            resetFlightHeaderClockExtras();
             setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
             clearTimelineMotion();
             resetRouteCardLiveFooters();
         }
-    }
-
-    function applyCompactSpeedHeader(context, motion) {
-        const badgeEl = document.getElementById('scheduleMotionBadge');
-        if (!context.synced || !context.displayStops?.length) {
-            resetFlightHeaderClockExtras();
-            setBadge(badgeEl, '', 'muted');
-            return;
-        }
-
-        const vmax = context.flightSpeedLimit;
-        const hasLimit = vmax != null && Number.isFinite(Number(vmax));
-        const eventLine = formatMotionEventLine(motion?.badge?.text);
-
-        if (!eventLine && !hasLimit) {
-            resetFlightHeaderClockExtras();
-            setBadge(badgeEl, '', 'muted');
-            return;
-        }
-
-        if (hasLimit) {
-            setFlightSpeedPill(vmax);
-        } else {
-            const pill = document.getElementById('scheduleFlightSpeed');
-            if (pill) {
-                pill.hidden = true;
-                pill.textContent = '';
-            }
-            getScheduleHeaderClockWrap()?.classList.add('is-flight-header');
-        }
-
-        if (!eventLine) {
-            setBadge(badgeEl, '', 'muted');
-            return;
-        }
-
-        const accent = motion?.badge?.accent || 'muted';
-        setBadge(badgeEl, eventLine, accent);
-    }
-
-    function updateFlightMotion(nowDate, context) {
-        if (!context.synced || context.tab !== 'tab-flight-map' || !context.displayStops?.length) {
-            resetFlightHeaderClockExtras();
-            setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
-            return;
-        }
-
-        const motion = analyzeScheduleMotion(context.displayStops, context.selectedDate, nowDate);
-        applyCompactSpeedHeader(context, motion);
     }
 
     function resetMotionForNavigation() {
         clearTimelineMotion();
         resetRouteCardLiveFooters();
-        resetFlightHeaderClockExtras();
         setBadge(document.getElementById('scheduleMotionBadge'), '', 'muted');
     }
 

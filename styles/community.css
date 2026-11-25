@@ -1,4 +1,32 @@
 /* === Сообщество и changelog === */
+.app-community-legal {
+    margin: 8px 0 0;
+    text-align: center;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #64748b;
+}
+
+.app-community-legal a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.app-community-legal a:hover {
+    color: #cbd5e1;
+}
+
+.app-community-legal__sep {
+    margin: 0 6px;
+    color: rgba(148, 163, 184, 0.45);
+}
+
+#screen-profile .app-community-legal {
+    margin-top: 6px;
+    margin-bottom: 2px;
+}
+
 .app-community-footer {
     width: 100%;
     margin-top: 14px;

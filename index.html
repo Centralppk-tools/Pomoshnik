@@ -3,13 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <link rel="preload" href="styles/tokens.css?v=5.3.4" as="style">
-    <link rel="preload" href="styles/base.css?v=5.3.4" as="style">
-    <link rel="preload" href="styles/auth.css?v=5.3.4" as="style">
-    <link rel="preload" href="styles/da-loading.css?v=5.3.4" as="style">
-    <link rel="preload" href="js/app-config.js?v=5.3.4" as="script">
-    <link rel="preload" href="js/da-auth-session.js?v=5.3.4" as="script">
-    <link rel="preload" href="js/crew-api-client.js?v=5.3.4" as="script">
+    <script>
+    (function () {
+        var m = String(location.pathname || '').match(/^(\/dev-local-pay)(?:\/|$)/i);
+        if (!m) return;
+        var base = document.createElement('base');
+        base.href = location.origin + m[1] + '/';
+        document.head.appendChild(base);
+    })();
+    </script>
+    <link rel="preload" href="styles/tokens.css?v=5.3.6i" as="style">
+    <link rel="preload" href="styles/base.css?v=5.3.6i" as="style">
+    <link rel="preload" href="styles/auth.css?v=5.3.6i" as="style">
+    <link rel="preload" href="styles/da-loading.css?v=5.3.6i" as="style">
+    <link rel="preload" href="js/app-config.js?v=5.3.6i" as="script">
+    <link rel="preload" href="js/da-auth-session.js?v=5.3.6i" as="script">
+    <link rel="preload" href="js/crew-api-client.js?v=5.3.6i" as="script">
     <style id="da-shell-critical">
     html, body { margin: 0; background: #0b0e14; color: #e2e8f0; }
     .screen.hidden { display: none !important; }
@@ -109,15 +118,15 @@
     .route-pending-mark__icon{color:#f59e0b}
     </style>
     <link rel="stylesheet" href="styles/schedule.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/flight-map.css?v=5.3.6g">
     <link rel="stylesheet" href="styles/calendar.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/profile.css?v=5.3.4">
+    <link rel="stylesheet" href="styles/profile.css?v=5.3.11">
     <link rel="stylesheet" href="styles/responsive.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/auth.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/community.css?v=5.3.4">
+    <link rel="stylesheet" href="styles/auth.css?v=5.3.6k">
+    <link rel="stylesheet" href="styles/legal-consent.css?v=5.3.6j">
+    <link rel="stylesheet" href="styles/community.css?v=5.3.7">
     <link rel="stylesheet" href="styles/instructions.css?v=5.3.4">
     <link rel="stylesheet" href="styles/da-loading.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/subscription.css?v=5.3.6h">
+    <link rel="stylesheet" href="styles/subscription.css?v=5.3.9">
     <script>
         (function () {
             var KEY = 'da_password_reset_token';
@@ -170,14 +179,13 @@
 <script src="js/vendor/modern-screenshot.js?v=5.3.4"></script>
 <script src="js/da-feedback-capture.js?v=5.3.4"></script>
 <script src="js/sync-user-id.js?v=5.3.4"></script>
-<script src="js/da-auth-session.js?v=5.3.4"></script>
+<script src="js/da-auth-session.js?v=5.3.6k"></script>
 <script src="js/da-loading.js?v=5.3.4"></script>
 <script src="js/da-reference-cache.js?v=5.3.4"></script>
-<script src="js/flight-speed/speed-limits-by-branch.js?v=5.3.6b"></script>
-<script src="js/flight-speed/speed-route.js?v=5.3.6b"></script>
-<script src="js/da-flight-map.js?v=5.3.6f"></script>
-<script src="js/crew-api-client.js?v=5.3.5"></script>
-<script src="js/da-subscription.js?v=5.3.6i"></script>
+<script src="js/crew-api-client.js?v=5.3.6k"></script>
+<script src="js/da-legal-consent.js?v=5.3.6j"></script>
+<script src="js/da-auth-terms-gate.js?v=5.3.6j"></script>
+<script src="js/da-subscription.js?v=5.3.19"></script>
 <script src="js/schedule-maintenance.js?v=5.3.4"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
@@ -224,7 +232,7 @@
 </div>
 
 <div id="subSoftBanner" class="sub-soft-banner" hidden role="region" aria-live="polite">
-    <p class="sub-soft-banner__text">Пробный период закончился. Подписка 150 ₽/мес — на работу сервера и загрузку нарядов</p>
+    <p class="sub-soft-banner__text">Пробный период закончился. Подписка 300 ₽ за 3 месяца или разово 150 ₽ на 30 дней</p>
     <div class="sub-soft-banner__actions">
         <button type="button" class="sub-soft-banner__btn sub-soft-banner__btn--primary" id="subSoftPayBtn">Оплатить</button>
         <button type="button" class="sub-soft-banner__btn sub-soft-banner__btn--ghost" id="subSoftLaterBtn">Позже</button>
@@ -251,42 +259,85 @@
     </div>
 </div>
 
-<div id="subOnboardModal" class="sub-modal-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" data-sub-overlay="1">
-    <div class="sub-modal">
-        <button type="button" class="sub-modal__close" data-sub-modal-close="subOnboardModal" aria-label="Закрыть">✕</button>
-        <h2 class="sub-modal__title">Подписка и развитие</h2>
-        <p class="sub-modal__text">Подписка окупает сервер и загрузку нарядов. Триал: привяжите карту за 1 ₽ — 14 дней без ограничений (21 день по реферальной ссылке). Без блокировки сразу после триала — только мягкое напоминание.</p>
-        <div class="sub-modal__actions">
-            <button type="button" class="sub-modal__btn sub-modal__btn--primary" id="subOnboardOkBtn">Понятно, поехали</button>
-            <button type="button" class="sub-modal__btn sub-modal__btn--ghost" id="subOnboardPlansBtn">Посмотреть тарифы</button>
+<div id="subActivateGate" class="sub-activate-gate" hidden aria-hidden="true" role="dialog" aria-modal="true" data-sub-nodismiss="1">
+    <div class="sub-activate-gate__card">
+        <div class="sub-tariff-card sub-tariff-card--hero">
+            <h2 class="sub-trial-hero__title" id="subActivateTitle">Активируйте 14 дней бесплатно</h2>
+            <p class="sub-trial-hero__lead" id="subActivateLead">Для запуска пробного периода привяжите карту за 1 ₽. По окончании пробного периода подписка продлится автоматически — 300 ₽ раз в 3 месяца; отключить можно в любой момент в профиле.</p>
+            <div id="subActivateConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-button="subActivateBindBtn"></div>
+            <button type="button" class="sub-modal__btn sub-modal__btn--neon sub-modal__btn--block is-consent-pending" id="subActivateBindBtn" disabled>Привязать карту за 1 ₽</button>
+            <div class="sub-receipt-compact" id="subActivateReceiptCompact">
+                <span class="sub-receipt-compact__text">Чек отправим на <strong id="subActivateReceiptEmail">—</strong> · </span>
+                <button type="button" class="sub-receipt-compact__edit" id="subActivateReceiptEditBtn">Изменить</button>
+            </div>
+            <div class="sub-receipt-compact__field" id="subActivateReceiptField" hidden>
+                <input type="email" id="subActivateEmail" class="sub-pay-email" autocomplete="email" placeholder="name@example.com">
+            </div>
         </div>
+        <button type="button" class="sub-activate-gate__logout" id="subActivateLogoutBtn">Выйти из аккаунта</button>
     </div>
 </div>
 
 <div id="subPlanModal" class="sub-modal-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" data-sub-overlay="1">
-    <div class="sub-modal">
-        <button type="button" class="sub-modal__close" data-sub-modal-close="subPlanModal" aria-label="Закрыть">✕</button>
-        <p class="sub-plan-status" id="subPlanStatus">—</p>
-        <div class="sub-plan-cards">
-            <button type="button" class="sub-plan-card is-selected" data-sub-plan="trial_bind" id="subPlanTrialBind">
-                <span><span class="sub-plan-card__price">1 ₽</span><br><span class="sub-plan-card__meta">Триал · привязка карты</span></span>
+    <div class="sub-modal sub-modal--plan">
+        <div class="sub-modal__head">
+            <h2 class="sub-modal__title sub-modal__title--inline">Подписка</h2>
+            <button type="button" class="sub-modal__close sub-modal__close--head" data-sub-modal-close="subPlanModal" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="sub-status-card" id="subPlanStatusCard">
+            <span class="sub-status-card__dot" aria-hidden="true"></span>
+            <p class="sub-status-card__text" id="subPlanStatus">—</p>
+        </div>
+        <div class="sub-autorenew-row" id="subPlanAutorenewRow" hidden>
+            <span class="sub-autorenew-row__hint" id="subPlanAutorenewHint">Автопродление включено: следующее списание 300 ₽ на 3 месяца</span>
+            <button type="button" class="sub-link-btn" id="subPlanAutorenewOffBtn">Отключить</button>
+        </div>
+        <div class="sub-plan-cards sub-plan-cards--landing">
+            <button type="button" class="sub-tariff-card" data-sub-plan="trial_bind" id="subPlanTrialBind" hidden>
+                <span class="sub-tariff-card__period">Триал</span>
+                <span class="sub-tariff-card__price">1 ₽</span>
+                <span class="sub-tariff-card__desc">Привязка карты</span>
             </button>
-            <button type="button" class="sub-plan-card" data-sub-plan="month">
-                <span><span class="sub-plan-card__price">150 ₽</span><br><span class="sub-plan-card__meta">30 дней</span></span>
+            <button type="button" class="sub-tariff-card is-selected" data-sub-plan="month">
+                <span class="sub-tariff-card__badge sub-tariff-card__badge--dark">БАЗОВЫЙ</span>
+                <span class="sub-tariff-card__period">1 месяц</span>
+                <span class="sub-tariff-card__price">150 ₽</span>
+                <span class="sub-tariff-card__desc">Разовая оплата на 30 дней, без автопродления</span>
             </button>
-            <button type="button" class="sub-plan-card" data-sub-plan="quarter">
-                <span><span class="sub-plan-card__price">300 ₽</span><br><span class="sub-plan-card__meta">90 дней · выгоднее</span></span>
+            <button type="button" class="sub-tariff-card sub-tariff-card--best" data-sub-plan="quarter">
+                <span class="sub-tariff-card__badge sub-tariff-card__badge--neon">ЭКОНОМИЯ 33%</span>
+                <span class="sub-tariff-card__period">3 месяца</span>
+                <span class="sub-tariff-card__price">300 ₽</span>
+                <span class="sub-tariff-card__desc">100 ₽ в месяц. Оплата раз в квартал</span>
             </button>
         </div>
-        <div class="sub-ref-block">
-            <span>По реф-ссылке коллеге — 21 день триала; вам +7 дней за каждого активировавшегося (до 21 дня, не более 3 друзей).</span>
-            <span class="sub-ref-link" id="subReferralLink"></span>
-            <button type="button" class="profile-sub-card__btn" id="subCopyRefBtn">Скопировать ссылку</button>
+        <div class="sub-ref-card">
+            <p class="sub-ref-card__title">Пригласить коллегу <span class="sub-ref-card__accent">(+7 дней за друга)</span></p>
+            <p class="sub-ref-card__stat" id="subReferralCount">Приглашено: 0 из 3</p>
+            <div class="sub-ref-card__row">
+                <input type="text" id="subReferralUrlInput" class="sub-ref-card__input" readonly value="">
+                <button type="button" class="sub-ref-card__copy" id="subCopyRefBtn">Копировать</button>
+            </div>
         </div>
-        <label class="payroll-ui-label" for="subPayEmail">E-mail для чека</label>
-        <input type="email" id="subPayEmail" class="sub-pay-email" autocomplete="email" placeholder="name@example.com">
-        <button type="button" class="sub-modal__btn sub-modal__btn--primary" id="subPayGoBtn" style="width:100%;margin-top:8px">Перейти к оплате</button>
-        <button type="button" class="sub-modal__btn sub-modal__btn--ghost" id="subPayCancelBtn" style="width:100%;margin-top:6px" data-sub-modal-close="subPlanModal">Отмена</button>
+        <div class="sub-receipt-compact" id="subPayReceiptCompact">
+            <span class="sub-receipt-compact__text">Чек отправим на <strong id="subPayReceiptEmail">—</strong> · </span>
+            <button type="button" class="sub-receipt-compact__edit" id="subPayReceiptEditBtn">Изменить</button>
+        </div>
+        <div class="sub-receipt-compact__field" id="subPayReceiptField" hidden>
+            <input type="email" id="subPayEmail" class="sub-pay-email" autocomplete="email" placeholder="name@example.com">
+        </div>
+        <div id="subPlanConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-button="subPayGoBtn" hidden></div>
+        <button type="button" class="sub-modal__btn sub-modal__btn--neon sub-modal__btn--block is-consent-pending" id="subPayGoBtn">Оплатить 150 ₽</button>
+        <p class="sub-legal-links" id="subPlanLegalLinks" hidden><a href="offer.html" target="_blank" rel="noopener">Оферта</a> · <a href="privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a></p>
+        <div class="sub-trust-banner sub-trust-banner--inset">
+            <div class="sub-trust-banner__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sub-trust-banner__body">
+                <p class="sub-trust-banner__title">Прозрачные условия подписки</p>
+                <p class="sub-trust-banner__text">Автопродление — 300 ₽ за 3 месяца. Тариф 150 ₽ — разовая оплата без автопродления. Отключить можно в профиле в один клик.</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -384,6 +435,16 @@
     </div>
 </div>
 
+<div id="authTermsGate" class="user-auth-overlay auth-terms-gate" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="authTermsGateTitle">
+    <div class="user-auth-card user-auth-card--terms da-consent-gate-card">
+        <h2 id="authTermsGateTitle" class="user-auth-subtitle">Согласие с документами</h2>
+        <p class="user-auth-hint">Для использования сервиса примите условия оферты и дайте согласие на обработку данных.</p>
+        <div id="authTermsConsent" class="da-consent-slot" data-consent-root data-consent-mode="auth" data-consent-button="authTermsGateSubmit"></div>
+        <p id="authTermsGateError" class="user-auth-error" role="alert" aria-live="polite"></p>
+        <button type="button" class="user-auth-btn is-consent-pending" id="authTermsGateSubmit" disabled>Продолжить</button>
+    </div>
+</div>
+
 <div id="screen-auth" class="screen user-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="userAuthTitle">
     <div class="user-auth-card">
         <div class="user-auth-brand">
@@ -433,7 +494,8 @@
                     </button>
                 </div>
                 <p id="authErrorRegister" class="user-auth-error" role="alert" aria-live="polite"></p>
-                <button type="button" id="authRegisterBtn" class="user-auth-btn" data-auth-submit="register" disabled>Зарегистрироваться</button>
+                <div id="authRegisterConsent" class="da-consent-slot" data-consent-root data-consent-mode="auth" data-consent-button="authRegisterBtn"></div>
+                <button type="button" id="authRegisterBtn" class="user-auth-btn is-consent-pending" data-auth-submit="register" disabled>Зарегистрироваться</button>
                 <p class="user-auth-footnote">Ваши данные надежно защищены и привязаны к аккаунту</p>
             </div>
 
@@ -561,7 +623,6 @@
                 <div class="clock-wrap time-box header-clock-stack">
                     <div class="clock-wrap__time-row">
                         <div class="clock-wrap__time app-header-bar-clock" id="scheduleLiveClock">--:--:--</div>
-                        <span id="scheduleFlightSpeed" class="clock-speed-pill" hidden aria-label="Разрешённая скорость"></span>
                     </div>
                     <div class="clock-wrap__sub crew-sync-badge" hidden aria-live="polite">Синхронизация</div>
                     <div class="clock-wrap__sub" id="scheduleMotionBadge" hidden></div>
@@ -574,7 +635,6 @@
             <div class="tabs-nav schedule-glass-tabs" aria-label="Вкладки маршрута">
                 <button type="button" class="tab-btn active" data-tab="tab-route" onclick="switchScheduleTabAnimated('tab-route', this)">Маршрут</button>
                 <button type="button" class="tab-btn" data-tab="tab-schedule" onclick="switchScheduleTabAnimated('tab-schedule', this)">Расписание</button>
-                <button type="button" class="tab-btn" data-tab="tab-flight-map" onclick="switchScheduleTabAnimated('tab-flight-map', this)">Полётная</button>
             </div>
             <div id="routeShiftStickyShell" class="schedule-glass-body route-shift-sticky-shell" hidden>
                 <div id="routeShiftCompactWrap" class="route-shift-compact-wrap">
@@ -689,19 +749,6 @@
             <div class="timeline-line"></div>
             <div id="scheduleInterpolationBanner" class="schedule-interpolation-banner-wrap" hidden></div>
             <div id="stationsList"></div>
-        </div>
-    </div>
-
-    <div id="tab-flight-map" class="tab-content schedule-data-pane">
-        <div class="flight-map-pane">
-            <span id="flightMapSectionTitle" class="flight-map__section visually-hidden">Полётная карта</span>
-            <span id="flightMapMeta" class="flight-map__meta visually-hidden"></span>
-            <div id="flightMapLoader" class="loader data-pane-loader" role="status" aria-live="polite" hidden>Загрузка…</div>
-            <p id="flightMapEmpty" class="flight-map__empty">
-                Откройте поезд на вкладке «Расписание» или «Маршрут» — карта подставит остановки и лимиты скорости по участку (черновик МЯЭД).
-            </p>
-            <div id="flightMapList" class="flight-map__list" hidden></div>
-            <p class="flight-map__footnote">Источник шаблона: «Скоростя 11.26 МЯЭД.pdf». Полная разметка по путям — в следующих версиях.</p>
         </div>
     </div>
 
@@ -1180,46 +1227,95 @@
             <input type="file" id="profileAspozhQrInput" class="aspozh-compact-card__input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" hidden>
         </div>
 
-        <section class="profile-sub-card" id="profileSubscriptionCard" aria-label="Подписка и бонусы">
-            <h3 class="profile-sub-card__title">Подписка и бонусы</h3>
-            <p class="profile-sub-card__status" id="profileSubStatus">—</p>
-            <p class="profile-sub-card__stat" id="profileSubRefStat"></p>
-            <p class="profile-sub-card__ref" id="profileSubRefLink"></p>
-            <div class="profile-sub-card__row">
-                <button type="button" class="profile-sub-card__btn profile-sub-card__btn--accent" id="profileSubRenewBtn">Оплатить</button>
-                <button type="button" class="profile-sub-card__btn" id="profileSubCopyRefBtn">Копировать ссылку</button>
+        <section class="profile-subscription-card" id="profileSubscriptionCard" aria-label="Подписка и бонусы">
+            <div class="profile-subscription-card__head">
+                <div class="profile-subscription-card__title-wrap">
+                    <h3 class="profile-subscription-card__title">Подписка</h3>
+                    <span class="profile-subscription-card__badge" id="profileSubStatusBadge">—</span>
+                </div>
+                <button type="button" class="profile-subscription-card__renew" id="profileSubRenewBtn">Продлить</button>
             </div>
-            <button type="button" class="profile-sub-card__btn" id="profileSubAutorenewBtn" hidden>Отменить автопродление</button>
-            <p class="profile-account-card__hint" id="profileSubAutorenewHint">Автопродление отключено, списаний без вашего подтверждения не будет.</p>
+            <div class="profile-subscription-card__ref">
+                <p class="profile-subscription-card__ref-title">Пригласить коллегу <span class="profile-subscription-card__accent">(+7 дн.)</span></p>
+                <p class="profile-subscription-card__ref-stat" id="profileSubRefStat">Приглашено: 0 из 3</p>
+                <div class="profile-subscription-card__ref-row">
+                    <input type="text" id="profileSubRefUrlInput" class="profile-subscription-card__ref-input" readonly value="" aria-label="Реферальная ссылка">
+                    <button type="button" class="profile-subscription-card__ref-copy" id="profileSubCopyRefBtn" aria-label="Копировать ссылку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="profile-subscription-card__autorenew" id="profileSubAutorenewRow" hidden>
+                <span class="profile-subscription-card__autorenew-text" id="profileSubAutorenewLabel">Автопродление: 300 ₽ раз в 3 мес.</span>
+                <button type="button" class="profile-subscription-card__autorenew-off" id="profileSubAutorenewBtn">Отключить</button>
+            </div>
         </section>
 
-        <section class="profile-account-card" id="profileAccountCard" aria-label="Настройки аккаунта">
-            <h3 class="profile-account-card__title">Настройки аккаунта</h3>
-            <label class="payroll-ui-label" for="profileAccountEmail">E-mail для чеков</label>
-            <input type="email" id="profileAccountEmail" class="sub-pay-email" autocomplete="email" placeholder="name@example.com">
-            <div class="profile-sub-card__row">
-                <button type="button" class="profile-account-card__btn" id="profileAccountEmailSave">Сохранить email</button>
-                <button type="button" class="profile-account-card__btn" id="profileCacheRefreshBtn">Обновить кэш приложения</button>
-            </div>
-            <button type="button" class="profile-account-card__btn" id="profileAccountLogoutBtn">Выйти из аккаунта</button>
+        <section class="profile-menu-block" aria-labelledby="profileAppBlockTitle">
+            <h3 class="profile-menu-block__title" id="profileAppBlockTitle">Приложение</h3>
+            <nav class="profile-menu-list menu-list profile-app-menu" aria-label="Приложение">
+                <button type="button" class="menu-list__item" id="profileCacheRefreshBtn">
+                    <span class="menu-list__label">Обновить кэш</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+                <button type="button" class="menu-list__item menu-list__item--accent app-feedback-trigger" data-feedback-open aria-label="Сообщить о проблеме или доработке">
+                    <span class="menu-list__label">Сообщить о проблеме</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+            </nav>
         </section>
 
-        <button type="button" class="profile-delete-btn" id="profileDeleteOpenBtn">Удалить аккаунт</button>
+        <section class="profile-menu-block" aria-labelledby="profileDocsBlockTitle">
+            <h3 class="profile-menu-block__title" id="profileDocsBlockTitle">Документы</h3>
+            <nav class="profile-menu-list menu-list profile-docs-menu" aria-label="Документы">
+                <a class="menu-list__item menu-list__item--doc" href="privacy.html" target="_blank" rel="noopener noreferrer">
+                    <span class="menu-list__label">Политика конфиденциальности</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </a>
+                <a class="menu-list__item menu-list__item--doc" href="offer.html" target="_blank" rel="noopener noreferrer">
+                    <span class="menu-list__label">Публичная оферта</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </a>
+            </nav>
+        </section>
 
-        <nav class="profile-menu-list menu-list" aria-label="Действия профиля">
-            <button type="button" class="menu-list__item menu-list__item--accent" id="profileOpenPayrollBtn" onclick="DaPayrollScreen?.open?.()">
-                <span>Расчётный листок</span>
-                <span class="menu-list__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" class="menu-list__item menu-list__item--accent app-feedback-trigger" data-feedback-open aria-label="Сообщить о проблеме или доработке">
-                <span>Сообщить о проблеме</span>
-                <span class="menu-list__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" class="menu-list__item menu-list__item--danger profile-logout-btn" onclick="handleLogout()">
-                <span>Выйти из аккаунта</span>
-                <span class="menu-list__chevron" aria-hidden="true">›</span>
-            </button>
-        </nav>
+        <section class="profile-menu-block" aria-labelledby="profileAccountBlockTitle">
+            <h3 class="profile-menu-block__title" id="profileAccountBlockTitle">Аккаунт</h3>
+            <nav class="profile-menu-list menu-list profile-account-menu" aria-label="Аккаунт">
+                <button type="button" class="menu-list__item menu-list__item--value" id="profileReceiptEmailToggle" aria-expanded="false" aria-controls="profileReceiptEmailEditor">
+                    <span class="menu-list__label">Изменить Email</span>
+                    <span class="menu-list__value" id="profileReceiptEmailValue">—</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+                <div class="profile-menu-list__editor" id="profileReceiptEmailEditor" aria-hidden="true">
+                    <div class="profile-menu-list__editor-row">
+                        <input type="email" id="profileReceiptEmailInput" class="profile-menu-list__email-input" autocomplete="email" placeholder="name@example.com">
+                        <button type="button" class="profile-menu-list__save" id="profileAccountEmailSave">Сохранить</button>
+                    </div>
+                </div>
+                <button type="button" class="menu-list__item menu-list__item--value" id="profileBoundCardsToggle" aria-expanded="false" aria-controls="profileBoundCardsEditor">
+                    <span class="menu-list__label">Привязанные карты</span>
+                    <span class="menu-list__value" id="profileBoundCardsValue">—</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+                <div class="profile-menu-list__editor profile-menu-list__editor--cards" id="profileBoundCardsEditor" aria-hidden="true">
+                    <ul class="profile-bound-cards" id="profileBoundCardsList" aria-live="polite"></ul>
+                    <div class="profile-bound-cards__empty-row" id="profileBoundCardsEmpty" hidden>
+                        <span class="profile-bound-cards__empty-text">Карт нет</span>
+                        <button type="button" class="profile-menu-list__save profile-bound-cards__bind" id="profileBoundCardsBindBtn">Привязать</button>
+                    </div>
+                    <p class="profile-bound-cards__demo" id="profileBoundCardsDemo" hidden>В демо-режиме карта не привязана.</p>
+                </div>
+                <button type="button" class="menu-list__item profile-logout-btn" onclick="handleLogout()">
+                    <span class="menu-list__label">Выйти</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+                <button type="button" class="menu-list__item menu-list__item--delete" id="profileDeleteOpenBtn">
+                    <span class="menu-list__label">Удалить</span>
+                    <span class="menu-list__chevron" aria-hidden="true">›</span>
+                </button>
+            </nav>
+        </section>
 
         </div>
 
@@ -4847,6 +4943,8 @@
     }
 
     function isWebPushSupported() {
+        const host = String(window.location.hostname || '').toLowerCase();
+        if (host === '127.0.0.1' || host === 'localhost') return false;
         return 'serviceWorker' in navigator
             && 'PushManager' in window
             && Boolean(APP_CFG.webPushVapidPublicKey);
@@ -9345,8 +9443,8 @@
 
     const SCREEN_ORDER = { calendar: 0, schedule: 1, instructions: 2, profile: 3, payroll: 4 };
     const MAIN_SCREENS = ['calendar', 'schedule', 'instructions', 'profile', 'payroll'];
-    const TAB_ORDER = { 'tab-route': 0, 'tab-schedule': 1, 'tab-flight-map': 2 };
-    const SCHEDULE_SUB_TABS = new Set(['tab-route', 'tab-schedule', 'tab-flight-map']);
+    const TAB_ORDER = { 'tab-route': 0, 'tab-schedule': 1 };
+    const SCHEDULE_SUB_TABS = new Set(['tab-route', 'tab-schedule']);
     const SCREEN_TRANSITION_MS = 260;
     let screenTransitionLock = false;
 
@@ -10884,6 +10982,10 @@
     function switchMainScreen(screen, options = {}) {
         if (document.body.classList.contains('tab-required-blocking')) return false;
         if (document.body.classList.contains('email-upgrade-blocking')) return false;
+        if (typeof window.DaSubscription?.blocksMainScreen === 'function' && window.DaSubscription.blocksMainScreen(screen)) {
+            window.DaSubscription?.showActivationGate?.();
+            return false;
+        }
         const {
             animate = false,
             direction = null,
@@ -12176,7 +12278,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.3.4')
+        navigator.serviceWorker.register('./sw.js?v=5.3.6p')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -12998,7 +13100,7 @@
             console.warn('[calendar] persistUserShifts', err);
         }
         invalidatePayrollComputationCaches();
-        if (window.DaCrewApi?.isEnabled?.() && syncId) {
+        if (!window.isHydratingFromServer && window.DaCrewApi?.isEnabled?.() && syncId) {
             DaCrewApi.schedulePushShifts(calendarUserShifts);
         }
         if (calendarSelectedDateKey) {
@@ -13172,13 +13274,16 @@
 
     function applyServerSavedShiftsFromCrewApi(savedRows) {
         if (!Array.isArray(savedRows) || !savedRows.length) return;
-        applyCrewApiShiftRowsToCalendar(savedRows, { replaceShifts: false });
-        schedulePersistUserShifts();
-        if (calendarSelectedDateKey) {
-            calendarRefreshDayCell(calendarSelectedDateKey);
-            refreshConstructorRouteSelect();
+        window.isHydratingFromServer = true;
+        try {
+            applyCrewApiShiftRowsToCalendar(savedRows, { replaceShifts: false });
+            if (calendarSelectedDateKey) {
+                calendarRefreshDayCell(calendarSelectedDateKey);
+                refreshConstructorRouteSelect();
+            }
+        } finally {
+            window.isHydratingFromServer = false;
         }
-        void updateProfileScreen();
     }
 
     function getPersonalRestDayKeysForServer() {
@@ -13328,6 +13433,9 @@
     }
 
     function refreshAuthSubmitStates() {
+        if (typeof globalThis !== 'undefined') {
+            globalThis.refreshAuthSubmitStates = refreshAuthSubmitStates;
+        }
         setAuthSubmitButtonReady(document.getElementById('authLoginBtn'), isAuthLoginFormReady());
 
         const pos = String(document.getElementById('authRegPositionSelect')?.value || '').trim();
@@ -13335,10 +13443,16 @@
         const regEmail = String(document.getElementById('authRegEmailInput')?.value || '').trim();
         const regPass = String(document.getElementById('authRegPasswordInput')?.value || '');
         const regTab = normalizeTabNumber(document.getElementById('authRegTabInput')?.value || '');
-        setAuthSubmitButtonReady(
-            document.getElementById('authRegisterBtn'),
-            Boolean(pos && regName.length >= 2 && isValidAuthEmail(regEmail) && regPass.length >= 6 && regTab),
-        );
+        const regFormOk = Boolean(pos && regName.length >= 2 && isValidAuthEmail(regEmail) && regPass.length >= 6 && regTab);
+        const consentOk = window.DaLegalConsent?.bothChecked('authRegisterConsent') ?? false;
+        const regBtn = document.getElementById('authRegisterBtn');
+        if (regBtn) {
+            const loading = regBtn.dataset.loading === '1';
+            regBtn.disabled = loading || !regFormOk;
+            regBtn.classList.toggle('is-consent-ready', regFormOk && consentOk && !loading);
+            regBtn.classList.toggle('is-consent-pending', regFormOk && !consentOk && !loading);
+            regBtn.classList.toggle('is-ready', regFormOk && consentOk);
+        }
 
         const bindSaveBtn = document.getElementById('profileEmailBindSave');
         if (profileBindAwaitingCode) {
@@ -13529,6 +13643,8 @@
 
     function applyCrewApiProfileUser(user) {
         if (!user) return;
+        window.isHydratingFromServer = true;
+        try {
         if (user.name) {
             try {
                 localStorage.setItem(USER_NAME_KEY, String(user.name));
@@ -13569,6 +13685,9 @@
         if (nameInput && document.activeElement !== nameInput) {
             nameInput.value = getStoredProfileName();
             fitProfileNameInputWidth();
+        }
+        } finally {
+            window.isHydratingFromServer = false;
         }
     }
 
@@ -14967,10 +15086,68 @@
         }
     }
 
+    let pendingAuthCompletion = null;
+
+    function showAuthTermsGate() {
+        const gate = document.getElementById('authTermsGate');
+        const err = document.getElementById('authTermsGateError');
+        if (err) err.textContent = '';
+        window.DaLegalConsent?.reset?.('authTermsConsent');
+        window.DaLegalConsent?.bindRoot?.(document.getElementById('authTermsConsent'));
+        if (gate) {
+            gate.removeAttribute('hidden');
+            gate.hidden = false;
+            gate.setAttribute('aria-hidden', 'false');
+        }
+        document.body.classList.add('auth-terms-blocking');
+        window.DaLegalConsent?.syncButtonForRoot?.(document.getElementById('authTermsConsent'));
+        window.DaAuthTermsGate?.afterShow?.();
+        window.DaAuthTermsGate?.bindSubmit?.();
+        requestAnimationFrame(() => {
+            document.getElementById('authTermsGateSubmit')?.focus({ preventScroll: true });
+        });
+    }
+
+    function hideAuthTermsGate() {
+        const gate = document.getElementById('authTermsGate');
+        if (gate) {
+            if (gate.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+            gate.setAttribute('aria-hidden', 'true');
+            gate.setAttribute('hidden', '');
+            gate.hidden = true;
+        }
+        document.body.classList.remove('auth-terms-blocking');
+    }
+
+    window.DaAuthTermsGate = window.DaAuthTermsGate || {};
+    window.DaAuthTermsGate.hide = hideAuthTermsGate;
+    window.DaAuthTermsGate.onAccepted = async () => {
+        hideAuthTermsGate();
+        const pending = pendingAuthCompletion;
+        pendingAuthCompletion = null;
+        if (!pending) return;
+        const user = window.DaAuthSession?.getStoredUser?.();
+        if (user) pending.authData = { ...pending.authData, user };
+        await completeAuthSessionAfterApi(pending.authData, pending.options);
+    };
+
     async function completeAuthSessionAfterApi(authData, options) {
         const opts = options && typeof options === 'object' ? options : {};
         freeStorageForAuthSession();
-        const user = authData?.user || {};
+        let user = authData?.user || {};
+        const localTermsOk = window.DaAuthSession?.hasLocalTermsAcceptance?.() === true;
+        if (!user.terms_accepted_at && localTermsOk) {
+            const stamped = new Date().toISOString();
+            user = { ...user, terms_accepted_at: stamped, terms_accepted: true };
+            authData = { ...authData, user };
+        }
+        if (!user.terms_accepted_at) {
+            pendingAuthCompletion = { authData, options: opts };
+            showAuthTermsGate();
+            return;
+        }
         const displayName = String(user.name || getLocalProfileDisplayName() || '').trim();
         const tabNumber = normalizeTabNumber(user.tab_number);
         const sessionKey = tabNumber
@@ -15043,6 +15220,12 @@
         });
         applyYandexMetrikaUserId(user);
         void ensureWebPushSubscription(true);
+        void window.DaSubscription?.refreshMe?.().then(() => {
+            window.DaSubscription?.updateHeaderPills?.();
+            if (window.DaSubscription?.needsActivationGate?.()) {
+                window.DaSubscription?.showActivationGate?.();
+            }
+        });
     }
 
     async function handleAuthLogin() {
@@ -15140,6 +15323,12 @@
             setAuthError('authErrorRegister', 'Пароль не короче 8 символов.');
             return;
         }
+        const consentRoot = document.getElementById('authRegisterConsent');
+        if (!window.DaLegalConsent?.bothChecked(consentRoot)) {
+            setAuthError('authErrorRegister', 'Подтвердите согласие с офертой и политикой конфиденциальности.');
+            window.DaLegalConsent?.flashMissing(consentRoot);
+            return;
+        }
         setAuthButtonsLoading(true);
         try {
             try {
@@ -15151,6 +15340,7 @@
                 password,
                 role,
                 tab_number: tabNumber,
+                ...(window.DaLegalConsent?.consentPayload?.() || { accepted_offer: true, accepted_privacy: true }),
                 sync_user_id: typeof getOrCreateSyncUserId === 'function' ? getOrCreateSyncUserId() : undefined,
                 referral_code: window.DaSubscription?.getStoredReferralCode?.() || undefined,
             });
@@ -24828,6 +25018,8 @@
             const data = await window.DaAuthSession.fetchMe({ force: false });
             const email = String(data?.user?.email || '').trim();
             el.textContent = email || '—';
+            const receiptValue = document.getElementById('profileReceiptEmailValue');
+            if (receiptValue) receiptValue.textContent = email || '—';
             el.dataset.source = 'server';
             el.dataset.fetchMs = String(Math.round(performance.now() - started));
             return data;
@@ -24871,12 +25063,16 @@
         renderProfileCompliance(tab);
         initProfilePayrollSettingsPanel();
         initAspozhQrBlock();
-        const profileEmail = document.getElementById('profileAccountEmail');
-        const storedEmail = window.DaAuthSession?.getStoredUser?.()?.email;
-        if (profileEmail && storedEmail && document.activeElement !== profileEmail) {
-            profileEmail.value = storedEmail;
+        const receiptValue = document.getElementById('profileReceiptEmailValue');
+        const receiptInput = document.getElementById('profileReceiptEmailInput');
+        const storedEmail = String(window.DaAuthSession?.getStoredUser?.()?.email || '').trim();
+        if (receiptValue && storedEmail) receiptValue.textContent = storedEmail;
+        if (receiptInput && storedEmail && document.activeElement !== receiptInput) {
+            receiptInput.value = storedEmail;
         }
-        void window.DaSubscription?.refreshMe?.();
+        if (!window.isHydratingFromServer) {
+            void window.DaSubscription?.refreshMe?.();
+        }
         window.DaSubscription?.updateHeaderPills?.();
         requestAnimationFrame(applyProfileTextFit);
     }
