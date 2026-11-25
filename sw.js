@@ -1,5 +1,5 @@
 // Service Worker v5.3.6 da_v5_3_6k (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_6q';
+const CACHE_NAME = 'da_v5_3_6r';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;

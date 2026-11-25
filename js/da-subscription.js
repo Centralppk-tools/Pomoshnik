@@ -263,15 +263,56 @@
         }
     }
 
+    function userTermsAccepted(user) {
+        if (!user) return false;
+        if (global.DaLegalConsent?.needsConsentForUser) {
+            return !global.DaLegalConsent.needsConsentForUser(user);
+        }
+        return Boolean(user.terms_accepted_at || user.terms_accepted);
+    }
+
+    /** Чекбокс в модалке подписки — только до первой фиксации согласий и без истории оплаты/карты. */
+    function needsPlanModalConsent(user) {
+        if (!user) return true;
+        if (userTermsAccepted(user)) return false;
+        if (userHadTrialOrSubscriptionHistory(user)) return false;
+        return true;
+    }
+
+    function userHadTrialOrSubscriptionHistory(user) {
+        if (!user) return false;
+        if (user.trial_card_bound_at || user.card_bound || user.has_bound_card) return true;
+        if (user.robokassa_mother_inv_id != null && Number(user.robokassa_mother_inv_id) > 0) return true;
+        if (user.first_paid_at) return true;
+        if (user.trial_ends_at) return true;
+        const end = user.subscription_ends_at || user.subscription_expires_at;
+        if (end) return true;
+        return false;
+    }
+
+    function showPlanAutorenewRow(user) {
+        if (!user) return false;
+        return Boolean(
+            user.autorenew_enabled
+            || user.trial_card_bound_at
+            || user.card_bound
+            || user.has_bound_card
+            || (user.robokassa_mother_inv_id != null && Number(user.robokassa_mother_inv_id) > 0),
+        );
+    }
+
+    let autorenewSwitchBusy = false;
+
     function syncPaymentConsentUi() {
         const user = getUser();
         const gateOpen = needsActivationGate();
-        const needTerms = global.DaLegalConsent?.needsConsentForUser(user);
+        const needGateConsent = gateOpen && global.DaLegalConsent?.needsConsentForUser(user);
+        const needPlanConsent = needsPlanModalConsent(user);
         const activateConsent = document.getElementById('subActivateConsent');
         const planConsent = document.getElementById('subPlanConsent');
         const planLinks = document.getElementById('subPlanLegalLinks');
-        const showActivate = gateOpen || Boolean(needTerms);
-        const showPlanConsent = Boolean(needTerms && !gateOpen);
+        const showActivate = Boolean(needGateConsent);
+        const showPlanConsent = Boolean(needPlanConsent && !gateOpen);
         global.DaLegalConsent?.setVisible(activateConsent, showActivate);
         global.DaLegalConsent?.setVisible(planConsent, showPlanConsent);
         if (planLinks) planLinks.hidden = false;
@@ -288,10 +329,30 @@
     }
 
     function shouldShowTrialPlanCard(user) {
+        if (userHadTrialOrSubscriptionHistory(user)) return false;
         const kind = uiKind(user);
-        if (kind === 'paid' || kind === 'trial') return false;
-        if (user?.trial_card_bound_at || user?.card_bound || user?.has_bound_card) return false;
+        if (kind === 'paid' || kind === 'trial' || kind === 'expired') return false;
         return kind === 'bind';
+    }
+
+    function syncPlanAutorenewRow(user) {
+        const arRow = document.getElementById('subPlanAutorenewRow');
+        const arHint = document.getElementById('subPlanAutorenewHint');
+        const sw = document.getElementById('subPlanAutorenewSwitch');
+        if (!arRow) return;
+        const visible = showPlanAutorenewRow(user);
+        arRow.hidden = !visible;
+        arRow.classList.toggle('is-loading', autorenewSwitchBusy);
+        if (!visible) return;
+        const on = Boolean(user?.autorenew_enabled);
+        if (arHint) {
+            arHint.textContent = on
+                ? AUTORENEW_ACTIVE_HINT
+                : 'Автопродление выключено — новые списания только при ручной оплате';
+        }
+        if (sw && !autorenewSwitchBusy) {
+            sw.checked = on;
+        }
     }
 
     function planPayButtonLabel(plan) {
@@ -318,10 +379,7 @@
                 statusEl.textContent = 'Пробный период завершён — оформите подписку';
             }
         }
-        const arRow = document.getElementById('subPlanAutorenewRow');
-        const arHint = document.getElementById('subPlanAutorenewHint');
-        if (arRow) arRow.hidden = !user?.autorenew_enabled;
-        if (arHint) arHint.textContent = user?.autorenew_enabled ? AUTORENEW_ACTIVE_HINT : '';
+        syncPlanAutorenewRow(user);
         const showTrial = shouldShowTrialPlanCard(user);
         const trialCard = document.getElementById('subPlanTrialBind');
         if (trialCard) trialCard.hidden = !showTrial;
@@ -528,7 +586,8 @@
         const consentRoot = activeConsentRoot();
         const gateVis = !document.getElementById('subActivateGate')?.hidden;
         const consentRequired = gateVis
-            || (global.DaLegalConsent?.needsConsentForUser(user) && consentRoot && !consentRoot.hidden);
+            ? (global.DaLegalConsent?.needsConsentForUser(user) && consentRoot && !consentRoot.hidden)
+            : (needsPlanModalConsent(user) && consentRoot && !consentRoot.hidden);
         if (consentRequired && consentRoot && !consentRoot.hidden) {
             if (!global.DaLegalConsent.bothChecked(consentRoot)) {
                 global.DaLegalConsent.flashMissing(consentRoot);
@@ -558,7 +617,10 @@
                     return p && p !== '/' ? `${loc.origin}${p}` : loc.origin;
                 })(),
             };
-            if (global.DaLegalConsent?.needsConsentForUser(user)) {
+            const sendConsent = gateVis
+                ? global.DaLegalConsent?.needsConsentForUser(user)
+                : needsPlanModalConsent(user);
+            if (sendConsent) {
                 Object.assign(body, global.DaLegalConsent.consentPayload());
             }
             const data = await paymentCreateFetch(body);
@@ -1055,9 +1117,33 @@
             });
             if (data.user) global.DaAuthSession.persistSession(null, data.user);
             updateHeaderPills();
+            syncPlanAutorenewRow(data.user || getUser());
+            syncProfileSubscriptionBlock();
             global.showDaActionToast?.(enabled ? 'Автопродление включено' : 'Автопродление отключено');
-        } catch (_) {
+        } catch (err) {
             global.showDaErrorToast?.('Не удалось изменить автопродление');
+            throw err;
+        }
+    }
+
+    async function setAutorenewFromPlanSwitch(enabled) {
+        if (autorenewSwitchBusy) return;
+        const sw = document.getElementById('subPlanAutorenewSwitch');
+        const arRow = document.getElementById('subPlanAutorenewRow');
+        const prev = Boolean(getUser()?.autorenew_enabled);
+        if (prev === Boolean(enabled)) return;
+        autorenewSwitchBusy = true;
+        if (sw) sw.disabled = true;
+        if (arRow) arRow.classList.add('is-loading');
+        try {
+            await setAutorenew(enabled);
+        } catch (_) {
+            if (sw) sw.checked = prev;
+        } finally {
+            autorenewSwitchBusy = false;
+            if (sw) sw.disabled = false;
+            if (arRow) arRow.classList.remove('is-loading');
+            syncPlanAutorenewRow(getUser());
         }
     }
 
@@ -1166,10 +1252,9 @@
                 selectPayPlan(card.getAttribute('data-sub-plan') || 'month');
             });
         });
-        document.getElementById('subPlanAutorenewOffBtn')?.addEventListener('click', () => {
-            if (global.confirm('Отключить автопродление? Следующее списание не произойдёт без вашего подтверждения.')) {
-                void setAutorenew(false);
-            }
+        document.getElementById('subPlanAutorenewSwitch')?.addEventListener('change', (ev) => {
+            const on = Boolean(ev.currentTarget?.checked);
+            void setAutorenewFromPlanSwitch(on);
         });
         document.getElementById('profileSubRenewBtn')?.addEventListener('click', () => openPaywall());
         document.getElementById('profileSubCopyRefBtn')?.addEventListener('click', async (ev) => {
