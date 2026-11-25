@@ -7,6 +7,7 @@
     const OFFER_AUTH = 'Я принимаю условия <a href="offer.html" target="_blank" rel="noopener noreferrer">Публичной оферты</a>';
     const OFFER_PAY = 'Я принимаю условия <a href="offer.html" target="_blank" rel="noopener noreferrer">Публичной оферты</a> и соглашаюсь с автопродлением (300 ₽ раз в 3 месяца после пробного периода)';
     const PRIVACY = 'Я даю согласие на обработку персональных данных согласно <a href="privacy.html" target="_blank" rel="noopener noreferrer">Политике конфиденциальности</a>';
+    const COMBINED_PAY = 'Принимаю условия <a href="offer.html" target="_blank" rel="noopener noreferrer">Публичной оферты</a> и <a href="privacy.html" target="_blank" rel="noopener noreferrer">Политики конфиденциальности</a>';
 
     function offerHtml(mode) {
         return mode === 'payment' ? OFFER_PAY : OFFER_AUTH;
@@ -15,8 +16,19 @@
     function mountConsentRoot(root) {
         if (!root || root.dataset.consentMounted === '1') return root;
         const mode = root.dataset.consentMode === 'payment' ? 'payment' : 'auth';
+        const combined = root.dataset.consentCombined === '1';
         root.classList.add('da-consent');
-        root.innerHTML = `
+        if (combined) {
+            root.classList.add('da-consent--combined');
+            root.innerHTML = `
+            <label class="da-consent__card">
+                <input type="checkbox" class="da-consent__input" data-consent="legal">
+                <span class="da-consent__check" aria-hidden="true"></span>
+                <span class="da-consent__text">${COMBINED_PAY}</span>
+            </label>
+            `;
+        } else {
+            root.innerHTML = `
             <label class="da-consent__card">
                 <input type="checkbox" class="da-consent__input" data-consent="offer">
                 <span class="da-consent__check" aria-hidden="true"></span>
@@ -27,7 +39,8 @@
                 <span class="da-consent__check" aria-hidden="true"></span>
                 <span class="da-consent__text">${PRIVACY}</span>
             </label>
-        `;
+            `;
+        }
         root.dataset.consentMounted = '1';
         return root;
     }
@@ -41,6 +54,10 @@
     function bothChecked(root) {
         const r = getRoot(root);
         if (!r || r.hidden) return true;
+        if (r.dataset.consentCombined === '1') {
+            const legal = r.querySelector('[data-consent="legal"]');
+            return Boolean(legal?.checked);
+        }
         const offer = r.querySelector('[data-consent="offer"]');
         const privacy = r.querySelector('[data-consent="privacy"]');
         return Boolean(offer?.checked && privacy?.checked);
@@ -66,6 +83,7 @@
                 global.setTimeout(() => card.classList.remove('is-consent-error'), 1500);
             }
         });
+        global.showDaErrorToast?.(msg);
     }
 
     function consentPayload() {
@@ -168,7 +186,9 @@
                         ev.preventDefault();
                         ev.stopImmediatePropagation();
                         flashMissing(block);
-                        const msg = 'Отметьте оба согласия: оферту и политику конфиденциальности.';
+                        const msg = block.dataset.consentCombined === '1'
+                            ? 'Отметьте согласие с офертой и политикой конфиденциальности.'
+                            : 'Отметьте оба согласия: оферту и политику конфиденциальности.';
                         if (block.id === 'authRegisterConsent') {
                             document.getElementById('authErrorRegister')?.textContent && (document.getElementById('authErrorRegister').textContent = msg);
                         }

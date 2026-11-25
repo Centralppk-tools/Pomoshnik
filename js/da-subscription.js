@@ -271,21 +271,26 @@
         const planConsent = document.getElementById('subPlanConsent');
         const planLinks = document.getElementById('subPlanLegalLinks');
         const showActivate = gateOpen || Boolean(needTerms);
-        const showPlanConsent = Boolean(needTerms && !user?.card_bound && !gateOpen);
+        const showPlanConsent = Boolean(needTerms && !gateOpen);
         global.DaLegalConsent?.setVisible(activateConsent, showActivate);
         global.DaLegalConsent?.setVisible(planConsent, showPlanConsent);
-        if (planLinks) planLinks.hidden = showPlanConsent;
+        if (planLinks) planLinks.hidden = false;
         if (showActivate && activateConsent) {
             global.DaLegalConsent?.bindRoot?.(activateConsent);
             global.DaLegalConsent?.syncButtonForRoot?.(activateConsent);
         }
-        if (showPlanConsent) global.DaLegalConsent?.bindRoot?.(planConsent);
+        if (showPlanConsent) {
+            global.DaLegalConsent?.bindRoot?.(planConsent);
+            global.DaLegalConsent?.syncButtonForRoot?.(planConsent);
+        } else if (planConsent) {
+            global.DaLegalConsent?.syncButtonForRoot?.(planConsent);
+        }
     }
 
     function shouldShowTrialPlanCard(user) {
         const kind = uiKind(user);
         if (kind === 'paid' || kind === 'trial') return false;
-        if (user?.trial_card_bound_at) return false;
+        if (user?.trial_card_bound_at || user?.card_bound || user?.has_bound_card) return false;
         return kind === 'bind';
     }
 
@@ -322,14 +327,6 @@
         if (trialCard) trialCard.hidden = !showTrial;
         const cardsWrap = document.querySelector('#subPlanModal .sub-plan-cards--landing');
         if (cardsWrap) cardsWrap.classList.toggle('sub-plan-cards--with-trial', showTrial);
-        const invited = referralsCache.rewards_count != null
-            ? referralsCache.rewards_count
-            : (referralsCache.paid || referralsCache.invited || 0);
-        const max = referralsCache.rewards_max || REF_REWARDS_MAX;
-        const refCount = document.getElementById('subReferralCount');
-        if (refCount) refCount.textContent = `Приглашено: ${invited} из ${max}`;
-        const refInput = document.getElementById('subReferralUrlInput');
-        if (refInput) refInput.value = referralLink(user) || '';
         const selected = document.querySelector('[data-sub-plan].is-selected');
         let plan = selected?.getAttribute('data-sub-plan') || pickDefaultPlan(user);
         if (!showTrial && plan === 'trial_bind') plan = 'month';
@@ -346,11 +343,14 @@
     }
 
     function paymentEmail() {
+        const user = getUser();
+        const profileEmail = String(user?.email || '').trim();
         const gateVis = !document.getElementById('subActivateGate')?.hidden;
         if (gateVis) {
-            return String(document.getElementById('subActivateEmail')?.value || '').trim();
+            const typed = String(document.getElementById('subActivateEmail')?.value || '').trim();
+            return typed || profileEmail;
         }
-        return String(document.getElementById('subPayEmail')?.value || '').trim();
+        return profileEmail;
     }
 
     function shouldShowSoftBanner() {
@@ -511,11 +511,7 @@
     }
 
     function openPaywall() {
-        const emailInput = document.getElementById('subPayEmail');
         const user = getUser();
-        if (emailInput && user?.email && !emailInput.value) emailInput.value = user.email;
-        syncReceiptEmailUi('subPay');
-        showReceiptEmailField('subPay', false);
         syncPlanModal();
         selectPayPlan(pickDefaultPlan(user), { skipTrialToggle: true });
         openModal('subPlanModal');
@@ -536,7 +532,10 @@
         if (consentRequired && consentRoot && !consentRoot.hidden) {
             if (!global.DaLegalConsent.bothChecked(consentRoot)) {
                 global.DaLegalConsent.flashMissing(consentRoot);
-                global.showDaErrorToast?.('Отметьте оба согласия: оферту и политику конфиденциальности.');
+                const combined = consentRoot?.dataset?.consentCombined === '1';
+                global.showDaErrorToast?.(combined
+                    ? 'Отметьте согласие с офертой и политикой конфиденциальности.'
+                    : 'Отметьте оба согласия: оферту и политику конфиденциальности.');
                 return;
             }
         }
@@ -1117,21 +1116,11 @@
         document.getElementById('subActivateReceiptEditBtn')?.addEventListener('click', () => {
             showReceiptEmailField('subActivate', true);
         });
-        document.getElementById('subPayReceiptEditBtn')?.addEventListener('click', () => {
-            showReceiptEmailField('subPay', true);
-        });
         document.getElementById('subActivateEmail')?.addEventListener('input', () => syncReceiptEmailUi('subActivate'));
-        document.getElementById('subPayEmail')?.addEventListener('input', () => syncReceiptEmailUi('subPay'));
         document.getElementById('subActivateEmail')?.addEventListener('blur', () => {
             syncReceiptEmailUi('subActivate');
             if (String(document.getElementById('subActivateEmail')?.value || '').trim()) {
                 showReceiptEmailField('subActivate', false);
-            }
-        });
-        document.getElementById('subPayEmail')?.addEventListener('blur', () => {
-            syncReceiptEmailUi('subPay');
-            if (String(document.getElementById('subPayEmail')?.value || '').trim()) {
-                showReceiptEmailField('subPay', false);
             }
         });
         document.querySelectorAll('[data-sub-activate-plan]').forEach((btn) => {
@@ -1176,22 +1165,6 @@
             card.addEventListener('click', () => {
                 selectPayPlan(card.getAttribute('data-sub-plan') || 'month');
             });
-        });
-        document.getElementById('subCopyRefBtn')?.addEventListener('click', async (ev) => {
-            const btn = ev.currentTarget;
-            const link = referralLink(getUser()) || document.getElementById('subReferralUrlInput')?.value;
-            if (!link) return;
-            const prev = btn.textContent;
-            try {
-                await global.navigator.clipboard.writeText(link);
-            } catch (_) {
-                global.showDaActionToast?.(link);
-                return;
-            }
-            btn.textContent = 'Скопировано ✓';
-            global.setTimeout(() => {
-                btn.textContent = prev || 'Копировать';
-            }, 2000);
         });
         document.getElementById('subPlanAutorenewOffBtn')?.addEventListener('click', () => {
             if (global.confirm('Отключить автопродление? Следующее списание не произойдёт без вашего подтверждения.')) {

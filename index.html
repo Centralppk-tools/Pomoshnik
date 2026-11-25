@@ -183,9 +183,9 @@
 <script src="js/da-loading.js?v=5.3.4"></script>
 <script src="js/da-reference-cache.js?v=5.3.4"></script>
 <script src="js/crew-api-client.js?v=5.3.6k"></script>
-<script src="js/da-legal-consent.js?v=5.3.6j"></script>
+<script src="js/da-legal-consent.js?v=5.3.20"></script>
 <script src="js/da-auth-terms-gate.js?v=5.3.6j"></script>
-<script src="js/da-subscription.js?v=5.3.19"></script>
+<script src="js/da-subscription.js?v=5.3.20"></script>
 <script src="js/schedule-maintenance.js?v=5.3.4"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
@@ -264,7 +264,7 @@
         <div class="sub-tariff-card sub-tariff-card--hero">
             <h2 class="sub-trial-hero__title" id="subActivateTitle">Активируйте 14 дней бесплатно</h2>
             <p class="sub-trial-hero__lead" id="subActivateLead">Для запуска пробного периода привяжите карту за 1 ₽. По окончании пробного периода подписка продлится автоматически — 300 ₽ раз в 3 месяца; отключить можно в любой момент в профиле.</p>
-            <div id="subActivateConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-button="subActivateBindBtn"></div>
+            <div id="subActivateConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-combined="1" data-consent-button="subActivateBindBtn"></div>
             <button type="button" class="sub-modal__btn sub-modal__btn--neon sub-modal__btn--block is-consent-pending" id="subActivateBindBtn" disabled>Привязать карту за 1 ₽</button>
             <div class="sub-receipt-compact" id="subActivateReceiptCompact">
                 <span class="sub-receipt-compact__text">Чек отправим на <strong id="subActivateReceiptEmail">—</strong> · </span>
@@ -311,33 +311,9 @@
                 <span class="sub-tariff-card__desc">100 ₽ в месяц. Оплата раз в квартал</span>
             </button>
         </div>
-        <div class="sub-ref-card">
-            <p class="sub-ref-card__title">Пригласить коллегу <span class="sub-ref-card__accent">(+7 дней за друга)</span></p>
-            <p class="sub-ref-card__stat" id="subReferralCount">Приглашено: 0 из 3</p>
-            <div class="sub-ref-card__row">
-                <input type="text" id="subReferralUrlInput" class="sub-ref-card__input" readonly value="">
-                <button type="button" class="sub-ref-card__copy" id="subCopyRefBtn">Копировать</button>
-            </div>
-        </div>
-        <div class="sub-receipt-compact" id="subPayReceiptCompact">
-            <span class="sub-receipt-compact__text">Чек отправим на <strong id="subPayReceiptEmail">—</strong> · </span>
-            <button type="button" class="sub-receipt-compact__edit" id="subPayReceiptEditBtn">Изменить</button>
-        </div>
-        <div class="sub-receipt-compact__field" id="subPayReceiptField" hidden>
-            <input type="email" id="subPayEmail" class="sub-pay-email" autocomplete="email" placeholder="name@example.com">
-        </div>
-        <div id="subPlanConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-button="subPayGoBtn" hidden></div>
+        <div id="subPlanConsent" class="da-consent-slot" data-consent-root data-consent-mode="payment" data-consent-combined="1" data-consent-button="subPayGoBtn" hidden></div>
         <button type="button" class="sub-modal__btn sub-modal__btn--neon sub-modal__btn--block is-consent-pending" id="subPayGoBtn">Оплатить 150 ₽</button>
-        <p class="sub-legal-links" id="subPlanLegalLinks" hidden><a href="offer.html" target="_blank" rel="noopener">Оферта</a> · <a href="privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a></p>
-        <div class="sub-trust-banner sub-trust-banner--inset">
-            <div class="sub-trust-banner__icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="sub-trust-banner__body">
-                <p class="sub-trust-banner__title">Прозрачные условия подписки</p>
-                <p class="sub-trust-banner__text">Автопродление — 300 ₽ за 3 месяца. Тариф 150 ₽ — разовая оплата без автопродления. Отключить можно в профиле в один клик.</p>
-            </div>
-        </div>
+        <p class="sub-legal-links" id="subPlanLegalLinks"><a href="offer.html" target="_blank" rel="noopener">Оферта</a> · <a href="privacy.html" target="_blank" rel="noopener">Политика конфиденциальности</a></p>
     </div>
 </div>
 
