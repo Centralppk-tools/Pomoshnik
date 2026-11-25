@@ -1,10 +1,10 @@
-// Service Worker v5.3.4 da_v5_3_4 (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_4';
+// Service Worker v5.3.6 da_v5_3_6i (network-first shell + query-aware cache)
+const CACHE_NAME = 'da_v5_3_6i';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
-const ASSET_CACHE_BUST = '5.3.4';
+const ASSET_CACHE_BUST = '5.3.6i';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
@@ -15,6 +15,7 @@ const PRECACHE_ASSETS = [
     `./styles/base.css?v=${ASSET_CACHE_BUST}`,
     `./styles/routes.css?v=${ASSET_CACHE_BUST}`,
     `./styles/schedule.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/flight-map.css?v=${ASSET_CACHE_BUST}`,
     `./styles/calendar.css?v=${ASSET_CACHE_BUST}`,
     `./styles/profile.css?v=${ASSET_CACHE_BUST}`,
     `./styles/responsive.css?v=${ASSET_CACHE_BUST}`,
@@ -22,6 +23,7 @@ const PRECACHE_ASSETS = [
     `./styles/community.css?v=${ASSET_CACHE_BUST}`,
     `./styles/instructions.css?v=${ASSET_CACHE_BUST}`,
     `./styles/da-loading.css?v=${ASSET_CACHE_BUST}`,
+    `./styles/subscription.css?v=${ASSET_CACHE_BUST}`,
     './data/trains-uids.json',
     './data/release-notes.json',
     `./js/app-config.js?v=${ASSET_CACHE_BUST}`,
@@ -29,7 +31,11 @@ const PRECACHE_ASSETS = [
     `./js/da-auth-session.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-loading.js?v=${ASSET_CACHE_BUST}`,
     `./js/da-reference-cache.js?v=${ASSET_CACHE_BUST}`,
+    `./js/flight-speed/speed-limits-by-branch.js?v=${ASSET_CACHE_BUST}`,
+    `./js/flight-speed/speed-route.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-flight-map.js?v=${ASSET_CACHE_BUST}`,
     `./js/crew-api-client.js?v=${ASSET_CACHE_BUST}`,
+    `./js/da-subscription.js?v=${ASSET_CACHE_BUST}`,
     `./js/schedule-maintenance.js?v=${ASSET_CACHE_BUST}`,
     `./js/hard-reset-app.js?v=${ASSET_CACHE_BUST}`,
     `./js/app-data-source.js?v=${ASSET_CACHE_BUST}`,

@@ -1347,7 +1347,7 @@ body {
 #screen-calendar .app-screen-header .app-header-bar.route-header-bar,
 #screen-instructions .instr-sticky-header-wrap .app-header-bar.route-header-bar {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center !important;
     gap: 8px !important;
     margin: 0 0 10px !important;
@@ -1450,22 +1450,31 @@ body {
 #screen-schedule .route-sticky-header-wrap .route-header-donate,
 #screen-profile .profile-screen-header .route-header-donate,
 #screen-calendar .app-screen-header .route-header-donate,
-#screen-instructions .instr-sticky-header-wrap .route-header-donate {
+#screen-instructions .instr-sticky-header-wrap .route-header-donate,
+#screen-schedule .route-sticky-header-wrap .sub-header-pill,
+#screen-profile .profile-screen-header .sub-header-pill,
+#screen-calendar .app-screen-header .sub-header-pill,
+#screen-instructions .instr-sticky-header-wrap .sub-header-pill {
     justify-self: end;
     grid-column: 3;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    flex-shrink: 0 !important;
     height: 40px !important;
     min-height: 40px !important;
-    padding: 0 12px !important;
+    padding: 0 10px !important;
     margin: 0 !important;
     border-radius: 12px !important;
     background: rgba(18, 25, 38, 0.88) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     color: #c5cedb !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     font-weight: 600 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
     box-shadow: none !important;
 }
 
@@ -1588,13 +1597,14 @@ body {
 }
 
 #screen-schedule .route-sticky-header-wrap .schedule-glass-tabs .tab-btn {
-    flex: 1 1 50% !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
     border-radius: 12px !important;
-    font-size: 14px !important;
+    font-size: clamp(11px, 3.2vw, 14px) !important;
     font-weight: 600 !important;
-    padding: 0 12px !important;
+    padding: 0 6px !important;
     color: rgba(232, 237, 245, 0.75) !important;
     background: transparent !important;
     border: none !important;

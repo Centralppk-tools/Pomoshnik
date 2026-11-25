@@ -1266,6 +1266,7 @@
         dataMirrorUrlForKey,
         isCrewDataUrl,
         crewFetch,
+        apiFetch,
         getSyncUserId: () => hooks.getSyncUserId?.() || '',
         getTabNumber: () => hooks.getTabNumber?.() || ''
     };
