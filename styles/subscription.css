@@ -16,7 +16,8 @@
     padding: 0 11px 0 9px;
     gap: 7px;
     min-height: 40px;
-    border-radius: 999px;
+    height: 40px;
+    border-radius: 12px;
     border: 1px solid rgba(0, 229, 155, 0.35);
     background: var(--sub-graphite-2);
     color: #d8fde8;
