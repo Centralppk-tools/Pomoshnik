@@ -126,7 +126,7 @@
     <link rel="stylesheet" href="styles/community.css?v=5.3.7">
     <link rel="stylesheet" href="styles/instructions.css?v=5.3.4">
     <link rel="stylesheet" href="styles/da-loading.css?v=5.3.4">
-    <link rel="stylesheet" href="styles/subscription.css?v=5.3.21">
+    <link rel="stylesheet" href="styles/subscription.css?v=5.3.22">
     <script>
         (function () {
             var KEY = 'da_password_reset_token';
@@ -185,7 +185,7 @@
 <script src="js/crew-api-client.js?v=5.3.6k"></script>
 <script src="js/da-legal-consent.js?v=5.3.20"></script>
 <script src="js/da-auth-terms-gate.js?v=5.3.6j"></script>
-<script src="js/da-subscription.js?v=5.3.20"></script>
+<script src="js/da-subscription.js?v=5.3.22"></script>
 <script src="js/schedule-maintenance.js?v=5.3.4"></script>
 
 <div id="daLoadShell" class="da-load-shell" aria-live="polite" aria-busy="true" role="status">
@@ -12257,7 +12257,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.3.6q')
+        navigator.serviceWorker.register('./sw.js?v=5.3.6s')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);

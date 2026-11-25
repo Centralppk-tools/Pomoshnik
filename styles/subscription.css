@@ -445,6 +445,14 @@
     }
 }
 
+#subPlanTrialBind[hidden],
+.sub-tariff-card[hidden],
+#subPlanConsent[hidden],
+.da-consent-slot[hidden],
+.sub-autorenew-row[hidden] {
+    display: none !important;
+}
+
 .sub-tariff-card {
     position: relative;
     display: flex;

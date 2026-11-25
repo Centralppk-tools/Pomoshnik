@@ -1,4 +1,9 @@
 /* Двухчекбоксное согласие — оферта + политика */
+#subPlanConsent[hidden] .da-consent,
+.da-consent-slot[hidden] .da-consent {
+    display: none !important;
+}
+
 .da-consent {
     display: flex;
     flex-direction: column;

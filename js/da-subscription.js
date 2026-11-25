@@ -263,31 +263,50 @@
         }
     }
 
+    function applyElHidden(el, hide) {
+        if (!el) return;
+        el.hidden = hide;
+        if (hide) {
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        } else {
+            el.style.removeProperty('display');
+            el.removeAttribute('aria-hidden');
+        }
+    }
+
     function userTermsAccepted(user) {
         if (!user) return false;
+        if (user.terms_accepted === true) return true;
         if (global.DaLegalConsent?.needsConsentForUser) {
             return !global.DaLegalConsent.needsConsentForUser(user);
         }
-        return Boolean(user.terms_accepted_at || user.terms_accepted);
+        return Boolean(user.terms_accepted_at);
     }
 
-    /** Чекбокс в модалке подписки — только до первой фиксации согласий и без истории оплаты/карты. */
-    function needsPlanModalConsent(user) {
-        if (!user) return true;
-        if (userTermsAccepted(user)) return false;
-        if (userHadTrialOrSubscriptionHistory(user)) return false;
-        return true;
-    }
-
-    function userHadTrialOrSubscriptionHistory(user) {
+    /** Активный/использованный триал, оплата или привязка карты (в т.ч. по subscription_ui с /me). */
+    function userHasPaidBindOrActiveTrial(user) {
         if (!user) return false;
+        const uiKindRaw = String(user.subscription_ui?.kind || '').toLowerCase();
+        if (uiKindRaw === 'trial' || uiKindRaw === 'paid' || uiKindRaw === 'expired') return true;
+        const kind = uiKind(user);
+        if (kind === 'trial' || kind === 'paid' || kind === 'expired') return true;
         if (user.trial_card_bound_at || user.card_bound || user.has_bound_card) return true;
         if (user.robokassa_mother_inv_id != null && Number(user.robokassa_mother_inv_id) > 0) return true;
         if (user.first_paid_at) return true;
         if (user.trial_ends_at) return true;
+        if (user.access_allowed === true) return true;
         const end = user.subscription_ends_at || user.subscription_expires_at;
         if (end) return true;
         return false;
+    }
+
+    /** Чекбокс в модалке подписки — только новые без согласий и без оплаты/карты/триала. */
+    function needsPlanModalConsent(user) {
+        if (!user) return true;
+        if (userHasPaidBindOrActiveTrial(user)) return false;
+        if (userTermsAccepted(user)) return false;
+        return true;
     }
 
     function showPlanAutorenewRow(user) {
@@ -315,6 +334,8 @@
         const showPlanConsent = Boolean(needPlanConsent && !gateOpen);
         global.DaLegalConsent?.setVisible(activateConsent, showActivate);
         global.DaLegalConsent?.setVisible(planConsent, showPlanConsent);
+        applyElHidden(planConsent, !showPlanConsent);
+        applyElHidden(activateConsent, !showActivate);
         if (planLinks) planLinks.hidden = false;
         if (showActivate && activateConsent) {
             global.DaLegalConsent?.bindRoot?.(activateConsent);
@@ -329,10 +350,8 @@
     }
 
     function shouldShowTrialPlanCard(user) {
-        if (userHadTrialOrSubscriptionHistory(user)) return false;
-        const kind = uiKind(user);
-        if (kind === 'paid' || kind === 'trial' || kind === 'expired') return false;
-        return kind === 'bind';
+        if (userHasPaidBindOrActiveTrial(user)) return false;
+        return uiKind(user) === 'bind';
     }
 
     function syncPlanAutorenewRow(user) {
@@ -341,7 +360,7 @@
         const sw = document.getElementById('subPlanAutorenewSwitch');
         if (!arRow) return;
         const visible = showPlanAutorenewRow(user);
-        arRow.hidden = !visible;
+        applyElHidden(arRow, !visible);
         arRow.classList.toggle('is-loading', autorenewSwitchBusy);
         if (!visible) return;
         const on = Boolean(user?.autorenew_enabled);
@@ -350,8 +369,10 @@
                 ? AUTORENEW_ACTIVE_HINT
                 : 'Автопродление выключено — новые списания только при ручной оплате';
         }
-        if (sw && !autorenewSwitchBusy) {
+        if (sw) {
             sw.checked = on;
+            sw.disabled = autorenewSwitchBusy;
+            sw.setAttribute('aria-checked', on ? 'true' : 'false');
         }
     }
 
@@ -382,7 +403,7 @@
         syncPlanAutorenewRow(user);
         const showTrial = shouldShowTrialPlanCard(user);
         const trialCard = document.getElementById('subPlanTrialBind');
-        if (trialCard) trialCard.hidden = !showTrial;
+        applyElHidden(trialCard, !showTrial);
         const cardsWrap = document.querySelector('#subPlanModal .sub-plan-cards--landing');
         if (cardsWrap) cardsWrap.classList.toggle('sub-plan-cards--with-trial', showTrial);
         const selected = document.querySelector('[data-sub-plan].is-selected');
@@ -544,8 +565,7 @@
     }
 
     function pickDefaultPlan(user) {
-        const kind = uiKind(user);
-        if (kind === 'bind' || (!user?.trial_card_bound_at && kind !== 'paid')) return 'trial_bind';
+        if (shouldShowTrialPlanCard(user)) return 'trial_bind';
         return 'month';
     }
 
@@ -554,7 +574,7 @@
         const showTrial = shouldShowTrialPlanCard(user);
         if (!showTrial && plan === 'trial_bind') plan = 'month';
         document.querySelectorAll('[data-sub-plan]').forEach((c) => {
-            if (c.hidden) {
+            if (c.hidden || c.style.display === 'none') {
                 c.classList.remove('is-selected');
                 return;
             }
@@ -564,11 +584,14 @@
         if (btn) btn.textContent = planPayButtonLabel(plan);
         if (!opts?.skipTrialToggle) {
             const trialCard = document.getElementById('subPlanTrialBind');
-            if (trialCard) trialCard.hidden = !showTrial;
+            applyElHidden(trialCard, !showTrial);
         }
     }
 
-    function openPaywall() {
+    async function openPaywall() {
+        if (global.DaAuthSession?.getJwt?.()) {
+            await refreshMe();
+        }
         const user = getUser();
         syncPlanModal();
         selectPayPlan(pickDefaultPlan(user), { skipTrialToggle: true });

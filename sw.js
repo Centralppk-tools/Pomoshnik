@@ -1,11 +1,11 @@
 // Service Worker v5.3.6 da_v5_3_6k (network-first shell + query-aware cache)
-const CACHE_NAME = 'da_v5_3_6r';
+const CACHE_NAME = 'da_v5_3_6s';
 const NAVIGATE_NETWORK_TIMEOUT_MS = 2800;
 const CRITICAL_MODULE_NETWORK_TIMEOUT_MS = 3000;
 const APP_SHELL_NETWORK_TIMEOUT_MS = 1200;
 const SHEDULE_MAX_NETWORK_TIMEOUT_MS = 3000;
 const PRECACHE_BUDGET_MS = 4500;
-const ASSET_CACHE_BUST = '5.3.6q';
+const ASSET_CACHE_BUST = '5.3.6s';
 const NOTIFICATION_ICON = './assets/app-icon.png';
 
 const PRECACHE_ASSETS = [
