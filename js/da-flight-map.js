@@ -218,7 +218,8 @@
     function shortStationTitle(title) {
         const t = String(title || '').trim();
         if (!t) return '';
-        if (/москва.*ярослав/i.test(t)) return 'Москва Яр.';
+        if (/[→\-–—−]/.test(t)) return t.length > 22 ? `${t.slice(0, 21)}…` : t;
+        if (/^москва\b/i.test(t) && /ярослав/i.test(t)) return 'Москва Яр.';
         return t.length > 22 ? `${t.slice(0, 21)}…` : t;
     }
 
@@ -633,7 +634,7 @@
     function buildShortRouteTitle(fullTitle) {
         const raw = String(fullTitle || '').trim();
         if (!raw) return '';
-        const parts = raw.split(/\s*[→\-–]\s*/);
+        const parts = raw.split(/\s*[→\-–—−]\s*/).map((p) => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
             const from = shortStationTitle(parts[0]);
             const to = shortStationTitle(parts[parts.length - 1]);

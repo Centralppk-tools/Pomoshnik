@@ -1704,7 +1704,7 @@
     const AVG_PAY_LOOKBACK_DAYS = 90;
     const AVG_PAY_MIN_CLOSED_SHIFTS = 5;
     const APP_LAST_SEEN_VERSION_KEY = 'appLastSeenVersion';
-    const APP_RELEASE_VERSION = '5.4.0';
+    const APP_RELEASE_VERSION = '5.4.1';
     const CLIENT_CACHE_VERSION = 'da_v5_4_0';
     /** Фаза 1: серверный расчёт — сверка с локальным движком, UI не меняется. */
     const ENABLE_SERVER_PREVIEW_SHADOW = false;
@@ -5293,6 +5293,8 @@
             remainder = source.replace(/ИП/gi, ' ').replace(/[\s,;–—-]+/g, ' ').replace(/\s+/g, ' ').trim();
         }
 
+        remainder = String(remainder || '').replace(/\*+/g, ' ').replace(/\s+/g, ' ').trim();
+
         if (!remainder) {
             return { lunch: null, dutyPoint };
         }
@@ -5307,7 +5309,12 @@
 
     function isShiftLunchFieldEmpty(raw) {
         const source = String(raw ?? '').trim();
-        return !source || source === '—' || source === '-';
+        if (!source || source === '—' || source === '-') return true;
+        if (/^\*+$/.test(source)) return true;
+        const { lunch } = parseShiftLunchField(source);
+        if (!lunch) return true;
+        const times = (String(lunch).match(/\d{1,2}:\d{2}/g) || []).map(normalizeShiftTimeToken);
+        return times.length < 2 || times[0] === times[1];
     }
 
     function formatStopsCount(count) {
@@ -5456,7 +5463,7 @@
         if (!number && !departureTime && !arrivalTime) return null;
 
         const title = String(trainData.thread?.title || '').trim();
-        const parts = title.split(/\s+[—–−-]\s+/).map((part) => part.trim()).filter(Boolean);
+        const parts = title.split(/\s*[→\-–—−]\s*/).map((part) => part.trim()).filter(Boolean);
         const origin = parts[0] || '';
         const dest = parts.length > 1 ? parts[parts.length - 1] : '';
 
@@ -10146,12 +10153,16 @@
         const pendingClass = pendingStops ? ' is-pending-stops' : '';
         const pendingMarkHtml = pendingStops ? buildRoutePendingMarkHtml() : '';
         const pendingExpandHtml = pendingStops ? buildRoutePendingExpandHtml(train) : '';
+        const routeHeaderFull = firstTitle && lastTitle
+            ? `${firstTitle} → ${lastTitle}`
+            : String(train.title || '').trim();
+        const routeHeaderShort = formatScheduleRouteHeaderTitle(routeHeaderFull);
 
         return `
                     <div class="route-card clickable${offDayClass}${stationNotesClass}${partialClass}${pendingClass}" data-train-index="${i}" data-uid="${train.uid || ''}" data-number="${train.number}" aria-expanded="false" onclick="handleRouteCardClick(event, this)">
                         <span class="route-card__phase-fill" data-route-phase-fill="${i}" hidden aria-hidden="true"></span>
                         <div class="route-card-section route-card-top">
-                            <div class="route-card-title" title="${escapeAttr(String(train.title || ''))}">${escapeHtml(formatScheduleRouteHeaderTitle(train.title))}</div>
+                            <div class="route-card-title" data-route-title-full="${escapeAttr(routeHeaderFull)}" title="${escapeAttr(routeHeaderFull)}">${escapeHtml(routeHeaderShort)}</div>
                             <div class="route-card-subtitle">
                                 ${renderTrainNumChip(train.number, true)}
                                 <span>${escapeHtml(formatStopsTextDisplay(resolveStopsText(train.stops_text, train.stops)))}</span>
@@ -11210,9 +11221,10 @@
             'Маршрут'
         ],
         highlights: [
-            'Платная подписка',
-            'Полётная карта',
-            'Фикс обеда'
+            'Фикс обеда — час не входит в рабочее время смены',
+            'Подписи маршрута туда/обратно на вкладке «Маршрут»',
+            'Смена маршрута в карточке дня без удаления смены',
+            'Рекуррент Robokassa отключён до подключения в кабинете'
         ],
         telegramUrl: APP_TELEGRAM_URL,
         telegramHint: 'Чтобы быть в курсе обновлений и не пропустить новые версии — присоединяйтесь к нашей группе в Telegram'
@@ -12273,7 +12285,7 @@
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js?v=5.4.0')
+        navigator.serviceWorker.register('./sw.js?v=5.4.1')
             .then((registration) => {
                 console.info('[ЦППК] Service Worker зарегистрирован:', registration.scope);
                 watchServiceWorkerUpdate(registration);
@@ -18113,9 +18125,8 @@
         if (!merged.nightHours) merged.nightHours = tmpl.nightHours || '';
         if (!merged.morningRoute) merged.morningRoute = tmpl.morningRoute || '';
 
-        const hoursEmpty = merged.hours == null || String(merged.hours).trim() === '';
         const tmplWork = tmpl.workHours || tmpl.hours || '';
-        if (tmplWork && (hoursEmpty || shiftRecordTimesMatchTemplate(merged, tmpl))) {
+        if (tmplWork && shiftRecordTimesMatchTemplate(merged, tmpl)) {
             merged.hours = tmplWork;
         }
 
@@ -18145,6 +18156,12 @@
         const normativeHours = parseShiftHours(enriched.hours || enriched.workHours);
         const lunchMarker = getLunchExclusionMarker(enriched.lunch);
         const calculated = calculateShiftWorkHoursFromTimes(enriched);
+        const lunchBreakMin = parseLunchDurationMinutes(enriched.lunch);
+        const hasExplicitLunchBreak = lunchBreakMin > 0 && lunchMarker !== '**';
+
+        if (hasExplicitLunchBreak && calculated != null) {
+            return Math.max(0, calculated);
+        }
 
         if (lunchMarker === '**') {
             if (calculated != null && calculated > 0
@@ -22790,12 +22807,35 @@
         return primaryOnDay >= 0 ? primaryOnDay : 0;
     }
 
-    function buildShiftSummaryRouteFieldHtml(route, dateKey, shift) {
+    function buildShiftSummaryRouteFieldHtml(route, dateKey, shift, options = {}) {
         if (isAveragePayShift(shift)) {
             return '<span class="shift-card__route-readonly">О — оплата по среднему</span>';
         }
-        const label = formatCalendarShiftLabel(route) || String(route || '').trim() || '—';
-        return `<span class="shift-card__route-readonly">${escapeHtml(label)}</span>`;
+        const routeVal = String(route || '').trim();
+        const label = formatCalendarShiftLabel(route) || routeVal || '—';
+        if (options.editable !== true) {
+            return `<span class="shift-card__route-readonly">${escapeHtml(label)}</span>`;
+        }
+        const matched = findConstructorRouteOption(dateKey, routeVal, shift);
+        const signature = matched?.signature || '';
+        const presetId = resolveLocalPresetIdForShift(shift) || '';
+        return `
+            <div class="shift-card__route-area">
+                <div class="shift-card__route-picker">
+                    <div class="shift-card__route-pill">
+                        <div class="route-combobox shift-summary__route" data-summary-route-combobox>
+                            <input type="text" class="route-combobox-input shift-summary__route-input shift-card__route-input" data-summary-route-input
+                                value="${escapeAttr(routeVal)}" placeholder="Н59" autocomplete="off"
+                                aria-label="Маршрут" aria-expanded="false" role="combobox">
+                            <input type="hidden" data-summary-route-value value="${escapeAttr(routeVal)}">
+                            <input type="hidden" data-summary-route-signature value="${escapeAttr(signature)}">
+                        </div>
+                        <button type="button" class="shift-card__route-chevron" data-summary-route-toggle aria-label="Открыть список маршрутов">▾</button>
+                    </div>
+                    <ul class="route-combobox-list shift-summary__route-list" data-summary-route-list role="listbox" hidden></ul>
+                </div>
+                ${buildShiftPanelQuickRoutesInline(presetId, shift)}
+            </div>`;
     }
 
     function buildShiftSummaryPanelHtml(shift, dateKey, shiftIndex, context, options = {}) {
@@ -22812,7 +22852,7 @@
                     getCalendarShiftHours(enriched, dateKey)
                 );
             }
-            const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift);
+            const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, { editable });
             return `
             <div class="shift-card__panel shift-summary__panel shift-summary__panel--average-pay" data-shift-summary-panel>
                 <div class="shift-card__row shift-card__row--route shift-card__row--status-quick">
@@ -22832,7 +22872,7 @@
             ? `<span class="shift-rest-double-badge" title="Оплата ×2 в выходной или праздничный день">×2</span>`
             : '';
 
-        const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift);
+        const routeField = buildShiftSummaryRouteFieldHtml(route, dateKey, shift, { editable });
 
         return `
             <div class="shift-card__panel shift-summary__panel" data-shift-summary-panel>
@@ -22947,7 +22987,12 @@
 
     function updateShiftSummaryCalcDisplay(panelRoot, draftShift, dateKey) {
         if (!panelRoot || !draftShift) return;
-        const enriched = enrichShiftFromDepotTemplate(draftShift, dateKey);
+        let shiftForCalc = draftShift;
+        if (panelRoot.querySelector('[data-shift-summary-panel]')) {
+            const live = collectShiftDraftFromSummaryPanel(panelRoot, draftShift, dateKey);
+            if (live && !live.__restDayOnly) shiftForCalc = live;
+        }
+        const enriched = enrichShiftFromDepotTemplate(shiftForCalc, dateKey);
         if (isAveragePayShift(enriched)) {
             renderAveragePayCard(panelRoot, dateKey, draftShift);
             return;
