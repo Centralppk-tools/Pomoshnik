@@ -779,6 +779,11 @@ body.subscription-blocking .bottom-tabbar-wrap {
     filter: blur(4px) saturate(0.7);
 }
 
+body.subscription-blocking #subPlanModal[data-sub-nodismiss="1"] {
+    pointer-events: auto;
+    filter: none;
+}
+
 .sub-activate-gate {
     position: fixed;
     inset: 0;

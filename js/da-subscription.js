@@ -20,8 +20,14 @@
         + 'Отключить автопродление можно в профиле в один клик.';
     const AUTORENEW_ON_TITLE = 'Автопродление · 300 ₽ раз в 3 мес.';
     const AUTORENEW_OFF_TITLE = 'Автопродление выключено';
+    const EXPIRED_PLAN_STATUS =
+        'Доступ приостановлен — оформите подписку: 300 ₽ за 3 месяца или 150 ₽ за 30 дней';
+    const GRACE_BANNER_TEXT =
+        'Срок подписки истёк — доступ сохранится ещё 3 дня. '
+        + 'Продлите за 300 ₽ на 3 месяца или 150 ₽ на месяц';
 
     let referralsCache = { invited: 0, paid: 0, bonus_days: 0 };
+    let expiredPaywallForced = false;
     let boundCardsCache = { cards: [], demo: false, can_unbind: false, has_bound_card: false };
     /** @type {'idle'|'loading'|'ok'|'error'} */
     let meFetchState = 'idle';
@@ -76,6 +82,7 @@
         if (ui?.kind === 'bind') return 'bind';
         if (ui?.kind === 'trial') return 'trial';
         if (ui?.kind === 'paid') return 'paid';
+        if (ui?.kind === 'grace') return 'grace';
         if (ui?.kind === 'expired') return 'expired';
         if (!user?.trial_card_bound_at && !user?.subscription_ends_at) return 'bind';
         if (user?.subscription_status === 'lifetime') return 'paid';
@@ -111,6 +118,11 @@
         if (kind === 'paid') {
             const end = user.subscription_ends_at || user.subscription_expires_at;
             return `До ${formatShortDate(end)}`;
+        }
+        if (kind === 'grace') {
+            const days = user?.subscription_ui?.daysLeft;
+            if (days != null && Number(days) > 0) return `Льгота · ${days} дн.`;
+            return 'Продлить';
         }
         return 'Оплатить';
     }
@@ -244,7 +256,8 @@
         const label = pillLabel(user);
         document.querySelectorAll('[data-subscription-pill]').forEach((el) => {
             el.textContent = label;
-            el.classList.toggle('sub-header-pill--pay', uiKind(user) === 'expired');
+            const kind = uiKind(user);
+            el.classList.toggle('sub-header-pill--pay', kind === 'expired' || kind === 'grace');
         });
         syncPlanModal();
         syncProfileSubscriptionBlock();
@@ -252,7 +265,7 @@
         syncAccessGate();
     }
 
-    function needsActivationGate() {
+    function needsSubscriptionBlock() {
         if (!global.DaAuthSession?.getJwt?.()) return false;
         const user = getUser();
         if (user?.needs_card_bind === true) return true;
@@ -262,15 +275,89 @@
         return kind === 'bind' || kind === 'expired' || kind === 'unknown';
     }
 
+    /** Триал: привязка карты за 1 ₽ (не для expired). */
+    function needsBindGate() {
+        if (!global.DaAuthSession?.getJwt?.()) return false;
+        if (needsExpiredRenewalPaywall()) return false;
+        const user = getUser();
+        if (user?.needs_card_bind === true) return true;
+        if (user && user.access_allowed === true) return false;
+        const kind = uiKind(user);
+        return kind === 'bind' || kind === 'unknown';
+    }
+
+    function needsExpiredRenewalPaywall() {
+        if (!global.DaAuthSession?.getJwt?.()) return false;
+        const user = getUser();
+        if (user?.access_allowed === true) return false;
+        return uiKind(user) === 'expired';
+    }
+
+    function needsActivationGate() {
+        return needsSubscriptionBlock();
+    }
+
+    function ensurePlanModalLogout(show) {
+        const host = document.querySelector('#subPlanModal .sub-modal--plan');
+        if (!host) return;
+        let btn = document.getElementById('subPlanExpiredLogout');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'subPlanExpiredLogout';
+            btn.className = 'sub-activate-gate__logout';
+            btn.textContent = 'Выйти из аккаунта';
+            btn.addEventListener('click', () => {
+                if (typeof global.handleLogout === 'function') global.handleLogout();
+            });
+            const legal = document.getElementById('subPlanLegalLinks');
+            if (legal) host.insertBefore(btn, legal);
+            else host.appendChild(btn);
+        }
+        applyElHidden(btn, !show);
+    }
+
+    function syncExpiredPaywallModal() {
+        const planModal = document.getElementById('subPlanModal');
+        const closeBtn = planModal?.querySelector('[data-sub-modal-close="subPlanModal"]');
+        const user = getUser();
+        syncPlanModal();
+        selectPayPlan(pickDefaultPlan(user), { skipTrialToggle: true });
+        forcePlanModalVisibility(user);
+        if (!planModal) return;
+        planModal.setAttribute('data-sub-nodismiss', '1');
+        planModal.hidden = false;
+        planModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('sub-modal-open');
+        if (closeBtn) applyElHidden(closeBtn, true);
+        ensurePlanModalLogout(true);
+        expiredPaywallForced = true;
+        syncPaymentConsentUi();
+    }
+
+    function clearExpiredPaywallModal() {
+        const planModal = document.getElementById('subPlanModal');
+        const closeBtn = planModal?.querySelector('[data-sub-modal-close="subPlanModal"]');
+        if (planModal) planModal.removeAttribute('data-sub-nodismiss');
+        if (closeBtn) applyElHidden(closeBtn, false);
+        ensurePlanModalLogout(false);
+        if (expiredPaywallForced) {
+            expiredPaywallForced = false;
+            closeModal('subPlanModal');
+        }
+    }
+
     function syncAccessGate() {
-        const need = needsActivationGate();
-        document.body.classList.toggle('subscription-blocking', need);
+        const block = needsSubscriptionBlock();
+        const bindGate = needsBindGate();
+        const expired = needsExpiredRenewalPaywall();
+        document.body.classList.toggle('subscription-blocking', block);
         const gate = document.getElementById('subActivateGate');
         if (gate) {
-            gate.hidden = !need;
-            gate.setAttribute('aria-hidden', need ? 'false' : 'true');
+            gate.hidden = !bindGate;
+            gate.setAttribute('aria-hidden', bindGate ? 'false' : 'true');
         }
-        if (need) {
+        if (bindGate) {
             const user = getUser();
             const emailInput = document.getElementById('subActivateEmail');
             if (emailInput && user?.email && !emailInput.value) emailInput.value = user.email;
@@ -288,6 +375,12 @@
             syncReceiptEmailUi('subActivate');
             showReceiptEmailField('subActivate', false);
             syncPaymentConsentUi();
+        }
+        if (expired) {
+            syncExpiredPaywallModal();
+        } else {
+            clearExpiredPaywallModal();
+            if (!bindGate) syncPaymentConsentUi();
         }
     }
 
@@ -354,14 +447,15 @@
 
     function syncPaymentConsentUi() {
         const user = getUser();
-        const gateOpen = needsActivationGate();
-        const needGateConsent = gateOpen && global.DaLegalConsent?.needsConsentForUser(user);
+        const bindGate = needsBindGate();
+        const expiredPaywall = needsExpiredRenewalPaywall();
+        const needGateConsent = bindGate && global.DaLegalConsent?.needsConsentForUser(user);
         const needPlanConsent = needsPlanModalConsent(user);
         const activateConsent = document.getElementById('subActivateConsent');
         const planConsent = document.getElementById('subPlanConsent');
         const planLinks = document.getElementById('subPlanLegalLinks');
         const showActivate = Boolean(needGateConsent);
-        const showPlanConsent = Boolean(needPlanConsent && !gateOpen);
+        const showPlanConsent = Boolean(needPlanConsent && (expiredPaywall || !bindGate));
         global.DaLegalConsent?.setVisible(activateConsent, showActivate);
         global.DaLegalConsent?.setVisible(planConsent, showPlanConsent);
         applyElHidden(planConsent, !showPlanConsent);
@@ -446,6 +540,13 @@
             } else if (kind === 'paid') {
                 const end = user.subscription_ends_at || user.subscription_expires_at;
                 statusEl.textContent = `Подписка активна до ${formatShortDate(end)}`;
+            } else if (kind === 'grace') {
+                const gEnd = user?.subscription_ui?.grace_ends_at;
+                statusEl.textContent = gEnd
+                    ? `Льготный доступ до ${formatShortDate(gEnd)} — ${GRACE_BANNER_TEXT}`
+                    : GRACE_BANNER_TEXT;
+            } else if (kind === 'expired') {
+                statusEl.textContent = EXPIRED_PLAN_STATUS;
             } else {
                 statusEl.textContent = 'Пробный период завершён — оформите подписку';
             }
@@ -483,10 +584,10 @@
     }
 
     function shouldShowSoftBanner() {
-        if (needsActivationGate()) return false;
+        if (needsSubscriptionBlock()) return false;
         const user = getUser();
         if (!user || !global.DaAuthSession?.getJwt?.()) return false;
-        if (uiKind(user) !== 'expired') return false;
+        if (uiKind(user) !== 'grace') return false;
         try {
             const until = Number(global.localStorage.getItem(BANNER_HIDE_KEY) || 0);
             if (until > Date.now()) return false;
@@ -500,6 +601,8 @@
         const show = shouldShowSoftBanner();
         bar.hidden = !show;
         bar.classList.toggle('is-visible', show);
+        const textEl = bar.querySelector('.sub-soft-banner__text');
+        if (textEl && show) textEl.textContent = GRACE_BANNER_TEXT;
     }
 
     function openModal(id) {
@@ -513,6 +616,9 @@
     function closeModal(id) {
         const el = document.getElementById(id);
         if (!el) return;
+        if (id === 'subPlanModal' && (el.hasAttribute('data-sub-nodismiss') || expiredPaywallForced)) {
+            return;
+        }
         el.hidden = true;
         el.setAttribute('aria-hidden', 'true');
         if (!document.querySelector('.sub-modal-overlay:not([hidden])')) {
@@ -552,7 +658,12 @@
 
     function isActivateGateOpen() {
         const gate = document.getElementById('subActivateGate');
-        return Boolean(gate && !gate.hidden);
+        if (gate && !gate.hidden) return true;
+        const plan = document.getElementById('subPlanModal');
+        return Boolean(
+            plan && !plan.hidden
+            && (plan.hasAttribute('data-sub-nodismiss') || expiredPaywallForced),
+        );
     }
 
     let pendingPayResumeActive = false;
@@ -616,6 +727,7 @@
 
     function pickDefaultPlan(user) {
         if (shouldShowTrialPlanCard(user)) return 'trial_bind';
+        if (uiKind(user) === 'expired') return 'quarter';
         return 'month';
     }
 
@@ -641,13 +753,19 @@
     function forcePlanModalVisibility(user) {
         const showTrial = shouldShowTrialPlanCard(user);
         applyElHidden(document.getElementById('subPlanTrialBind'), !showTrial);
-        const showConsent = Boolean(needsPlanModalConsent(user) && !needsActivationGate());
+        const showConsent = Boolean(
+            needsPlanModalConsent(user) && (needsExpiredRenewalPaywall() || !needsBindGate()),
+        );
         applyElHidden(document.getElementById('subPlanConsent'), !showConsent);
         syncPaymentConsentUi();
         syncPlanAutorenewRow(user);
     }
 
     async function openPaywall() {
+        if (needsExpiredRenewalPaywall()) {
+            syncExpiredPaywallModal();
+            return;
+        }
         if (global.DaAuthSession?.getJwt?.()) {
             await refreshMe();
         }
@@ -895,6 +1013,12 @@
         if (kind === 'paid') {
             const end = user.subscription_ends_at || user.subscription_expires_at;
             return `Активна до ${formatShortDate(end)}`;
+        }
+        if (kind === 'grace') {
+            const gEnd = user?.subscription_ui?.grace_ends_at;
+            return gEnd
+                ? `Льгота до ${formatShortDate(gEnd)}`
+                : 'Льготный доступ';
         }
         if (kind === 'expired') return 'Не оплачена';
         return '—';
@@ -1265,12 +1389,12 @@
     function bindUi() {
         document.querySelectorAll('[data-subscription-pill]').forEach((btn) => {
             btn.addEventListener('click', () => {
-                if (needsActivationGate()) showActivationGate();
+                if (needsBindGate() || needsExpiredRenewalPaywall()) showActivationGate();
                 else openPaywall();
             });
         });
         document.getElementById('subSoftPayBtn')?.addEventListener('click', () => {
-            if (needsActivationGate()) showActivationGate();
+            if (needsBindGate() || needsExpiredRenewalPaywall()) showActivationGate();
             else openPaywall();
         });
         document.getElementById('subSoftLaterBtn')?.addEventListener('click', () => {
@@ -1313,7 +1437,7 @@
         });
         document.addEventListener('keydown', (ev) => {
             if (ev.key !== 'Escape') return;
-            if (needsActivationGate()) return;
+            if (needsBindGate() || needsExpiredRenewalPaywall()) return;
             closeTopSubModal();
         });
         document.getElementById('subPayBlockedCopyBtn')?.addEventListener('click', async () => {
@@ -1412,6 +1536,9 @@
         getStoredReferralCode,
         pillLabel,
         needsActivationGate,
+        needsBindGate,
+        needsExpiredRenewalPaywall,
+        needsSubscriptionBlock,
         showActivationGate,
         blocksMainScreen,
         syncAccessGate,
